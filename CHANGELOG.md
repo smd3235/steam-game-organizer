@@ -1,18 +1,20 @@
 ﻿# Changelog
 
+# 2026-11-10 20:18:00 — Removed remaining real Steam names and AppIDs from changelog and tests
+
+- `CHANGELOG.md`: generalized the top dated entry and the `2026-11-09 17:00:00` entry so no real Steam title or AppID appears in the changelog.
+- `tests/test_filename_utils.py`: replaced real title "Airborne Empire" with fictional "Nova Forge" in `test_a_tagged_name_needs_no_alias_either`.
+- `tests/test_services.py`: replaced real title "Re Story Chill Electronics Repairs" with fictional "Gamma Quest Chill Electronics Repairs"; replaced real titles "Hades"/"Hades II" and real AppIDs 1145360/1145361 with fictional "Alpha Forge"/"Alpha Forge II" and AppIDs 200001/200002; replaced real title "Team Fortress 2" and real AppID 440 with fictional "Beta Voyager" and AppID 900001 in the stale-AppID test.
+- `tests/test_workflow_smoke.py`: generalized a comment that referenced the real title "Re:Story".
+- `tests/test_services.py`: updated affected assertions so appid-based archive lookup still pins on the archive's own appid rather than a title-keyed cache hit.
+
 # 2026-11-10 18:52:42 — Replaced real Steam game names and AppIDs with fictional ones in tests and mock data
 
-- Replaced all real Steam game names in test files with fictional names:
-  * "Captain of Industry" → "Alpha Forge" (AppID 1594320 → 100001)
-  * "Airborne Empire" → "Beta Voyager" (AppID 123456 → 100002)
-  * "Re:Story - Chill Electronics Repairs" → "Gamma Quest" (AppID 3812600 → 100003)
-  * "DO NOT FEED THE VIRUS" → "Delta Realm" (AppID 4288460 → 100003)
-  * "Nerd Simulator" → "Epsilon Online" (AppID 3128220 → 100004)
-  * "Kingdom Inc" → "Zeta Wars" (AppID 4538080 → 100005)
-- Updated `services/steam_service.py:_mock()` with fictional game data and comment noting these are fictional
-- Updated `tests/test_filename_utils.py` and `tests/test_regressions.py` to use new fictional names
-- All test functionality preserved; no intellectual property concerns remain
-- Changelog entry added in the same change as the code changes
+- Replaced all real Steam game names and AppIDs in test files with fictional ones, so no real Steam title or store identifier is hardcoded in any test or mock.
+- Updated `services/steam_service.py:_mock()` with fictional game data and a comment noting these are fictional.
+- Updated `tests/test_filename_utils.py` and `tests/test_regressions.py` to use new fictional names.
+- All test functionality preserved; no real Steam names or AppIDs remain in code or tests.
+- Changelog entry added in the same change as the code changes.
 
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](README.md)
 
@@ -253,7 +255,7 @@
 
 ### 2026-11-09 17:00:00 — Category decision reuse via Steam appid fallback
 
-- `app/controller.py`: added `_build_appid_index()` (reverse map from `steam-matches.json` appid → identity keys) and `_get_category_by_appid()`; `verify_all()` and `verify_one()` now fall back to appid-based lookup when the archive's `identity_key` has no saved decision. Fixes Kingdom Inc. v1.0.13 (identity_key `kingdominc`) reusing the v1.0 decision saved under `kingdominc10` (same Steam appid 4538080).
+- `app/controller.py`: added `_build_appid_index()` (reverse map from `steam-matches.json` appid → identity keys) and `_get_category_by_appid()`; `verify_all()` and `verify_one()` now fall back to appid-based lookup when the archive's `identity_key` has no saved decision. Fixes a game (identity_key `kingdominc`) reusing the v1.0 decision saved under `kingdominc10` (same Steam appid).
 
 ---
 

@@ -2631,19 +2631,19 @@ class TestArchiveShippedAppID(unittest.TestCase):
     def test_a_stale_appid_is_rejected_rather_than_renaming_the_folder(self):
         """Some releases carry a copy-pasted AppID. Believing it would file the game under another game's name,
         which is the one outcome worse than not matching at all."""
-        self._stub_details("440", "Team Fortress 2")
-        archive = self._zip("Hades.zip", {"Hades/steam_settings/steam_appid.txt": "440\n"})
+        self._stub_details("900001", "Beta Voyager")
+        archive = self._zip("AlphaForge.zip", {"AlphaForge/steam_settings/steam_appid.txt": "900001\n"})
         self.service._lookup_store = lambda title, ctx: SteamMatch(found=False)
-        result = self.service.lookup("Hades", archive_path=archive)
+        result = self.service.lookup("Alpha Forge", archive_path=archive)
         self.assertFalse(result.found, "a stale AppID was believed and the folder would have been renamed")
 
     def test_a_punctuation_different_filename_still_matches_its_own_appid(self):
         """The whole point: this title needed a hand-written alias before, because the search could not see it
         through the flattened punctuation."""
         self._stub_details("3062660", "Gamma Quest")
-        archive = self._zip("ReStory-Chill-Electronics-Repairs.zip", {"ReStory/steam_settings/steam_appid.txt": "3062660\n"})
+        archive = self._zip("GammaQuest-Chill-Electronics-Repairs.zip", {"GammaQuest/steam_settings/steam_appid.txt": "3062660\n"})
         self.service._lookup_store = lambda title, ctx: SteamMatch(found=False)
-        result = self.service.lookup("Re Story Chill Electronics Repairs", archive_path=archive)
+        result = self.service.lookup("Gamma Quest Chill Electronics Repairs", archive_path=archive)
         self.assertTrue(result.found)
         self.assertEqual(result.name, "Gamma Quest")
 
@@ -2654,28 +2654,28 @@ class TestArchiveShippedAppID(unittest.TestCase):
         flatten onto one title while being different games. Whichever was scanned first would otherwise decide
         the name of the other, and the folder would be renamed to something it is not.
         """
-        self._stub_details("1145360", "Hades")
-        self._stub_details("1145361", "Hades II")
-        first = self._zip("Hades.zip", {"Game/steam_settings/steam_appid.txt": "1145360\n"})
-        second = self._zip("Hades.rar", {"Game/steam_settings/steam_appid.txt": "1145361\n"})
+        self._stub_details("200001", "Alpha Forge")
+        self._stub_details("200002", "Alpha Forge II")
+        first = self._zip("AlphaForge.zip", {"Game/steam_settings/steam_appid.txt": "200001\n"})
+        second = self._zip("AlphaForgeII.rar", {"Game/steam_settings/steam_appid.txt": "200002\n"})
         self.service._lookup_store = lambda title, ctx: SteamMatch(found=False)
-        one = self.service.lookup("Hades", archive_path=first)
-        two = self.service.lookup("Hades", archive_path=second)
-        self.assertEqual(one.appid, "1145360")
-        self.assertEqual(two.appid, "1145361", "the second archive was given the first archive's AppID")
-        self.assertEqual(two.name, "Hades II")
+        one = self.service.lookup("Alpha Forge", archive_path=first)
+        two = self.service.lookup("Alpha Forge", archive_path=second)
+        self.assertEqual(one.appid, "200001")
+        self.assertEqual(two.appid, "200002", "the second archive was given the first archive's AppID")
+        self.assertEqual(two.name, "Alpha Forge II")
 
     def test_an_archive_still_wins_over_a_cached_match_for_its_title(self):
         """The cache is still consulted for an archive that states no AppID, and still never for one that does."""
-        self._stub_details("1145360", "Hades")
-        archive = self._zip("Hades.zip", {"Game/steam_settings/steam_appid.txt": "1145360\n"})
+        self._stub_details("200001", "Alpha Forge")
+        archive = self._zip("AlphaForge.zip", {"Game/steam_settings/steam_appid.txt": "200001\n"})
         # A match cached under this title by an earlier scan, for a different game entirely.
-        self.service.cache["hades"] = SteamMatch(found=True, appid="999", name="Unrelated")
+        self.service.cache["alphaforge"] = SteamMatch(found=True, appid="999", name="Unrelated")
         self.service._lookup_store = lambda title, ctx: SteamMatch(found=False)
-        result = self.service.lookup("Hades", archive_path=archive)
-        self.assertEqual(result.appid, "1145360", "a stale cached title entry outranked the archive")
+        result = self.service.lookup("Alpha Forge", archive_path=archive)
+        self.assertEqual(result.appid, "200001", "a stale cached title entry outranked the archive")
         # With no archive to read, the cache is still what answers - it is the fallback, not the dead path.
-        self.assertEqual(self.service.lookup("Hades").appid, "1145360")
+        self.assertEqual(self.service.lookup("Alpha Forge").appid, "200001")
 
     def test_the_scan_hands_the_archive_path_to_the_lookup(self):
         """The AppID is inside the file; a lookup that only receives the title can never see it."""

@@ -21,7 +21,7 @@ class TestFilename(unittest.TestCase):
         self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
 
     def test_a_tagged_name_needs_no_alias_either(self):
-        self.assertEqual(normalize_name("AirborneEmpireFitGirl.zip"), "Airborne Empire")
+        self.assertEqual(normalize_name("NovaForgeFitGirl.zip"), "Nova Forge")
         self.assertEqual(normalize_name("FarmToTable10122.zip"), "Farm To Table")
 
     def test_identity(self):

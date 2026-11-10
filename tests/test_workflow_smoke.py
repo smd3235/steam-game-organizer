@@ -156,7 +156,7 @@ class TestRealWorkflow(unittest.TestCase):
         #
         # It used to arrive by accident, and this is the same defect as the settings.json corruption wearing a
         # different hat. Pointed at this repository, the run read two pieces of the developer's own state:
-        # `config/steam-matches.json` - 708KB of real lookups, which is how "Re:Story" came back with a
+        # `config/steam-matches.json` - 708KB of real lookups, which is how a tagged archive came back with a
         # different AppID than the mock table gives it - and `cache/artwork`, where three of these four AppIDs
         # were sitting as CACHE_HITs left by earlier runs of this same test. An assertion that is only true
         # because a test wrote real state is not an assertion, so the fixture states what it needs, and states
