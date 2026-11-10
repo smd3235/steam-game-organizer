@@ -25,7 +25,7 @@ This file is the **operating manual for contributing** to the project. Read it *
 | Run lint checks | [**Lint**](#-lint) |
 | Capture and delete screenshots | [**Screenshots**](#-screenshots) |
 | Handle long-running commands | [**Long-Running Commands**](#-long-running-commands) |
-| Prove a test can fail | [**Proving a Test Can Fail**](#-proving-a-test-can-fail) |
+| Prove a test can fail | [**Testing**](#-testing) |
 | Git/GitHub workflow | [**Git / GitHub Workflow**](#-git--github-workflow) |
 | Keep docs accurate | [**Keeping Project Docs Accurate**](#-keeping-project-docs-accurate) |
 | Check if task is complete | [**Definition of Done**](#-definition-of-done-mandatory) |
@@ -86,21 +86,9 @@ Before modifying any module, read `AGENTS.md`, `ARCHITECTURE.md`, and `project_o
 
 **The change flow:**
 
-```mermaid
-flowchart TD
-    A[Plan change] --> B[Read AGENTS.md + ARCHITECTURE.md + project_overview.md]
-    B --> C[Create feature branch from main]
-    C --> D[Write code + add comments]
-    D --> E[Add changelog entry]
-    E --> F[Update docs if behavior changed]
-    F --> G[ruff check .]
-    G --> H[unittest discover -q]
-    H --> I[python tools\build_frozen.py]
-    I --> J[Verify runtime/7z.exe present]
-    J --> K[git add + commit + push to GitHub]
-```
+Read `AGENTS.md`, `ARCHITECTURE.md`, and `project_overview.md` for context, then work through the checklist below in order.
 
-### Commit-after-build checklist (in this order)
+Values that appear in multiple places (e.g. the default ZIP password) belong in `core/constants.py` in one place, not spelled out at each call site.
 
 1. **Comment** — add a comment explaining the change in every modified file.
 2. **Changelog** — add a dated entry under `## 9.33` (newest first).
@@ -144,8 +132,6 @@ python tools\build_frozen.py
 | Lint / version scan | Excluded (`runtime` and `dist`). `ruff.toml` excludes them; `tests/test_release_structure.py` skips them in `NOT_SOURCE`. |
 | Interpreter path | The bundled `python313._pth` makes `sys.path` exactly what the file says. Any new entry point or tool meant to run under the bundled interpreter must insert its own folder into `sys.path`, or it dies with `ModuleNotFoundError`. |
 
-Values that appear in multiple places (e.g. the default ZIP password) belong in `core/constants.py` in one place, not spelled out at each call site.
-
 ---
 
 ## 📝 Logging
@@ -153,10 +139,6 @@ Values that appear in multiple places (e.g. the default ZIP password) belong in 
 Each launch writes its own timestamped log file under `logs/` (`organizer-<VERSION>-<YYYYMMDD>-<HHMMSS>.log`), so old runs are never overwritten. The last `ROTATED_LOGS` (10) run logs are kept; older ones are removed. Each file rotates by size (`AppLogger.MAX_BYTES` = 5 MB, keeping `.1` and `.2` rolled files).
 
 `core/logger.py` `AppLogger` supports a level threshold (`set_level`) and optional console output (`console=True`, used for headless CLI mode). `install_excepthook()` routes uncaught exceptions through the logger. All writes are thread-locked and a failed write is swallowed so logging never kills the run.
-
-### Test logs never touch the real logs directory
-
-`tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-<VERSION>-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test runs never pollute the user's log history, and real runs are easy to tell apart. The env var is set with `setdefault` so an explicit export still takes precedence.
 
 ---
 
@@ -173,15 +155,6 @@ There is no second environment to keep green. Anything that branches on platform
 ## 🧪 Testing
 
 ### Test result
-
-```mermaid
-flowchart TD
-    A[Run test suite] --> B[Tests collected]
-    B --> C{Expected result?}
-    C -->|OK, no skips| D[PASS]
-    C -->|Unexpected skip| E[BUG - find the dependency]
-    C -->|Failure from change| F[BUG - fix it]
-```
 
 > [!IMPORTANT]
 > **Expected:** `OK` with no skips. PyInstaller is installed in the bundled runtime (`runtime\Lib\site-packages`) so the frozen-build layout check runs. A skip that is *not* expected is a bug: find the dependency it cannot satisfy and make it report the condition deterministically, or fail with a message naming the cause. A missing tkinter is a broken install and `tests/test_ui_geometry.py` raises rather than skips.
@@ -208,6 +181,10 @@ A fake `7z` written as a shebang script with no extension is invisible to `shuti
 `AppConfig` derives every path it writes from its project root, and `Application` builds one from `Path(__file__).resolve().parents[1]` — this repository. A test that constructs either one the ordinary way inherits the developer's own `config/`, `cache/` and `logs/`. Build windows and configs through `tests/tk_support.py:sandbox_app`, which roots the `AppConfig` in a temporary tree. Do **not** snapshot the real files and restore them afterwards: two concurrent runs restore each other's writes, which is the defect itself rather than a fix for it.
 
 `tests/test_project_state_guard.py` snapshots every file under `config/`, exercises `AppConfig`, `save()`, `remember_category()`, the scan summary, the undo journal and a real window against a temporary tree, and fails if any byte or mtime moved.
+
+#### Test logs never touch the real logs directory
+
+`tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-<VERSION>-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test runs never pollute the user's log history, and real runs are easy to tell apart. The env var is set with `setdefault` so an explicit export still takes precedence.
 
 ---
 
@@ -250,12 +227,6 @@ A foreground shell call blocks until it finishes. Anything whose duration is not
 - Does the library hold up? A background job, started deliberately.
 
 Scope the work before starting it. The full suite is ~80s — short enough to run in the foreground deliberately, long enough to be a background job once several are queued, but not both at once, and not as one giant chained command that also does unrelated work afterwards. Keep verification separate from reporting so a completed check is visible before the next one starts.
-
----
-
-## 🔄 Proving a Test Can Fail
-
-Every regression here is proved by reverting its fix and watching the test fail, then restoring and watching it pass. Record the failure count, not just that it failed.
 
 ---
 
