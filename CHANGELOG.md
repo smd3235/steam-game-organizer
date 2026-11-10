@@ -9,6 +9,13 @@
 
 ## 9.33
 
+### 2026-11-10 — Git/GitHub workflow instructions added to AGENTS.md (commit-after-rebuild rule)
+
+- `AGENTS.md`: New **Git / GitHub workflow** section covering branch-before-change, conventional commit messages, push regularly, PR requirements, and the commit-after-every-frozen-rebuild rule (`dist/steam_game_organizer/runtime/7z.exe` verified present before committing). Also added a **Commit-after-build checklist** (changelog → docs → lint → tests → build → commit + push) so every change produces a dated, searchable GitHub log entry. Step 6 explicitly requires pushing to GitHub so the project on GitHub is updated — never leave work committed locally only.
+- Changelog entry added in the same change as the doc change.
+
+---
+
 ### 2026-11-10 — Docs overhaul: GitHub-flavored markdown for AGENTS.md, ARCHITECTURE.md, project_overview.md
 
 - `AGENTS.md`: Rewritten with badges, GFM alert blocks (`> [!IMPORTANT]`, `> [!WARNING]`, `> [!TIP]`, `> [!NOTE]`), rule tables, and clean section hierarchy. All content preserved — frozen build, bundled runtime, logging, test hygiene, lint, screenshots, long-running commands, Definition of Done.

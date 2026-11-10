@@ -182,6 +182,31 @@ Every regression here is proved by reverting its fix and watching the test fail,
 
 ---
 
+## Git / GitHub workflow
+
+This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer`. The `main` branch is the release line; work happens on feature branches and lands via pull request.
+
+| Rule | What it means |
+|------|---------------|
+| **Branch before you change** | Create a branch from `main` for each body of work (`git checkout -b <name>`). Never commit directly to `main` unless it is a trivial docs-only fix. |
+| **Commit after every frozen rebuild** | Whenever `python tools\build_frozen.py` completes successfully and `dist\steam_game_organizer\runtime\7z.exe` is verified present, commit the source change + the changelog entry + the rebuilt state. This gives GitHub a massive, searchable log of every build. |
+| **Commit messages** | Use conventional style: `type(scope): short summary`. Types: `feat`, `fix`, `docs`, `build`, `refactor`, `test`, `chore`. Example: `build: rebuild frozen exe after archive cache changes`. |
+| **Changelog with every commit** | Add a dated entry to the top of `## 9.33` in `CHANGELOG.md` at the same time as the code change. Never defer. |
+| **Push regularly** | `git push origin <branch>` so your work is backed up on GitHub. Do not force-push `main`. |
+| **Pull requests** | Open a PR from your branch to `main`. Tests must pass (`OK`, no skips) and lint must be clean (`ruff check .`) before merging. |
+| **Do not commit build artifacts** | `runtime/`, `dist/`, `build/`, `cache/`, `logs/`, `config/`, `backup/` are excluded by `.gitignore`. Never add them. |
+
+### Commit-after-build checklist
+
+After any source change, in this order:
+
+1. Add a dated changelog entry under `## 9.33` (newest first).
+2. Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed.
+3. Run `ruff check .` — must pass.
+4. Run `runtime\python.exe -m unittest discover -q` — must report `OK` with no new skips.
+5. Run `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists.
+6. `git add` the changed source, docs, and changelog; commit with a descriptive message; **push to GitHub** (`git push origin <branch>`) so the project on GitHub is updated — never leave work committed locally only.
+
 ## Keeping the project docs accurate
 
 These four files are the project's map of itself. If a reader acts on them, they must match the code:
