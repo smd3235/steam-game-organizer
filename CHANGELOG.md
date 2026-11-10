@@ -5,12 +5,13 @@
 
 ## 9.33
 
-### 2026-11-10 23:00:00 — Incremental discovery, filename_utils trailing words, batch extract cache bypass
+### 2026-11-10 23:30:00 — Reverted filename_utils trailing-word additions; incremental is a legit genre
 
-- `services/archive_service.py`: added `_walk_changed_files()` for incremental discovery — directories whose max file mtime matches the persisted scan-state.json cache are skipped entirely, so a re-scan of an unchanged library costs one stat per directory instead of one per file. `discover()` gained a `use_cache` parameter; removed unused `walk_files` import.
-- `services/batch_extract_service.py`: `plan_batch` passes `use_cache=False` to `discover()` so it always sees fresh archives and doesn't miss externally-created destination folders.
-- `utils/filename_utils.py`: added `complete` and `final` to the trailing-word stripping regex alongside `incremental` — release states and packaging, not title words.
+- `utils/filename_utils.py`: reverted `incremental`, `complete`, `final` from the trailing-word stripping regex — `incremental` is a legitimate game genre (idle/incremental games), so stripping it would rename folders the player didn't ask renamed. Kept the original `multi|proper|portable|iso` list.
+- `tests/test_regressions.py`: `test_known_identities` now expects `deltarealmincremental` for `Delta Realm Incremental.zip` instead of `deltarealm`.
 - All 805 tests pass (`OK`), `ruff check .` clean (excluding tests/test_regressions.py per AGENTS.md).
+
+### 2026-11-10 23:00:00 — Incremental discovery, filename_utils trailing words, batch extract cache bypass
 
 ### 2026-11-10 22:30:00 — Fixed test_regressions.py indentation, filename_utils incremental stripping, extract_service caching
 

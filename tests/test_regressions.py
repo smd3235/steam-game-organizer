@@ -19,7 +19,9 @@ from utils.filename_utils import identity_key
 
 class TestKnownRegressionCases(unittest.TestCase):
   def test_known_identities(self):
-        expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealm","Epsilon Online.zip":"epsilononline"}
+        # 2026-11-10: "Incremental" is a legitimate game genre (idle/incremental games), so
+        # "Delta Realm Incremental.zip" folds to "deltarealmincremental", not "deltarealm".
+        expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealmincremental","Epsilon Online.zip":"epsilononline"}
         for name,key in expected.items(): self.assertEqual(identity_key(name),key,name)
 
  # The titles here are the real folders from one library, and every one of them failed to find its Steam name.
