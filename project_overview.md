@@ -18,6 +18,7 @@ This file describes what the app does, how a run flows through its six phases, h
 | See which decisions are locked | [**Key decisions already made**](#-key-decisions-already-made) |
 | Run tests / lint / build | [**Commands**](#-commands) |
 | Read the testing rules | [**Testing conventions**](#-testing-conventions) |
+| Module inventory + service wiring | [**ARCHITECTURE.md**](ARCHITECTURE.md) |
 | Platform and comment rules | [**AGENTS.md**](../AGENTS.md) (Windows only, comment style, frozen-exe rebuild) |
 
 ---
@@ -141,7 +142,7 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 | **Reserved dirs.** | `Archive` and `Processing` under the library root are never treated as categories. The app's own project folder is never swept. | [`services/catalog_service.py`](services/catalog_service.py) |
 | **Frozen exe rebuild required.** | After any code change: `python tools\build_frozen.py`. The user runs only the frozen exe. | [`tools/build_frozen.py`](tools/build_frozen.py) |
 | **Atomic writes.** | `settings.json`, `scan-state.json`, and the rollback journal all use temp-file + `os.replace` with retry on `PermissionError` (OneDrive locks). | [`core/config.py`](core/config.py) |
-| **`runtime/` ships with the exe** | and is excluded from lint/version scans; it is not this project's code. | [`tools/bundle_runtime.py`](tools/bundle_runtime.py) |
+| **`runtime/` ships with the exe** | and is excluded from lint/version scans; it is not this project's code. See [**ARCHITECTURE.md → Bundled runtime**](ARCHITECTURE.md#-bundled-runtime) for how it ships inside the frozen bundle. | [`tools/bundle_runtime.py`](tools/bundle_runtime.py) |
 
 ---
 
@@ -151,7 +152,7 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 |---------|---------|------|
 | `runtime\python.exe -m unittest discover -q` | Tests — expect `OK` with no skips — PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug | [`tests/`](tests/) |
 | `ruff check .` | Lint | [`ruff.toml`](ruff.toml) |
-| `python tools\build_frozen.py` | Rebuild frozen exe | [`tools/build_frozen.py`](tools/build_frozen.py) |
+| `python tools\build_frozen.py` | Rebuild frozen exe — see [**ARCHITECTURE.md → Frozen build**](ARCHITECTURE.md#-frozen-build) for the build pipeline and why it's mandatory | [`tools/build_frozen.py`](tools/build_frozen.py) |
 | `runtime\python.exe tools\layout_audit.py` | Layout audit (clipping, off-window widgets, sibling overlap) | [`tools/layout_audit.py`](tools/layout_audit.py) |
 | `runtime\python.exe tools\analyze_screenshot.py <shot.png>` | Contrast audit (after theme changes) | [`tools/analyze_screenshot.py`](tools/analyze_screenshot.py) |
 

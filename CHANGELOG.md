@@ -5,6 +5,12 @@
 
 ## 9.33
 
+### 2026-11-10 22:53:00 — Docs dedup: cross-link project_overview.md ↔ ARCHITECTURE.md
+
+- `project_overview.md`: Commands `python tools\build_frozen.py` row now points to [**ARCHITECTURE.md → Frozen build**](ARCHITECTURE.md#-frozen-build); key-decision row for `runtime/` now points to [**ARCHITECTURE.md → Bundled runtime**](ARCHITECTURE.md#-bundled-runtime). Build pipeline and bundled-runtime detail live once in ARCHITECTURE.md; project_overview.md keeps the command reference.
+- `ARCHITECTURE.md`: already references project_overview.md (data flow, key decisions, catalog mechanics) at the top; no change needed there.
+- No behavior change.
+
 ### 2026-11-10 23:46:00 — Reorganized ARCHITECTURE.md, removed duplicate flowcharts
 
 - `ARCHITECTURE.md`: Removed 10 mermaid flowcharts that each duplicated a text table below them (Module map, Entry point, Frozen build, Bundled runtime, Wiring, core, services, ui, tools, tests). Kept scannable tables as single source of truth. Removed standalone Comment rule, Performance Optimizations, and Verification sections — comments live in AGENTS.md/Comment Style; performance and verification are covered by AGENTS.md checklists. Layer map now opens as the single overview table. Flow: Entry point & wiring → core → services → ui → utils → debug → tools → tests. 338 lines (was 633). No behavior change.
