@@ -7,7 +7,8 @@ a scan or organize run is in progress.
 """
 
 from pathlib import Path
-import time, tkinter as tk
+import time
+import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from .theme import ACCENT, ACCENT_HI, ACCENT_HOVER, BG, MUTED, ORANGE, PANEL, PANEL2, PANEL3, TEXT, Theme, panel, tooltip
 from core.constants import APP_NAME, VERSION
@@ -120,7 +121,9 @@ class MainWindow:
         for key, label in [("scan", "SCAN"), ("review", "REVIEW"), ("organize", "ORGANIZE"), ("artwork", "ARTWORK"), ("done", "DONE")]:
             # Navigation tabs - clickable, keyboard accessible, with clear active state.
             # Numbering removed: workflow is non-linear (users jump back to Scan from Review, etc.)
-            b = tk.Button(nav, text=label, bg=PANEL2, fg=MUTED, activebackground=PANEL3, activeforeground=TEXT, font=("TkDefaultFont", 9, "bold"), padx=22, pady=10, relief="flat", bd=0, highlightthickness=0, cursor="hand2", takefocus=True)
+            b = tk.Button(nav, text=label, bg=PANEL2, fg=MUTED, activebackground=PANEL3,
+                activeforeground=TEXT, font=("TkDefaultFont", 9, "bold"), padx=22, pady=10,
+                relief="flat", bd=0, highlightthickness=0, cursor="hand2", takefocus=True)
             b.pack(side="left", padx=2, pady=4)
             b.configure(command=lambda k=key: self._nav(k))
             b.bind("<Return>", lambda e, k=key: self._nav(k))
@@ -142,10 +145,14 @@ class MainWindow:
         # and saving settings on every launch - for a value just read from them - is a needless write. From
         # here on, a toggle saves immediately, which is what the comment above promises.
         self.views["scan"].controller = self.controller
-        self.views["review"] = ReviewView(self.body, self.controller, self.state, self.logger, self.jobs, on_next=self._go_to_organize, on_verified=self.verification_done, on_verification_progress=self.verification_progress)
+        self.views["review"] = ReviewView(self.body, self.controller, self.state, self.logger,
+            self.jobs, on_next=self._go_to_organize, on_verified=self.verification_done,
+            on_verification_progress=self.verification_progress)
         self.views["organize"] = OrganizeView(self.body, self.controller, self.state, self.finish, self.cancel_run, on_start=self._begin_organize)
         self.views["artwork"] = ArtworkView(self.body, self.goto_done, on_review=lambda: self.show("review"))
-        self.views["done"] = DoneView(self.body, lambda: self.show("scan"), self.undo_last, self.open_library, self.state, rollback=self.controller.services.rollback, config=self.config, on_scan_artwork=self.scan_new_artwork)
+        self.views["done"] = DoneView(self.body, lambda: self.show("scan"), self.undo_last,
+            self.open_library, self.state, rollback=self.controller.services.rollback,
+            config=self.config, on_scan_artwork=self.scan_new_artwork)
         foot = tk.Frame(outer, bg=BG)
         foot.grid(row=3, column=0, sticky="ew", pady=(4, 0))
         self.status = tk.Label(foot, text="Ready — configure options and scan your Games directory.", bg=BG, fg=MUTED, font=("TkDefaultFont", 8), anchor="w")
@@ -286,7 +293,13 @@ class MainWindow:
         for k, b in self.nav_buttons.items():
             is_active = k == key
             b.configure(
-                bg=ACCENT if is_active else PANEL2, fg="white" if is_active else MUTED, activebackground=ACCENT_HOVER if is_active else PANEL3, activeforeground="white" if is_active else TEXT, relief="flat" if is_active else "flat", bd=2 if is_active else 0, highlightthickness=2 if is_active else 0, highlightbackground=ACCENT if is_active else BG, highlightcolor=ACCENT if is_active else BG
+                bg=ACCENT if is_active else PANEL2, fg="white" if is_active else MUTED,
+                    activebackground=ACCENT_HOVER if is_active else PANEL3,
+                    activeforeground="white" if is_active else TEXT,
+                    relief="flat" if is_active else "flat", bd=2 if is_active else 0,
+                    highlightthickness=2 if is_active else 0,
+                    highlightbackground=ACCENT if is_active else BG,
+                    highlightcolor=ACCENT if is_active else BG
             )
         if key == "organize":
             self.views[key].set_preview_only(self.run_preview_only)
@@ -301,7 +314,10 @@ class MainWindow:
         accepted = [a for a in self.state.get().scan_result.archives if a.decision.accepted]
         if accepted:
             ov = self.views["organize"]
-            ov.confirm_label.configure(text=f"Organize {len(accepted)} accepted archive(s) into dated game folders? The newest version becomes active, older versions move to the library Archive folder, and artwork + Steam links are included.")
+            ov.confirm_label.configure(
+                text=f"Organize {len(accepted)} accepted archive(s) into dated game folders? "
+                     f"The newest version becomes active, older versions move to the library "
+                     f"Archive folder, and artwork + Steam links are included.")
             ov.confirm_bar.grid()
             ov.organize_button.configure(state="disabled")
 
@@ -382,7 +398,12 @@ class MainWindow:
         self._start("Scanning Games…")
         self.show("scan")
         new_only = self.views["scan"].mode_var.get() == "New Only"
-        self.logger.info("UI", f"SCAN_REQUEST root=[{self.config.library_root}] mode=[{'new' if new_only else 'all'}] preview_only={int(self.run_preview_only)} unlock_zip={int(self.run_unlock_zip)} convert_archives={int(self.config.convert_archives)} artwork={int(self.views['scan'].art_var.get())}")
+        self.logger.info(
+            "UI",
+            f"SCAN_REQUEST root=[{self.config.library_root}] mode=[{'new' if new_only else 'all'}] "
+            f"preview_only={int(self.run_preview_only)} unlock_zip={int(self.run_unlock_zip)} "
+            f"convert_archives={int(self.config.convert_archives)} "
+            f"artwork={int(self.views['scan'].art_var.get())}")
         self.controller.scan(self.config.library_root, self.scan_done, self._scan_progress, new_only=new_only, unlock_zip=self.run_unlock_zip, preview_only=self.run_preview_only, download_artwork=self.views["scan"].art_var.get())
 
     def scan_new_artwork(self):

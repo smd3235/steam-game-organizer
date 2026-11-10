@@ -119,8 +119,12 @@ class ArtworkView(tk.Frame):
             preview.grid_propagate(False)
             preview.update_idletasks()
             preview.show(archive.artwork)
-            tk.Label(card, text=archive.steam.name or archive.display_name, bg=PANEL2, fg=TEXT, font=("TkDefaultFont", 12, "bold"), anchor="w").grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=(12, 3))
-            tk.Label(card, text=f"Folder: {archive.path.parent}", bg=PANEL2, fg=MUTED, font=("TkDefaultFont", 8), anchor="w", wraplength=700, justify="left").grid(row=1, column=1, sticky="ew", padx=(0, 12), pady=2)
+            tk.Label(card, text=archive.steam.name or archive.display_name, bg=PANEL2, fg=TEXT,
+                     font=("TkDefaultFont", 12, "bold"), anchor="w").grid(row=0, column=1,
+                     sticky="ew", padx=(0, 12), pady=(12, 3))
+            tk.Label(card, text=f"Folder: {archive.path.parent}", bg=PANEL2, fg=MUTED,
+                     font=("TkDefaultFont", 8), anchor="w", wraplength=700,
+                     justify="left").grid(row=1, column=1, sticky="ew", padx=(0, 12), pady=2)
             prefix = _asset_prefix_for(archive)
             names = []
             if archive.artwork.path and archive.artwork.path.is_file():
@@ -136,8 +140,13 @@ class ArtworkView(tk.Frame):
                     names.append(f"{prefix}_{key}{path.suffix}")
                     asset_count += 1
             link = "Steam Chrome shortcut created" if archive.steam.appid else "No Steam shortcut"
-            tk.Label(card, text=f"{link}\nAssets: {', '.join(names) if names else 'No artwork downloaded'}", bg=PANEL2, fg=GREEN if names else ORANGE, font=("TkDefaultFont", 8), anchor="w", wraplength=700, justify="left").grid(row=2, column=1, sticky="ew", padx=(0, 12), pady=(2, 12))
-            ttk.Button(card, text="OPEN GAME FOLDER", style="Secondary.TButton", command=lambda path=archive.path.parent: self._open_folder(path)).grid(row=0, column=2, rowspan=3, padx=(0, 12), pady=10)
+            tk.Label(card, text=f"{link}\nAssets: {', '.join(names) if names else 'No artwork downloaded'}",
+                     bg=PANEL2, fg=GREEN if names else ORANGE, font=("TkDefaultFont", 8),
+                     anchor="w", wraplength=700, justify="left").grid(row=2, column=1,
+                     sticky="ew", padx=(0, 12), pady=(2, 12))
+            ttk.Button(card, text="OPEN GAME FOLDER", style="Secondary.TButton",
+                       command=lambda path=archive.path.parent: self._open_folder(path)).grid(
+                           row=0, column=2, rowspan=3, padx=(0, 12), pady=10)
         self._bind_content_wheel(self.inner)
         self.summary.configure(text=f"{artwork_count} primary artwork files • {asset_count} additional Steam assets • {accepted_count} organized games")
         self.inner.update_idletasks()

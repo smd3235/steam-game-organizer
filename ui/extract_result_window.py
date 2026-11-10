@@ -65,7 +65,9 @@ class ExtractProgressDialog(tk.Toplevel):
         self._footer.pack(fill="x", padx=24, pady=(0, 22))
         self._footer.pack_propagate(False)
 
-        self._cancel_btn = tk.Button(self._footer, text="Cancel", command=self._cancel, bg=PANEL3, fg=TEXT, font=("TkDefaultFont", 9, "bold"), activebackground=BG, bd=0, padx=12, pady=4, cursor="hand2")
+        self._cancel_btn = tk.Button(self._footer, text="Cancel", command=self._cancel, bg=PANEL3,
+            fg=TEXT, font=("TkDefaultFont", 9, "bold"), activebackground=BG, bd=0, padx=12,
+            pady=4, cursor="hand2")
         self._cancel_btn.pack(side="right")
 
         self._start_time = time.monotonic()
@@ -181,7 +183,11 @@ class ExtractResultWindow(tk.Toplevel):
         title = "Extraction Succeeded" if ok else "Extraction Failed"
         tk.Label(header, text=title, bg=BG, fg=TEXT, font=("TkDefaultFont", 14, "bold")).place(relx=0.5, rely=0.68, anchor="center")
 
-        subtitle = "Run the installer in the destination folder to finish installing this game" if needs_install and ok else "The game is ready to play" if ok else "The extraction did not complete. Check the log for details."
+        subtitle = (
+            "Run the installer in the destination folder to finish installing this game"
+            if needs_install and ok else
+            "The game is ready to play" if ok else
+            "The extraction did not complete. Check the log for details.")
         tk.Label(header, text=subtitle, bg=BG, fg=MUTED, font=("TkDefaultFont", 9)).place(relx=0.5, rely=0.84, anchor="center")
 
     def _draw_body(self, parent, archive, destination, message, needs_install):
@@ -195,7 +201,9 @@ class ExtractResultWindow(tk.Toplevel):
             note.pack(fill="x", pady=(0, 12))
             note.columnconfigure(1, weight=1)
             tk.Label(note, text="\u26a0", bg=PANEL2, fg=ORANGE, font=("TkDefaultFont", 14)).grid(row=0, column=0, padx=(12, 8), pady=10)
-            tk.Label(note, text="Installer archive detected. Run the setup program to install the game.", bg=PANEL2, fg=TEXT, font=("TkDefaultFont", 9, "bold"), wraplength=380, justify="left").grid(row=0, column=1, sticky="w")
+            tk.Label(note, text="Installer archive detected. Run the setup program to install the game.",
+                bg=PANEL2, fg=TEXT, font=("TkDefaultFont", 9, "bold"), wraplength=380,
+                justify="left").grid(row=0, column=1, sticky="w")
 
         msg_frame = tk.LabelFrame(body, text="Details", bg=BG, fg=MUTED, font=("TkDefaultFont", 8), bd=1, highlightbackground=BORDER, highlightthickness=1)
         msg_frame.pack(fill="x", pady=(0, 12), padx=(0, 0))

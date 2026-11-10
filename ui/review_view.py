@@ -54,7 +54,10 @@ class ReviewView(tk.Frame):
         search_frame = tk.Frame(controls, bg=PANEL)
         search_frame.grid(row=0, column=0, sticky="w", padx=(0, 10))
         tk.Label(search_frame, text="SEARCH", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8, "bold")).pack(side="left")
-        tk.Entry(search_frame, textvariable=self.search_var, bg=PANEL2, fg=TEXT, disabledforeground=MUTED, insertbackground=TEXT, relief="flat", highlightbackground=BORDER, highlightthickness=1, width=18).pack(side="left", padx=(5, 0))
+        tk.Entry(search_frame, textvariable=self.search_var, bg=PANEL2, fg=TEXT,
+                 disabledforeground=MUTED, insertbackground=TEXT, relief="flat",
+                 highlightbackground=BORDER, highlightthickness=1, width=18).pack(
+                     side="left", padx=(5, 0))
         self.search_var.trace_add("write", lambda *_: self._filters_changed())
         # Filter group
         filter_frame = tk.Frame(controls, bg=PANEL)
@@ -100,7 +103,9 @@ class ReviewView(tk.Frame):
         title_section = tk.Frame(self.detail_inner, bg=PANEL)
         title_section.pack(fill="x", padx=14, pady=(0, 4))
         self.title_var = tk.StringVar(value="")
-        self.title_entry = tk.Entry(title_section, textvariable=self.title_var, bg=PANEL2, fg=TEXT, disabledforeground=MUTED, insertbackground=TEXT, relief="flat", highlightbackground=BORDER, highlightthickness=1, font=("TkDefaultFont", 16, "bold"))
+        self.title_entry = tk.Entry(title_section, textvariable=self.title_var, bg=PANEL2,
+            fg=TEXT, disabledforeground=MUTED, insertbackground=TEXT, relief="flat",
+            highlightbackground=BORDER, highlightthickness=1, font=("TkDefaultFont", 16, "bold"))
         self.title_entry.pack(side="left", fill="x", expand=True)
         self.title_search = ttk.Button(title_section, text="SEARCH STEAM", style="Secondary.TButton", command=self.search_again)
         self.title_search.pack(side="left", padx=(8, 0))
@@ -334,7 +339,11 @@ class ReviewView(tk.Frame):
         skipped = {a.identity_key for a in self.archives if a.decision.skipped}
         low = {a.identity_key for a in self.archives if a.steam.found and a.steam.confidence not in ("High", "")}
         overridden = {a.identity_key for a in self.archives if a.decision.changed_from_suggestion}
-        self.summary.configure(text=f"{len(self.archives)} archives  -  {len(groups)} logical  -  {max(0, len(self.archives) - len(groups))} collapsed  -  {len(verified)} verified  -  {len(groups - verified - skipped)} need Steam  -  {len(low)} low confidence  -  {len(overridden)} category overridden  -  {len(skipped)} skipped")
+        self.summary.configure(
+            text=f"{len(self.archives)} archives  -  {len(groups)} logical  -  "
+                 f"{max(0, len(self.archives) - len(groups))} collapsed  -  {len(verified)} verified  -  "
+                 f"{len(groups - verified - skipped)} need Steam  -  {len(low)} low confidence  -  "
+                 f"{len(overridden)} category overridden  -  {len(skipped)} skipped")
         self.approve_all_button.configure(state="normal" if any(a.steam.found and not a.decision.skipped and not a.decision.accepted for a in self.archives) else "disabled")
 
     def _update_continue_state(self):
@@ -376,7 +385,10 @@ class ReviewView(tk.Frame):
             self._category_changed()
 
     def _show_selected(self, a, reset=False):
-        choices = sorted(set(DEFAULT_CATEGORIES + SUPPLEMENTAL_CATEGORIES + list(self.category["values"]) + [canonical_category(value) for value in a.steam.genres]), key=lambda value: (value.casefold(), value))
+        choices = sorted(set(DEFAULT_CATEGORIES + SUPPLEMENTAL_CATEGORIES
+            + list(self.category["values"])
+            + [canonical_category(value) for value in a.steam.genres]),
+            key=lambda value: (value.casefold(), value))
         self.category.configure(values=choices)
         copies = [archive for archive in self.archives if archive.identity_key == a.identity_key]
         formats = ", ".join(sorted({archive.extension.upper().lstrip(".") for archive in copies}))
@@ -390,7 +402,10 @@ class ReviewView(tk.Frame):
         evidence = chr(10).join(parts)
         own = int(getattr(a, "size", 0) or 0)
         self.title_var.set(a.steam.name or a.display_name)
-        self.subtitle.configure(text=f"{len(copies)} archive copy(s) - {human_size(own) if own else 'size unknown'} - Formats: {formats or 'unknown'} - Versions: {versions} - Selected: {a.path.name} - {'Verified Steam match' if a.steam.found else 'Steam match needs attention'}")
+        self.subtitle.configure(
+            text=f"{len(copies)} archive copy(s) - {human_size(own) if own else 'size unknown'} - "
+                 f"Formats: {formats or 'unknown'} - Versions: {versions} - Selected: {a.path.name} - "
+                 f"{'Verified Steam match' if a.steam.found else 'Steam match needs attention'}")
         self.meta.show(a, copies)
         self.evidence_panel.show(a.decision, a.steam.genres)
         self.category.set(a.decision.category)
@@ -454,7 +469,9 @@ class ReviewView(tk.Frame):
             return
         url = f"https://store.steampowered.com/app/{self.selected.steam.appid}/"
         if not open_url(url):
-            messagebox.showwarning("Could not open a browser", "Nothing on this machine was able to open the Steam page. Open it manually, or set a default browser for http links.", parent=self.winfo_toplevel())
+            messagebox.showwarning("Could not open a browser",
+            "Nothing on this machine was able to open the Steam page. Open it manually, or set a "
+            "default browser for http links.", parent=self.winfo_toplevel())
 
     def shutdown(self):
         self.cancel_lookup()
@@ -505,7 +522,9 @@ class ReviewView(tk.Frame):
             messagebox.showwarning("Steam identification required", f"{len(unresolved)} game(s) still need a verified Steam identity. Resolve or skip them first.", parent=self.winfo_toplevel())
             return
         if pending:
-            messagebox.showwarning("Review decisions required", f"{len(pending)} verified game(s) still need a category decision. Use Accept & Next or Use All Suggestions first.", parent=self.winfo_toplevel())
+            messagebox.showwarning("Review decisions required",
+            f"{len(pending)} verified game(s) still need a category decision. Use Accept & Next or "
+            "Use All Suggestions first.", parent=self.winfo_toplevel())
             return
         if self.on_next:
             self.on_next()

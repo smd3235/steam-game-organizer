@@ -20,7 +20,10 @@ class MetadataPanel(tk.Frame):
         identity.columnconfigure(7, weight=1)
         identity.columnconfigure(9, weight=1)
         identity.columnconfigure(11, weight=1)
-        vals = [("Steam Title", s.name or "Unresolved"), ("AppID", s.appid or "—"), ("Release", s.release_date or "—"), ("Confidence", s.confidence or "—"), ("Score", f"{s.score:.0%}" if s.score else "—"), ("Suggested", a.decision.suggested_category or a.decision.category)]
+        vals = [("Steam Title", s.name or "Unresolved"), ("AppID", s.appid or "—"),
+            ("Release", s.release_date or "—"), ("Confidence", s.confidence or "—"),
+            ("Score", f"{s.score:.0%}" if s.score else "—"),
+            ("Suggested", a.decision.suggested_category or a.decision.category)]
         for i, (key, value) in enumerate(vals):
             column = i * 2
             tk.Label(identity, text=key.upper(), bg=PANEL, fg=MUTED, font=("TkDefaultFont", 7, "bold")).grid(row=0, column=column, sticky="w", padx=(0, 4))
@@ -34,7 +37,11 @@ class MetadataPanel(tk.Frame):
         rows = [("Genres", ", ".join(s.genres) or "—"), ("Steam Categories", ", ".join(s.categories) or "—")]
         if s.tags:
             rows.append(("Tags", ", ".join(s.tags) or "—"))
-        rows.extend([("Source / Developer", f"{s.source or chr(8212)}  •  {s.developer or chr(8212)}"), ("Publisher", s.publisher or "—"), ("Archive / Detected", f"{a.path.name}  •  {a.normalized_title}"), ("Archive Size", size_text)])
+        rows.extend([
+            ("Source / Developer", f"{s.source or chr(8212)}  •  {s.developer or chr(8212)}"),
+            ("Publisher", s.publisher or "—"),
+            ("Archive / Detected", f"{a.path.name}  •  {a.normalized_title}"),
+            ("Archive Size", size_text)])
         detail = tk.Frame(self, bg=PANEL)
         detail.pack(fill="x", padx=14, pady=(0, 6))
         detail.columnconfigure(1, weight=1)

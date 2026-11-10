@@ -183,7 +183,11 @@ def _handle_uri(uri, config, logger):
         probe = subprocess.run([tool, "l", str(request.archive)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
         if probe.returncode != 0:
             detail = (probe.stdout + probe.stderr).strip()[-300:]
-            messagebox.showerror("Cannot open archive", f"7-Zip could not read {request.archive.name}.\n\nThe archive may be corrupt, still being copied, open in another program, or locked by antivirus on this PC.\n\n7-Zip said: {detail or '(no detail)'}")
+            messagebox.showerror(
+                "Cannot open archive",
+                f"7-Zip could not read {request.archive.name}.\n\nThe archive may be corrupt, "
+                f"still being copied, open in another program, or locked by antivirus on this "
+                f"PC.\n\n7-Zip said: {detail or '(no detail)'}")
             try:
                 root.destroy()
             except tk.TclError:
@@ -282,7 +286,11 @@ def _handle_multi_uri(uri, config, logger):
             probe = subprocess.run([tool, "l", str(archive)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
             if probe.returncode != 0:
                 detail = (probe.stdout + probe.stderr).strip()[-300:]
-                messagebox.showerror("Cannot open archive", f"7-Zip could not read {archive.name}.\n\nThe archive may be corrupt, still being copied, open in another program, or locked by antivirus on this PC.\n\n7-Zip said: {detail or '(no detail)'}")
+                messagebox.showerror(
+                    "Cannot open archive",
+                    f"7-Zip could not read {archive.name}.\n\nThe archive may be corrupt, still "
+                    f"being copied, open in another program, or locked by antivirus on this PC.\n"
+                    f"\n\n7-Zip said: {detail or '(no detail)'}")
                 try:
                     root.destroy()
                 except tk.TclError:
@@ -633,7 +641,10 @@ def main():
     parser.add_argument("--diagnostics", action="store_true")
     parser.add_argument("--health", action="store_true")
     parser.add_argument("--version", action="store_true")
-    parser.add_argument("--uri", nargs="?", const="", default=None, help="Handle a steamgameorganizer:// link. Empty means launch the GUI, so one desktop entry can serve both the menu and the protocol handler")
+    parser.add_argument(
+        "--uri", nargs="?", const="", default=None,
+        help="Handle a steamgameorganizer:// link. Empty means launch the GUI, so one desktop "
+             "entry can serve both the menu and the protocol handler")
     parser.add_argument("--extract", help="Extract an archive to the extract folder, then exit")
     parser.add_argument("--setup", action="store_true", help="Open the setup wizard: set the game library, app folder and extract folder for this PC, then exit")
     parser.add_argument("--dest", help="Destination folder for --extract (default: the extract folder)")

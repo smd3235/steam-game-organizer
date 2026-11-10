@@ -33,7 +33,13 @@ def hex_to_rgb(value):
 
 
 # Palette the app is expected to paint. Anything far from all of these means a region rendered off-theme.
-PALETTE = {"BG": hex_to_rgb(BG), "PANEL": hex_to_rgb(PANEL), "PANEL2": hex_to_rgb(PANEL2), "PANEL3": hex_to_rgb(PANEL3), "BORDER": hex_to_rgb(BORDER), "ACCENT": hex_to_rgb(ACCENT), "ACCENT_HOVER": hex_to_rgb(ACCENT_HOVER), "ACCENT_HI": hex_to_rgb(ACCENT_HI), "CYAN": hex_to_rgb(CYAN), "GREEN": hex_to_rgb(GREEN), "ORANGE": hex_to_rgb(ORANGE), "RED": hex_to_rgb(RED), "TEXT": hex_to_rgb(TEXT)}
+PALETTE = {
+    "BG": hex_to_rgb(BG), "PANEL": hex_to_rgb(PANEL), "PANEL2": hex_to_rgb(PANEL2),
+    "PANEL3": hex_to_rgb(PANEL3), "BORDER": hex_to_rgb(BORDER), "ACCENT": hex_to_rgb(ACCENT),
+    "ACCENT_HOVER": hex_to_rgb(ACCENT_HOVER), "ACCENT_HI": hex_to_rgb(ACCENT_HI),
+    "CYAN": hex_to_rgb(CYAN), "GREEN": hex_to_rgb(GREEN), "ORANGE": hex_to_rgb(ORANGE),
+    "RED": hex_to_rgb(RED), "TEXT": hex_to_rgb(TEXT),
+}
 
 
 def distance(a, b):

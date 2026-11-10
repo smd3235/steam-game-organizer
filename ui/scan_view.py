@@ -10,7 +10,9 @@ organize pass.
 import tkinter as tk
 from tkinter import ttk
 from urllib.request import Request, urlopen
-import os, shutil, time
+import os
+import shutil
+import time
 from pathlib import Path
 from .theme import ACCENT_HI, ActivityFeed, BG, BORDER, CYAN, GREEN, MUTED, ORANGE, PANEL, PANEL2, PhaseTimeline, RED, TEXT, bind_wheel, human_size, panel, radio, scroll_text
 from core.constants import USER_AGENT
@@ -108,7 +110,11 @@ class ScanView(tk.Frame):
         self.plan_label.grid(row=2, column=0, columnspan=6, sticky="w", padx=14, pady=(0, 4))
         # The quick-scan button is a secondary action that needs a line of context so users reach for the right
         # tool: SCAN LIBRARY rechecks everything, NEW + ARTWORK only finds new games and fetches their art.
-        self.artwork_hint = tk.Label(cfg, text='Or press "NEW + ARTWORK" to find new games, download their artwork, clean up leftovers, collapse duplicates, convert ZIP/RAR to 7z, and rebuild the catalog.', bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w", wraplength=420, justify="left")
+        self.artwork_hint = tk.Label(cfg,
+            text='Or press "NEW + ARTWORK" to find new games, download their artwork, clean up '
+                 'leftovers, collapse duplicates, convert ZIP/RAR to 7z, and rebuild the catalog.',
+            bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w", wraplength=420,
+            justify="left")
         self.artwork_hint.grid(row=3, column=0, columnspan=6, sticky="w", padx=14, pady=(0, 6))
         for var in (self.mode_var, self.preview_var, self.art_var, self.convert_var):
             var.trace_add("write", lambda *a: self._refresh_plan())
@@ -143,7 +149,9 @@ class ScanView(tk.Frame):
         tk.Label(self.api, text="ARTWORK COVERAGE", bg=PANEL, fg=CYAN, font=("TkDefaultFont", 8, "bold")).grid(row=5, column=0, columnspan=3, sticky="w", padx=14, pady=(0, 2))
         self.art_label = tk.Label(self.api, text="No artwork downloaded yet", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), wraplength=352, justify="left", anchor="w")
         self.art_label.grid(row=6, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 2))
-        tk.Label(self.api, text="A free key from steamgriddb.com adds grid, hero and icon art to game cards. Without one, games fall back to a generated title card.", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), wraplength=352, justify="left", anchor="w").grid(row=7, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 6))
+        tk.Label(self.api, text="A free key from steamgriddb.com adds grid, hero and icon art to game cards.",
+            bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), wraplength=352, justify="left",
+            anchor="w").grid(row=7, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 6))
         self._art_ok = set()
         # The rail cannot grow to fit this panel. With the conversion rows and the stage grid added it needed
         # 519px in a 271px slot, so everything below the first few counts was silently clipped to zero height
@@ -626,7 +634,10 @@ class ScanView(tk.Frame):
         if isinstance(event, str):
             event = {"message": event, "stage": "working"}
         stage = event.get("stage", "working")
-        label = {"extracting": "Converting", "compressing": "Compressing", "verifying": "Verifying", "converted": "Converted", "failed": "Failed", "skipped": "Skipped", "repair_plan": "Queued", "repair_start": "Converting"}.get(stage, "Repairing")
+        label = {
+            "extracting": "Converting", "compressing": "Compressing", "verifying": "Verifying",
+            "converted": "Converted", "failed": "Failed", "skipped": "Skipped",
+            "repair_plan": "Queued", "repair_start": "Converting"}.get(stage, "Repairing")
         name = event.get("file") or ""
         # The count is the point: this pass can run for an hour over twenty archives, and "3 converted" alone
         # cannot say whether three of twenty are done or three of three hundred. The service now reports the
@@ -714,7 +725,10 @@ class ScanView(tk.Frame):
         # Saved is signed, and it is filled in from the first completed conversion rather than staying at a
         # placeholder: a run that has freed nothing yet and a run whose total cannot be computed are different
         # things, and the second one used to look exactly like the first.
-        self.repair_saved_label.configure(text=(f"{self._size(self.repair_free)} freed" if self.repair_free >= 0 else f"{self._size(-self.repair_free)} LOST"), fg=GREEN if self.repair_free >= 0 else ORANGE)
+        self.repair_saved_label.configure(
+            text=(f"{self._size(self.repair_free)} freed" if self.repair_free >= 0
+                  else f"{self._size(-self.repair_free)} LOST"),
+            fg=GREEN if self.repair_free >= 0 else ORANGE)
         self.repair_grown_label.configure(text=str(self.repair_grown), fg=ORANGE if self.repair_grown else TEXT)
         if stage in ("converted", "failed", "skipped") and event.get("source_bytes") and event.get("target_bytes"):
             self._add_conversion_row(name, event)

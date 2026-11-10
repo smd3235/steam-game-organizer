@@ -1,4 +1,5 @@
-import shutil, time
+import shutil
+import time
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -232,7 +233,10 @@ class OrganizeView(tk.Frame):
         if not self.total_bytes:
             return 0.0
         span = ORGANIZE_STAGE_SPAN.get(getattr(self, "stage", ""))
-        fraction = span[0] + (span[1] - span[0]) * max(0.0, min(1.0, float(getattr(self, "stage_progress", 0.0) or 0.0))) if span and self.archive_bytes else 1.0 if self.stage in ("converted", "failed", "skipped") else 0.0
+        fraction = span[0] + (span[1] - span[0]) * max(
+            0.0, min(1.0, float(getattr(self, "stage_progress", 0.0) or 0.0))
+        ) if span and self.archive_bytes else (
+            1.0 if self.stage in ("converted", "failed", "skipped") else 0.0)
         return max(0.0, min(1.0, (self.done_bytes + self.archive_bytes * fraction) / self.total_bytes))
 
     def _refresh_metrics(self):
@@ -358,7 +362,9 @@ class OrganizeView(tk.Frame):
         if not accepted:
             self.list.insert("end", "No accepted games yet. Return to Review and accept at least one game.")
         self.list.configure(state="disabled")
-        self.organize_button.configure(text="PREVIEW ONLY — NO MOVE" if self.preview_only else "ORGANIZE ACCEPTED GAMES  ›", state="disabled" if self.preview_only else ("normal" if accepted else "disabled"))
+        self.organize_button.configure(
+            text="PREVIEW ONLY — NO MOVE" if self.preview_only else "ORGANIZE ACCEPTED GAMES  ›",
+            state="disabled" if self.preview_only else ("normal" if accepted else "disabled"))
         pin_bottom(self.list)
 
     def run_ended(self):
@@ -395,7 +401,10 @@ class OrganizeView(tk.Frame):
         if not self.controller.config.library_root:
             self.summary.configure(text="Choose the library first — no games directory is configured.", fg=ORANGE)
             return
-        self.confirm_label.configure(text=f"Organize {len(accepted)} accepted archive(s) into dated game folders? The newest version becomes active, older versions move to the library Archive folder, and artwork + Steam links are included.")
+        self.confirm_label.configure(
+            text=f"Organize {len(accepted)} accepted archive(s) into dated game folders? The newest "
+                 f"version becomes active, older versions move to the library Archive folder, and "
+                 f"artwork + Steam links are included.")
         self.confirm_bar.grid()
         self.organize_button.configure(state="disabled")
 

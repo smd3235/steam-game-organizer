@@ -150,7 +150,10 @@ def main():
         organize.timeline.reset()
         organize.feed.clear()
         root.update()
-        for event in ({"stage": "organizing", "file": "Alpha Quest v1.zip", "game": "Alpha Quest", "index": 1, "total": 6}, {"stage": "converting" if False else "compressing", "file": "Alpha Quest v1.zip"}):
+        for event in (
+            {"stage": "organizing", "file": "Alpha Quest v1.zip", "game": "Alpha Quest", "index": 1, "total": 6},
+            {"stage": "converting" if False else "compressing", "file": "Alpha Quest v1.zip"},
+        ):
             organize.progress_update(event)
         root.update()
         report("ORGANIZE", root, [("work panel", organize.work), ("plan list", organize.list)])

@@ -13,7 +13,10 @@ from tkinter import ttk
 # Re-exported so views keep importing one module, while the single implementation lives outside the UI layer
 # where the controller can use it too.
 from utils.formatting import human_size, human_duration, clock_stamp
-from .palette import ACCENT, ACCENT_HI, ACCENT_HOVER, BG, BORDER, CHART_COLORS, CYAN, DANGER, DANGER_HOVER, DANGER_TEXT, ENTRY_BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, PANEL3, PILL_KINDS, PINK, RED, SKY, TEXT
+from .palette import (
+    ACCENT, ACCENT_HI, ACCENT_HOVER, BG, BORDER, CHART_COLORS, CYAN, DANGER,
+    DANGER_HOVER, DANGER_TEXT, ENTRY_BG, GREEN, MUTED, ORANGE, PANEL, PANEL2,
+    PANEL3, PILL_KINDS, PINK, RED, SKY, TEXT)
 
 __all__ = [
     "ACCENT",
@@ -105,7 +108,11 @@ class Theme:
 def radio(parent, text, value, variable, command=None, padx=8):
     """One radio-button builder. Two private copies had already drifted apart by a pixel and by whether they
     fired a command, so any restyle meant editing both and hoping."""
-    return tk.Radiobutton(parent, text=text, value=value, variable=variable, bg=PANEL, fg=TEXT, activebackground=PANEL, activeforeground=TEXT, selectcolor=PANEL2, disabledforeground=MUTED, highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT, bd=0, font=("TkDefaultFont", 8, "bold"), padx=padx, pady=5, command=command)
+    return tk.Radiobutton(parent, text=text, value=value, variable=variable, bg=PANEL,
+        fg=TEXT, activebackground=PANEL, activeforeground=TEXT, selectcolor=PANEL2,
+        disabledforeground=MUTED, highlightthickness=1, highlightbackground=BORDER,
+        highlightcolor=ACCENT, bd=0, font=("TkDefaultFont", 8, "bold"), padx=padx,
+        pady=5, command=command)
 
 
 def panel(parent, **kw):

@@ -1,6 +1,8 @@
 """Layout audit v2 - correct about canvas-window children, and adds sibling overlap detection."""
 
-import tkinter as tk, zipfile, sys
+import tkinter as tk
+import zipfile
+import sys
 from pathlib import Path
 from tempfile import mkdtemp
 
@@ -150,7 +152,12 @@ sv = app.window.views["scan"]
 app.window.show("scan")
 sv.begin_scan()
 root.update()
-for e in [{"stage": "cleanup_done", "message": "Reclaimed 4 item(s), freed 1.2 GB"}, {"stage": "dedupe_done", "message": "Kept one archive per game folder"}, {"stage": "repair_done", "message": "Repair pass finished — 3 archive(s) converted"}, {"stage": "discover_done", "message": "Found 8 archive(s)"}]:
+for e in [
+    {"stage": "cleanup_done", "message": "Reclaimed 4 item(s), freed 1.2 GB"},
+    {"stage": "dedupe_done", "message": "Kept one archive per game folder"},
+    {"stage": "repair_done", "message": "Repair pass finished — 3 archive(s) converted"},
+    {"stage": "discover_done", "message": "Found 8 archive(s)"},
+]:
     app.window._scan_progress(e)
 root.update()
 audit("scan", root)

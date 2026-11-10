@@ -259,7 +259,9 @@ class DoneView(tk.Frame):
             messagebox.showinfo("Nothing to save", "This run has no completed work to write out yet.", parent=self.winfo_toplevel())
             return
         default = f"organizer-run-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.txt"
-        target = filedialog.asksaveasfilename(parent=self.winfo_toplevel(), title="Save run report", defaultextension=".txt", initialfile=default, filetypes=[("Text file", "*.txt"), ("All files", "*")])
+        target = filedialog.asksaveasfilename(parent=self.winfo_toplevel(), title="Save run report",
+            defaultextension=".txt", initialfile=default,
+            filetypes=[("Text file", "*.txt"), ("All files", "*")])
         if not target:
             return
         try:

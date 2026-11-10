@@ -76,7 +76,11 @@ class ArtworkPanel(tk.Frame):
             try:
                 ffmpeg = shutil.which("ffmpeg")
                 if ffmpeg:
-                    converted = subprocess.run([ffmpeg, "-v", "error", "-i", str(path), "-vf", "scale=230:230:force_original_aspect_ratio=crop", "-f", "image2pipe", "-vcodec", "png", "pipe:1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10, check=False)
+                    converted = subprocess.run([ffmpeg, "-v", "error", "-i", str(path),
+                        "-vf", "scale=230:230:force_original_aspect_ratio=crop",
+                        "-f", "image2pipe", "-vcodec", "png", "pipe:1"],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10,
+                        check=False)
                     if converted.returncode == 0 and converted.stdout:
                         self.photo = tk.PhotoImage(data=base64.b64encode(converted.stdout).decode("ascii"))
                         self.label.configure(image=self.photo, compound="center", text="", fg=ACCENT)

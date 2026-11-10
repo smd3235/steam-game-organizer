@@ -5,6 +5,26 @@
 
 ## 9.33
 
+### 2026-11-10 23:45:00 — ui/, tools/, and entry point formatting and readability improvements
+
+- `ui/artwork_view.py`: Broke up long `tk.Label` and `ttk.Button` grid calls across multiple lines.
+- `ui/done_view.py`: Broke up long `filedialog.asksaveasfilename` call.
+- `ui/extract_result_window.py`: Broke up long `tk.Button`, subtitle ternary, and `tk.Label` grid calls.
+- `ui/main_window.py`: Split `import time, tkinter as tk`. Broke up `ReviewView`/`DoneView` constructors, `b.configure` call, `confirm_label.configure`, and `logger.info` call across multiple lines.
+- `ui/organize_view.py`: Split `import shutil, time`. Broke up fraction calculation, `organize_button.configure`, and `confirm_label.configure` calls.
+- `ui/review_view.py`: Broke up `tk.Entry`, `title_entry`, `summary.configure`, `choices` sorted call, `subtitle.configure`, and two `messagebox.showwarning` calls across multiple lines.
+- `ui/scan_view.py`: Split `import os, shutil, time`. Broke up `artwork_hint` label, `tk.Label` grid call, `label` dict `.get()` call, and `repair_saved_label.configure`.
+- `ui/setup_window.py`: Broke up `app_default`, `desc_label`, `entry`, and `self.report` constructions.
+- `ui/theme.py`: Broke up `from .palette import ...` and `tk.Radiobutton` call across multiple lines.
+- `ui/widgets/artwork_panel.py`: Broke up `subprocess.run` call.
+- `ui/widgets/metadata_panel.py`: Broke up `vals` list and `rows.extend` call.
+- `steam_game_organizer.py`: Broke up two `messagebox.showerror` calls and `--uri` `add_argument` across multiple lines.
+- `tools/analyze_screenshot.py`: Broke up `PALETTE` dict across multiple lines.
+- `tools/auto_backup.py`: Broke up `subprocess.run` `-c` string and `manifest_data` dict.
+- `tools/dead_space_audit.py`: Broke up `for event in (...)` tuple.
+- `tools/layout_audit.py`: Split `import tkinter as tk, zipfile, sys`. Broke up `for e in [...]` list.
+- No behavior change.
+
 ### 2026-11-10 23:25:00 — tests/ formatting and readability improvements
 
 - `tests/test_archive_service.py`: Broke up the nested `patch()`/`patch.object()` `with` statement into separate variables for readability.

@@ -49,7 +49,13 @@ class SetupWindow(tk.Toplevel):
         self.library_var = tk.StringVar(value=self.prefill.library or str(config.library_root))
         # The app folder is where the app itself lives. In a frozen build, that's the folder containing the exe
         # (bundle root), not _internal. In source, it's the project root.
-        app_default = (self.prefill.app or str(Path(sys.executable).resolve().parent)) if getattr(sys, "frozen", False) else (self.prefill.app or (str(Path(__file__).resolve().parents[1]) if not self.prefill.library else str(Path(self.prefill.library).expanduser().resolve())))
+        app_default = (
+            self.prefill.app or str(Path(sys.executable).resolve().parent)
+            if getattr(sys, "frozen", False) else
+            self.prefill.app or (
+                str(Path(__file__).resolve().parents[1])
+                if not self.prefill.library
+                else str(Path(self.prefill.library).expanduser().resolve())))
         self.app_var = tk.StringVar(value=app_default)
         self.extract_var = tk.StringVar(value=self.prefill.extract or str(config.extract_folder))
 
@@ -84,7 +90,11 @@ class SetupWindow(tk.Toplevel):
         title_label = tk.Label(head, text=f"Set up {APP_NAME} on this PC", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w")
         title_label.grid(row=0, column=0, sticky="w")
 
-        desc_label = tk.Label(head, text="Three folders decide whether the catalog's Extract buttons work here. Set them once; the choices are saved beside the app.", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left", wraplength=620)
+        desc_label = tk.Label(head,
+            text="Three folders decide whether the catalog's Extract buttons work here. Set them "
+                 "once; the choices are saved beside the app.",
+            bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left",
+            wraplength=620)
         desc_label.grid(row=1, column=0, sticky="w", pady=(4, 12))
 
         # Visual separator
@@ -117,7 +127,9 @@ class SetupWindow(tk.Toplevel):
             input_frame.grid(row=1, column=0, sticky="ew", pady=(2, 0))
             input_frame.columnconfigure(0, weight=1)
 
-            entry = tk.Entry(input_frame, textvariable=variable, bg=ENTRY_BG, fg=TEXT, insertbackground=TEXT, font=("TkDefaultFont", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1, bd=0)
+            entry = tk.Entry(input_frame, textvariable=variable, bg=ENTRY_BG, fg=TEXT,
+                insertbackground=TEXT, font=("TkDefaultFont", 10), relief="flat",
+                highlightbackground=BORDER, highlightthickness=1, bd=0)
             entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
 
             browse_btn = ttk.Button(input_frame, text="Browse…", command=self._browse_for(variable))
@@ -153,7 +165,9 @@ class SetupWindow(tk.Toplevel):
         tk.Label(header_frame, text="Checks", bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
 
         # Report area
-        self.report = tk.Text(check_container, height=10, bg=ENTRY_BG, fg=TEXT, wrap="word", font=("TkDefaultFont", 9), relief="flat", highlightthickness=1, highlightbackground=BORDER, state="disabled")
+        self.report = tk.Text(check_container, height=10, bg=ENTRY_BG, fg=TEXT, wrap="word",
+            font=("TkDefaultFont", 9), relief="flat", highlightthickness=1,
+            highlightbackground=BORDER, state="disabled")
         self.report.grid(row=1, column=0, sticky="nsew", padx=(8, 0), pady=(0, 8))
         # The three levels, each in its own colour so a problem is visible before
         # the message is read. The palette names the colours; nothing here invents one.
