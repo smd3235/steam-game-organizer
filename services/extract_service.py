@@ -37,6 +37,19 @@ EXTRACT_PROGRESS_RE = re.compile(r"(\d{1,3})%\s*(.*)")
 # Extraction needs room for the unpacked files while the archive itself stays where it is.
 HEADROOM_FACTOR = 1.15  # floor, not a promise: a dense archive can grow several x over
 
+# find_tool() does not cache its result. Caching the tool path caused stale
+# results when tests re-pointed APP_ROOT at a scratch tree: the cached path
+# pointed at a deleted temp stub, or the real bundle shadowed the stub the
+# test meant to exercise. clear_tool_cache() is retained as a no-op so tests
+# that import it keep working.
+def clear_tool_cache():
+    """No-op retained for API compatibility.
+
+    find_tool() re-scans on every call, so there is nothing to invalidate.
+    """
+    pass
+
+
 # Marker file written into each extracted folder so the catalog can tell whether
 # the archive has changed since the last extraction. Content is a JSON object with
 # the archive's size and mtime_ns at the moment of extraction. A missing marker

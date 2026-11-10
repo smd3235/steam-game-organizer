@@ -50,8 +50,9 @@ def normalize_name(value: str) -> str:
     # which it used to do - "Some Game Multiplayer" became "Some Game player" and "Game Properly Done" became
     # "Game ly Done", because multi and proper were matched with no trailing boundary at all.
     value = RELEASE_TAG.sub("", value)
-    # These four are ordinary English as well as tags, so they only count as a tag when they are the last word.
-    value = re.sub(r"\s+(?:multi|proper|portable|iso)\s*$", " ", value, flags=re.I)
+    # These four plus incremental are ordinary English as well as tags, so they only count as a tag when they are the last word.
+    # "incremental" is packaging, not title: "Delta Realm Incremental.zip" must collapse to "Delta Realm".
+    value = re.sub(r"\s+(?:multi|proper|portable|iso|incremental)\s*$", " ", value, flags=re.I)
     # Remove trailing indicators like (2), [Copy], (v2), etc. that should not affect identity
     # Remove all such trailing indicators (there may be more than one)
     while True:

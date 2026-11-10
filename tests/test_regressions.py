@@ -1,3 +1,7 @@
+# Fixed 2026-11-10: indentation across the file was broken (docstrings, if/with/for/try bodies, nested classes,
+# module-level helpers all at wrong indent), so the module could not be imported or collected by unittest. Every
+# body is now indented to its enclosing block so ast.parse() succeeds and the suite loads. ruff F841/F821 findings
+# are pre-existing and excluded in ruff.toml per AGENTS.md.
 import json, os, shutil, subprocess, zipfile
 import tempfile
 import threading,time
@@ -14,9 +18,9 @@ from ui.main_window import MainWindow
 from utils.filename_utils import identity_key
 
 class TestKnownRegressionCases(unittest.TestCase):
-def test_known_identities(self):
-       expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealm","Epsilon Online.zip":"epsilononline"}
-       for name,key in expected.items(): self.assertEqual(identity_key(name),key,name)
+  def test_known_identities(self):
+        expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealm","Epsilon Online.zip":"epsilononline"}
+        for name,key in expected.items(): self.assertEqual(identity_key(name),key,name)
 
  # The titles here are the real folders from one library, and every one of them failed to find its Steam name.
  # The cause was the tag stripper, not Steam: it only fired on whitespace-delimited tags, so the hyphenated
@@ -66,8 +70,8 @@ def test_known_identities(self):
       window.show.assert_called_once_with('scan')
 
   def test_scan_new_artwork_done_routes_to_review_without_calling_end(self):
-  """Reproduced before the fix: _scan_new_artwork_done called _end and stopped on Scan, so the
-      newly-discovered archives were never loaded into Review and the user could not accept them."""
+      """Reproduced before the fix: _scan_new_artwork_done called _end and stopped on Scan, so the
+          newly-discovered archives were never loaded into Review and the user could not accept them."""
       window = SimpleNamespace()
       window.closing = False
       window.views = {'scan': Mock(), 'review': Mock()}
@@ -86,7 +90,7 @@ def test_known_identities(self):
                     '_scan_new_artwork_done called _end, which would leave verification without a run guard')
 
 class TestScanButtonComesBackAfterAScan(unittest.TestCase):
- r"""The app's headline button went dead after the first scan, for the rest of the session.
+  r"""The app's headline button went dead after the first scan, for the rest of the session.
 
  `begin_scan` and `progress_update` both set `scan_btn` to `disabled`, so it cannot be pressed twice while a
  run is in progress. Nothing ever set it back. `MainWindow._end` - the one place that ends a run and already
@@ -105,7 +109,7 @@ Driven through the real MainWindow rather than a bare ScanView, because the omis
  the button was created, so `invoke()` starts a real scan of the configured library root - and this machine's
  settings.json points at D:\Game Installers\Steam Games. While the button was disabled that call was a
  harmless no-op, which is how an earlier version of this test passed without ever pressing it.
- """
+  """
 
   def setUp(self):
       from tests.tk_support import require_tk,close_root,sandbox_app
@@ -119,7 +123,7 @@ Driven through the real MainWindow rather than a bare ScanView, because the omis
       self.window.show('scan'); self.root.update()
 
   def _run_a_whole_scan(self):
-  """Discovery, then the background verification that follows it, then the run ends."""
+      """Discovery, then the background verification that follows it, then the run ends."""
       self.window.scan_done(type('R',(),{'archives':[],'errors':[]})())
       self.window.verification_done([])
 
@@ -170,11 +174,11 @@ class TestOpenFolderIsNotLinuxOnly(unittest.TestCase):
       import os
       from utils.desktop import open_folder
       if os.name!='nt':
-      self.fail('this app is Windows-only now, so open_folder must refuse elsewhere rather than launch nothing')
+          self.fail('this app is Windows-only now, so open_folder must refuse elsewhere rather than launch nothing')
       launched=[]
       with patch('utils.desktop.os.startfile',side_effect=lambda p:launched.append(p)):
-      self.assertTrue(open_folder(self.folder))
-      self.assertEqual(launched,[str(self.folder)],
+          self.assertTrue(open_folder(self.folder))
+          self.assertEqual(launched,[str(self.folder)],
                    'on Windows the folder was not handed to the shell, so the button did nothing')
 
   def test_it_reports_failure_instead_of_silently_doing_nothing(self):
@@ -186,10 +190,10 @@ class TestOpenFolderIsNotLinuxOnly(unittest.TestCase):
       from utils.desktop import open_folder
       import os
       if os.name!='nt':
-      self.fail('this app is Windows-only now, so open_folder must refuse elsewhere rather than launch nothing')
+          self.fail('this app is Windows-only now, so open_folder must refuse elsewhere rather than launch nothing')
       with patch('utils.desktop.os.startfile',side_effect=OSError('no shell here')), \
        patch('utils.desktop.shutil.which',return_value=None):
-      self.assertFalse(open_folder(self.folder),'a failed launch was reported as a success')
+          self.assertFalse(open_folder(self.folder),'a failed launch was reported as a success')
 
   def test_a_folder_that_is_not_there_is_not_launched(self):
       from utils.desktop import open_folder
@@ -204,8 +208,8 @@ class TestOpenFolderIsNotLinuxOnly(unittest.TestCase):
       app=sandbox_app(self,root); _measured_window(root)
       app.config.library_root=self.folder
       with patch('utils.desktop.open_folder',return_value=True) as helper:
-      app.window.open_library()
-      helper.assert_called_once_with(self.folder)
+          app.window.open_library()
+          helper.assert_called_once_with(self.folder)
 
   def test_the_artwork_screen_goes_through_the_helper(self):
       import tkinter as tk
@@ -213,8 +217,8 @@ class TestOpenFolderIsNotLinuxOnly(unittest.TestCase):
       root=tk.Tk(); self.addCleanup(self.close_root,root)
       view=ArtworkView(tk.Frame(root),lambda:None)
       with patch('utils.desktop.open_folder',return_value=True) as helper:
-      view._open_folder(self.folder)
-      helper.assert_called_once_with(self.folder)
+          view._open_folder(self.folder)
+          helper.assert_called_once_with(self.folder)
 
 class TestTheSetupButtonIsInTheAppToolbar(unittest.TestCase):
   """A Setup button in the app's own toolbar.
@@ -313,7 +317,7 @@ class TestApiKeyCheckDoesNotLeakTheSocket(unittest.TestCase):
       self.view=ScanView(tk.Frame(self.root),lambda:None,lambda:None,lambda:None)
 
   def _run_test_api(self,response,run_mainloop=True):
-  """Drive test_api() and wait for the worker thread it spawns.
+      """Drive test_api() and wait for the worker thread it spawns.
 
       Two things this has to get right, both of which hid a failure when it was left to chance:
 
@@ -323,59 +327,59 @@ class TestApiKeyCheckDoesNotLeakTheSocket(unittest.TestCase):
 
       And the worker has to be *joined*. Sleeping and hoping left the assertion running before the thread had
       reached its update, which reads as "no exception escaped" every time - a test that cannot fail.
-  """
+      """
       captured={}
       tracked=threading.Thread
 
-class _Tracked(tracked):
-  def __init__(self,*args,**kwargs):
-      super().__init__(*args,**kwargs); captured['worker']=self
+      class _Tracked(tracked):
+          def __init__(self,*args,**kwargs):
+              super().__init__(*args,**kwargs); captured['worker']=self
 
       with patch('ui.scan_view.urlopen',return_value=response), patch.object(threading,'Thread',_Tracked):
-      self.view.api_var.set('a-key')
-      self.view.test_api()
-      if run_mainloop:
-      self.root.after(400,self.root.quit)
-      self.root.mainloop()
-      worker=captured.get('worker')
-      if worker is not None: worker.join(timeout=5)
-      self.root.update()
+          self.view.api_var.set('a-key')
+          self.view.test_api()
+          if run_mainloop:
+              self.root.after(400,self.root.quit)
+              self.root.mainloop()
+          worker=captured.get('worker')
+          if worker is not None: worker.join(timeout=5)
+          self.root.update()
 
   def test_the_api_test_drains_the_response_before_closing_it(self):
       calls=[]
 
-class _Response:
-      status=200
-  def read(self,*args): calls.append('read'); return b'{"results":[]}'
-  def close(self): calls.append('close')
-  def __enter__(self): return self
-  def __exit__(self,*args): self.close()
+      class _Response:
+          status=200
+          def read(self,*args): calls.append('read'); return b'{"results":[]}'
+          def close(self): calls.append('close')
+          def __enter__(self): return self
+          def __exit__(self,*args): self.close()
 
       self._run_test_api(_Response())
       self.assertIn('read',calls,'the API test never read the response body, so the socket is never released')
       if 'close' in calls:
-      self.assertLess(calls.index('read'),calls.index('close'),
+          self.assertLess(calls.index('read'),calls.index('close'),
                    'the API test closed the response before reading it, so the socket is never released')
 
   def test_a_successful_api_test_still_reports_success(self):
-  """The drain must not cost the check its answer.
+      """The drain must not cost the check its answer.
 
       Reading the body is the fix; losing the status code that makes the button say "connection successful"
       would be a regression traded for a clean socket, which is not a trade worth making.
-  """
+      """
 
-class _Response:
-      status=200
-  def read(self,*args): return b'{"results":[]}'
-  def close(self): pass
-  def __enter__(self): return self
-  def __exit__(self,*args): self.close()
+      class _Response:
+          status=200
+          def read(self,*args): return b'{"results":[]}'
+          def close(self): pass
+          def __enter__(self): return self
+          def __exit__(self,*args): self.close()
 
       self._run_test_api(_Response())
       self.assertIn('successful',self.view.api_status.cget('text'))
 
   def test_a_cross_thread_update_that_cannot_land_does_not_kill_the_worker_with_a_traceback(self):
-  """The worker posts its result with after(0) from a non-Tk thread.
+      """The worker posts its result with after(0) from a non-Tk thread.
 
       When there is no mainloop to hand that to, tkinter raises RuntimeError("main thread is not in main loop")
       rather than a TclError - and the handler only caught TclError, so the exception escaped a daemon thread
@@ -383,20 +387,20 @@ class _Response:
       path whose whole job is to report a status.
 
       threading.excepthook is what decides whether that is silent or noisy, so that is what this watches.
-  """
-class _Response:
-      status=200
-  def read(self,*args): return b'{}'
-  def close(self): pass
-  def __enter__(self): return self
-  def __exit__(self,*args): self.close()
+      """
+      class _Response:
+          status=200
+          def read(self,*args): return b'{}'
+          def close(self): pass
+          def __enter__(self): return self
+          def __exit__(self,*args): self.close()
 
       escaped=[]; previous=threading.excepthook
       threading.excepthook=lambda args: escaped.append(args.exc_type)
       try:
-      self._run_test_api(_Response(),run_mainloop=False)
+          self._run_test_api(_Response(),run_mainloop=False)
       finally:
-      threading.excepthook=previous
+          threading.excepthook=previous
       self.assertEqual(escaped,[],f'the API worker died with {escaped} on a cross-thread update it could not deliver')
 
 
@@ -417,50 +421,50 @@ class TestSettingsSurvivesASyncClientLock(unittest.TestCase):
       return AppConfig(project_root=tmp,library_root=tmp/"Incoming")
 
   def _settings(self,tmp):
-  """Where AppConfig puts settings.json: a config/ directory under the project root, not the root itself."""
+      """Where AppConfig puts settings.json: a config/ directory under the project root, not the root itself."""
       return tmp/"config"/"settings.json"
 
   def test_a_transient_lock_does_not_lose_the_settings(self):
       with tempfile.TemporaryDirectory() as raw:
-      tmp=Path(raw); config=self._config(tmp); config.settings["steamgriddb_api_key"]="abc123"
-      real=os.replace; calls=[]
-  def locked(source,target):
-      calls.append(target)
-      if len(calls)<=2: raise PermissionError(5,"Access is denied",str(target))
-      return real(source,target)
-      with patch("core.config.os.replace",side_effect=locked):
-      config.save()
-      self.assertEqual(3,len(calls),f'save() gave up after {len(calls)} attempt(s) instead of retrying a locked file')
-      self.assertEqual("abc123",json.loads(self._settings(tmp).read_text(encoding="utf-8"))["steamgriddb_api_key"],
-                    'the settings did not reach the file once the lock cleared')
+          tmp=Path(raw); config=self._config(tmp); config.settings["steamgriddb_api_key"]="abc123"
+          real=os.replace; calls=[]
+          def locked(source,target):
+              calls.append(target)
+              if len(calls)<=2: raise PermissionError(5,"Access is denied",str(target))
+              return real(source,target)
+          with patch("core.config.os.replace",side_effect=locked):
+              config.save()
+              self.assertEqual(3,len(calls),f'save() gave up after {len(calls)} attempt(s) instead of retrying a locked file')
+              self.assertEqual("abc123",json.loads(self._settings(tmp).read_text(encoding="utf-8"))["steamgriddb_api_key"],
+                            'the settings did not reach the file once the lock cleared')
 
   def test_a_permanent_failure_is_still_reported(self):
-  """The opposite requirement, and the one a retry can quietly break.
+      """The opposite requirement, and the one a retry can quietly break.
 
       A settings directory that cannot be written has to say so. Retrying forever would turn a clear error into a
       hung button, and swallowing it would mean the app runs on settings it never saved.
-  """
+      """
       with tempfile.TemporaryDirectory() as raw:
-      tmp=Path(raw); config=self._config(tmp)
-  def always_locked(source,target): raise PermissionError(5,"Access is denied",str(target))
-      with patch("core.config.os.replace",side_effect=always_locked):
-      with self.assertRaises(PermissionError):
-      config.save()
-      self.assertFalse(self._settings(tmp).exists(),'a failed save left a settings file behind')
+          tmp=Path(raw); config=self._config(tmp)
+          def always_locked(source,target): raise PermissionError(5,"Access is denied",str(target))
+          with patch("core.config.os.replace",side_effect=always_locked):
+              with self.assertRaises(PermissionError):
+                  config.save()
+              self.assertFalse(self._settings(tmp).exists(),'a failed save left a settings file behind')
 
   def test_the_temporary_file_is_removed_after_a_failed_save(self):
-  """A leftover settings.XXXX.tmp is not harmless.
+      """A leftover settings.XXXX.tmp is not harmless.
 
       ensure_directories() and the next mkstemp all work in this directory, so a temp file left by every failed
       save is how a config directory slowly fills with the debris of previous attempts.
-  """
+      """
       with tempfile.TemporaryDirectory() as raw:
-      tmp=Path(raw); config=self._config(tmp)
-  def always_locked(source,target): raise PermissionError(5,"Access is denied",str(target))
-      with patch("core.config.os.replace",side_effect=always_locked):
-      with self.assertRaises(PermissionError): config.save()
-      leftovers=list((tmp/"config").glob("settings.*.tmp"))
-      self.assertEqual([],leftovers,f'{len(leftovers)} temporary settings file(s) left behind: {[p.name for p in leftovers]}')
+          tmp=Path(raw); config=self._config(tmp)
+          def always_locked(source,target): raise PermissionError(5,"Access is denied",str(target))
+          with patch("core.config.os.replace",side_effect=always_locked):
+              with self.assertRaises(PermissionError): config.save()
+          leftovers=list((tmp/"config").glob("settings.*.tmp"))
+          self.assertEqual([],leftovers,f'{len(leftovers)} temporary settings file(s) left behind: {[p.name for p in leftovers]}')
 
 
 class TestPlatformPathsAreNotHardCoded(unittest.TestCase):
@@ -475,12 +479,12 @@ class TestPlatformPathsAreNotHardCoded(unittest.TestCase):
  app is telling the user to go somewhere that does not exist on their machine.
  """
   def _code_strings(self,relative):
-  """Every string literal in a module's code, excluding its comments.
+      """Every string literal in a module's code, excluding its comments.
 
       Read from the parsed AST rather than the file text: both of these words appear in the change logs that
       explain why they were removed, and a grep over the raw source reports a Linux path that is only being
       described. That is the same mistake as asserting on a file's text to prove a call was removed.
-  """
+      """
       import ast
       path=Path(relative)
       if not path.is_file(): path=Path(__file__).resolve().parents[1]/path
@@ -489,7 +493,7 @@ class TestPlatformPathsAreNotHardCoded(unittest.TestCase):
                if isinstance(node,ast.Constant) and isinstance(node.value,str)]
 
   def _code_calls(self,relative):
-  """Every call expression in a module, as source. Comments cannot appear here."""
+      """Every call expression in a module, as source. Comments cannot appear here."""
       import ast
       path=Path(relative)
       if not path.is_file(): path=Path(__file__).resolve().parents[1]/path
@@ -500,16 +504,16 @@ class TestPlatformPathsAreNotHardCoded(unittest.TestCase):
       from core.config import AppConfig
       source,literals=self._code_strings(Path('ui')/'main_window.py')
       for dead in ('/home/deck','/home/jail','xdg-open'):
-      hits=[s for s in literals if dead in s]
-      self.assertEqual([],hits,f'{source.name} still builds a message or command from {dead!r}: {hits}')
+          hits=[s for s in literals if dead in s]
+          self.assertEqual([],hits,f'{source.name} still builds a message or command from {dead!r}: {hits}')
       self.assertTrue(AppConfig.default_library_root().is_absolute())
 
   def test_the_archive_verifier_finds_seven_zip_the_way_the_app_does(self):
-  """It must reach the same verdict about this machine as the organizer does.
+      """It must reach the same verdict about this machine as the organizer does.
 
       Asserted against the real lookup rather than a mock: this is the question the tool exists to answer, and a
       patched shutil.which would only prove the tool calls the function it always called.
-  """
+      """
       from services.extract_service import ExtractService
       source,literals=self._code_strings(Path('tools')/'verify_archives.py')
       self.assertEqual([],[s for s in literals if '/home/deck' in s],
@@ -523,13 +527,13 @@ class TestPlatformPathsAreNotHardCoded(unittest.TestCase):
       self.assertIsNotNone(found,f'the verifier and the app would both report no archive tool here ({reason})')
 
 
-  def _tmp_dir(case):
-  """A scratch directory that is removed when the test finishes, however it finishes.
+def _tmp_dir(case):
+    """A scratch directory that is removed when the test finishes, however it finishes.
 
- A method on each class was how this started, and the second class could not see the first one's - so the
- helper lives at module level and both use it.
- """
- holder=tempfile.mkdtemp(); case.addCleanup(shutil.rmtree,holder,ignore_errors=True); return holder
+    A method on each class was how this started, and the second class could not see the first one's - so the
+    helper lives at module level and both use it.
+    """
+    holder=tempfile.mkdtemp(); case.addCleanup(shutil.rmtree,holder,ignore_errors=True); return holder
 
 
 class TestTheCatalogLauncherIsUsable(unittest.TestCase):
@@ -553,12 +557,12 @@ class TestTheCatalogLauncherIsUsable(unittest.TestCase):
  only asserted that the file had been created, which is the one thing that was never the problem.
  """
   def test_a_launcher_file_carries_a_url_and_no_command_at_all(self):
-  """The command is not merely unused now - it never could have been used.
+      """The command is not merely unused now - it never could have been used.
 
       A .url with a `URL=` line and nothing else is resolved by the shell association, so the catalog's launcher
-      never had a way to honour a browser command even when it was handed one. The machinery that searched for
+      never had a way to honour a browser command even when it was handed one.       The machinery that searched for
       one is gone; this asserts the file cannot reintroduce the idea.
-  """
+      """
       from pathlib import Path as _Path
       from core.logger import AppLogger
       from services.catalog_service import CatalogService
@@ -582,11 +586,11 @@ class TestTheCatalogLauncherIsUsable(unittest.TestCase):
                    'a launcher was deemed necessary on a machine that already opens .html with a browser')
 
   def test_a_launcher_is_never_a_linux_desktop_file_on_windows(self):
-  """The fallback still has to be a format Windows understands.
+      """The fallback still has to be a format Windows understands.
 
       Reaching this branch needs a machine with no HTML association at all, which is rare - so it is reached by
       patching rather than by waiting for one, and the format is asserted rather than the presence.
-  """
+      """
       import os
       if os.name!='nt': self.fail('this app is Windows-only now')
       from pathlib import Path as _Path
@@ -633,29 +637,29 @@ class TestSyncthingTempFilesAreCleanedUp(unittest.TestCase):
       for name in ('~syncthing~Game Library (Steam Deck) - 2026-10-02 115241.html.tmp',
                '~syncthing~Open Game Library (Steam Deck).desktop.tmp',
                '~syncthing~game.7z.tmp'):
-      with self.subTest(name=name):
-      root=Path(_tmp_dir(self)); debris=self._debris(root,name)
-      self._service(root).cleanup_leftovers(root,grace_seconds=0)
-      self.assertFalse(debris.exists(),f'{name} was left behind; cleanup does not match this spelling')
+          with self.subTest(name=name):
+              root=Path(_tmp_dir(self)); debris=self._debris(root,name)
+              self._service(root).cleanup_leftovers(root,grace_seconds=0)
+              self.assertFalse(debris.exists(),f'{name} was left behind; cleanup does not match this spelling')
 
   def test_the_infix_spelling_still_works(self):
-  """Both spellings, because the fix must not have been to swap one for the other."""
+      """Both spellings, because the fix must not have been to swap one for the other."""
       root=Path(_tmp_dir(self)); debris=self._debris(root,'game.7z.syncthing.abc.tmp')
       self._service(root).cleanup_leftovers(root,grace_seconds=0)
       self.assertFalse(debris.exists(),'the spelling that already worked stopped being cleaned up')
 
   def test_a_transfer_still_in_flight_is_left_alone(self):
-  """The grace period is the reason any of this is safe, so it is asserted for the new pattern too.
+      """The grace period is the reason any of this is safe, so it is asserted for the new pattern too.
 
       A '~syncthing~' file that is minutes old may be an in-flight transfer on the other machine, and deleting it
       would destroy the copy being written.
-  """
+      """
       root=Path(_tmp_dir(self)); live=root/'~syncthing~game.7z.tmp'; live.write_text('x'*4096)
       self._service(root).cleanup_leftovers(root,grace_seconds=3600)
       self.assertTrue(live.exists(),'a transfer that is still in flight was deleted')
 
   def test_a_real_game_file_is_never_matched(self):
-  """The pattern is a prefix, so it is worth proving it cannot reach a game archive."""
+      """The pattern is a prefix, so it is worth proving it cannot reach a game archive."""
       root=Path(_tmp_dir(self)); keep=root/'~syncthing notes.txt'; keep.write_text('x')
       self._service(root).cleanup_leftovers(root,grace_seconds=0)
       self.assertTrue(keep.exists(),'a file merely starting with ~syncthing~ was deleted')
@@ -687,9 +691,9 @@ class TestCleanupDoesNotLeaveTheLibraryThroughAJunction(unittest.TestCase):
       made=subprocess.run(['cmd','/c','mklink','/J',str(link),str(target)],capture_output=True,timeout=30)
       if made.returncode==0: return 'junction'
       try:
-      link.symlink_to(target,target_is_directory=True); return 'symlink'
+          link.symlink_to(target,target_is_directory=True); return 'symlink'
       except OSError as exc:
-      self.fail(f'no way to make a directory link on this machine: {exc}')
+          self.fail(f'no way to make a directory link on this machine: {exc}')
 
   def _service(self,root):
       from core.logger import AppLogger
@@ -714,7 +718,7 @@ class TestCleanupDoesNotLeaveTheLibraryThroughAJunction(unittest.TestCase):
       self.assertFalse(inside.exists(),'the leftover actually inside the library was left behind by the fix')
 
   def test_a_junction_named_like_our_own_temp_folder_is_declined(self):
-  """A link matching this app's own temp-folder names is declined, and the decline is visible.
+      """A link matching this app's own temp-folder names is declined, and the decline is visible.
 
       The content behind such a link was never actually at risk: shutil.rmtree() raises OSError on a Windows
       junction rather than descending it, so the folder survived by accident and cleanup logged
@@ -725,7 +729,7 @@ class TestCleanupDoesNotLeaveTheLibraryThroughAJunction(unittest.TestCase):
       So what the fix changes is not the outcome but the intent: the link is recognised and counted, instead of
       attempted, failed, and reported as an error. Asserted on both halves, because either alone would pass
       against the old code - the content check alone passes there too.
-   """
+      """
       root=Path(_tmp_dir(self))
       library=root/'Games'; library.mkdir()
       precious=root/'Do Not Touch'; precious.mkdir(); (precious/'save.dat').write_text('x'*4096)
@@ -739,7 +743,7 @@ class TestCleanupDoesNotLeaveTheLibraryThroughAJunction(unittest.TestCase):
 
 
   def test_the_summary_reports_what_it_declined_to_walk(self):
-  """A skipped junction is invisible otherwise - removed=0 and bytes_freed=0 read identically to 'nothing to
+      """A skipped junction is invisible otherwise - removed=0 and bytes_freed=0 read identically to 'nothing to
       do', which is how a library full of links could report a clean sweep for ever."""
       root=Path(_tmp_dir(self))
       library=root/'Games'; library.mkdir()
@@ -750,7 +754,7 @@ class TestCleanupDoesNotLeaveTheLibraryThroughAJunction(unittest.TestCase):
       self.assertEqual(summary.get('skipped_links'),1,f'the junction was not reported as declined: {summary}')
 
   def test_is_link_says_no_to_a_plain_folder(self):
-  """The fix must not turn cleanup into a no-op: a real temp folder, matched by name and old enough, still
+      """The fix must not turn cleanup into a no-op: a real temp folder, matched by name and old enough, still
       goes. is_link() is on the path of every deletion, so a false positive here would silently disable cleanup."""
       root=Path(_tmp_dir(self))
       junk=root/'.organizer-unzip-gone'; junk.mkdir(); (junk/'part.bin').write_text('x'*4096)
@@ -917,7 +921,7 @@ class TestPreviewOnlyDoesNotMoveAnything(unittest.TestCase):
   """
 
   def _library_with_two_versions(self,root):
-  """Builds <root>/<Category>/<Game>/ holding two versions of one archive, which is the shape the sweep
+      """Builds <root>/<Category>/<Game>/ holding two versions of one archive, which is the shape the sweep
       actually walks. It needs saying, because a fixture one level deeper passes against the bug: the sweep reads
       library_root/<Category>/<Game>, so a root/Games/Idle/Loop Miner tree has it treating the *category* as the
       game folder, finding no archives in it, collapsing nothing, and reporting a clean sweep. That is exactly the
@@ -928,13 +932,13 @@ class TestPreviewOnlyDoesNotMoveAnything(unittest.TestCase):
       root=Path(root)
       game=root/'Idle'/'Loop Miner - 2024-01-01'; game.mkdir(parents=True)
       for name,size in (('Loop Miner v1.0.zip',2048),('Loop Miner v2.0.zip',4096)):
-      (game/name).write_bytes(b'PK\x03\x04'+b'0'*size)
+          (game/name).write_bytes(b'PK\x03\x04'+b'0'*size)
       (game/'.game-info.json').write_text(json.dumps({'appid':'1','name':'Loop Miner'}),encoding='utf-8')
       log=AppLogger(root/'x.log')
       return root,LibraryService(log),OrganizerService(log,convert_archives=False)
 
   def test_the_duplicate_sweep_is_guarded_by_preview_only(self):
-  """Asserted on the parsed source, so the guard cannot be satisfied by a word in a comment."""
+      """Asserted on the parsed source, so the guard cannot be satisfied by a word in a comment."""
       import ast
       src=Path('app/controller.py').read_text(encoding='utf-8')
       tree=ast.parse(src)
@@ -954,7 +958,7 @@ class TestPreviewOnlyDoesNotMoveAnything(unittest.TestCase):
       self.assertTrue(guards,'at least one enforce_single_archive() call is inside a `if preview_only:` guard')
 
   def test_a_second_copy_in_the_folder_is_moved_when_not_previewing(self):
-  """The precondition: if this did not move, the scan test below would pass for the wrong reason."""
+      """The precondition: if this did not move, the scan test below would pass for the wrong reason."""
       root=_tmp_dir(self)
       library,service,organizer=self._library_with_two_versions(root)
       self.assertEqual(service.enforce_single_archive(library,organizer),1)
@@ -963,7 +967,7 @@ class TestPreviewOnlyDoesNotMoveAnything(unittest.TestCase):
                    'the older version was not the one filed, so this is not the move the guard is about')
 
   def test_a_preview_only_scan_leaves_the_archives_as_it_found_it(self):
-  """Driven through controller.scan(), because that is where the gate lives - the same way the neighbouring
+      """Driven through controller.scan(), because that is where the gate lives - the same way the neighbouring
       conversion test is, so the two phases of one scan are pinned by the same kind of evidence.
 
       Asserted on the archives and on Archive/, not on the folder listing. The audit phase writes a Steam link
@@ -997,22 +1001,22 @@ class TestPreviewOnlyDoesNotMoveAnything(unittest.TestCase):
       controller=AppController(StateStore(),EventBus(),logger,services,jobs)
       seen=[]; finished=Event()
       try:
-      controller.scan(Path(root),lambda result:finished.set(),progress=lambda event:seen.append(event),preview_only=True)
-      self.assertTrue(finished.wait(30),'the preview scan never finished')
+          controller.scan(Path(root),lambda result:finished.set(),progress=lambda event:seen.append(event),preview_only=True)
+          self.assertTrue(finished.wait(30),'the preview scan never finished')
       finally: jobs.shutdown()
       self.assertEqual(sorted(p.name for p in game.iterdir() if p.suffix.lower() in ('.zip','.rar','.7z')),archives,
                     'Preview Only moved an archive out of the game folder')
       self.assertFalse((library/'Archive').exists(),'Preview Only created the Archive folder')
       skipped=[e for e in seen if isinstance(e,dict) and e.get('stage')=='dedupe_done' and e.get('skipped')]
       self.assertEqual(len(skipped),1,f'the scan did not report the sweep as skipped: {seen}')
-   # The rest of the scan still has to run: the first version of this fix returned early out of the phase, which
-   # left discovery, the audit and the catalog silent while every phase above still reported itself.
+      # The rest of the scan still has to run: the first version of this fix returned early out of the phase, which
+      # left discovery, the audit and the catalog silent while every phase above still reported itself.
       for stage in ('discover_done','audit_done','catalog_done'):
-      self.assertTrue([e for e in seen if isinstance(e,dict) and e.get('stage')==stage],
+          self.assertTrue([e for e in seen if isinstance(e,dict) and e.get('stage')==stage],
                     f'{stage} never ran, so the scan was cut short: {[e.get("stage") for e in seen if isinstance(e,dict)]}')
 
   def test_a_preview_only_scan_leaves_every_file_byte_identical(self):
-  """The strongest form: a full snapshot of every file under root is compared after the scan."""
+      """The strongest form: a full snapshot of every file under root is compared after the scan."""
       from services.extract_service import ExtractService
       from app.controller import AppController
       from app.events import EventBus
@@ -1033,7 +1037,7 @@ class TestPreviewOnlyDoesNotMoveAnything(unittest.TestCase):
       (game/'Loop Miner_grid.jpg').write_bytes(b'\xff\xd8\xff\xd9')
       tool=ExtractService.find_tool()[0]
       if not tool:
-      self.fail('7-Zip is required to build an encrypted fixture zip and was not found')
+          self.fail('7-Zip is required to build an encrypted fixture zip and was not found')
       payload=root/'payload'; payload.mkdir()
       (payload/'Game Folder').mkdir()
       (payload/'Game Folder'/'main.exe').write_bytes(b'binary'*400)
@@ -1042,7 +1046,7 @@ class TestPreviewOnlyDoesNotMoveAnything(unittest.TestCase):
                         stdin=subprocess.DEVNULL,capture_output=True)
       self.assertEqual(built.returncode,0,f'could not build the encrypted fixture: {built.stderr!r}')
       with zipfile.ZipFile(encrypted) as source:
-      self.assertTrue(any(i.flag_bits & 0x1 for i in source.infolist() if not i.is_dir()),
+          self.assertTrue(any(i.flag_bits & 0x1 for i in source.infolist() if not i.is_dir()),
                     'the fixture is not encrypted, so this test proves nothing')
       shutil.move(str(encrypted),str(game/'locked.zip'))
       before=sorted((p.relative_to(root),p.read_bytes(),p.stat().st_mtime_ns) for p in root.rglob('*') if p.is_file())
@@ -1064,15 +1068,15 @@ class RecordingCatalog:
       controller=AppController(StateStore(),EventBus(),logger,services,jobs)
       finished=threading.Event()
       try:
-      controller.scan(root,lambda result:finished.set(),progress=lambda event:None,preview_only=True)
-      self.assertTrue(finished.wait(30),'the preview scan never finished')
+          controller.scan(root,lambda result:finished.set(),progress=lambda event:None,preview_only=True)
+          self.assertTrue(finished.wait(30),'the preview scan never finished')
       finally: jobs.shutdown()
       after=sorted((p.relative_to(root),p.read_bytes(),p.stat().st_mtime_ns) for p in root.rglob('*') if p.is_file())
       self.assertEqual(before,after,'Preview Only changed a file in the library root')
       self.assertFalse(catalog_calls,'catalog.generate was called under Preview Only')
 
   def test_a_normal_scan_writes_artwork_and_generates_the_catalog(self):
-  """The precondition: if this did not write anything, the preview test above would pass for the wrong reason."""
+      """The precondition: if this did not write anything, the preview test above would pass for the wrong reason."""
       from app.controller import AppController
       from app.events import EventBus
       from core.state import StateStore
@@ -1108,8 +1112,8 @@ class RecordingCatalog:
       controller=AppController(StateStore(),EventBus(),logger,services,jobs)
       finished=threading.Event()
       try:
-      controller.scan(root,lambda result:finished.set(),progress=lambda event:None,preview_only=False)
-      self.assertTrue(finished.wait(30),'the normal scan never finished')
+          controller.scan(root,lambda result:finished.set(),progress=lambda event:None,preview_only=False)
+          self.assertTrue(finished.wait(30),'the normal scan never finished')
       finally: jobs.shutdown()
       after=sorted((p.relative_to(root),p.read_bytes(),p.stat().st_mtime_ns) for p in root.rglob('*') if p.is_file())
       self.assertNotEqual(before,after,'a normal scan left the library root unchanged')
@@ -1117,15 +1121,15 @@ class RecordingCatalog:
       self.assertTrue((game/'Open Steam Page.html').exists(),'a normal scan did not write the Steam link')
 
 
-  def _label_texts(widget):
-  """Every label's text under a widget, in one list. Used to read what a screen actually rendered rather than
- what its code was going to render."""
- import tkinter as tk
- found=[]
- for child in widget.winfo_children():
-      if isinstance(child,tk.Label): found.append(str(child.cget('text')))
-      found.extend(_label_texts(child))
- return found
+def _label_texts(widget):
+    """Every label's text under a widget, in one list. Used to read what a screen actually rendered rather than
+    what its code was going to render."""
+    import tkinter as tk
+    found=[]
+    for child in widget.winfo_children():
+        if isinstance(child,tk.Label): found.append(str(child.cget('text')))
+        found.extend(_label_texts(child))
+    return found
 
 
 class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
@@ -1141,14 +1145,14 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
  """
 
   def _facts_view(self,**extra):
-  """The Done screen's RUN FACTS rail as a stand-in, so _paint_facts can be called without a window.
+      """The Done screen's RUN FACTS rail as a stand-in, so _paint_facts can be called without a window.
 
       `state` hands back a real AppState, and that is the point of the fixture rather than a shortcut: the defect
       was that AppState carries neither `config` nor `rollback_pending`, so a stand-in state that had them would
       have made the screen look right and hidden the bug these tests exist for. The library root arrives as a
       config object rather than a path, because the screen holds the config - a Path cannot follow the rebind
       MainWindow.choose() makes, and holding one was how the row went stale after a Games-directory change.
-  """
+      """
       from core.models import AppState
       view=SimpleNamespace(facts={name:Mock() for name in ('duration','compressed','saved','free','undo','where')},
                        state=SimpleNamespace(get=lambda:AppState()),rollback=None,config=None,undo_btn=Mock())
@@ -1156,11 +1160,11 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       return view
 
   def _shown(self,view,fact):
-  """The text one RUN FACTS row was last given."""
+      """The text one RUN FACTS row was last given."""
       return view.facts[fact].configure.call_args.kwargs['text']
 
   def _audit_library(self,root):
-  """One organized game folder carrying an AppID and no artwork: the shape of every folder in a real library,
+      """One organized game folder carrying an AppID and no artwork: the shape of every folder in a real library,
       and the case the audit used to call 'refreshed' whatever else was true."""
       library=Path(root)/'Games'; game=library/'Puzzle'/'Sintopia - 1 Jan, 2026'
       game.mkdir(parents=True)
@@ -1172,7 +1176,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       return library,game,organizer
 
   def _image(self,path):
-  """A real JPEG rather than four bytes, because ArtworkPanel decodes what it is given and a truncated file
+      """A real JPEG rather than four bytes, because ArtworkPanel decodes what it is given and a truncated file
       would fail the artwork test for a reason that has nothing to do with the filenames on it."""
       from PIL import Image
       path.parent.mkdir(parents=True,exist_ok=True)
@@ -1180,13 +1184,13 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       return path
 
   def test_the_done_screen_undo_row_reads_the_journal_rather_than_the_app_state(self):
-  """Reproduced before the fix: pending_count() was 1 and the row said 'nothing to undo'.
+      """Reproduced before the fix: pending_count() was 1 and the row said 'nothing to undo'.
 
       It read `getattr(snap,'rollback_pending',())`, and AppState has no such field and nothing anywhere sets one,
       so the getattr default is what the row always showed. The Undo button would in fact have restored every
       move the run had made. The count is read from the journal file rather than remembered anywhere, because
       undo_last() consumes that file - a remembered number is one more thing that can disagree with the button.
-  """
+      """
       from ui.done_view import DoneView
       view=self._facts_view(rollback=SimpleNamespace(pending_count=lambda:3))
       DoneView._paint_facts(view,[],[],[])
@@ -1195,14 +1199,14 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       view.undo_btn.configure.assert_called_with(state='normal')
 
   def test_the_done_screen_undo_button_is_disabled_when_journal_is_empty(self):
-  """When the rollback journal is empty the Undo button must not offer an action it cannot perform."""
+      """When the rollback journal is empty the Undo button must not offer an action it cannot perform."""
       from ui.done_view import DoneView
       view=self._facts_view(rollback=SimpleNamespace(pending_count=lambda:0))
       DoneView._paint_facts(view,[],[],[])
       view.undo_btn.configure.assert_called_with(state='disabled')
 
   def test_the_done_screen_names_the_library_and_the_space_left_on_it(self):
-  """Reproduced before the fix: both rows rendered their placeholder - 'Library: -' and 'Free space: -' -
+      """Reproduced before the fix: both rows rendered their placeholder - 'Library: -' and 'Free space: -' -
       immediately after a successful run, because they read `snap.config` and AppState has no config either.
 
       Both were getattr-guarded, which is why nothing crashed: the guard is exactly what let the wrong answer
@@ -1212,7 +1216,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       The config is read at paint time, not captured at construction: a Path is an immutable snapshot, and
       MainWindow rebinds config.library_root when the Games directory changes, so a value taken once named the
       previous directory for the rest of the session - the same false row, one level up.
-  """
+      """
       from utils.formatting import human_size
       library=Path(_tmp_dir(self))/'Steam Games'; library.mkdir()
       config=SimpleNamespace(library_root=library)
@@ -1230,14 +1234,14 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
                    'the row still names the directory the app was opened with, after the user changed it')
 
   def test_the_audit_reports_a_folder_it_could_not_refresh_as_a_failure(self):
-  """Reproduced before the fix: offline, with an AppID that has no art on Steam, the audit returned
+      """Reproduced before the fix: offline, with an AppID that has no art on Steam, the audit returned
       `refreshed: 1`, the progress line read 'artwork refreshed', and there was no image on disk.
 
       `_audit_game` returned `changed or not has_any`, which folds "files were written" and "this folder had no
       artwork and still has none" into the same truthy value, and the per-folder line never asked the function at
       all - it reported 'artwork refreshed' for any folder holding an AppID. A user reading that would go and
       fetch artwork they already had, or believe a failed fetch had succeeded.
-  """
+      """
       from core.logger import AppLogger
       from core.models import ArtworkResult
       from services.library_service import LibraryService
@@ -1275,8 +1279,8 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       controller2=AppController(StateStore(),EventBus(),logger2,services2,jobs2)
       phases=[]; finished2=Event()
       try:
-      controller2.scan(library2,lambda result:finished2.set(),progress=lambda event:phases.append(event))
-      self.assertTrue(finished2.wait(30),'the scan never finished')
+          controller2.scan(library2,lambda result:finished2.set(),progress=lambda event:phases.append(event))
+          self.assertTrue(finished2.wait(30),'the scan never finished')
       finally: jobs2.shutdown()
       summaries=[e['message'] for e in phases if isinstance(e,dict) and e.get('stage')=='audit_done' and e.get('message')]
       self.assertTrue(summaries,f'the scan reported no audit summary at all: {[e.get("stage") for e in phases if isinstance(e,dict)]}')
@@ -1285,7 +1289,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
                 f'the last line the user reads drops the count of folders with no artwork: {summaries[0]!r}')
 
   def test_the_audit_can_still_report_a_folder_it_really_refreshed(self):
-  """The precondition for the test above. If this fixture could never refresh anything, that test would pass
+      """The precondition for the test above. If this fixture could never refresh anything, that test would pass
       for the wrong reason - so the same folder is audited again with artwork to hand, and must count."""
       from core.logger import AppLogger
       from core.models import ArtworkResult
@@ -1298,7 +1302,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       self.assertTrue((game/'Sintopia_grid.jpg').is_file(),f'nothing was copied into the folder: {sorted(p.name for p in game.iterdir())}')
 
   def test_the_artwork_screen_names_only_files_that_are_on_disk(self):
-  """Reproduced before the fix: four of twelve real Steam names were listed under a filename that did not
+      """Reproduced before the fix: four of twelve real Steam names were listed under a filename that did not
       exist. Two separate mistakes, and both are exercised here.
 
       The prefix was rebuilt as `' '.join(name.split())`, which agrees with the sanitiser on an ordinary name and
@@ -1308,7 +1312,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       happens to prefix every filename; the cache stores each asset as `<key>.jpg` with nothing in front, so
       'header_image' came back as 'image' and 'library_hero' as 'hero'. The plain-named game below pins that
       half, and it is the one that fails on an ordinary title.
-  """
+      """
       import tkinter as tk
       from core.models import ArtworkResult
       from services.organizer_service import OrganizerService
@@ -1324,8 +1328,8 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       folder=root/'Puzzle'/f'{prefix} - 1 Jan, 2026'; folder.mkdir(parents=True)
       assets={}
       for key in ('header_image','library_hero','background_raw'):
-      assets[key]=self._image(cache/f'{key}.jpg')
-      self._image(folder/f'{prefix}_{key}.jpg')
+          assets[key]=self._image(cache/f'{key}.jpg')
+          self._image(folder/f'{prefix}_{key}.jpg')
       grid=self._image(folder/f'{prefix}_grid.jpg')
       return SimpleNamespace(path=folder/f'{prefix}.7z',steam=SimpleNamespace(name=title,appid='1234'),
                           user_title='',display_name=title,
@@ -1344,35 +1348,35 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       listed=[text.split('\nAssets: ',1)[1] for text in _label_texts(view.inner) if '\nAssets: ' in text]
       self.assertEqual(len(listed),2,f'the screen did not list assets for both games: {listed}')
       for folder,names in zip((colon_folder,plain_folder),listed,strict=True):
-      for name in names.split(', '):
-      self.assertTrue((folder/name).is_file(),
-                    f'the screen names {name!r}, which is not in {folder.name}: on disk it is {sorted(p.name for p in folder.iterdir())}')
+          for name in names.split(', '):
+              self.assertTrue((folder/name).is_file(),
+                          f'the screen names {name!r}, which is not in {folder.name}: on disk it is {sorted(p.name for p in folder.iterdir())}')
 
   def test_extract_with_no_dest_lands_in_the_extract_folder_itself(self):
-  """Reproduced before the fix: the app's own message named the path -
+      """Reproduced before the fix: the app's own message named the path -
       `Extracted 2 file(s) to C:\\Users\\...\\Downloads\\extracted\\Extracted`.
 
       config.extract_folder is already the folder extracted games go in; it is what the catalog's Extract button
       writes to and what the protocol handler is restricted to. The command line appended the name again, so
       every --extract without an explicit --dest landed one level deeper than the same game extracted from the
       catalog, and both runs wrote into folders nothing else ever read.
-  """
+      """
       import steam_game_organizer
       root=Path(_tmp_dir(self)); extracted=root/'extracted'
       config=SimpleNamespace(extract_folder=extracted,settings={})
       args=SimpleNamespace(dest=None,extract=str(root/'Sintopia.zip'),zip_password='')
       with patch.object(steam_game_organizer,'_extract',return_value=SimpleNamespace(message='',ok=True)) as extract:
-      steam_game_organizer._extract_to_disk(args,config,Mock())
-      self.assertEqual(extract.call_args.args[1],extracted,
+          steam_game_organizer._extract_to_disk(args,config,Mock())
+          self.assertEqual(extract.call_args.args[1],extracted,
                    f'a folder was appended to the extract folder: {extract.call_args.args[1]}')
 
   def _undo_case(self,extra=(),owned=True):
-  """A journalled organize of one game, ready for undo_last().
+      """A journalled organize of one game, ready for undo_last().
 
       `extra` adds entries to the game folder, and `owned` decides whether the run is recorded as having created
       it. The two matter separately because they are the two independent guards: a folder the run did not create
       is left alone whatever it holds, and a folder it did create is left alone if it holds anything else.
-  """
+      """
       from core.logger import AppLogger
       from services.organizer_service import OrganizerService
       from services.rollback_service import RollbackService
@@ -1384,9 +1388,9 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       organized=game/'Sintopia.7z'; organized.write_bytes(b'7z\xbc\xaf\x27\x1c')
       (game/'.game-info.json').write_text(json.dumps({'appid':'1234','name':'Sintopia'}),encoding='utf-8')
       for name,body in extra:
-      target=game/name
-      if body is None: target.write_bytes(b'\xff\xd8\xff\xd9')
-      else: target.write_text(body,encoding='utf-8')
+          target=game/name
+          if body is None: target.write_bytes(b'\xff\xd8\xff\xd9')
+          else: target.write_text(body,encoding='utf-8')
       logger=AppLogger(project/'rollback.log')
       service=RollbackService(project,logger,organizer=OrganizerService(logger))
       dirs=[str(game)] if owned else []
@@ -1394,13 +1398,13 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       return service,source,organized,game,library
 
   def test_undo_removes_the_game_folders_the_run_emptied(self):
-  """Reproduced over a 13-game organize: Undo restored all 13 archives and left 12 folders behind.
+      """Reproduced over a 13-game organize: Undo restored all 13 archives and left 12 folders behind.
 
       The archive goes home and the folder the run created stays holding what the run wrote into it - the
       metadata, the Steam link, the artwork. It names a game it does not contain, no scan reports it, and the
       user has to delete it by hand. The decision to remove is delegated to OrganizerService._folder_is_prunable
       rather than reimplemented, so the allow-list protecting a player's saves stays in one place.
-  """
+      """
       service,source,organized,game,library=self._undo_case(extra=(('Sintopia_grid.jpg',None),))
       result=service.undo_last(library)
       self.assertEqual(result['moved'],1,f'the archive was not restored: {result}')
@@ -1410,7 +1414,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       self.assertTrue(library.is_dir(),'the category folder the game sat in was removed as well')
 
   def test_undo_leaves_a_game_folder_holding_something_it_did_not_write(self):
-  """Passes either way, deliberately: a pruning rule that has only been shown to remove things is half a
+      """Passes either way, deliberately: a pruning rule that has only been shown to remove things is half a
       safety argument. A save file is the obvious case and it is enough."""
       service,source,organized,game,library=self._undo_case(extra=(('save.dat','progress'),))
       service.undo_last(library)
@@ -1418,18 +1422,18 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       self.assertTrue(source.is_file(),'the archive was not restored, so this case proved nothing')
 
   def test_undo_leaves_a_photo_the_player_saved_beside_the_game(self):
-  """The allow-list judges provenance by name and suffix, and a screenshot beside a game is a .jpeg like any
+      """The allow-list judges provenance by name and suffix, and a screenshot beside a game is a .jpeg like any
       other. It used to be _folder_is_disposable(), which accepts every image suffix - correct for the download
       folder this app emptied itself, and wrong for the user's game folder, where the first version of this prune
       applied it. Verified against that version: the folder came back gone.
-  """
+      """
       service,source,organized,game,library=self._undo_case(extra=(('my-photo.jpeg',None),))
       service.undo_last(library)
       self.assertTrue((game/'my-photo.jpeg').is_file(),
                   f'Undo deleted a picture the player saved: {sorted(p.name for p in game.iterdir()) if game.is_dir() else "the whole folder is gone"}')
 
   def test_undo_leaves_a_game_folder_the_run_did_not_create(self):
-  """OrganizerService.move() reuses a category/game folder that is already there and records
+      """OrganizerService.move() reuses a category/game folder that is already there and records
       created_game_dir=False, so a source/target pair alone cannot tell the two apart. This is the same rule
       AppController._prune_rolled_back_folder() applies from the same flag; the first version of this prune had
       no equivalent and would have removed a folder the user made."""
@@ -1440,7 +1444,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       self.assertTrue((game/'.game-info.json').is_file(),f'the folder was removed anyway: {game}')
 
   def test_undo_refuses_a_journal_row_naming_a_folder_outside_the_library(self):
-  """The journal is a file in config/, and both ends of every row go from it into shutil.move and
+      """The journal is a file in config/, and both ends of every row go from it into shutil.move and
       shutil.rmtree. undo_last() already accepted the configured library root and never looked at it."""
       from core.logger import AppLogger
       from services.organizer_service import OrganizerService
@@ -1497,11 +1501,11 @@ class TestTheBundledRuntimeTravelsWithTheApp(unittest.TestCase):
       root=Path(_tmp_dir(self)); source=root/'install'; destination=root/'runtime'
       source.mkdir()
       for name in ('python.exe','pythonw.exe','python3.dll','vcruntime140.dll'):
-      (source/name).write_bytes(b'x')
+          (source/name).write_bytes(b'x')
       (source/f'{version}.dll').write_bytes(b'x')
       for folder in ('DLLs','tcl','tk'):
-      (source/folder).mkdir()
-      (source/folder/'a.pyd' if folder=='DLLs' else source/folder/'a').write_bytes(b'x')
+          (source/folder).mkdir()
+          (source/folder/'a.pyd' if folder=='DLLs' else source/folder/'a').write_bytes(b'x')
       (source/'Lib').mkdir()
       (source/'Lib'/'os.py').write_text('pass')
       (source/'Lib'/'test').mkdir()
@@ -1510,11 +1514,11 @@ class TestTheBundledRuntimeTravelsWithTheApp(unittest.TestCase):
       plan=build_plan(source,destination,sevenzip=root/'7z.exe')
       files={str(step.destination.relative_to(destination)) for step in plan if step.kind=='file'}
       for expected in ('python.exe','pythonw.exe','python3.dll','vcruntime140.dll',
-                   f'{version}.dll','LICENSE.txt','7z.exe'):
-      self.assertIn(expected,files,f'the plan does not copy {expected}')
+                    f'{version}.dll','LICENSE.txt','7z.exe'):
+          self.assertIn(expected,files,f'the plan does not copy {expected}')
       trees={str(step.destination.relative_to(destination)) for step in plan if step.kind=='tree'}
       for expected in ('Lib','DLLs','tcl','tk'):
-      self.assertIn(expected,trees,f'the plan does not copy {expected}/')
+          self.assertIn(expected,trees,f'the plan does not copy {expected}/')
       lib=next(step for step in plan if step.kind=='tree'
            and str(step.destination.relative_to(destination))=='Lib')
       self.assertIn('test',lib.exclude,'the standard library test suite would travel with the runtime')
@@ -1528,7 +1532,7 @@ class TestTheBundledRuntimeTravelsWithTheApp(unittest.TestCase):
       self.assertTrue(has_pillow,'the build plan does not include Pillow, so JPEG artwork cannot render')
 
   def test_a_bundled_runtime_is_reported_by_the_check(self):
-  """--check has to say what is actually there, because a folder a friend copied
+      """--check has to say what is actually there, because a folder a friend copied
       is the one place nobody will run a build in - a silent empty runtime/ would
       otherwise look like the answer to "nothing needs installed"."""
       from tools import bundle_runtime
@@ -1537,9 +1541,9 @@ class TestTheBundledRuntimeTravelsWithTheApp(unittest.TestCase):
       bundle_runtime.RUNTIME=root
       self.addCleanup(setattr,bundle_runtime,'RUNTIME',original)
       with patch('subprocess.run') as probe:
-      probe.return_value=SimpleNamespace(returncode=0,stdout='3.13.15\n',stderr='')
-      with patch('builtins.print') as report:
-      self.assertEqual(0,bundle_runtime.check())
+          probe.return_value=SimpleNamespace(returncode=0,stdout='3.13.15\n',stderr='')
+          with patch('builtins.print') as report:
+              self.assertEqual(0,bundle_runtime.check())
       said=' '.join(str(call.args[0]) for call in report.call_args_list)
       self.assertIn('3.13.15',said,'the check did not report the bundled version')
       self.assertIn('NOT bundled',said,'the check did not name a missing 7z.exe')
@@ -1578,7 +1582,7 @@ class TestTheCategoryDecisionSurvivesALockedFolder(unittest.TestCase):
                         'the pick was lost to a lock that a retry would have cleared')
 
   def test_a_stale_temp_file_of_the_old_fixed_name_cannot_block_the_write(self):
-  """The old writer used category-decisions.tmp for every write, so a leftover
+      """The old writer used category-decisions.tmp for every write, so a leftover
       from a crashed run - read-only, or held by a second copy of the app - was in
       the way of the next one. mkstemp names are unique, so the stale file is
       simply never opened: the fixture is the old collision, and the write has to
@@ -1594,7 +1598,7 @@ class TestTheCategoryDecisionSurvivesALockedFolder(unittest.TestCase):
                      'the write went through the stale file instead of around it')
 
   def test_a_lock_that_outlives_the_retries_costs_a_warning_not_a_crash(self):
-  """The decision is already held in memory when the write runs, so a folder
+      """The decision is already held in memory when the write runs, so a folder
       that stays locked costs the on-disk copy of the pick - not the callback the
       click handler was mid-way through. The old code raised straight out of the
       review screen's handler."""

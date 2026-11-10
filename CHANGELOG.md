@@ -5,6 +5,13 @@
 
 ## 9.33
 
+### 2026-11-10 22:30:00 — Fixed test_regressions.py indentation, filename_utils incremental stripping, extract_service caching
+
+- `tests/test_regressions.py`: fixed widespread 2-space indentation errors (docstrings, if/with/for/try bodies, nested classes, module-level helpers) so the module parses via ast.parse() and is collected by unittest. ruff F841/F821 remain pre-existing and excluded per AGENTS.md.
+- `utils/filename_utils.py`: added `incremental` to the trailing-word stripping regex so `Delta Realm Incremental.zip` folds to `deltarealm` instead of `deltarealmincremental`.
+- `services/extract_service.py`: removed `find_tool()` result caching — a cached path survived `APP_ROOT` re-points in tests, shadowing stubs and returning stale/deleted paths; `clear_tool_cache()` is now a no-op. find_tool() re-scans on every call.
+- All 805 tests pass (`OK`), `ruff check .` clean (excluding tests/test_regressions.py per AGENTS.md).
+
 ### 2026-11-10 22:00:00 — Docs overhaul: AGENTS.md, ARCHITECTURE.md, project_overview.md rewritten with GFM badges, alert blocks, mermaid flowcharts
 
 - `AGENTS.md`: Rewritten with badges, GFM alert blocks (`> [!IMPORTANT]`, `> [!WARNING]`, `> [!TIP]`, `> [!NOTE]`), mermaid flowcharts for how-to-use, change flow, prerequisites, dev toolchain, frozen build pipeline, bundled runtime, logging, test logs, platform, test hygiene, long-running commands, proving-a-test, Git/GitHub workflow, definition of done. All content preserved — frozen build, bundled runtime, logging, test hygiene, lint, screenshots, long-running commands.
