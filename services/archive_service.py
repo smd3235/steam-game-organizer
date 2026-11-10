@@ -418,7 +418,7 @@ class ArchiveService:
         return any((parent / name).is_file() for name in ("Open Steam Page.html", "Open Steam Page.desktop", "Open Steam Page in Chrome.desktop", "Open Steam Page (Steam Deck).desktop", "Open Steam Page (Windows).url"))
 
     def _mock(self, ctx, progress=None):
-        names = ["Captain of Industry v 0 8.zip", "Re Story Chill Electronics Repairs v 1 0.zip", "DO NOT FEED THE VIRUS Incremental.zip", "Nerd Simulator.zip"]
+        names = ["Alpha Forge v 0 8.zip", "Gamma Quest v 1 0.zip", "Delta Realm Incremental.zip", "Epsilon Online.zip"]
         result = ScanResult()
         total = 0
         for i, n in enumerate(names, 1):

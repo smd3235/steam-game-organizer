@@ -1,7 +1,7 @@
 """Turning a raw archive filename into a stable game identity.
 
 normalize_name() strips release-group tags, date stamps and build numbers so
-"Re Story Chill Electronics Repairs v 1 0.zip" and "Re Story - Chill Electronics Repairs (v1.0).zip"
+"Zeta Wars v 1 0.zip" and "Zeta Wars (v1.0).zip"
 collapse to the same title. identity_key() folds that to lowercase alphanumerics so
 two archives with different packaging still match as one game. version_key() pulls
 the version number (or date stamp) out of the filename so organizer can pick the
