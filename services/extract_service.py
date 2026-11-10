@@ -21,6 +21,7 @@ from pathlib import Path
 
 from core.constants import ARCHIVE_EXTENSIONS, NO_WINDOW
 from services.installer_detect import NEEDS_INSTALL_DIRNAME, find_installer
+
 # The app's own folder, so the finder can look beside the code that asks. Named once here
 # rather than spelled out inside the function, which is also what lets a test point the same
 # lookup at a scratch folder and prove the order without touching the real installation.
@@ -41,17 +42,24 @@ HEADROOM_FACTOR = 1.15  # floor, not a promise: a dense archive can grow several
 # the archive's size and mtime_ns at the moment of extraction. A missing marker
 # means "not written by this version" and is treated as "not stale" — never a
 # false positive that would claim an unpacked game needs re-extracting.
-EXTRACT_MARKER = '.sgo-extract-info'
+EXTRACT_MARKER = ".sgo-extract-info"
 
 # Known bloat file name patterns - install instructions, site shortcuts, scene info.
 # Matches only root-level files; game content inside subdirectories is never touched.
 BLOAT_FILE_PATTERNS = (
-    "README*.txt", "README*.md", "README*.html", "README*.htm",
-    "readme*.txt", "readme*.md",
-    "Read_Me*.txt", "Read_Me*.md",
+    "README*.txt",
+    "README*.md",
+    "README*.html",
+    "README*.htm",
+    "readme*.txt",
+    "readme*.md",
+    "Read_Me*.txt",
+    "Read_Me*.md",
     "*_INSTALL TUTORIAL*",
     "ZIP Password*",
-    "*.url", "*.nfo", "*.sfv",
+    "*.url",
+    "*.nfo",
+    "*.sfv",
     "*hack*.txt",
     "*site*.txt",
 )
@@ -60,9 +68,12 @@ BLOAT_FILE_PATTERNS = (
 # Matches only root-level directories; game content inside subdirectories is never touched.
 BLOAT_DIR_NAMES = (
     "_CommonRedist",
-    "Crack", "Cracked",
-    "Sample", "Samples",
+    "Crack",
+    "Cracked",
+    "Sample",
+    "Samples",
 )
+
 
 @dataclass
 class ExtractResult:
@@ -131,8 +142,7 @@ class ExtractService:
                 return found, None
         for candidate in ExtractService._windows_candidates(("7-Zip", "7z.exe")):
             return candidate, None
-        return None, ("no 7z/7za on PATH, no default 7-Zip install, and no 7z.exe "
-                      "bundled beside the app")
+        return None, ("no 7z/7za on PATH, no default 7-Zip install, and no 7z.exe bundled beside the app")
 
     @staticmethod
     def find_unrar():
@@ -183,6 +193,7 @@ class ExtractService:
         archive could not be inspected, which leaves the post-extraction find_installer() as the fallback.
         """
         from services.archive_service import ArchiveService
+
         return ArchiveService(self.logger).archive_installer_kind(archive)
 
     # -------------------------------------------------------------- checks
@@ -201,14 +212,14 @@ class ExtractService:
         needed = int(size * HEADROOM_FACTOR)
         if free < needed:
             from utils.formatting import human_size
-            return (f"not enough free space: needs about {human_size(needed)} to start, "
-                    f"{human_size(free)} free")
+
+            return f"not enough free space: needs about {human_size(needed)} to start, {human_size(free)} free"
         return ""
 
     # ------------------------------------------------------------ extraction
 
     @staticmethod
-    def _stop(process,grace=3.0):
+    def _stop(process, grace=3.0):
         """Ends a running 7z, asking before forcing.
 
         terminate() first because 7z closes the file it is writing on SIGTERM rather than leaving a handle open;
@@ -216,18 +227,23 @@ class ExtractService:
         The wait matters as much as the signals: without it the next archive starts while this one is still
         holding its output files, and two 7z processes writing into one destination is a corrupted library.
         """
-        if process.poll() is not None: return
-        with contextlib.suppress(OSError,AttributeError): process.terminate()
-        deadline=time.monotonic()+grace
-        while time.monotonic()<deadline:
-            if process.poll() is not None: return
+        if process.poll() is not None:
+            return
+        with contextlib.suppress(OSError, AttributeError):
+            process.terminate()
+        deadline = time.monotonic() + grace
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                return
             time.sleep(0.05)
-        with contextlib.suppress(OSError,AttributeError): process.kill()
+        with contextlib.suppress(OSError, AttributeError):
+            process.kill()
         # subprocess.TimeoutExpired descends from SubprocessError, not OSError, so a suppress written for the
         # signals above does not cover it. This runs on the cancellation path, where the process has already
         # been asked twice to die, and the caller is owed a report about the archive rather than a traceback
         # about the shutdown.
-        with contextlib.suppress(OSError,AttributeError,subprocess.TimeoutExpired): process.wait(timeout=5)
+        with contextlib.suppress(OSError, AttributeError, subprocess.TimeoutExpired):
+            process.wait(timeout=5)
 
     def _relocate_to_needs_install(self, destination: Path) -> Path:
         """Move an unpacked installer's contents into a "Needs Install" folder at the destination's parent level.
@@ -304,9 +320,9 @@ class ExtractService:
                         target.unlink()
                 shutil.move(str(child), str(target))
             wrapper.rmdir()
-            self.logger.info('EXTRACT', f'WRAPPER_FLATTENED dest=[{destination}] wrapper=[{wrapper.name}] bloat={[d.name for d in bloat_dirs]}')
+            self.logger.info("EXTRACT", f"WRAPPER_FLATTENED dest=[{destination}] wrapper=[{wrapper.name}] bloat={[d.name for d in bloat_dirs]}")
         except OSError as exc:
-            self.logger.warning('EXTRACT', f'WRAPPER_FLATTEN_FAILED dest=[{destination}] error={type(exc).__name__}: {exc}')
+            self.logger.warning("EXTRACT", f"WRAPPER_FLATTEN_FAILED dest=[{destination}] error={type(exc).__name__}: {exc}")
             root_files_before = set()
         # Remove only the loose FILES that were at destination root before flattening.
         # Promoted game folders (directories) and files promoted from the wrapper are kept.
@@ -318,7 +334,7 @@ class ExtractService:
                 if child.exists() and child.is_file() and not child.is_symlink():
                     child.unlink()
         except OSError as exc:
-            self.logger.warning('EXTRACT', f'BLOAT_CLEANUP_FAILED dest=[{destination}] error={type(exc).__name__}: {exc}')
+            self.logger.warning("EXTRACT", f"BLOAT_CLEANUP_FAILED dest=[{destination}] error={type(exc).__name__}: {exc}")
         return destination
 
     def _cleanup_root_bloat(self, destination: Path) -> None:
@@ -339,17 +355,17 @@ class ExtractService:
                 if any(fnmatch.fnmatch(name_lower, pat.lower()) for pat in BLOAT_DIR_NAMES):
                     try:
                         shutil.rmtree(child)
-                        self.logger.info('EXTRACT', f'BLOAT_DIR_REMOVED dest=[{destination}] name=[{name}]')
+                        self.logger.info("EXTRACT", f"BLOAT_DIR_REMOVED dest=[{destination}] name=[{name}]")
                     except OSError as exc:
-                        self.logger.warning('EXTRACT', f'BLOAT_DIR_DELETE_FAILED dest=[{destination}] name=[{name}] error={type(exc).__name__}: {exc}')
+                        self.logger.warning("EXTRACT", f"BLOAT_DIR_DELETE_FAILED dest=[{destination}] name=[{name}] error={type(exc).__name__}: {exc}")
                 continue
             if child.is_file() and not child.is_symlink():
                 if any(fnmatch.fnmatch(name_lower, pat.lower()) for pat in BLOAT_FILE_PATTERNS):
                     try:
                         child.unlink()
-                        self.logger.info('EXTRACT', f'BLOAT_FILE_REMOVED dest=[{destination}] name=[{name}]')
+                        self.logger.info("EXTRACT", f"BLOAT_FILE_REMOVED dest=[{destination}] name=[{name}]")
                     except OSError as exc:
-                        self.logger.warning('EXTRACT', f'BLOAT_FILE_DELETE_FAILED dest=[{destination}] name=[{name}] error={type(exc).__name__}: {exc}')
+                        self.logger.warning("EXTRACT", f"BLOAT_FILE_DELETE_FAILED dest=[{destination}] name=[{name}] error={type(exc).__name__}: {exc}")
 
     def extract(self, archive: Path, destination: Path, password: str = "", cancel=None) -> ExtractResult:
         archive = Path(archive).resolve()
@@ -357,25 +373,23 @@ class ExtractService:
         if not archive.is_file():
             return ExtractResult(archive, destination, False, f"No such archive: {archive}")
         if archive.suffix.lower() not in ARCHIVE_EXTENSIONS:
-            return ExtractResult(archive, destination, False,
-                                 f"Not an archive this can unpack: {archive.name}")
+            return ExtractResult(archive, destination, False, f"Not an archive this can unpack: {archive.name}")
         # Basic path safety: ensure archive is not trying to escape in unexpected ways
         try:
-            if '..' in str(archive):
+            if ".." in str(archive):
                 pass  # resolve() should handle
         except Exception:
             pass
-        sevenzip,tool_reason=self.find_tool()
+        sevenzip, tool_reason = self.find_tool()
         if not sevenzip:
             # The finder already checked PATH and the real install folders, so it knows which of the two came
             # up empty and its reason says so. The message used to be a hardcoded "not on PATH", which has been
             # wrong since v9.8 - 7-Zip is found in C:\Program Files\7-Zip without ever being on PATH - and it
             # discarded the specific answer that had already been computed. Named apart from the space check
             # below because two different questions, each with its own answer, were sharing one variable.
-            return ExtractResult(archive, destination, False,
-                                 tool_reason or "No 7z or 7za on PATH, so nothing can be unpacked")
+            return ExtractResult(archive, destination, False, tool_reason or "No 7z or 7za on PATH, so nothing can be unpacked")
 
-        space_reason=self.check_space(archive, destination)
+        space_reason = self.check_space(archive, destination)
         if space_reason:
             return ExtractResult(archive, destination, False, space_reason)
 
@@ -392,8 +406,7 @@ class ExtractService:
         if pre_signature is not None:
             destination = self._needs_install_path(destination)
             needs_install = True
-            self.logger.info('EXTRACT', f'INSTALLER_PREDETECTED kind=[{pre_signature.kind}] '
-                                        f'program=[{pre_signature.program.name}] dest=[{destination}]')
+            self.logger.info("EXTRACT", f"INSTALLER_PREDETECTED kind=[{pre_signature.kind}] program=[{pre_signature.program.name}] dest=[{destination}]")
             # check_space() already created the original folder; remove it now that we redirected,
             # so an empty folder is not left behind at <dest>/<leaf>.
             try:
@@ -409,6 +422,7 @@ class ExtractService:
         preserved_marker = {}
         try:
             from services.catalog_status import read_extract_marker
+
             for _cand in (destination, self._needs_install_path(destination)):
                 _m = read_extract_marker(_cand)
                 if _m:
@@ -428,10 +442,9 @@ class ExtractService:
         except OSError:
             pass
         args = self._command(sevenzip, archive, destination, archive.suffix.lower(), password)
-        self.logger.info('EXTRACT', f'START src=[{archive}] dest=[{destination}] tool=[{args[0]}]')
+        self.logger.info("EXTRACT", f"START src=[{archive}] dest=[{destination}] tool=[{args[0]}]")
 
-        process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT, text=True, bufsize=1, creationflags=NO_WINDOW)
+        process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, creationflags=NO_WINDOW)
         tail = []
         cancelled = False
         code = None
@@ -444,8 +457,7 @@ class ExtractService:
                 del tail[:-6]
                 steam_match = EXTRACT_PROGRESS_RE.search(line)
                 if steam_match and self._on_progress:
-                    self._on_progress(stage="extracting", percent=int(steam_match.group(1)),
-                                      name=(steam_match.group(2) or "").strip())
+                    self._on_progress(stage="extracting", percent=int(steam_match.group(1)), name=(steam_match.group(2) or "").strip())
                 # cancel= was accepted and never called, so a Cancel button wired to it would have looked real
                 # and done nothing: 7z would run to the end of the archive, which for a batch is hours. Checked
                 # on every line of tool output rather than on a timer because a large archive can be silent for
@@ -461,16 +473,15 @@ class ExtractService:
                 process.stdout.close()
 
         if cancelled:
-            self.logger.info('EXTRACT', f'CANCELLED src=[{archive.name}]')
+            self.logger.info("EXTRACT", f"CANCELLED src=[{archive.name}]")
             # Whatever 7z had already written stays where it is. Reporting the folder rather than pretending
             # nothing happened is the point: a half-unpacked game folder is the thing a person needs to know
             # about before they try to run it.
-            return ExtractResult(archive, destination, False,
-                                 f"Stopped part-way through; {destination} holds whatever was written already")
+            return ExtractResult(archive, destination, False, f"Stopped part-way through; {destination} holds whatever was written already")
 
         if code != 0:
             detail = " | ".join(tail)[-300:]
-            self.logger.warning('EXTRACT', f'FAILED src=[{archive.name}] code=[{code}] detail=[{detail}]')
+            self.logger.warning("EXTRACT", f"FAILED src=[{archive.name}] code=[{code}] detail=[{detail}]")
             # The destination folder was created before the attempt so a successful unpack lands in a
             # folder that already exists. When the unpack fails - an encrypted archive with no password,
             # a truncated download - that empty folder is what the user is seeing: they click Extract,
@@ -481,12 +492,11 @@ class ExtractService:
                     destination.rmdir()
             except OSError:
                 pass
-            return ExtractResult(archive, destination, False,
-                                 f"Extraction failed (exit {code})", code=code)
+            return ExtractResult(archive, destination, False, f"Extraction failed (exit {code})", code=code)
 
         files = [p for p in destination.rglob("*") if p.is_file()]
         extracted = sum(p.stat().st_size for p in files)
-        self.logger.info('EXTRACT', f'DONE dest=[{destination}] files=[{len(files)}] bytes=[{extracted}]')
+        self.logger.info("EXTRACT", f"DONE dest=[{destination}] files=[{len(files)}] bytes=[{extracted}]")
         # Validate all extracted files are under destination (defense against zip slip)
         try:
             dest_resolved = destination.resolve()
@@ -533,12 +543,9 @@ class ExtractService:
                             destination.rmdir()
                     except OSError:
                         pass
-                    self.logger.info('EXTRACT', f'INSTALLER_RELOCATED kind=[{signature.kind}] '
-                                                f'program=[{signature.program.name}] dest=[{content_dest}]')
+                    self.logger.info("EXTRACT", f"INSTALLER_RELOCATED kind=[{signature.kind}] program=[{signature.program.name}] dest=[{content_dest}]")
                 except OSError as exc:
-                    self.logger.warning('EXTRACT',
-                                        f'INSTALLER_RELOCATE_FAILED dest=[{destination}] '
-                                        f'error={type(exc).__name__}: {exc.strerror or exc}')
+                    self.logger.warning("EXTRACT", f"INSTALLER_RELOCATE_FAILED dest=[{destination}] error={type(exc).__name__}: {exc.strerror or exc}")
                     content_dest = destination
         if self._on_progress:
             self._on_progress(stage="done", percent=100, name="")
@@ -549,31 +556,24 @@ class ExtractService:
             if steam_page.is_file():
                 shutil.copy2(str(steam_page), str(content_dest / "Open Steam Page.html"))
         except OSError as exc:
-            self.logger.warning('EXTRACT', f'STEAM_PAGE_COPY_FAILED dest=[{content_dest}] error={type(exc).__name__}: {exc}')
+            self.logger.warning("EXTRACT", f"STEAM_PAGE_COPY_FAILED dest=[{content_dest}] error={type(exc).__name__}: {exc}")
         if needs_install:
-            action = (f'mount {signature.program.name} and run its setup' if signature.kind == 'iso'
-                      else f'run {signature.program.name} to install')
-            message = (f"Extracted {len(files)} file(s) to {content_dest} "
-                       f"(installer archive; {action})")
+            action = f"mount {signature.program.name} and run its setup" if signature.kind == "iso" else f"run {signature.program.name} to install"
+            message = f"Extracted {len(files)} file(s) to {content_dest} (installer archive; {action})"
         else:
-             message = f"Extracted {len(files)} file(s) to {content_dest}"
+            message = f"Extracted {len(files)} file(s) to {content_dest}"
         # Write an extraction marker so the catalog can detect when the archive
         # has changed since the last extraction. Best-effort: a marker that cannot
         # be written must never turn a success into a failure.
         try:
             import json as _json
-            info = {'archive_size': archive.stat().st_size,
-                    'archive_mtime_ns': archive.stat().st_mtime_ns,
-                    'extracted_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
-                    'extracted_root': str(content_dest),
-                    'needs_install': bool(needs_install)}
-            for _k in ('launch_target', 'setup_done', 'installed_at'):
+
+            info = {"archive_size": archive.stat().st_size, "archive_mtime_ns": archive.stat().st_mtime_ns, "extracted_at": datetime.now().strftime("%Y-%m-%d %H:%M"), "extracted_root": str(content_dest), "needs_install": bool(needs_install)}
+            for _k in ("launch_target", "setup_done", "installed_at"):
                 _v = preserved_marker.get(_k)
-                if _v not in (None, ''):
+                if _v not in (None, ""):
                     info[_k] = _v
-            (content_dest / EXTRACT_MARKER).write_text(_json.dumps(info), encoding='utf-8')
+            (content_dest / EXTRACT_MARKER).write_text(_json.dumps(info), encoding="utf-8")
         except OSError as exc:
-            self.logger.warning('EXTRACT', f'MARKER_WRITE_FAILED dest=[{content_dest}] error={type(exc).__name__}')
-        return ExtractResult(archive, content_dest, True, message,
-                             extracted_bytes=extracted, file_count=len(files), code=code,
-                             needs_install=needs_install)
+            self.logger.warning("EXTRACT", f"MARKER_WRITE_FAILED dest=[{content_dest}] error={type(exc).__name__}")
+        return ExtractResult(archive, content_dest, True, message, extracted_bytes=extracted, file_count=len(files), code=code, needs_install=needs_install)

@@ -7,7 +7,15 @@
 
 ---
 
-## 9.33 — development (unreleased)
+## 9.33
+
+### 2026-11-10 — Reformatted all Python files with ruff format for clean GitHub viewing
+
+- Applied `ruff format` to all 98 Python source files across `app/`, `core/`, `services/`, `ui/`, `utils/`, `debug/`, `tools/`, `tests/`, and project root. Whitespace, operator spacing, quote style, and call argument layout normalized — no logic changes.
+- `tests/test_regressions.py` could not be reformatted due to pre-existing syntax errors (unrelated indentation bugs).
+- Changelog entry added in the same change as the code change.
+
+---
 
 ### 2026-11-10 — Removed scratch scripts from project root
 

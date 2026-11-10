@@ -4,6 +4,7 @@ The destination used to have to be one of the configured extract folders, which 
 box is what was asked for, so these tests pin down what a typed path still has to satisfy - and, just as
 importantly, that a typed path cannot be used to write outside the places it should be able to write.
 """
+
 from __future__ import annotations
 
 import tempfile
@@ -129,7 +130,7 @@ class TypedDestinationTests(unittest.TestCase):
         # that is what is stubbed, and it is checked on every platform.
         locked = self.root / "locked"
         locked.mkdir()
-        with patch('core.uri_actions.os.access',return_value=False):
+        with patch("core.uri_actions.os.access", return_value=False):
             with self.assertRaises(UriRefused) as caught:
                 self.parse(str(locked / "child"))
         self.assertIn("not writable", str(caught.exception))
@@ -183,12 +184,11 @@ class FreshPcRefusalsPointAtTheSetup(unittest.TestCase):
 
     def test_the_batch_form_carries_the_same_pointer(self):
         from core.uri_actions import parse_batch_uri
-        no_library = self._refused(
-            parse_batch_uri, "steamgameorganizer://extract-all?category=Idle", None, self.bases)
+
+        no_library = self._refused(parse_batch_uri, "steamgameorganizer://extract-all?category=Idle", None, self.bases)
         self.assertIn("No game library", no_library)
         self.assertIn("Set up on this PC", no_library)
-        no_extract = self._refused(
-            parse_batch_uri, "steamgameorganizer://extract-all?category=Idle", self.library, [])
+        no_extract = self._refused(parse_batch_uri, "steamgameorganizer://extract-all?category=Idle", self.library, [])
         self.assertIn("No extract folder", no_extract)
         self.assertIn("Set up on this PC", no_extract)
 
@@ -198,6 +198,7 @@ class MultiBatchTests(unittest.TestCase):
 
     def setUp(self):
         import tempfile
+
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
@@ -279,11 +280,11 @@ class OpenExtractedUriTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
-        self.extract = self.root / 'extract'
+        self.extract = self.root / "extract"
         self.extract.mkdir()
-        self.game = self.extract / 'Game'
+        self.game = self.extract / "Game"
         self.game.mkdir()
-        (self.game / '.sgo-extract-info').write_text('{}', encoding='utf-8')
+        (self.game / ".sgo-extract-info").write_text("{}", encoding="utf-8")
 
     def test_valid_folder_inside_extract_root_returns_resolved_path(self):
         uri = f"steamgameorganizer://open-extracted?path={quote(str(self.game), safe='')}"
@@ -291,7 +292,7 @@ class OpenExtractedUriTests(unittest.TestCase):
         self.assertEqual(result.resolve(), self.game.resolve())
 
     def test_folder_outside_extract_roots_is_refused(self):
-        outside = self.root / 'outside'
+        outside = self.root / "outside"
         outside.mkdir()
         uri = f"steamgameorganizer://open-extracted?path={quote(str(outside), safe='')}"
         with self.assertRaises(UriRefused):
@@ -313,41 +314,46 @@ class PlayAndMarkerUriTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
-        self.extract = self.root / 'extract'
+        self.extract = self.root / "extract"
         self.extract.mkdir()
-        self.marker = self.extract / 'Game'
+        self.marker = self.extract / "Game"
         self.marker.mkdir()
-        self.exe = self.marker / 'game.exe'
-        self.exe.write_bytes(b'MZ')
-        self.marker_file = self.marker / '.sgo-extract-info'
-        self.marker_file.write_text('{"launch_target": "%s"}' % str(self.exe).replace('\\', '\\\\'), encoding='utf-8')
+        self.exe = self.marker / "game.exe"
+        self.exe.write_bytes(b"MZ")
+        self.marker_file = self.marker / ".sgo-extract-info"
+        self.marker_file.write_text('{"launch_target": "%s"}' % str(self.exe).replace("\\", "\\\\"), encoding="utf-8")
 
     def test_pick_launcher_requires_marker(self):
         from core.uri_actions import parse_pick_launcher_uri
+
         uri = f"steamgameorganizer://pick-launcher?path={quote(str(self.marker), safe='')}"
         self.assertEqual(parse_pick_launcher_uri(uri, [self.extract]).resolve(), self.marker.resolve())
 
     def test_mark_installed_requires_marker(self):
         from core.uri_actions import parse_mark_installed_uri
+
         uri = f"steamgameorganizer://mark-installed?path={quote(str(self.marker), safe='')}"
         self.assertEqual(parse_mark_installed_uri(uri, [self.extract]).resolve(), self.marker.resolve())
 
     def test_play_accepts_explicit_exe_under_extract_root(self):
         from core.uri_actions import parse_play_uri
+
         uri = f"steamgameorganizer://play?exe={quote(str(self.exe), safe='')}"
         req = parse_play_uri(uri, [self.extract])
         self.assertEqual(req.exe.resolve(), self.exe.resolve())
 
     def test_play_accepts_marker_path_with_persisted_launch_target(self):
         from core.uri_actions import parse_play_uri
+
         uri = f"steamgameorganizer://play?path={quote(str(self.marker), safe='')}"
         req = parse_play_uri(uri, [self.extract])
         self.assertEqual(req.exe.resolve(), self.exe.resolve())
 
     def test_play_refuses_exe_outside_extract_root(self):
         from core.uri_actions import parse_play_uri
-        outside = self.root / 'outside.exe'
-        outside.write_bytes(b'MZ')
+
+        outside = self.root / "outside.exe"
+        outside.write_bytes(b"MZ")
         uri = f"steamgameorganizer://play?exe={quote(str(outside), safe='')}"
         with self.assertRaises(UriRefused):
             parse_play_uri(uri, [self.extract])

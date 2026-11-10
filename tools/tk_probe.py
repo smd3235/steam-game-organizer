@@ -5,6 +5,7 @@ main() runs. The point is to see, from inside the frozen context, whether tkinte
 Tk() returns, and what TCL_LIBRARY/TK_LIBRARY resolve to - all of which the app's own --health
 cannot tell you, because that path never touches Tk.
 """
+
 import os
 import sys
 import traceback
@@ -22,6 +23,7 @@ def _probe():
     lines.append("TK_LIBRARY env: " + str(os.environ.get("TK_LIBRARY")))
     try:
         import tkinter as tk
+
         lines.append("import tkinter: OK")
         root = tk.Tk()
         lines.append("Tk() returned: " + repr(root))

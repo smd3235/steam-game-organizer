@@ -12,6 +12,7 @@ after two hours and the page finally says what happened.
 This lives in its own module rather than in `catalog_service` because both that module and
 `batch_extract_service` need it, and putting it in either would make the two import each other.
 """
+
 import json
 import os
 from datetime import datetime
@@ -21,10 +22,10 @@ from core.constants import APP_NAME
 
 # The name is part of the contract between the two writers and the page that reads it, so it is a constant
 # rather than a literal in three places.
-STATUS_NAME = 'Game Library.status.js'
+STATUS_NAME = "Game Library.status.js"
 # The global the page reads. It is a plain assignment rather than a call into a hook, so the order the two
 # scripts load in does not matter: the page defines its own reader and the status file only publishes data.
-STATUS_GLOBAL = 'libraryBatchStatus'
+STATUS_GLOBAL = "libraryBatchStatus"
 
 
 def already_extracted(destination) -> bool:
@@ -43,6 +44,7 @@ def already_extracted(destination) -> bool:
 def extract_marker_path(destination) -> Path:
     """The marker file path inside an extracted game's folder."""
     from services.extract_service import EXTRACT_MARKER
+
     return Path(destination) / EXTRACT_MARKER
 
 
@@ -56,7 +58,7 @@ def read_extract_marker(destination):
     """
     marker = extract_marker_path(destination)
     try:
-        data = json.loads(marker.read_text(encoding='utf-8'))
+        data = json.loads(marker.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) else None
@@ -71,7 +73,7 @@ def resolve_extracted_root(destination, extract_folders=()):
     """
     data = read_extract_marker(destination)
     if data:
-        root = data.get('extracted_root')
+        root = data.get("extracted_root")
         if root:
             try:
                 root_path = Path(str(root)).expanduser()
@@ -94,7 +96,7 @@ def _resolve_exe_under_extract_root(exe, extract_folders):
         exe_path = Path(str(exe)).expanduser().resolve(strict=True)
     except (TypeError, ValueError, OSError):
         return None
-    if not exe_path.is_file() or exe_path.suffix.lower() != '.exe':
+    if not exe_path.is_file() or exe_path.suffix.lower() != ".exe":
         return None
     if not any(_within(exe_path, folder) for folder in folders):
         return None
@@ -102,17 +104,67 @@ def _resolve_exe_under_extract_root(exe, extract_folders):
 
 
 LAUNCHER_IGNORE_TOKENS = (
-    'unins', 'uninst', 'setup', 'install', 'installer', 'patch', 'update', 'updater',
-    'redist', 'vcredist', 'dxsetup', 'dotnet', 'unitycrash', 'crashreport', 'crash',
-    'config', 'launcher_settings', 'helper',
-    'bugreport', 'elevate', 'createdump', 'prereq', 'quicksfv', 'sfv', 'ffmpeg',
-    'spatial', 'metadata', 'injector',
-    'java', 'jre', 'jabswitch', 'keytool', 'policytool', 'orbd', 'rmid', 'rmiregistry',
-    'servertool', 'tnameserv', 'pack200', 'unpack200', 'jjs', 'jfr', 'jstat',
-    'jstack', 'jmap', 'jhat', 'jinfo', 'jcmd', 'jrunscript', 'jaccess', 'jaccesswalker',
-    'kinit', 'klist', 'ktab', 'javaw', 'java-rmi', 'jcontrol', 'jconsole', 'jvisualvm',
+    "unins",
+    "uninst",
+    "setup",
+    "install",
+    "installer",
+    "patch",
+    "update",
+    "updater",
+    "redist",
+    "vcredist",
+    "dxsetup",
+    "dotnet",
+    "unitycrash",
+    "crashreport",
+    "crash",
+    "config",
+    "launcher_settings",
+    "helper",
+    "bugreport",
+    "elevate",
+    "createdump",
+    "prereq",
+    "quicksfv",
+    "sfv",
+    "ffmpeg",
+    "spatial",
+    "metadata",
+    "injector",
+    "java",
+    "jre",
+    "jabswitch",
+    "keytool",
+    "policytool",
+    "orbd",
+    "rmid",
+    "rmiregistry",
+    "servertool",
+    "tnameserv",
+    "pack200",
+    "unpack200",
+    "jjs",
+    "jfr",
+    "jstat",
+    "jstack",
+    "jmap",
+    "jhat",
+    "jinfo",
+    "jcmd",
+    "jrunscript",
+    "jaccess",
+    "jaccesswalker",
+    "kinit",
+    "klist",
+    "ktab",
+    "javaw",
+    "java-rmi",
+    "jcontrol",
+    "jconsole",
+    "jvisualvm",
 )
-LAUNCHER_PREFER_TOKENS = ('game', 'start', 'play', 'launch', 'bin', 'win64', 'x64')
+LAUNCHER_PREFER_TOKENS = ("game", "start", "play", "launch", "bin", "win64", "x64")
 LAUNCHER_MAX_DEPTH = 3
 LAUNCHER_MAX_CANDIDATES = 250
 
@@ -134,15 +186,15 @@ def discover_game_launchers(extracted_root):
             current_path = Path(current)
             try:
                 rel = current_path.relative_to(root)
-                depth = 0 if rel == Path('.') else len(rel.parts)
+                depth = 0 if rel == Path(".") else len(rel.parts)
             except ValueError:
                 depth = LAUNCHER_MAX_DEPTH + 1
             if depth >= LAUNCHER_MAX_DEPTH:
                 dirnames[:] = []
-            dirnames[:] = [d for d in dirnames if d not in {'.git', '__pycache__'}]
+            dirnames[:] = [d for d in dirnames if d not in {".git", "__pycache__"}]
             for name in filenames:
                 path = current_path / name
-                if path.suffix.lower() != '.exe':
+                if path.suffix.lower() != ".exe":
                     continue
                 low = name.casefold()
                 if any(token in low for token in LAUNCHER_IGNORE_TOKENS):
@@ -154,7 +206,7 @@ def discover_game_launchers(extracted_root):
                     score += 2
                 if any(token in low for token in LAUNCHER_PREFER_TOKENS):
                     score += 2
-                if 'launcher' in low:
+                if "launcher" in low:
                     score -= 1
                 try:
                     size = path.stat().st_size
@@ -177,7 +229,7 @@ def discover_game_launchers(extracted_root):
 def get_launch_target(marker_dir, extract_folders=()):
     """Return the validated persisted launch target exe for a marker directory, else None."""
     data = read_extract_marker(marker_dir) or {}
-    target = data.get('launch_target')
+    target = data.get("launch_target")
     if not target:
         return None
     return _resolve_exe_under_extract_root(target, extract_folders)
@@ -190,14 +242,14 @@ def update_extract_marker(destination, *, logger=None, **updates):
     marker already exists or `create_if_missing=True` is passed. Returns the updated
     marker dict on success, else None.
     """
-    create_if_missing = bool(updates.pop('create_if_missing', False))
+    create_if_missing = bool(updates.pop("create_if_missing", False))
     dest = Path(destination)
     marker = extract_marker_path(dest)
     data = read_extract_marker(dest)
     if data is None:
         if not create_if_missing or not dest.is_dir():
             return None
-        data = {'extracted_root': str(dest)}
+        data = {"extracted_root": str(dest)}
     changed = False
     for key, value in updates.items():
         if value is None:
@@ -211,10 +263,10 @@ def update_extract_marker(destination, *, logger=None, **updates):
     if not changed and marker.exists():
         return data
     try:
-        marker.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        marker.write_text(json.dumps(data, indent=2), encoding="utf-8")
     except OSError as exc:
         if logger:
-            logger.warning('CATALOG', f'MARKER_UPDATE_FAILED path=[{marker}] error={type(exc).__name__}')
+            logger.warning("CATALOG", f"MARKER_UPDATE_FAILED path=[{marker}] error={type(exc).__name__}")
         return None
     return data
 
@@ -235,10 +287,7 @@ def mark_setup_done(destination, *, extract_folders=(), logger=None):
         return None
     if folders and not any(_within(resolved, folder) for folder in folders):
         return None
-    return update_extract_marker(resolved, logger=logger,
-                                 needs_install=False,
-                                 setup_done=True,
-                                 installed_at=datetime.now().strftime('%Y-%m-%d %H:%M'))
+    return update_extract_marker(resolved, logger=logger, needs_install=False, setup_done=True, installed_at=datetime.now().strftime("%Y-%m-%d %H:%M"))
 
 
 def _within(candidate: Path, root: Path) -> bool:
@@ -264,8 +313,7 @@ def archive_has_changed_since_extraction(destination, archive_path) -> bool:
         current = Path(archive_path).stat()
     except OSError:
         return False
-    return (data.get('archive_size') != current.st_size or
-            data.get('archive_mtime_ns') != current.st_mtime_ns)
+    return data.get("archive_size") != current.st_size or data.get("archive_mtime_ns") != current.st_mtime_ns
 
 
 def empty_status() -> dict:
@@ -274,9 +322,7 @@ def empty_status() -> dict:
     Every key is present even when it has no value. The page reads the keys without checking they exist, and a
     missing key would be a silent `undefined` in the middle of a banner rather than a visible absence.
     """
-    return {'ran_at': '', 'category': '', 'destination': '', 'total': 0,
-            'extracted': 0, 'skipped': 0, 'failed': 0, 'cancelled': 0,
-            'already_done': 0, 'needs_install': 0, 'elapsed': ''}
+    return {"ran_at": "", "category": "", "destination": "", "total": 0, "extracted": 0, "skipped": 0, "failed": 0, "cancelled": 0, "already_done": 0, "needs_install": 0, "elapsed": ""}
 
 
 def elapsed_text(seconds) -> str:
@@ -288,12 +334,12 @@ def elapsed_text(seconds) -> str:
     try:
         total = int(max(0, float(seconds)))
     except (TypeError, ValueError):
-        return ''
+        return ""
     if total < 60:
-        return f'{total}s'
+        return f"{total}s"
     if total < 3600:
-        return f'{total // 60}m'
-    return f'{total // 3600}h {(total % 3600) // 60}m'
+        return f"{total // 60}m"
+    return f"{total // 3600}h {(total % 3600) // 60}m"
 
 
 def status_from_run(plan, job) -> dict:
@@ -303,19 +349,9 @@ def status_from_run(plan, job) -> dict:
     to one of them has somewhere obvious to be added here too. Neither type is imported - this module is
     imported by the batch service's own dependencies, and importing them back would be a circle.
     """
-    started, finished = getattr(job, 'started_at', 0.0), getattr(job, 'finished_at', 0.0)
+    started, finished = getattr(job, "started_at", 0.0), getattr(job, "finished_at", 0.0)
     ran = finished - started if started and finished else 0.0
-    return {'ran_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
-            'category': str(plan.category),
-            'destination': str(plan.destination),
-            'total': len(plan.items),
-            'extracted': job.succeeded,
-            'skipped': job.skipped,
-            'failed': job.failed,
-            'cancelled': job.cancelled,
-            'already_done': plan.already_done,
-            'needs_install': getattr(job, 'needs_install', 0),
-            'elapsed': elapsed_text(ran)}
+    return {"ran_at": datetime.now().strftime("%Y-%m-%d %H:%M"), "category": str(plan.category), "destination": str(plan.destination), "total": len(plan.items), "extracted": job.succeeded, "skipped": job.skipped, "failed": job.failed, "cancelled": job.cancelled, "already_done": plan.already_done, "needs_install": getattr(job, "needs_install", 0), "elapsed": elapsed_text(ran)}
 
 
 def status_javascript(status: dict) -> str:
@@ -326,8 +362,7 @@ def status_javascript(status: dict) -> str:
     string, not as code. The file is loaded as a script rather than inlined into the page, so there is no
     `</script>` to break out of either.
     """
-    return (f'/* Written by {APP_NAME}. Rewritten after every batch run. Safe to delete. */\n'
-            f'window.{STATUS_GLOBAL} = {json.dumps(status)};\n')
+    return f"/* Written by {APP_NAME}. Rewritten after every batch run. Safe to delete. */\nwindow.{STATUS_GLOBAL} = {json.dumps(status)};\n"
 
 
 def write_status(library_root, status: dict, logger=None) -> Path:
@@ -338,14 +373,15 @@ def write_status(library_root, status: dict, logger=None) -> Path:
     """
     path = Path(library_root) / STATUS_NAME
     try:
-        path.write_text(status_javascript(status), encoding='utf-8')
+        path.write_text(status_javascript(status), encoding="utf-8")
     except OSError as exc:
         if logger:
-            logger.warning('CATALOG', f'STATUS_WRITE_FAILED path=[{path}] error={type(exc).__name__}')
+            logger.warning("CATALOG", f"STATUS_WRITE_FAILED path=[{path}] error={type(exc).__name__}")
         return None
     if logger:
-        logger.info('CATALOG', f'STATUS_WRITTEN path=[{path}]')
+        logger.info("CATALOG", f"STATUS_WRITTEN path=[{path}]")
     return path
+
 
 def write_extract_result(config, archive, result, logger=None) -> Path:
     """Write a single extract's outcome next to the catalog, so a headless handler leaves a durable answer.
@@ -356,29 +392,29 @@ def write_extract_result(config, archive, result, logger=None) -> Path:
     the catalog is opened, so the result is visible without regenerating anything.
     """
     from datetime import datetime
+
     path = Path(config.library_root) / STATUS_NAME
     status = {
-        'ran_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
-        'category': '',
-        'destination': str(result.destination),
-        'total': 1,
-        'extracted': 1 if result.ok else 0,
-        'skipped': 0,
-        'failed': 0 if result.ok else 1,
-        'cancelled': 0,
-        'already_done': 0,
-        'needs_install': 0,
-        'elapsed': '',
-        'single_archive': str(archive),
-        'single_message': result.message,
+        "ran_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "category": "",
+        "destination": str(result.destination),
+        "total": 1,
+        "extracted": 1 if result.ok else 0,
+        "skipped": 0,
+        "failed": 0 if result.ok else 1,
+        "cancelled": 0,
+        "already_done": 0,
+        "needs_install": 0,
+        "elapsed": "",
+        "single_archive": str(archive),
+        "single_message": result.message,
     }
     try:
-        path.write_text(status_javascript(status), encoding='utf-8')
+        path.write_text(status_javascript(status), encoding="utf-8")
     except OSError as exc:
         if logger:
-            logger.warning('CATALOG', f'STATUS_WRITE_FAILED path=[{path}] error={type(exc).__name__}')
+            logger.warning("CATALOG", f"STATUS_WRITE_FAILED path=[{path}] error={type(exc).__name__}")
         return None
     if logger:
-        logger.info('CATALOG', f'SINGLE_EXTRACT_STATUS_WRITTEN path=[{path}] ok={result.ok}')
+        logger.info("CATALOG", f"SINGLE_EXTRACT_STATUS_WRITTEN path=[{path}] ok={result.ok}")
     return path
-

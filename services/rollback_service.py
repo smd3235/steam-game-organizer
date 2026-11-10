@@ -3,7 +3,8 @@ from pathlib import Path
 import os, re, shutil, tempfile, time
 from core.constants import ARCHIVE_EXTENSIONS
 
-def _within(path,root):
+
+def _within(path, root):
     """Whether `path` is `root` or something under it, after both are resolved.
 
     Resolving both sides is the point: it settles ..\\ segments and symlinks, so a journal naming
@@ -11,13 +12,16 @@ def _within(path,root):
     on an unresolvable path, because the answer a delete needs is "no".
     """
     try:
-        resolved=Path(path).resolve(); base=Path(root).resolve()
+        resolved = Path(path).resolve()
+        base = Path(root).resolve()
     except OSError:
         return False
-    return resolved==base or base in resolved.parents
+    return resolved == base or base in resolved.parents
+
 
 class RollbackService:
     """Small JSON journal for the last organization transaction."""
+
     def __init__(self, project_root, logger, organizer=None):
         self.journal = Path(project_root) / "config" / "last-organization.json"
         self.logger = logger
@@ -54,30 +58,38 @@ class RollbackService:
         written by an earlier release, counts as not owned: it restores its archives and removes nothing
         rather than guessing at a folder it cannot prove it created.
         """
-        owned=set(map(str,owned_dirs or ()))
-        payload=json.dumps([{"source":str(a),"target":str(b),"owned":str(Path(b).parent) in owned} for a,b in moves], indent=2)
-        temp=None
+        owned = set(map(str, owned_dirs or ()))
+        payload = json.dumps([{"source": str(a), "target": str(b), "owned": str(Path(b).parent) in owned} for a, b in moves], indent=2)
+        temp = None
         try:
-            self.journal.parent.mkdir(parents=True,exist_ok=True)
+            self.journal.parent.mkdir(parents=True, exist_ok=True)
             # A unique temp name, not with_suffix('.tmp'). Two instances of the app share this journal, and a
             # fixed name meant the loser's cleanup unlinked the winner's temp file before it could be replaced
             # - losing the record of a completed organize with nothing reported anywhere.
-            fd,name=tempfile.mkstemp(prefix="last-organization.",suffix=".tmp",dir=str(self.journal.parent))
-            temp=Path(name)
-            with os.fdopen(fd,"w",encoding="utf-8") as f: f.write(payload); f.flush(); os.fsync(f.fileno())
+            fd, name = tempfile.mkstemp(prefix="last-organization.", suffix=".tmp", dir=str(self.journal.parent))
+            temp = Path(name)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(payload)
+                f.flush()
+                os.fsync(f.fileno())
             for attempt in range(4):
-                try: os.replace(temp,self.journal); return True
+                try:
+                    os.replace(temp, self.journal)
+                    return True
                 except PermissionError:
-                    if attempt==3: raise
-                    time.sleep(0.05*(attempt+1))
+                    if attempt == 3:
+                        raise
+                    time.sleep(0.05 * (attempt + 1))
         except OSError as exc:
-            detail=re.sub(r"\s+"," ",str(exc)).strip()[:200]
-            self.logger.error("ROLLBACK",f"JOURNAL_WRITE_FAILED path=[{self.journal}] error=[{type(exc).__name__}] errno=[{getattr(exc,'errno',None)}] detail=[{detail}] moves=[{len(moves)}]")
+            detail = re.sub(r"\s+", " ", str(exc)).strip()[:200]
+            self.logger.error("ROLLBACK", f"JOURNAL_WRITE_FAILED path=[{self.journal}] error=[{type(exc).__name__}] errno=[{getattr(exc, 'errno', None)}] detail=[{detail}] moves=[{len(moves)}]")
             return False
         finally:
             if temp is not None:
-                try: temp.unlink()
-                except OSError: pass
+                try:
+                    temp.unlink()
+                except OSError:
+                    pass
         return False
 
     def _rows(self):
@@ -92,11 +104,12 @@ class RollbackService:
         _prune_emptied, defaulting to False so a journal from an earlier release removes nothing.
         """
         try:
-            rows=json.loads(self.journal.read_text(encoding="utf-8"))
-        except (OSError,ValueError):
+            rows = json.loads(self.journal.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
             return []
-        if not isinstance(rows,list): return []
-        return [row for row in rows if isinstance(row,dict) and row.get("source") and row.get("target")]
+        if not isinstance(rows, list):
+            return []
+        return [row for row in rows if isinstance(row, dict) and row.get("source") and row.get("target")]
 
     def pending_count(self):
         """How many moves the last transaction can still undo. Surfaced live during a run so the user knows
@@ -104,25 +117,34 @@ class RollbackService:
         return len(self._rows())
 
     def undo_last(self, library_root=None):
-        if not self.journal.is_file(): return {"moved":0,"pruned":0,"reason":"No organization transaction to undo"}
-        rows=self._rows()
-        if not rows: return {"moved":0,"pruned":0,"reason":"The last organization record could not be read, so there is nothing to undo"}
-        moved=0; pruned=0
+        if not self.journal.is_file():
+            return {"moved": 0, "pruned": 0, "reason": "No organization transaction to undo"}
+        rows = self._rows()
+        if not rows:
+            return {"moved": 0, "pruned": 0, "reason": "The last organization record could not be read, so there is nothing to undo"}
+        moved = 0
+        pruned = 0
         for row in reversed(rows):
-            src=Path(row["source"]); dst=Path(row["target"])
+            src = Path(row["source"])
+            dst = Path(row["target"])
             # The organized file may have been repacked (.zip -> .rar) after the move, so its extension can
             # differ from the recorded source; restore using the current extension, not the stale one.
-            restore=src if src.suffix==dst.suffix else src.with_suffix(dst.suffix)
+            restore = src if src.suffix == dst.suffix else src.with_suffix(dst.suffix)
             if dst.exists() and not restore.exists():
-                restore.parent.mkdir(parents=True,exist_ok=True); shutil.move(str(dst),str(restore)); moved += 1
-            if self._prune_emptied(dst.parent,bool(row.get("owned")),library_root): pruned += 1
+                restore.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(dst), str(restore))
+                moved += 1
+            if self._prune_emptied(dst.parent, bool(row.get("owned")), library_root):
+                pruned += 1
         if moved == len(rows):
-            try:self.journal.unlink()
-            except OSError:self.logger.warning("ROLLBACK",f"JOURNAL_CLEAR_FAILED path=[{self.journal}]")
+            try:
+                self.journal.unlink()
+            except OSError:
+                self.logger.warning("ROLLBACK", f"JOURNAL_CLEAR_FAILED path=[{self.journal}]")
         self.logger.info("ROLLBACK", f"UNDO moved={moved} pruned={pruned}")
-        return {"moved":moved,"pruned":pruned,"reason":"Rollback complete"}
+        return {"moved": moved, "pruned": pruned, "reason": "Rollback complete"}
 
-    def _prune_emptied(self,game_dir,owned=False,library_root=None):
+    def _prune_emptied(self, game_dir, owned=False, library_root=None):
         """Move the game folder this rollback just emptied to Archive, and report whether it did.
 
         The archive goes home and the folder the run created stays behind holding what the run wrote into it -
@@ -145,32 +167,35 @@ class RollbackService:
         A folder still holding an archive was not emptied by this undo. One holding anything the app did not
         write is never moved.
         """
-        game_dir=Path(game_dir)
+        game_dir = Path(game_dir)
         if not owned:
-            self.logger.info("ROLLBACK",f"KEPT_EMPTY_GAME_DIR path=[{game_dir}] reason=[this run did not create it]")
+            self.logger.info("ROLLBACK", f"KEPT_EMPTY_GAME_DIR path=[{game_dir}] reason=[this run did not create it]")
             return False
         try:
-            if library_root is not None and not _within(game_dir,Path(library_root)):
-                self.logger.warning("ROLLBACK",f"KEPT_EMPTY_GAME_DIR path=[{game_dir}] reason=[outside the library]")
+            if library_root is not None and not _within(game_dir, Path(library_root)):
+                self.logger.warning("ROLLBACK", f"KEPT_EMPTY_GAME_DIR path=[{game_dir}] reason=[outside the library]")
                 return False
-            if not game_dir.is_dir(): return False
-            if any(item.suffix.lower() in ARCHIVE_EXTENSIONS for item in game_dir.iterdir()): return False
-            if self.organizer is None: return False
-            if not self.organizer._folder_is_prunable(game_dir): return False
-            archive_dir=Path(library_root).expanduser().resolve()/'Archive' if library_root is not None else None
+            if not game_dir.is_dir():
+                return False
+            if any(item.suffix.lower() in ARCHIVE_EXTENSIONS for item in game_dir.iterdir()):
+                return False
+            if self.organizer is None:
+                return False
+            if not self.organizer._folder_is_prunable(game_dir):
+                return False
+            archive_dir = Path(library_root).expanduser().resolve() / "Archive" if library_root is not None else None
             if archive_dir is not None:
-                archive_dir.mkdir(parents=True,exist_ok=True)
-                target=archive_dir/game_dir.name
-                n=2
+                archive_dir.mkdir(parents=True, exist_ok=True)
+                target = archive_dir / game_dir.name
+                n = 2
                 while target.exists():
-                    target=archive_dir/f'{game_dir.name} ({n})'; n += 1
-                shutil.move(str(game_dir),str(target))
+                    target = archive_dir / f"{game_dir.name} ({n})"
+                    n += 1
+                shutil.move(str(game_dir), str(target))
             else:
                 shutil.rmtree(game_dir)
-            self.logger.info("ROLLBACK",f"PRUNED_EMPTY_GAME_DIR path=[{game_dir}]")
+            self.logger.info("ROLLBACK", f"PRUNED_EMPTY_GAME_DIR path=[{game_dir}]")
             return True
         except OSError as prune_error:
-            self.logger.warning("ROLLBACK",f"PRUNE_FAILED path=[{game_dir}] error=[{type(prune_error).__name__}]")
+            self.logger.warning("ROLLBACK", f"PRUNE_FAILED path=[{game_dir}] error=[{type(prune_error).__name__}]")
             return False
-
-

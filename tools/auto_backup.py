@@ -6,6 +6,7 @@ Creates timestamped 7z backups in backup/ directory with retention policy:
 - Only backs up if tests pass (no errors)
 - Deletes backups older than 30 days
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,11 +23,7 @@ SEVEN_ZIP = ROOT / "runtime" / "7z.exe"
 def run_tests() -> bool:
     """Run test suite and return True if all pass."""
     result = subprocess.run(
-        [str(ROOT / "runtime" / "python.exe"), "-c",
-         "import sys,unittest; sys.path.insert(0,'.'); "
-         "result=unittest.TextTestRunner(verbosity=0).run("
-         "unittest.defaultTestLoader.discover('tests', pattern='test_*.py')); "
-         "sys.exit(0 if result.wasSuccessful() else 1)"],
+        [str(ROOT / "runtime" / "python.exe"), "-c", "import sys,unittest; sys.path.insert(0,'.'); result=unittest.TextTestRunner(verbosity=0).run(unittest.defaultTestLoader.discover('tests', pattern='test_*.py')); sys.exit(0 if result.wasSuccessful() else 1)"],
         cwd=ROOT,
         capture_output=True,
         timeout=180,
@@ -85,11 +82,7 @@ def create_backup() -> Path:
         "-xr!*.zip",
     ]
 
-    cmd = [
-        str(SEVEN_ZIP), "a", "-t7z", "-mx=5",
-        str(archive_path), str(ROOT) + "\\*",
-        *exclude_patterns
-    ]
+    cmd = [str(SEVEN_ZIP), "a", "-t7z", "-mx=5", str(archive_path), str(ROOT) + "\\*", *exclude_patterns]
 
     result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=300)
     if result.returncode != 0:
@@ -102,10 +95,7 @@ def create_backup() -> Path:
 
 def create_manifest(archive: Path) -> Path:
     """Create a manifest.txt file listing all files in the archive."""
-    result = subprocess.run(
-        [str(SEVEN_ZIP), "l", str(archive)],
-        capture_output=True, text=True, timeout=120
-    )
+    result = subprocess.run([str(SEVEN_ZIP), "l", str(archive)], capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise RuntimeError(f"7z list failed: {result.stderr}")
 
@@ -126,7 +116,7 @@ def create_manifest(archive: Path) -> Path:
 def create_json_manifest(archive: Path, listing_output: str) -> Path:
     """Create a structured JSON manifest with file metadata."""
     import json
-    
+
     files = []
     lines = listing_output.splitlines()
     in_files = False
@@ -144,30 +134,14 @@ def create_json_manifest(archive: Path, listing_output: str) -> Path:
                     size = int(parts[3])
                     compressed = int(parts[4])
                     name = " ".join(parts[5:])
-                    is_dir = attr.startswith('D')
-                    files.append({
-                        "path": name,
-                        "size": size,
-                        "compressed": compressed,
-                        "modified": f"{date_str} {time_str}",
-                        "is_dir": is_dir,
-                        "attributes": attr
-                    })
+                    is_dir = attr.startswith("D")
+                    files.append({"path": name, "size": size, "compressed": compressed, "modified": f"{date_str} {time_str}", "is_dir": is_dir, "attributes": attr})
                 except (ValueError, IndexError):
                     pass
-    
+
     json_path = archive.with_suffix(".manifest.json")
-    manifest_data = {
-        "archive": archive.name,
-        "created": datetime.now().isoformat(),
-        "size_bytes": archive.stat().st_size,
-        "size_mb": round(archive.stat().st_size / 1_048_576, 1),
-        "file_count": len([f for f in files if not f["is_dir"]]),
-        "dir_count": len([f for f in files if f["is_dir"]]),
-        "total_uncompressed": sum(f["size"] for f in files if not f["is_dir"]),
-        "files": files
-    }
-    
+    manifest_data = {"archive": archive.name, "created": datetime.now().isoformat(), "size_bytes": archive.stat().st_size, "size_mb": round(archive.stat().st_size / 1_048_576, 1), "file_count": len([f for f in files if not f["is_dir"]]), "dir_count": len([f for f in files if f["is_dir"]]), "total_uncompressed": sum(f["size"] for f in files if not f["is_dir"]), "files": files}
+
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(manifest_data, f, indent=2)
     print(f"Created JSON manifest: {json_path.name}")

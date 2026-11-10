@@ -9,6 +9,7 @@ Usage:
     runtime\python.exe tools\review_backups.py -v                 # Verify integrity of all backups
     runtime\python.exe tools\review_backups.py --stats            # Show statistics
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,11 +49,11 @@ def print_backup_summary():
     if not backups:
         print("No backups found.")
         return
-    
+
     print(f"Found {len(backups)} backup(s):\n")
     print(f"{'#':<3} {'Date':<20} {'Size':>10} {'Files':>8} {'Dirs':>6} {'Uncompressed':>14}")
     print("-" * 80)
-    
+
     for i, backup in enumerate(backups, 1):
         manifest = load_json_manifest(backup)
         if manifest:
@@ -73,12 +74,12 @@ def search_backups(pattern: str, file_type: str = "all", min_size: int = 0, max_
     backups = list_backups()
     pattern_lower = pattern.lower()
     results = []
-    
+
     for backup in backups:
         manifest = load_json_manifest(backup)
         if not manifest:
             continue
-        
+
         for file_info in manifest.get("files", []):
             if file_info["is_dir"] and file_type != "all" and file_type != "dir":
                 continue
@@ -90,20 +91,20 @@ def search_backups(pattern: str, file_type: str = "all", min_size: int = 0, max_
                 continue
             if pattern_lower in file_info["path"].lower():
                 results.append((backup, manifest, file_info))
-    
+
     if not results:
         print(f"No matches for '{pattern}'")
         return
-    
+
     print(f"Found {len(results)} match(es) for '{pattern}':\n")
-    
+
     # Group by backup
     by_backup = {}
     for backup, manifest, file_info in results:
         if backup not in by_backup:
             by_backup[backup] = {"manifest": manifest, "files": []}
         by_backup[backup]["files"].append(file_info)
-    
+
     for backup, data in by_backup.items():
         m = data["manifest"]
         date = m.get("created", "")[:19].replace("T", " ")
@@ -117,33 +118,33 @@ def diff_backups(backup1: Path, backup2: Path):
     """Show differences between two backups."""
     m1 = load_json_manifest(backup1)
     m2 = load_json_manifest(backup2)
-    
+
     if not m1 or not m2:
         print("Error: JSON manifests not found for one or both backups")
         return
-    
+
     files1 = {f["path"]: f for f in m1.get("files", [])}
     files2 = {f["path"]: f for f in m2.get("files", [])}
-    
+
     all_paths = set(files1.keys()) | set(files2.keys())
-    
+
     added = []
     removed = []
     modified = []
-    
+
     for path in sorted(all_paths):
         f1 = files1.get(path)
         f2 = files2.get(path)
-        
+
         if f1 and not f2:
             removed.append((path, f1))
         elif f2 and not f1:
             added.append((path, f2))
         elif f1 and f2 and (f1["size"] != f2["size"] or f1.get("modified") != f2.get("modified")):
             modified.append((path, f1, f2))
-    
+
     print(f"Diff: {backup1.name} -> {backup2.name}\n")
-    
+
     if added:
         print(f"Added ({len(added)}):")
         for path, f in added[:20]:
@@ -151,7 +152,7 @@ def diff_backups(backup1: Path, backup2: Path):
             print(f"  + {path} ({size})")
         if len(added) > 20:
             print(f"  ... and {len(added) - 20} more")
-    
+
     if removed:
         print(f"\nRemoved ({len(removed)}):")
         for path, f in removed[:20]:
@@ -159,7 +160,7 @@ def diff_backups(backup1: Path, backup2: Path):
             print(f"  - {path} ({size})")
         if len(removed) > 20:
             print(f"  ... and {len(removed) - 20} more")
-    
+
     if modified:
         print(f"\nModified ({len(modified)}):")
         for path, f1, f2 in modified[:20]:
@@ -168,7 +169,7 @@ def diff_backups(backup1: Path, backup2: Path):
             print(f"  ~ {path}: {size1} -> {size2}")
         if len(modified) > 20:
             print(f"  ... and {len(modified) - 20} more")
-    
+
     if not added and not removed and not modified:
         print("No differences found.")
 
@@ -179,25 +180,22 @@ def verify_backups():
     if not backups:
         print("No backups found.")
         return
-    
+
     print(f"Verifying {len(backups)} backup(s)...\n")
-    
+
     for backup in backups:
         print(f"  {backup.name}...", end=" ", flush=True)
-        
+
         # Test archive integrity
-        result = subprocess.run(
-            [str(SEVEN_ZIP), "t", str(backup)],
-            capture_output=True, text=True, timeout=300
-        )
-        
+        result = subprocess.run([str(SEVEN_ZIP), "t", str(backup)], capture_output=True, text=True, timeout=300)
+
         if result.returncode == 0:
             # Check manifest exists
             manifest = backup.with_suffix(".manifest.txt")
             json_manifest = backup.with_suffix(".manifest.json")
             manifest_ok = manifest.exists()
             json_ok = json_manifest.exists()
-            
+
             if manifest_ok and json_ok:
                 print("OK (archive + manifests)")
             elif manifest_ok:
@@ -214,22 +212,22 @@ def show_stats():
     if not backups:
         print("No backups found.")
         return
-    
+
     total_size = sum(b.stat().st_size for b in backups)
     oldest = datetime.fromtimestamp(backups[-1].stat().st_mtime)
     newest = datetime.fromtimestamp(backups[0].stat().st_mtime)
     span = (newest - oldest).days
-    
+
     # Load manifests for file stats
     total_files = 0
     total_uncompressed = 0
-    
+
     for backup in backups:
         manifest = load_json_manifest(backup)
         if manifest:
             total_files += manifest.get("file_count", 0)
             total_uncompressed += manifest.get("total_uncompressed", 0)
-    
+
     print("Backup Statistics:")
     print(f"  Total backups: {len(backups)}")
     print(f"  Date range: {oldest.strftime('%Y-%m-%d')} to {newest.strftime('%Y-%m-%d')} ({span} days)")
@@ -246,12 +244,12 @@ def interactive_mode():
     if not backups:
         print("No backups found.")
         return
-    
+
     while True:
         print_backup_summary()
         print("\nCommands: [#] view backup, [d] diff, [s] search, [v] verify, [q] quit")
         choice = input("> ").strip().lower()
-        
+
         if choice == "q":
             break
         if choice == "v":
@@ -282,14 +280,14 @@ def view_backup(backup: Path):
     if not manifest:
         print("No JSON manifest available.")
         return
-    
+
     print(f"\n{backup.name}")
     print(f"  Created: {manifest.get('created', 'unknown')}")
     print(f"  Compressed: {manifest.get('size_mb', 0):.1f} MB")
     print(f"  Files: {manifest.get('file_count', 0):,}")
     print(f"  Directories: {manifest.get('dir_count', 0):,}")
     print(f"  Uncompressed: {manifest.get('total_uncompressed', 0) / 1_048_576:.1f} MB")
-    
+
     print("\nTop 20 largest files:")
     files = [f for f in manifest.get("files", []) if not f["is_dir"]]
     for f in sorted(files, key=lambda x: x["size"], reverse=True)[:20]:

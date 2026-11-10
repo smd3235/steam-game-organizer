@@ -10,6 +10,7 @@ Usage:
     runtime\python.exe tools\restore_backup.py -f path -o outdir  # Extract to custom output dir
     runtime\python.exe tools\restore_backup.py -s pattern         # Search ALL backups for pattern
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,10 +33,7 @@ def list_backups() -> list[Path]:
 
 def list_contents(archive: Path) -> list[str]:
     """List all files in archive."""
-    result = subprocess.run(
-        [str(SEVEN_ZIP), "l", str(archive)],
-        capture_output=True, text=True, timeout=60
-    )
+    result = subprocess.run([str(SEVEN_ZIP), "l", str(archive)], capture_output=True, text=True, timeout=60)
     if result.returncode != 0:
         raise RuntimeError(f"7z list failed: {result.stderr}")
     lines = result.stdout.splitlines()
@@ -66,10 +64,7 @@ def search_all_backups(pattern: str) -> list[tuple[Path, list[str]]]:
 
 def extract_file(archive: Path, internal_path: str, output_dir: Path) -> Path:
     """Extract a single file/folder from archive to output_dir."""
-    result = subprocess.run(
-        [str(SEVEN_ZIP), "x", str(archive), f"-o{output_dir}", "-r", internal_path],
-        capture_output=True, text=True, timeout=120
-    )
+    result = subprocess.run([str(SEVEN_ZIP), "x", str(archive), f"-o{output_dir}", "-r", internal_path], capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise RuntimeError(f"7z extract failed: {result.stderr}")
     return output_dir / Path(internal_path).name

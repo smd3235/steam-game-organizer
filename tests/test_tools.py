@@ -9,6 +9,7 @@ directory hides, so it is imported and exercised here.
 Nothing here touches the registry or the desktop session: the Windows write goes through winreg, which is
 patched out, and the Linux write goes to a temporary folder.
 """
+
 from __future__ import annotations
 
 import io
@@ -48,6 +49,7 @@ class ProtocolHandlerInstallerTests(unittest.TestCase):
     def test_the_scheme_matches_the_one_the_page_generates(self):
         """The installer and the parser must not drift: the handler is only reachable if both agree."""
         from core.uri_actions import SCHEME as parser_scheme
+
         self.assertIs(installer.SCHEME, parser_scheme)
 
     def test_the_registry_path_has_one_separator(self):
@@ -68,20 +70,24 @@ class ProtocolHandlerInstallerTests(unittest.TestCase):
         command = next(line for line in text.splitlines() if line.startswith('"@"="\\"'))
         # Each quote around a path is escaped once, every backslash in the path is doubled, and %1 survives
         # for the shell to substitute. Written out: \"C:\\Python313\\python.exe\" --uri \"%1\"
-        self.assertIn(r'\"C:\\Python313\\python.exe\"', command)
-        self.assertIn(r'--uri \"%1\"', command)
+        self.assertIn(r"\"C:\\Python313\\python.exe\"", command)
+        self.assertIn(r"--uri \"%1\"", command)
         # Doubling the backslashes after escaping the quotes would have produced \\" here instead.
         self.assertNotIn('\\\\"', command)
-
 
     def test_windows_install_writes_the_two_keys_and_the_command(self):
         """HKCU, so it needs no elevation, and the command has to carry the interpreter and the entry point."""
         written = {}
 
         class _Key:
-            def __init__(self, path): self.path = path
-            def __enter__(self): return self
-            def __exit__(self, *exc): return False
+            def __init__(self, path):
+                self.path = path
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
 
         class _Winreg:
             """The slice of the winreg API install_windows() uses, over one dict.
@@ -98,24 +104,24 @@ class ProtocolHandlerInstallerTests(unittest.TestCase):
             @staticmethod
             def CreateKey(root, path):
                 key = _Key(path)
-                written.setdefault(('key', path), key)
-                written.setdefault(('values', path), {})
+                written.setdefault(("key", path), key)
+                written.setdefault(("values", path), {})
                 return key
 
             @staticmethod
             def SetValueEx(key, name, reserved, value_type, value):
-                written.setdefault(('values', key.path), {})[name] = value
-                written[('value', key.path, name)] = value
+                written.setdefault(("values", key.path), {})[name] = value
+                written[("value", key.path, name)] = value
 
             @staticmethod
             def OpenKey(root, path):
-                if ('values', path) not in written:
+                if ("values", path) not in written:
                     raise OSError(f"no such key: {path}")
                 return _Key(path)
 
             @staticmethod
             def QueryValueEx(key, name):
-                return (written[('values', key.path)][name], 1)
+                return (written[("values", key.path)][name], 1)
 
         with patch.dict(sys.modules, {"winreg": _Winreg}):
             buffer = io.StringIO()
@@ -123,10 +129,10 @@ class ProtocolHandlerInstallerTests(unittest.TestCase):
                 installer.install_windows(r"C:\Python313\python.exe", self.entry)
         base = f"{installer.REGISTRY_ROOT}\\{installer.SCHEME}"
         command_key = base + r"\shell\open\command"
-        self.assertIn(('key', command_key), written, 'the open command key was never created')
+        self.assertIn(("key", command_key), written, "the open command key was never created")
         # An empty value under this name is what makes Windows treat the key as a protocol, not a file type.
-        self.assertEqual(written[('value', base, 'URL Protocol')], "")
-        command = written[('value', command_key, None)]
+        self.assertEqual(written[("value", base, "URL Protocol")], "")
+        command = written[("value", command_key, None)]
         self.assertIn("--uri", command)
         self.assertIn('"%1"', command)
         self.assertIn(str(self.entry), command)
@@ -142,9 +148,14 @@ class ProtocolHandlerInstallerTests(unittest.TestCase):
         """
 
         class _Key:
-            def __init__(self, path): self.path = path
-            def __enter__(self): return self
-            def __exit__(self, *exc): return False
+            def __init__(self, path):
+                self.path = path
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
 
         class _StaleWinreg:
             """Accepts every write and reports a different value for the one that was just made."""
@@ -153,21 +164,27 @@ class ProtocolHandlerInstallerTests(unittest.TestCase):
             REG_SZ = 1
 
             @staticmethod
-            def CreateKey(root, path): return _Key(path)
+            def CreateKey(root, path):
+                return _Key(path)
+
             @staticmethod
-            def SetValueEx(key, name, reserved, value_type, value): pass
+            def SetValueEx(key, name, reserved, value_type, value):
+                pass
+
             @staticmethod
-            def OpenKey(root, path): return _Key(path)
+            def OpenKey(root, path):
+                return _Key(path)
+
             @staticmethod
-            def QueryValueEx(key, name): return (r'"C:\other\python.exe" --uri "%1"', 1)
+            def QueryValueEx(key, name):
+                return (r'"C:\other\python.exe" --uri "%1"', 1)
 
         with patch.dict(sys.modules, {"winreg": _StaleWinreg}):
             buffer = io.StringIO()
             with redirect_stdout(buffer):
                 installer.install_windows(r"C:\Python313\python.exe", self.entry)
         printed = buffer.getvalue()
-        self.assertNotIn("verified:", printed,
-                         "a value that did not read back as written was reported as a working handler")
+        self.assertNotIn("verified:", printed, "a value that did not read back as written was reported as a working handler")
         self.assertIn("WARNING", printed, "the disagreement was not reported at all")
 
     def test_check_reports_nothing_registered_rather_than_raising(self):
@@ -196,17 +213,16 @@ class LayoutAuditToolTests(unittest.TestCase):
     def _run(self, width=None, height=None):
         """Runs the tool the way the notes say to, from the project root."""
         env = dict(os.environ)
-        if width: env["AUDIT_W"] = str(width)
-        if height: env["AUDIT_H"] = str(height)
-        return subprocess.run(
-            [sys.executable, os.path.join("tools", "layout_audit.py")],
-            capture_output=True, text=True, errors="replace", cwd=str(PROJECT_ROOT), env=env, timeout=300)
+        if width:
+            env["AUDIT_W"] = str(width)
+        if height:
+            env["AUDIT_H"] = str(height)
+        return subprocess.run([sys.executable, os.path.join("tools", "layout_audit.py")], capture_output=True, text=True, errors="replace", cwd=str(PROJECT_ROOT), env=env, timeout=300)
 
     def test_it_runs_as_a_script_the_way_the_notes_say_to(self):
         """Running a script puts tools/ on sys.path, not the project root, so the app import used to fail."""
         result = self._run()
-        self.assertNotIn("ModuleNotFoundError", result.stderr,
-                         "the layout audit cannot import the app when run as documented")
+        self.assertNotIn("ModuleNotFoundError", result.stderr, "the layout audit cannot import the app when run as documented")
         self.assertEqual(result.returncode, 0, f"the layout audit exited {result.returncode}:\n{result.stderr}")
 
     def test_it_measures_the_window_size_it_asked_for(self):
@@ -217,13 +233,11 @@ class LayoutAuditToolTests(unittest.TestCase):
         that has nothing to do with the tool working.
         """
         result = self._run(1280, 800)
-        self.assertRegex(result.stdout, r"measured 1280x800",
-                         f"the tool did not measure the size it was asked for:\n{result.stdout}")
-        self.assertNotIn("WARNING:", result.stdout,
-                         f"the tool warned that its measurements do not match its limits:\n{result.stdout}")
+        self.assertRegex(result.stdout, r"measured 1280x800", f"the tool did not measure the size it was asked for:\n{result.stdout}")
+        self.assertNotIn("WARNING:", result.stdout, f"the tool warned that its measurements do not match its limits:\n{result.stdout}")
 
     def test_it_actually_looks_at_the_widgets_rather_than_reporting_nothing(self):
-        """"CLEAN" from a walk that examined nothing is the failure this project has been bitten by before.
+        """ "CLEAN" from a walk that examined nothing is the failure this project has been bitten by before.
 
         A safety net that is reported as present but was never run is worse than none, so the audit prints how
         many widgets it checked. Five pages of window is several hundred; a near-zero number means the walk
@@ -236,8 +250,7 @@ class LayoutAuditToolTests(unittest.TestCase):
         result = self._run(1280, 800)
         match = re.search(r"checked (\d+) widgets", result.stdout)
         self.assertIsNotNone(match, f"the audit does not report how many widgets it checked:\n{result.stdout}")
-        self.assertGreaterEqual(int(match.group(1)), 100,
-                                "the audit reported a clean bill of health after examining almost nothing")
+        self.assertGreaterEqual(int(match.group(1)), 100, "the audit reported a clean bill of health after examining almost nothing")
 
     def test_it_warns_when_the_window_would_not_take_the_size_it_asked_for(self):
         """The off-window check compares against the requested size, so a mismatch invalidates every result.
@@ -247,10 +260,8 @@ class LayoutAuditToolTests(unittest.TestCase):
         quietly printing issues that mean nothing.
         """
         result = self._run(400, 300)
-        self.assertIn("WARNING:", result.stdout,
-                      f"the tool did not notice that the window refused the requested size:\n{result.stdout}")
+        self.assertIn("WARNING:", result.stdout, f"the tool did not notice that the window refused the requested size:\n{result.stdout}")
 
 
 if __name__ == "__main__":
     unittest.main()
-

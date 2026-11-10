@@ -7,6 +7,7 @@ library root, the app folder the protocol handler opens, the extract folder a de
 link falls back to) can only be set by the app. The wizard is the one place that does it,
 and every save is refused until the checks pass.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,8 +39,7 @@ def _game(root: Path, category: str, name: str) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(folder / f"{name}.zip", "w", zipfile.ZIP_DEFLATED) as handle:
         handle.writestr(f"{name}/game.bin", b"a" * 512)
-    (folder / ".game-info.json").write_text(
-        f'{{"appid":"1","name":"{name}","genres":["Idle"]}}', encoding="utf-8")
+    (folder / ".game-info.json").write_text(f'{{"appid":"1","name":"{name}","genres":["Idle"]}}', encoding="utf-8")
     return folder
 
 
@@ -79,8 +79,7 @@ class TheLinkCarriesTheThreeFolders(unittest.TestCase):
         self.assertEqual((request.library, request.extract, request.app), ("", "", ""))
 
     def test_a_link_carries_the_page_paths(self):
-        request = parse_setup_uri(
-            "steamgameorganizer://setup?library=E%3A%2FGames&extract=E%3A%2FOut&app=E%3A%2FApp")
+        request = parse_setup_uri("steamgameorganizer://setup?library=E%3A%2FGames&extract=E%3A%2FOut&app=E%3A%2FApp")
         self.assertEqual(request.library, "E:/Games")
         self.assertEqual(request.extract, "E:/Out")
         self.assertEqual(request.app, "E:/App")
@@ -97,8 +96,7 @@ class TheLinkCarriesTheThreeFolders(unittest.TestCase):
         # Control characters cannot sit in a path box, and a path is not a
         # megabyte long: both are dropped rather than carried into the wizard.
         long_path = "E:" + ("x" * 5000)
-        request = parse_setup_uri(
-            f"steamgameorganizer://setup?library={long_path}%0A%09&extract=&app=")
+        request = parse_setup_uri(f"steamgameorganizer://setup?library={long_path}%0A%09&extract=&app=")
         self.assertEqual(len(request.library), 1000)
         self.assertNotIn("\n", request.library)
         self.assertNotIn("\t", request.library)
@@ -117,9 +115,7 @@ class TheChecksSayWhatIsWrong(unittest.TestCase):
         self.extract = self.root / "Out"
         self.extract.mkdir()
         self.register = _RecordingRegister()
-        self.service = SetupService(AppLogger(self.root / "x.log"),
-                                     register_handler=self.register,
-                                     registered_command=lambda: "HKCU command")
+        self.service = SetupService(AppLogger(self.root / "x.log"), register_handler=self.register, registered_command=lambda: "HKCU command")
 
     def _rows(self, **overrides):
         values = {"library": self.library, "app": self.app, "extract": self.extract}
@@ -173,16 +169,13 @@ class TheChecksSayWhatIsWrong(unittest.TestCase):
         self.assertIn("error", self._levels(rows))
 
     def test_a_missing_7zip_is_a_warning(self):
-        with unittest.mock.patch.object(setup_service.ExtractService, "find_tool",
-                                         return_value=(None, "no 7z anywhere")):
+        with unittest.mock.patch.object(setup_service.ExtractService, "find_tool", return_value=(None, "no 7z anywhere")):
             rows = self._rows()
         self.assertIn("warn", self._levels(rows))
         self.assertIn("7-Zip", " ".join(message for _, message in rows))
 
     def test_an_unregistered_link_is_a_warning_and_a_registered_one_is_reported(self):
-        unregistered = SetupService(AppLogger(self.root / "x.log"),
-                                     register_handler=self.register,
-                                     registered_command=lambda: None)
+        unregistered = SetupService(AppLogger(self.root / "x.log"), register_handler=self.register, registered_command=lambda: None)
         rows = unregistered.checks(self.library, self.app, self.extract)
         self.assertIn("warn", self._levels(rows))
         self.assertIn("not registered", " ".join(message for _, message in rows))
@@ -202,9 +195,7 @@ class TheSaveWritesTheThreeFolders(unittest.TestCase):
         self.extract = self.sandbox / "Out"
         self.extract.mkdir()
         self.register = _RecordingRegister()
-        self.service = SetupService(AppLogger(self.sandbox / "x.log"),
-                                     register_handler=self.register,
-                                     registered_command=lambda: "HKCU command")
+        self.service = SetupService(AppLogger(self.sandbox / "x.log"), register_handler=self.register, registered_command=lambda: "HKCU command")
         self.config = AppConfig(self.sandbox)
 
     def _settings(self):
@@ -224,8 +215,7 @@ class TheSaveWritesTheThreeFolders(unittest.TestCase):
         self.assertEqual(self.register.calls, [(sys.executable, self.app / ENTRY_POINT)])
 
     def test_a_missing_library_is_created_and_saved(self):
-        saved, rows = self.service.apply(self.config, self.sandbox / "Nowhere", self.app,
-                                           self.extract)
+        saved, rows = self.service.apply(self.config, self.sandbox / "Nowhere", self.app, self.extract)
         self.assertTrue(saved)
         self.assertTrue((self.sandbox / "Nowhere").is_dir(), "apply() created the library folder")
         self.assertEqual(self.register.calls, [(sys.executable, self.app / ENTRY_POINT)])
@@ -241,8 +231,7 @@ class TheSaveWritesTheThreeFolders(unittest.TestCase):
 
     def test_a_missing_library_is_created_and_a_previous_setup_survives(self):
         self.service.apply(self.config, self.library, self.app, self.extract)
-        saved, _ = self.service.apply(self.config, self.sandbox / "Nowhere", self.app,
-                                        self.extract)
+        saved, _ = self.service.apply(self.config, self.sandbox / "Nowhere", self.app, self.extract)
         self.assertTrue(saved)
         # The new save overwrites the previous one.
         self.assertEqual(self.config.library_root, self.sandbox / "Nowhere")
@@ -254,8 +243,7 @@ class TheSaveWritesTheThreeFolders(unittest.TestCase):
         self.assertEqual(self.config.library_root, self.library)
         self.assertEqual(self.config.extract_folders, [self.extract])
         self.assertIn("warn", {level for level, _ in rows})
-        self.assertIn("could not be registered",
-                      " ".join(message for _, message in rows))
+        self.assertIn("could not be registered", " ".join(message for _, message in rows))
 
 
 class TheWizardOpensOnTheAppOwnSettings(unittest.TestCase):
@@ -274,22 +262,20 @@ class TheWizardOpensOnTheAppOwnSettings(unittest.TestCase):
         root = tk.Tk()
         root.withdraw()
         self.addCleanup(close_root, root)
-        return SetupWindow(root, self.config, self.logger, prefill=prefill,
-                           service=service or _RecordingService())
+        return SetupWindow(root, self.config, self.logger, prefill=prefill, service=service or _RecordingService())
 
     def test_the_boxes_start_on_the_app_own_answers(self):
         window = self._window()
         self.assertEqual(window.library_var.get(), str(self.games))
         self.assertEqual(window.extract_var.get(), str(self.config.extract_folder))
         # The app folder defaults to the copy that is running the wizard.
-        self.assertEqual(window.app_var.get(),
-                         str(Path(__file__).resolve().parents[1]))
+        self.assertEqual(window.app_var.get(), str(Path(__file__).resolve().parents[1]))
 
     def test_a_prefill_overrides_the_defaults(self):
         from core.uri_actions import SetupRequest
+
         window = self._window(prefill=SetupRequest(library="L", extract="E", app="A"))
-        self.assertEqual((window.library_var.get(), window.extract_var.get(),
-                          window.app_var.get()), ("L", "E", "A"))
+        self.assertEqual((window.library_var.get(), window.extract_var.get(), window.app_var.get()), ("L", "E", "A"))
 
     def test_save_hands_the_boxes_to_the_service(self):
         service = _RecordingService()
@@ -325,7 +311,7 @@ class TheCatalogPageCarriesTheButton(unittest.TestCase):
             # The script rebuilds the link from the two boxes, the same
             # way it rebuilds the Extract links, so the wizard opens on
             # the folders the reader has already typed.
-            script = text[text.index("<script>"):]
+            script = text[text.index("<script>") :]
             self.assertIn("setup-link", script)
             self.assertIn("params.push('library='", script)
             self.assertIn("params.push('extract='", script)
@@ -342,12 +328,8 @@ class TheEntryPointOpensTheWizard(unittest.TestCase):
 
     def test_a_setup_link_opens_the_wizard_with_the_page_paths(self):
         opened = []
-        with unittest.mock.patch.object(
-                steam_game_organizer, "_open_setup",
-                side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0):
-            code = steam_game_organizer._handle_uri(
-                "steamgameorganizer://setup?library=E%3A%2FGames&extract=E%3A%2FOut",
-                self.config, self.logger)
+        with unittest.mock.patch.object(steam_game_organizer, "_open_setup", side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0):
+            code = steam_game_organizer._handle_uri("steamgameorganizer://setup?library=E%3A%2FGames&extract=E%3A%2FOut", self.config, self.logger)
         self.assertEqual(code, 0)
         self.assertEqual(len(opened), 1)
         args, kwargs = opened[0]
@@ -360,23 +342,18 @@ class TheEntryPointOpensTheWizard(unittest.TestCase):
         # naming an archive outside the configured library is refused,
         # not opened as a setup wizard.
         with unittest.mock.patch.object(steam_game_organizer, "_open_setup") as wizard:
-            code = steam_game_organizer._handle_uri(
-                "steamgameorganizer://extract?src=E%3A%2FGames%2Fgame.7z",
-                self.config, self.logger)
+            code = steam_game_organizer._handle_uri("steamgameorganizer://extract?src=E%3A%2FGames%2Fgame.7z", self.config, self.logger)
         wizard.assert_not_called()
         self.assertEqual(code, 2)
 
     def test_the_setup_flag_opens_the_wizard(self):
         opened = []
-        with unittest.mock.patch.object(
-                steam_game_organizer, "_open_setup",
-                side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0), \
-unittest.mock.patch.object(steam_game_organizer, "AppConfig",
-                                          lambda root, **kwargs: self.config), \
-              unittest.mock.patch.object(steam_game_organizer, "AppLogger",
-                                          lambda path, **kwargs: self.logger), \
-              unittest.mock.patch.object(sys, "argv",
-                                         ["steam_game_organizer.py", "--setup"]):
+        with (
+            unittest.mock.patch.object(steam_game_organizer, "_open_setup", side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0),
+            unittest.mock.patch.object(steam_game_organizer, "AppConfig", lambda root, **kwargs: self.config),
+            unittest.mock.patch.object(steam_game_organizer, "AppLogger", lambda path, **kwargs: self.logger),
+            unittest.mock.patch.object(sys, "argv", ["steam_game_organizer.py", "--setup"]),
+        ):
             code = steam_game_organizer.main()
         self.assertEqual(code, 0)
         self.assertEqual(len(opened), 1)
@@ -392,15 +369,12 @@ unittest.mock.patch.object(steam_game_organizer, "AppConfig",
         screen looking at an empty folder with no indication of what to do.
         """
         opened = []
-        with unittest.mock.patch.object(
-                steam_game_organizer, "_open_setup",
-                side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0), \
-unittest.mock.patch.object(steam_game_organizer, "AppConfig",
-                                          lambda root, **kwargs: self.config), \
-              unittest.mock.patch.object(steam_game_organizer, "AppLogger",
-                                          lambda path, **kwargs: self.logger), \
-              unittest.mock.patch.object(sys, "argv",
-                                         ["steam_game_organizer.py"]):
+        with (
+            unittest.mock.patch.object(steam_game_organizer, "_open_setup", side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0),
+            unittest.mock.patch.object(steam_game_organizer, "AppConfig", lambda root, **kwargs: self.config),
+            unittest.mock.patch.object(steam_game_organizer, "AppLogger", lambda path, **kwargs: self.logger),
+            unittest.mock.patch.object(sys, "argv", ["steam_game_organizer.py"]),
+        ):
             code = steam_game_organizer.main()
         self.assertEqual(code, 0)
         self.assertEqual(len(opened), 1)
@@ -413,21 +387,19 @@ unittest.mock.patch.object(steam_game_organizer, "AppConfig",
         # AppConfig's default library root is Downloads/Games, which does not exist either, so
         # pointing the config at a real folder in the sandbox is what makes this a configured PC.
         opened = []
-        games = self.sandbox / "Games"; games.mkdir()
+        games = self.sandbox / "Games"
+        games.mkdir()
         self.config.library_root = games
         self.config.save()
-        with unittest.mock.patch.object(
-                steam_game_organizer, "_open_setup",
-                side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0), \
-unittest.mock.patch.object(steam_game_organizer, "AppConfig",
-                                          lambda root, **kwargs: self.config), \
-              unittest.mock.patch.object(steam_game_organizer, "AppLogger",
-                                          lambda path, **kwargs: self.logger), \
-              unittest.mock.patch.object(sys, "argv", ["steam_game_organizer.py"]), \
-              unittest.mock.patch("app.application.Application") as app_class:
+        with (
+            unittest.mock.patch.object(steam_game_organizer, "_open_setup", side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0),
+            unittest.mock.patch.object(steam_game_organizer, "AppConfig", lambda root, **kwargs: self.config),
+            unittest.mock.patch.object(steam_game_organizer, "AppLogger", lambda path, **kwargs: self.logger),
+            unittest.mock.patch.object(sys, "argv", ["steam_game_organizer.py"]),
+            unittest.mock.patch("app.application.Application") as app_class,
+        ):
             app_class.return_value.run.return_value = 0
             code = steam_game_organizer.main()
         self.assertEqual(code, 0)
         self.assertEqual(len(opened), 0)
         app_class.assert_called_once()
-

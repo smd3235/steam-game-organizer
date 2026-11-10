@@ -6,11 +6,13 @@ organize, rollback, audit, repair — reads and writes. They are deliberately fr
 logic; the why of each field is documented beside it so a change to one model does
 not silently break a screen or service that depends on it.
 """
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from core.constants import CategoryEvidence,UNSORTED_EVIDENCE
+from core.constants import CategoryEvidence, UNSORTED_EVIDENCE
+
 
 @dataclass
 class SteamMatch:
@@ -21,6 +23,7 @@ class SteamMatch:
     the matcher is, so a screen can show a low-confidence match as a guess the user
     should confirm rather than treat as fact.
     """
+
     found: bool = False
     appid: str = ""
     name: str = ""
@@ -36,7 +39,8 @@ class SteamMatch:
     publisher: str = ""
     score: float = 0.0
     artwork_url: str = ""
-    asset_urls: dict[str,str] = field(default_factory=dict)
+    asset_urls: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass
 class ArtworkResult:
@@ -44,7 +48,7 @@ class ArtworkResult:
     path: Optional[Path] = None
     source: str = ""
     reason: str = ""
-    assets: dict[str,Path] = field(default_factory=dict)
+    assets: dict[str, Path] = field(default_factory=dict)
 
     def files(self) -> list[Path]:
         """Every image this result really holds on disk: the primary plus each downloaded asset.
@@ -71,6 +75,7 @@ class ArtworkResult:
         """Whether this game has any artwork on disk at all, whichever way it arrived."""
         return bool(self.files())
 
+
 @dataclass
 class OrganizationDecision:
     category: str = "Unsorted"
@@ -84,18 +89,21 @@ class OrganizationDecision:
     changed_from_suggestion: bool = False
     skipped: bool = False
 
+
 @dataclass
 class ConversionResult:
     """Outcome of the .zip/.rar -> .7z conversion (or rebuild) for one archive. Kept on the archive so the
     Done screen can report what actually happened, including failures that were only visible in the log."""
-    status: str = "pending"          # converted | rebuilt | skipped | failed | not_needed
+
+    status: str = "pending"  # converted | rebuilt | skipped | failed | not_needed
     message: str = ""
     source_format: str = ""
     target_format: str = ""
     final_name: str = ""
     final_size: int = 0
-    source_size: int = 0            # bytes before conversion, so the run report can state real space saved
+    source_size: int = 0  # bytes before conversion, so the run report can state real space saved
     free_bytes_at_failure: int = 0
+
 
 @dataclass
 class GameArchive:
@@ -123,6 +131,7 @@ class GameArchive:
     def __hash__(self):
         return hash(self.identity_key)
 
+
 @dataclass
 class ScanResult:
     archives: list[GameArchive] = field(default_factory=list)
@@ -133,6 +142,7 @@ class ScanResult:
     stale_build_dirs: int = 0
     stale_build_bytes: int = 0
 
+
 @dataclass
 class AppState:
     phase: str = "idle"
@@ -142,7 +152,3 @@ class AppState:
     cancel_requested: bool = False
     developer_mode: bool = False
     last_error: str = ""
-
-
-
-

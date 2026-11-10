@@ -3,6 +3,7 @@
 The predicate is the one both the extract step and the catalog badge lean on, so it is pinned directly and in
 isolation: a game folder is not scanned with a stub archiver just to ask "does this look like a repack".
 """
+
 from __future__ import annotations
 
 import unittest
@@ -11,8 +12,7 @@ import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from services.installer_detect import (NEEDS_INSTALL_DIRNAME, find_installer,
-                                       has_needs_install_mark, looks_like_installer)
+from services.installer_detect import NEEDS_INSTALL_DIRNAME, find_installer, has_needs_install_mark, looks_like_installer
 
 
 @pytest.mark.notkinter
@@ -34,8 +34,7 @@ class LooksLikeAnInstaller(unittest.TestCase):
         sig = find_installer(self.root)
         self.assertIsNotNone(sig, "a setup.exe next to a .bin was not recognised")
         self.assertEqual(sig.kind, "repack")
-        self.assertEqual(sig.program, setup,
-                         "the message could not name the installer to run")
+        self.assertEqual(sig.program, setup, "the message could not name the installer to run")
         self.assertEqual(sig.program.name, "setup.exe")
 
     def test_an_iso_release_is_flagged_as_an_iso(self):
@@ -48,8 +47,7 @@ class LooksLikeAnInstaller(unittest.TestCase):
     def test_a_repack_signature_nested_in_a_wrapper_folder_is_still_found(self):
         self._touch("Airborne Empire/setup.exe")
         self._touch("Airborne Empire/setup-2.bin")
-        self.assertTrue(looks_like_installer(self.root),
-                        "an installer nested inside a wrapper folder was missed")
+        self.assertTrue(looks_like_installer(self.root), "an installer nested inside a wrapper folder was missed")
 
     def test_a_setup_exe_without_a_bin_is_not_an_installer(self):
         # A launcher called setup.exe and nothing else is just a game, not a repack. Requiring the .bin is what
@@ -87,14 +85,12 @@ class TheNeedsInstallMark(unittest.TestCase):
             outer = Path(d) / NEEDS_INSTALL_DIRNAME
             game = outer / "Some Game"
             game.mkdir(parents=True)
-            self.assertTrue(has_needs_install_mark(game),
-                            "a game folder inside Needs Install was not detected")
+            self.assertTrue(has_needs_install_mark(game), "a game folder inside Needs Install was not detected")
 
     def test_true_when_the_folder_contains_a_needs_install_subfolder(self):
         with TemporaryDirectory() as d:
             (Path(d) / NEEDS_INSTALL_DIRNAME).mkdir()
-            self.assertTrue(has_needs_install_mark(d),
-                            "the old layout (Needs Install inside the game folder) was not detected")
+            self.assertTrue(has_needs_install_mark(d), "the old layout (Needs Install inside the game folder) was not detected")
 
     def test_false_when_it_does_not(self):
         with TemporaryDirectory() as d:
@@ -103,8 +99,7 @@ class TheNeedsInstallMark(unittest.TestCase):
     def test_false_for_a_non_directory(self):
         with TemporaryDirectory() as d:
             (Path(d) / NEEDS_INSTALL_DIRNAME).write_bytes(b"x")
-            self.assertFalse(has_needs_install_mark(d),
-                             "a file named 'Needs Install' was mistaken for the relocation folder")
+            self.assertFalse(has_needs_install_mark(d), "a file named 'Needs Install' was mistaken for the relocation folder")
 
 
 if __name__ == "__main__":

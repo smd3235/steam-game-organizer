@@ -18,6 +18,7 @@ This was not registered on the machine that generated the library, and the catal
 pointing at a scheme Windows had never heard of. Running this is not optional setup: without it every Extract
 button in the generated page is a dead link.
 """
+
 from pathlib import Path
 import argparse
 import os
@@ -47,6 +48,7 @@ def _registered_command():
     third time here.
     """
     import winreg
+
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REGISTRY_ROOT + "\\" + SCHEME + r"\shell\open\command") as key:
             return str(winreg.QueryValueEx(key, None)[0])
@@ -57,6 +59,7 @@ def _registered_command():
 def _py_association_command():
     """The command Windows currently has for double-clicking a .py, or None."""
     import winreg
+
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REGISTRY_ROOT + r"\SGO.Python.File\shell\open\command") as key:
             return str(winreg.QueryValueEx(key, None)[0])
@@ -82,6 +85,7 @@ def _archive_tool():
     """Whether this machine can actually unpack what the handler is being asked to extract."""
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from services.extract_service import ExtractService
+
     found, reason = ExtractService.find_tool()
     return f"{found}" if found else f"NO ({reason})"
 
@@ -97,9 +101,11 @@ def _build_command(python: str, entry: Path) -> str:
         return f'"{python}" --uri "%1"'
     return f'"{python}" "{entry}" --uri "%1"'
 
+
 def install_windows(python: str, entry: Path):
     """Register the scheme under HKCU, which is per-user and needs no elevation."""
     import winreg
+
     key_path = REGISTRY_ROOT + "\\" + SCHEME
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
         winreg.SetValueEx(key, None, 0, winreg.REG_SZ, f"URL:{APP_LABEL}")
@@ -113,12 +119,13 @@ def install_windows(python: str, entry: Path):
     # "the two writes did not raise" - so a key Windows declined, or a value something else had rewritten,
     # was reported as a working handler. This is the one setup step the README calls mandatory, and the
     # symptom when it silently failed is a dead Extract button with nothing to show for it.
-    read_back=_registered_command()
-    if read_back==command:
+    read_back = _registered_command()
+    if read_back == command:
         print(f"  verified: {SCHEME}:// now opens python with --uri")
     else:
         print(f"  WARNING: that key does not read back as written. It currently reads: {read_back!r}")
     _install_py_association(entry)
+
 
 def _install_py_association(entry: Path):
     """Make double-clicking steam_game_organizer.py run it, per-user.
@@ -130,6 +137,7 @@ def _install_py_association(entry: Path):
     which may be the Microsoft Store's python3.exe alias, and that one opens the Store.
     """
     import winreg
+
     runtime_python = str((entry.parent / "runtime" / "python.exe").resolve())
     if not Path(runtime_python).is_file():
         print(f"  WARNING: no bundled python at {runtime_python}; .py will still open as text")
@@ -170,6 +178,7 @@ def export_windows_reg(destination: Path, python: str, entry: Path):
     so it carries the correct interpreter path instead of whichever python happened to be running.
     """
     import sys
+
     if getattr(sys, "frozen", False):
         command = f'"{python}" --uri "%1"'
         py_command = f'"{python}" "%1"'
@@ -220,8 +229,7 @@ def main():
         sys.exit(f"cannot find the entry point at {entry}")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="report what is registered, change nothing")
-    parser.add_argument("--export", type=Path, metavar="FILE",
-                        help="write a Windows .reg for another PC and exit")
+    parser.add_argument("--export", type=Path, metavar="FILE", help="write a Windows .reg for another PC and exit")
     arguments = parser.parse_args()
 
     # The interpreter that registered the handler is the one that has to open the link. On Windows that is
@@ -247,4 +255,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

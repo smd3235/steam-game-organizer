@@ -12,6 +12,7 @@ Deliberately NOT banned: `.desktop`, `unrar`, and the Steam Deck / POSIX path sp
 lists. `LEGACY_LINK_NAMES` and `LEGACY_CATALOGS` are the names of files older releases *wrote*; the code's
 job is to delete them, and a guard that forbade the strings would forbid the cleanup itself.
 """
+
 import ast
 import re
 import sys
@@ -28,24 +29,12 @@ APP_DIRS = ("app", "core", "services", "ui", "utils")
 
 # (name, matching function, why it cannot be reintroduced)
 BANNED = (
-    ("xdg-open", lambda text: "xdg-open" in text,
-     "the Linux file opener. No launcher here calls it: utils/desktop.py uses os.startfile."),
-    ("xdg-mime / mimeapps.list", lambda text: "xdg-mime" in text or "mimeapps.list" in text,
-     "the XDG association mechanism, replaced by HKCR in html_handler()."),
-    ("flatpak", lambda text: "flatpak" in text,
-     "the Flatpak sandbox. v9.19 removed the host re-exec and this pass removed the remaining "
-     "flatpak run/info browser fallback in the review view."),
-    ("/proc/meminfo", lambda text: "/proc/meminfo" in text,
-     "the Linux memory source. Windows asks GlobalMemoryStatusEx; keeping a second reading "
-     "meant a second answer to one question."),
-    ("/home/<user> paths", lambda text: any(p in text for p in ("/home/", "/root/", "/usr/bin")),
-     "POSIX home and binary paths. They cannot resolve on this platform, and a catalog that "
-     "shows one tells the reader to look somewhere that does not exist."),
-    ("Linux browser package names",
-     lambda text: any(n in text for n in ("google-chrome-stable", "chromium-browser",
-                                           "com.google.ChromeDev", "org.chromium.Chromium")),
-     "Debian package names and Flatpak app ids. Chrome installs into Program Files without "
-     "putting itself on PATH, so every one of these lookups returned None on this machine."),
+    ("xdg-open", lambda text: "xdg-open" in text, "the Linux file opener. No launcher here calls it: utils/desktop.py uses os.startfile."),
+    ("xdg-mime / mimeapps.list", lambda text: "xdg-mime" in text or "mimeapps.list" in text, "the XDG association mechanism, replaced by HKCR in html_handler()."),
+    ("flatpak", lambda text: "flatpak" in text, "the Flatpak sandbox. v9.19 removed the host re-exec and this pass removed the remaining flatpak run/info browser fallback in the review view."),
+    ("/proc/meminfo", lambda text: "/proc/meminfo" in text, "the Linux memory source. Windows asks GlobalMemoryStatusEx; keeping a second reading meant a second answer to one question."),
+    ("/home/<user> paths", lambda text: any(p in text for p in ("/home/", "/root/", "/usr/bin")), "POSIX home and binary paths. They cannot resolve on this platform, and a catalog that shows one tells the reader to look somewhere that does not exist."),
+    ("Linux browser package names", lambda text: any(n in text for n in ("google-chrome-stable", "chromium-browser", "com.google.ChromeDev", "org.chromium.Chromium")), "Debian package names and Flatpak app ids. Chrome installs into Program Files without putting itself on PATH, so every one of these lookups returned None on this machine."),
 )
 
 
@@ -63,14 +52,12 @@ def string_literals(tree):
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             body = getattr(node, "body", None)
-            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) \
-                    and isinstance(body[0].value.value, str):
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
                 docstrings.add(id(body[0].value))
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings:
             yield node.value, node.lineno
-        elif isinstance(node, ast.keyword) and node.arg is not None and \
-                isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+        elif isinstance(node, ast.keyword) and node.arg is not None and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
             yield node.value.value, node.value.lineno
 
 
@@ -104,11 +91,9 @@ class TestNoNonWindowsPlatformCode(unittest.TestCase):
         """
         from services.catalog_service import CatalogService
         from services.organizer_service import OrganizerService
-        self.assertTrue(
-            any(name.endswith('.desktop') for name in OrganizerService.LEGACY_LINK_NAMES),
-            "the legacy .desktop link names are gone; check whether the guard above should change too")
-        self.assertIn('.desktop', CatalogService.LEGACY_LAUNCHER,
-                      "the legacy catalog launcher name is gone; check whether the guard above should change too")
+
+        self.assertTrue(any(name.endswith(".desktop") for name in OrganizerService.LEGACY_LINK_NAMES), "the legacy .desktop link names are gone; check whether the guard above should change too")
+        self.assertIn(".desktop", CatalogService.LEGACY_LAUNCHER, "the legacy catalog launcher name is gone; check whether the guard above should change too")
 
     def test_the_ban_list_catches_what_it_claims_to(self):
         """A guard nobody has watched fail is a guard nobody knows is armed."""
@@ -121,8 +106,7 @@ class TestNoNonWindowsPlatformCode(unittest.TestCase):
             "Linux browser package names": "names = ('google-chrome-stable', 'chromium-browser')",
         }
         for name, predicate, _ in BANNED:
-            caught = any(predicate(node.value) for node in ast.walk(ast.parse(samples[name]))
-                         if isinstance(node, ast.Constant) and isinstance(node.value, str))
+            caught = any(predicate(node.value) for node in ast.walk(ast.parse(samples[name])) if isinstance(node, ast.Constant) and isinstance(node.value, str))
             self.assertTrue(caught, f"the pattern for {name!r} does not match the code it is meant to catch")
 
     def test_the_guard_ignores_comments_and_docstrings(self):
@@ -131,12 +115,9 @@ class TestNoNonWindowsPlatformCode(unittest.TestCase):
         text = source.read_text(encoding="utf-8")
         self.assertIn("flatpak", text.lower(), "the removal note is gone; the tree should say why it is safe")
         tree = ast.parse(text)
-        docstrings = [node.value for node in ast.walk(tree)
-                      if isinstance(node, ast.Constant) and isinstance(node.value, str)]
-        self.assertTrue(any("flatpak" in d.lower() for d in docstrings),
-                        "the note naming flatpak should be a docstring, which the guard skips")
-        self.assertEqual([], self._offenders(lambda value: "flatpak" in value.lower()),
-                         "a docstring mentioning flatpak is being counted as code")
+        docstrings = [node.value for node in ast.walk(tree) if isinstance(node, ast.Constant) and isinstance(node.value, str)]
+        self.assertTrue(any("flatpak" in d.lower() for d in docstrings), "the note naming flatpak should be a docstring, which the guard skips")
+        self.assertEqual([], self._offenders(lambda value: "flatpak" in value.lower()), "a docstring mentioning flatpak is being counted as code")
 
 
 # The constructors that write into the directory they are handed. This is the whole reason a POSIX path in a
@@ -177,9 +158,7 @@ def writing_constructor_calls(tree):
         if name not in names:
             continue
         arguments = list(node.args) + [keyword.value for keyword in node.keywords]
-        yield name, [constant.value for argument in arguments
-                     for constant in ast.walk(argument)
-                     if isinstance(constant, ast.Constant) and isinstance(constant.value, str)], node.lineno
+        yield name, [constant.value for argument in arguments for constant in ast.walk(argument) if isinstance(constant, ast.Constant) and isinstance(constant.value, str)], node.lineno
 
 
 def posix_paths_aimed_at_a_writer():
@@ -207,10 +186,7 @@ class TestNoWritingIsAimedOutsideATemporaryTree(unittest.TestCase):
 
     def test_no_writing_constructor_is_handed_a_posix_absolute_path(self):
         found = posix_paths_aimed_at_a_writer()
-        self.assertEqual([], found,
-                         "these constructors create the directory they are handed, and on Windows a leading "
-                         "slash resolves against the current drive, so each of these writes outside the "
-                         "repository:\n" + "\n".join(found))
+        self.assertEqual([], found, "these constructors create the directory they are handed, and on Windows a leading slash resolves against the current drive, so each of these writes outside the repository:\n" + "\n".join(found))
 
     def test_the_guard_notices_a_posix_path_handed_to_every_writer(self):
         """The control, without which the test above could pass by matching nothing at all.
@@ -219,20 +195,9 @@ class TestNoWritingIsAimedOutsideATemporaryTree(unittest.TestCase):
         the suite happens to contain today - including the last line, which is the shape the fixes use and must
         stay unflagged.
         """
-        planted = (
-            "a = AppConfig(Path('/tmp/project-root'))\n"
-            "b = AppLogger(Path('/tmp') / 'x.log')\n"
-            "c = ArtworkService(Path('/tmp/artwork-cache'), logger)\n"
-            "d = RollbackService(Path('/tmp/root'), logger)\n"
-            "e = AppLogger(root / 'x.log')\n"
-        )
-        flagged = sorted(f"{name}({literal!r})" for name, literals, _line
-                         in writing_constructor_calls(ast.parse(planted))
-                         for literal in literals if POSIX_ABSOLUTE.match(literal))
-        self.assertEqual(["AppConfig('/tmp/project-root')", "AppLogger('/tmp')",
-                          "ArtworkService('/tmp/artwork-cache')", "RollbackService('/tmp/root')"], flagged,
-                         'the matcher no longer catches a POSIX path for every constructor it claims to watch, '
-                         'or now flags a temporary-directory path')
+        planted = "a = AppConfig(Path('/tmp/project-root'))\nb = AppLogger(Path('/tmp') / 'x.log')\nc = ArtworkService(Path('/tmp/artwork-cache'), logger)\nd = RollbackService(Path('/tmp/root'), logger)\ne = AppLogger(root / 'x.log')\n"
+        flagged = sorted(f"{name}({literal!r})" for name, literals, _line in writing_constructor_calls(ast.parse(planted)) for literal in literals if POSIX_ABSOLUTE.match(literal))
+        self.assertEqual(["AppConfig('/tmp/project-root')", "AppLogger('/tmp')", "ArtworkService('/tmp/artwork-cache')", "RollbackService('/tmp/root')"], flagged, "the matcher no longer catches a POSIX path for every constructor it claims to watch, or now flags a temporary-directory path")
 
     def test_the_scan_really_reads_the_tree(self):
         """The named constructors it found, so a scan that stopped walking files cannot report a clean tree."""
@@ -240,10 +205,8 @@ class TestNoWritingIsAimedOutsideATemporaryTree(unittest.TestCase):
         for path in source_files(APP_DIRS + ("tests", "tools")):
             for name, _literals, _line in writing_constructor_calls(ast.parse(path.read_text(encoding="utf-8"))):
                 names.add(name)
-        self.assertEqual(sorted(name for name, _reason in WRITING_CONSTRUCTORS), sorted(names),
-                         f'the scan saw only {sorted(names)} of the constructors it is meant to watch')
+        self.assertEqual(sorted(name for name, _reason in WRITING_CONSTRUCTORS), sorted(names), f"the scan saw only {sorted(names)} of the constructors it is meant to watch")
 
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -15,6 +15,7 @@ Sizes are the ones Windows actually asks a shortcut or Explorer for. Small ones 
 from one large master rather than drawn per-size: a 16px icon drawn separately is a different icon, and the
 detail that survives at 16px is not the detail that survives at 48.
 """
+
 from pathlib import Path
 import sys
 
@@ -24,14 +25,14 @@ from ui.theme import ACCENT, ACCENT_HI, BG, BORDER, CYAN, GREEN, ORANGE, PANEL2,
 # What Explorer, taskbar and shortcut renderers request. 256 is the largest any of them pick up.
 SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 
-MASTER = 1024          # Drawn once, big, then downsampled. Smooth edges come from here, not from more code.
-GRID = 512             # The SVG's own coordinate space, so the numbers below match the original artwork.
+MASTER = 1024  # Drawn once, big, then downsampled. Smooth edges come from here, not from more code.
+GRID = 512  # The SVG's own coordinate space, so the numbers below match the original artwork.
 OUT = Path(__file__).resolve().parent.parent / "assets" / "icon.ico"
 
 
 def _rgb(value):
     value = value.lstrip("#")
-    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
 
 
 def _vertical_gradient(size, top, bottom):
@@ -73,8 +74,7 @@ def build():
     draw = ImageDraw.Draw(image)
     # A hairline inside the edge. Without it the icon has no defined border on a dark desktop and the
     # rounded corners dissolve into the background.
-    draw.rounded_rectangle([10 * k, 10 * k, (GRID - 10) * k, (GRID - 10) * k],
-                           radius=int(106 * k), outline=_rgb(BORDER) + (140,), width=max(1, int(2 * k)))
+    draw.rounded_rectangle([10 * k, 10 * k, (GRID - 10) * k, (GRID - 10) * k], radius=int(106 * k), outline=_rgb(BORDER) + (140,), width=max(1, int(2 * k)))
 
     # Folder back, with the raised tab that makes the silhouette read as a folder and not a box.
     back = Image.new("L", (MASTER, MASTER), 0)
@@ -84,31 +84,25 @@ def build():
     back_draw.rounded_rectangle([112 * k, 186 * k, 416 * k, 372 * k], radius=int(22 * k), fill=255)
     _fill_shape(image, back, _rgb(PANEL2))
     draw = ImageDraw.Draw(image)
-    draw.line([(int(x * k), int(y * k)) for x, y in tab], fill=_rgb(BORDER) + (255,), width=max(1, int(5 * k)),
-              joint="curve")
-    draw.rounded_rectangle([112 * k, 186 * k, 416 * k, 372 * k], radius=int(22 * k), outline=_rgb(BORDER) + (255,),
-                           width=max(1, int(5 * k)))
+    draw.line([(int(x * k), int(y * k)) for x, y in tab], fill=_rgb(BORDER) + (255,), width=max(1, int(5 * k)), joint="curve")
+    draw.rounded_rectangle([112 * k, 186 * k, 416 * k, 372 * k], radius=int(22 * k), outline=_rgb(BORDER) + (255,), width=max(1, int(5 * k)))
 
     # Game cases going in, drawn over the folder back and under its front, so they sit inside it.
     for x, top, height, colour in ((146, 118, 132, CYAN), (214, 96, 154, GREEN), (282, 126, 124, ORANGE)):
-        draw.rounded_rectangle([x * k, top * k, (x + 54) * k, (top + height) * k], radius=int(12 * k),
-                               fill=_rgb(colour))
+        draw.rounded_rectangle([x * k, top * k, (x + 54) * k, (top + height) * k], radius=int(12 * k), fill=_rgb(colour))
         # A label on each, dark enough to read as a spine rather than a highlight.
-        draw.rounded_rectangle([(x + 14) * k, (top + 18) * k, (x + 40) * k, (top + 24) * k], radius=int(3 * k),
-                               fill=_rgb(BG) + (90,))
+        draw.rounded_rectangle([(x + 14) * k, (top + 18) * k, (x + 40) * k, (top + 24) * k], radius=int(3 * k), fill=_rgb(BG) + (90,))
 
     # Folder front. A trapezoid rather than a rectangle, which is what gives the icon its perspective.
     front = Image.new("L", (MASTER, MASTER), 0)
-    ImageDraw.Draw(front).polygon([(int(88 * k), int(236 * k)), (int(424 * k), int(236 * k)),
-                                   (int(406 * k), int(406 * k)), (int(106 * k), int(406 * k))], fill=255)
+    ImageDraw.Draw(front).polygon([(int(88 * k), int(236 * k)), (int(424 * k), int(236 * k)), (int(406 * k), int(406 * k)), (int(106 * k), int(406 * k))], fill=255)
     _fill_shape(image, front, _rgb(ACCENT_HI))
     front_gradient = _vertical_gradient(MASTER, _rgb(ACCENT_HI), _rgb(ACCENT))
     image.paste(front_gradient, (0, 0), front)
 
     # A bright lip along the top edge of the front, the way light catches a folder's folded edge.
     lip = Image.new("L", (MASTER, MASTER), 0)
-    ImageDraw.Draw(lip).polygon([(int(88 * k), int(236 * k)), (int(424 * k), int(236 * k)),
-                                 (int(421 * k), int(256 * k)), (int(91 * k), int(256 * k))], fill=255)
+    ImageDraw.Draw(lip).polygon([(int(88 * k), int(236 * k)), (int(424 * k), int(236 * k)), (int(421 * k), int(256 * k)), (int(91 * k), int(256 * k))], fill=255)
     image.paste(Image.new("RGB", image.size, (255, 255, 255)), (0, 0), Image.eval(lip, lambda v: int(v * 0.18)))
     return image
 

@@ -14,6 +14,7 @@ top of the catalog, and --setup on the command line for the first run on a machi
 the protocol handler is not registered yet, because a button that goes through that
 handler cannot be the thing that installs it.
 """
+
 from pathlib import Path
 import os
 import sys
@@ -24,11 +25,13 @@ from services.extract_service import ExtractService
 
 def _default_register(python, entry):
     from tools.install_protocol_handler import install_windows
+
     install_windows(python, entry)
 
 
 def _default_registered():
     from tools.install_protocol_handler import _registered_command
+
     return _registered_command()
 
 
@@ -155,7 +158,7 @@ class SetupService:
             # The paths are saved by now, so they stick; only the handler failed, and
             # the user can run the installer again. Reported, not raised: a wizard that
             # dies here would look like the save never happened.
-            self.logger.warning('SETUP', f'HANDLER_REGISTER_FAILED error={type(exc).__name__}')
+            self.logger.warning("SETUP", f"HANDLER_REGISTER_FAILED error={type(exc).__name__}")
             rows.append(("warn", f"Paths saved, but the link could not be registered: {exc}"))
             return True, rows
         rows.append(("ok", "Saved. The catalog's Extract buttons now work from this PC."))
@@ -171,5 +174,3 @@ def _within(candidate, root):
     except OSError:
         return False
     return candidate == root or root in candidate.parents
-
-

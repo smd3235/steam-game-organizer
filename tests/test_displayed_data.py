@@ -11,6 +11,7 @@ The tests are grouped by that theme rather than by the file the code lives in, b
 assertion is usually about a chain: a field filled in one service, written to a sidecar, and read by a
 generator. Asserting any single link of that chain would pass with the rest broken.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,12 +24,12 @@ from pathlib import Path
 from app.controller import AppController
 from app.events import EventBus
 from core.logger import AppLogger
-from core.models import ArtworkResult,ScanResult,SteamMatch
+from core.models import ArtworkResult, ScanResult, SteamMatch
 from core.state import StateStore
 from core.config import AppConfig
 from services.catalog_service import CatalogService
 from services.steam_service import SteamService
-from ui.palette import GREEN,ORANGE
+from ui.palette import GREEN, ORANGE
 from ui.widgets.game_card import GameCard
 from utils.filename_utils import identity_key
 
@@ -53,8 +54,7 @@ class SteamTagsAreActuallyRead(unittest.TestCase):
 
     def test_tags_arrive_as_a_list_of_name_objects(self):
         """A list of {"id", "name"} objects, which is the shape a working source would send."""
-        match = self._build({"tags": [{"id": 16689, "name": "Great Soundtrack"},
-                                      {"id": 1038, "name": "Immersive Sim"}]})
+        match = self._build({"tags": [{"id": 16689, "name": "Great Soundtrack"}, {"id": 1038, "name": "Immersive Sim"}]})
         self.assertEqual(match.tags, ["Great Soundtrack", "Immersive Sim"])
 
     def test_tags_arrive_as_an_id_keyed_object(self):
@@ -84,8 +84,7 @@ class SteamTagsAreActuallyRead(unittest.TestCase):
         the fields come from the one response that describes the game rather than from the one that merely
         matched its name - and it no longer claims to be the fix.
         """
-        match = self.service._build_match("42", {"name": "Loop Miner", "id": 42},
-                                          {"tags": [{"id": 1, "name": "Idle"}]})
+        match = self.service._build_match("42", {"name": "Loop Miner", "id": 42}, {"tags": [{"id": 1, "name": "Idle"}]})
         self.assertEqual(match.tags, ["Idle"], "tags are read from the search result, which carries none")
 
 
@@ -96,13 +95,47 @@ class SteamTagsAreActuallyRead(unittest.TestCase):
 # The key set is the whole of what matters: which fields are absent. Both responses carry genres, categories,
 # content_descriptors, ratings, supported_languages, metacritic, screenshots, movies and package_groups, and
 # neither carries tags - Steam's store tags are community-curated and rendered into the store page's HTML.
-APPDETAILS_KEYS_322330=frozenset({'about_the_game','background','background_raw','capsule_image','capsule_imagev5',
-    'categories','content_descriptors','controller_support','detailed_description','developers','dlc','genres',
-    'header_image','is_free','linux_requirements','mac_requirements','metacritic','movies','name','package_groups',
-    'packages','pc_requirements','platforms','price_overview','publishers','ratings','recommendations',
-    'release_date','required_age','screenshots','short_description','steam_appid','support_info',
-    'supported_languages','type','website'})
-APPDETAILS_KEYS_1091500=APPDETAILS_KEYS_322330|{'achievements','legal_notice'}
+APPDETAILS_KEYS_322330 = frozenset(
+    {
+        "about_the_game",
+        "background",
+        "background_raw",
+        "capsule_image",
+        "capsule_imagev5",
+        "categories",
+        "content_descriptors",
+        "controller_support",
+        "detailed_description",
+        "developers",
+        "dlc",
+        "genres",
+        "header_image",
+        "is_free",
+        "linux_requirements",
+        "mac_requirements",
+        "metacritic",
+        "movies",
+        "name",
+        "package_groups",
+        "packages",
+        "pc_requirements",
+        "platforms",
+        "price_overview",
+        "publishers",
+        "ratings",
+        "recommendations",
+        "release_date",
+        "required_age",
+        "screenshots",
+        "short_description",
+        "steam_appid",
+        "support_info",
+        "supported_languages",
+        "type",
+        "website",
+    }
+)
+APPDETAILS_KEYS_1091500 = APPDETAILS_KEYS_322330 | {"achievements", "legal_notice"}
 
 
 class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
@@ -130,9 +163,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
     def _payload(self, keys=APPDETAILS_KEYS_322330):
         """A payload with the real field set, holding the four fields `_build_match` has to be able to read."""
         details = dict.fromkeys(keys)
-        details.update(name="DOOM", steam_appid="322330", type="game",
-                       genres=[{"id": 1, "description": "Action"}], categories=[{"id": 1, "description": "Single-player"}],
-                       release_date={"coming_soon": False, "date": "Apr 21, 2016"}, short_description="A game.")
+        details.update(name="DOOM", steam_appid="322330", type="game", genres=[{"id": 1, "description": "Action"}], categories=[{"id": 1, "description": "Single-player"}], release_date={"coming_soon": False, "date": "Apr 21, 2016"}, short_description="A game.")
         return details
 
     def _logged(self):
@@ -153,8 +184,8 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         self.assertEqual(36, len(APPDETAILS_KEYS_322330), "the recorded key set was transcribed wrongly")
         self.assertEqual(38, len(APPDETAILS_KEYS_1091500), "the recorded key set was transcribed wrongly")
         for keys in (APPDETAILS_KEYS_322330, APPDETAILS_KEYS_1091500):
-            with self.subTest(tags_present='tags' in keys):
-                self.assertNotIn('tags', keys, "appdetails does serve tags, so the source and this fix both change")
+            with self.subTest(tags_present="tags" in keys):
+                self.assertNotIn("tags", keys, "appdetails does serve tags, so the source and this fix both change")
 
     def test_the_real_payload_shape_yields_no_tags_and_reports_it(self):
         """The defect, asserted on the shape the endpoint really returns.
@@ -166,8 +197,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         self.assertEqual([], match.tags, "the recorded payload carries no tags, so there is nothing to return")
         self.assertEqual(["Action"], match.genres, "genres come from the same payload and are unaffected")
         text = self._logged()
-        self.assertIn("TAGS_UNAVAILABLE", text,
-                      "the payload has no tag field and nothing said so, so the empty list still means two things")
+        self.assertIn("TAGS_UNAVAILABLE", text, "the payload has no tag field and nothing said so, so the empty list still means two things")
         self.assertIn("[WARN", text, "tags are unobtainable from this source and it was not worth a warning")
         self.assertIn("field=[tags]", text, "the report does not name the field that is missing")
 
@@ -188,8 +218,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         nobody reads. Once per service says the same thing once and still says it."""
         for appid in ("1", "2", "3"):
             self.service._build_match(appid, {"name": "x"}, self._payload())
-        self.assertEqual(1, self._logged().count("TAGS_UNAVAILABLE"),
-                         "the same missing field was reported once per game rather than once")
+        self.assertEqual(1, self._logged().count("TAGS_UNAVAILABLE"), "the same missing field was reported once per game rather than once")
 
     def test_a_source_that_does_carry_tags_is_not_reported_as_unavailable(self):
         """The other half, and the half that decides whether the warning is worth having.
@@ -222,10 +251,7 @@ class TheCatalogShowsAndSearchesTags(unittest.TestCase):
         folder = self.root / category / name
         folder.mkdir(parents=True, exist_ok=True)
         (folder / f"{name}.zip").write_bytes(b"x" * 2048)
-        (folder / ".game-info.json").write_text(
-            json.dumps({"appid": "1", "name": name, "description": "A game.", "release_date": "1 Jan, 2024",
-                        "genres": genres, "tags": tags, "developer": "Dev", "publisher": "Pub"}),
-            encoding="utf-8")
+        (folder / ".game-info.json").write_text(json.dumps({"appid": "1", "name": name, "description": "A game.", "release_date": "1 Jan, 2024", "genres": genres, "tags": tags, "developer": "Dev", "publisher": "Pub"}), encoding="utf-8")
 
     def _page(self):
         return CatalogService(self.logger, extract_folders=[self.dest]).generate(self.root, "")[0].read_text("utf-8")
@@ -247,8 +273,7 @@ class TheCatalogShowsAndSearchesTags(unittest.TestCase):
 
     def test_a_card_shows_its_tags(self):
         page = self._page()
-        self.assertIn('class="chip chip-tag" title="Great Soundtrack"', page,
-                      "a game Steam tags 'Great Soundtrack' does not show it")
+        self.assertIn('class="chip chip-tag" title="Great Soundtrack"', page, "a game Steam tags 'Great Soundtrack' does not show it")
         self.assertIn('class="chip chip-tag" title="Incremental"', page)
 
     def test_a_card_caps_the_tags_it_shows_and_says_how_many_it_kept(self):
@@ -273,8 +298,7 @@ class TheCatalogShowsAndSearchesTags(unittest.TestCase):
         """
         page = self._page()
         self.assertIn('chip-tag" title="Controller Support"', page)
-        self.assertTrue(any("controller support" in haystack for haystack in self._search_indexes()),
-                        "tags are shown but not in the search index, so the shelf cannot be searched by one")
+        self.assertTrue(any("controller support" in haystack for haystack in self._search_indexes()), "tags are shown but not in the search index, so the shelf cannot be searched by one")
 
     def test_the_rail_offers_a_tag_filter(self):
         page = self._page()
@@ -284,8 +308,7 @@ class TheCatalogShowsAndSearchesTags(unittest.TestCase):
         # chip's own visible label, which sits between the attribute and the count.
         chip = re.search(r'<button[^>]*data-genre="Great Soundtrack"[^>]*>.*?</button>', page, re.S)
         self.assertIsNotNone(chip, "there is no rail chip for the tag two games share")
-        self.assertIn('<span class="chip-count">2</span>', chip.group(0),
-                      "two games carry this tag and the count has to say so")
+        self.assertIn('<span class="chip-count">2</span>', chip.group(0), "two games carry this tag and the count has to say so")
 
     def test_a_library_with_no_tags_gets_no_tag_rail(self):
         """The tag rail is unreachable on this machine, and it renders as an empty row when it is.
@@ -303,9 +326,7 @@ class TheCatalogShowsAndSearchesTags(unittest.TestCase):
         the chip and this test could never fail.
         """
         control = self._markup()
-        self.assertIn('class="chip-btn chip-btn-tag"', control,
-                      "control: the tagged fixture renders the rail, so what follows can only be suppression. "
-                      "Without this, a tag rail that stopped rendering at all would pass every assertion below")
+        self.assertIn('class="chip-btn chip-btn-tag"', control, "control: the tagged fixture renders the rail, so what follows can only be suppression. Without this, a tag rail that stopped rendering at all would pass every assertion below")
         for category, name in (("Idle", "Loop Miner"), ("RPG", "Deep Signal")):
             folder = self.root / category / name
             payload = json.loads((folder / ".game-info.json").read_text(encoding="utf-8"))
@@ -313,11 +334,11 @@ class TheCatalogShowsAndSearchesTags(unittest.TestCase):
             (folder / ".game-info.json").write_text(json.dumps(payload), encoding="utf-8")
         markup = self._markup()
         for fragment, consequence in (
-            ('tags-nav', 'the Tags nav is rendered with an empty chip row under its heading'),
-            ('>Tags</p>', 'the Tags heading survives with nothing under it'),
-            ('aria-label="Tags"', 'the rail still announces a Tags group to a screen reader'),
-            ('chip-btn-tag', 'a tag filter chip is rendered where there are no tags to filter by'),
-            ('chip chip-tag', 'a tag chip is rendered on a card that has no tags'),
+            ("tags-nav", "the Tags nav is rendered with an empty chip row under its heading"),
+            (">Tags</p>", "the Tags heading survives with nothing under it"),
+            ('aria-label="Tags"', "the rail still announces a Tags group to a screen reader"),
+            ("chip-btn-tag", "a tag filter chip is rendered where there are no tags to filter by"),
+            ("chip chip-tag", "a tag chip is rendered on a card that has no tags"),
         ):
             with self.subTest(fragment=fragment):
                 self.assertNotIn(fragment, markup, f"no game in this fixture has a tag, so {consequence}")
@@ -329,8 +350,7 @@ class TheCatalogShowsAndSearchesTags(unittest.TestCase):
         the visible symptom is a chip that is highlighted while showing nothing.
         """
         page = self._page()
-        self.assertIn('data-genre="Controller Support"', page,
-                      "the tag is in the rail but not on the card's facets, so clicking it would match nothing")
+        self.assertIn('data-genre="Controller Support"', page, "the tag is in the rail but not on the card's facets, so clicking it would match nothing")
 
     def test_a_broken_tag_field_cannot_put_letters_in_the_search_index(self):
         """The sidecar is a JSON file a person can edit, and a string where a list was expected would iterate
@@ -364,8 +384,7 @@ class TheScanSummaryReachesTheNextSession(unittest.TestCase):
         """`state_file` was declared on AppConfig and read by nothing. Writing to it is what makes it a real
         declaration rather than a leftover."""
         self.config.save_scan_summary({"archives": 1})
-        self.assertTrue(self.config.state_file.is_file(),
-                        f"nothing was written to {self.config.state_file}")
+        self.assertTrue(self.config.state_file.is_file(), f"nothing was written to {self.config.state_file}")
 
     def test_a_missing_empty_or_non_object_file_is_not_fatal(self):
         """Read during layout, before anything else has run, so every broken shape has to answer None."""
@@ -399,6 +418,7 @@ class TheScanSummaryReachesTheNextSession(unittest.TestCase):
         A game whose pictures arrived as asset URLs has no primary path, so a primary-only count reports zero
         for a game folder holding five images - the exact defect 9.20 fixed, in a new place.
         """
+
         class _Assets(ArtworkResult):
             """One game's artwork as the asset-URL case really produces it: no primary path, several assets.
 
@@ -518,8 +538,7 @@ class MatchConfidenceIsVisibleAsAWarning(unittest.TestCase):
         background, _ = self._colours(card)
         self.assertEqual(background, GREEN, "a High confidence match is not distinguished from a doubtful one")
         self.assertIn("High", card.conf.cget("text"))
-        self.assertIn("0.98", card.conf.cget("text"),
-                      "the score is not shown, so 'High' cannot be judged against 'Medium'")
+        self.assertIn("0.98", card.conf.cget("text"), "the score is not shown, so 'High' cannot be judged against 'Medium'")
 
     def test_a_medium_confidence_match_is_not_green(self):
         """The whole point of the pill. In grey text it was present and invisible as a warning."""
@@ -543,10 +562,9 @@ class MatchConfidenceIsVisibleAsAWarning(unittest.TestCase):
         archive.decision.skipped = True
         card = GameCard(self.root, archive, lambda a: None)
         self.assertEqual(card.badge.cget("text"), "SKIPPED")
-        self.assertEqual(card.conf.cget("text"), "",
-                         "a skipped archive shows a confidence pill beside its SKIPPED badge")
-        self.assertNotEqual(card.conf.cget("bg"), ORANGE,
-                            "an emptied pill kept the warning fill, so a skipped game still looks doubtful")
+        self.assertEqual(card.conf.cget("text"), "", "a skipped archive shows a confidence pill beside its SKIPPED badge")
+        self.assertNotEqual(card.conf.cget("bg"), ORANGE, "an emptied pill kept the warning fill, so a skipped game still looks doubtful")
+
 
 # GREEN is imported from ui.palette rather than written out here. It was a literal in this file, holding a
 # value from the generated catalog's CSS (`--good`) rather than the Tkinter theme's green, so it had drifted
@@ -565,8 +583,7 @@ class _ArchiveForCard:
     """The three attributes GameCard reads. Everything else it touches is defensive."""
 
     def __init__(self, confidence, score, found=True):
-        self.steam = SteamMatch(found=found, name="Loop Miner" if found else "", appid="1",
-                                confidence=confidence, score=score)
+        self.steam = SteamMatch(found=found, name="Loop Miner" if found else "", appid="1", confidence=confidence, score=score)
         self.decision = _Decision()
         self.display_name = "Loop Miner"
         self.extension = ".zip"
@@ -575,6 +592,4 @@ class _ArchiveForCard:
 
 
 if __name__ == "__main__":
-        unittest.main()
-
-
+    unittest.main()

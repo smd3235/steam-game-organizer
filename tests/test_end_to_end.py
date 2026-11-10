@@ -14,6 +14,7 @@ fixture cannot show a manifest that counts directories as files.
 Conversion is expensive relative to a unit test, so each class performs one real run and the assertions then
 read that one outcome rather than repeating the work.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -77,8 +78,7 @@ def build_game_tree(root: Path, content_folder: str) -> Path:
     (game / "www" / "index.html").write_text("<html></html>\n" * 50, encoding="utf-8")
     (game / "www" / "style.css").write_text("body { margin: 0; }\n" * 300, encoding="utf-8")
     for index in range(60):
-        (game / "www" / "scripts" / f"chunk{index}.js").write_text(
-            f"// chunk {index}\n" + "function tick(state) { return state + 1; }\n" * 200, encoding="utf-8")
+        (game / "www" / "scripts" / f"chunk{index}.js").write_text(f"// chunk {index}\n" + "function tick(state) { return state + 1; }\n" * 200, encoding="utf-8")
     for index in range(8):
         (game / "www" / "images" / f"sheet{index}.webp").write_bytes(noise.randbytes(16_000))
     for index in range(4):
@@ -101,8 +101,7 @@ def package_seven_zip(tool: str, source: Path, game: Path) -> None:
     That wrapper folder is the shape a release archive actually has, and it is what the app looks for when it
     decides whether a game's content is buried under a generically named directory worth renaming.
     """
-    subprocess.run([tool, "a", "-t7z", "-mx=1", "-bso0", "-bsp0", str(source), str(game)],
-                   stdin=subprocess.DEVNULL, capture_output=True, check=True)
+    subprocess.run([tool, "a", "-t7z", "-mx=1", "-bso0", "-bsp0", str(source), str(game)], stdin=subprocess.DEVNULL, capture_output=True, check=True)
 
 
 def manifest(tool: str, path: Path) -> tuple:
@@ -112,8 +111,7 @@ def manifest(tool: str, path: Path) -> tuple:
     line, so without this they would be counted as empty files and a faithful rebuild would look like it had
     gained a folder's worth of entries.
     """
-    proc = subprocess.run([tool, "l", "-slt", "--", str(path)], stdin=subprocess.DEVNULL,
-                          capture_output=True, text=True, errors="replace")
+    proc = subprocess.run([tool, "l", "-slt", "--", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace")
     files = total = 0
     for block in proc.stdout.split("\n\n"):
         if "Path = " not in block or re.search(r"^Folder = \+$", block, re.M):
@@ -129,8 +127,7 @@ def manifest(tool: str, path: Path) -> tuple:
     return files, total
 
 
-def run_organize(library: Path, log_path: Path, steam_name: str | None = None,
-                 category: str = "Simulation") -> tuple:
+def run_organize(library: Path, log_path: Path, steam_name: str | None = None, category: str = "Simulation") -> tuple:
     """Organize everything in `library` through the real controller and wait for the run to finish.
 
     Returns (archives discovered, what the run reported as moved, every progress event it emitted).
@@ -140,18 +137,15 @@ def run_organize(library: Path, log_path: Path, steam_name: str | None = None,
     for archive in discovered.archives:
         archive.decision.accepted = True
         archive.decision.category = category
-        archive.steam = SteamMatch(found=True, appid=1234,
-                                   name=steam_name or archive.display_name, release_date="1 Jan, 2024")
+        archive.steam = SteamMatch(found=True, appid=1234, name=steam_name or archive.display_name, release_date="1 Jan, 2024")
     organizer = OrganizerService(logger, convert_archives=lambda: True)
-    services = type("Services", (), {"organizer": organizer,
-                                     "rollback": RollbackService(library, logger)})()
+    services = type("Services", (), {"organizer": organizer, "rollback": RollbackService(library, logger)})()
     jobs = JobManager()
     controller = AppController(StateStore(), EventBus(), logger, services, jobs)
     finished = Event()
     moved: list = []
     events: list = []
-    controller.organize(discovered.archives, library, lambda done: (moved.extend(done), finished.set()),
-                        on_progress=lambda event: events.append(event))
+    controller.organize(discovered.archives, library, lambda done: (moved.extend(done), finished.set()), on_progress=lambda event: events.append(event))
     if not finished.wait(900):
         jobs.shutdown()
         raise AssertionError("the organize run did not finish within 15 minutes")
@@ -187,51 +181,41 @@ class ZipSourceConvertsToSevenZip(unittest.TestCase):
 
     def test_the_run_converted_exactly_one_archive(self):
         self.assertEqual(self.discovered, 1, "discovery did not find the one archive it was given")
-        self.assertEqual(len(self.produced), 1,
-                         f"expected one converted archive, found {[p.name for p in self.produced]}")
+        self.assertEqual(len(self.produced), 1, f"expected one converted archive, found {[p.name for p in self.produced]}")
         self.assertFalse(self.source.exists(), "the source survived a successful conversion")
 
     def test_the_rebuilt_archive_still_holds_the_whole_game(self):
         """The corruption case. A rebuild that lost files is a perfectly valid archive, so nothing downstream
         would ever notice; only comparing against the source's own index catches it."""
         self.assertGreater(self.before[0], 0, "the source archive declares no files")
-        self.assertEqual(self.after[0], self.before[0],
-                         f"the rebuilt archive holds {self.after[0]} files, the source declared {self.before[0]}")
-        self.assertEqual(self.after[1], self.before[1],
-                         f"the rebuilt archive holds {self.after[1]:,} bytes, the source declared {self.before[1]:,}")
+        self.assertEqual(self.after[0], self.before[0], f"the rebuilt archive holds {self.after[0]} files, the source declared {self.before[0]}")
+        self.assertEqual(self.after[1], self.before[1], f"the rebuilt archive holds {self.after[1]:,} bytes, the source declared {self.before[1]:,}")
 
     def test_the_rebuilt_archive_passes_its_own_integrity_test(self):
-        proc = subprocess.run([self.tool, "t", "--", str(self.produced[0])], stdin=subprocess.DEVNULL,
-                              capture_output=True)
+        proc = subprocess.run([self.tool, "t", "--", str(self.produced[0])], stdin=subprocess.DEVNULL, capture_output=True)
         self.assertEqual(proc.returncode, 0, "the archive this run produced does not verify")
 
     def test_the_rebuilt_archive_carries_no_app_internals(self):
         """The staging folder holds this app's own lock marker, and packing the folder packs it too. It also
         changes every run, so an archive carrying it is neither the game nor reproducible."""
-        proc = subprocess.run([self.tool, "l", "-slt", "--", str(self.produced[0])], stdin=subprocess.DEVNULL,
-                              capture_output=True, text=True, errors="replace")
-        self.assertNotIn(".organizer-lock", proc.stdout,
-                         "the app's own lock marker was packed into the published archive")
+        proc = subprocess.run([self.tool, "l", "-slt", "--", str(self.produced[0])], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace")
+        self.assertNotIn(".organizer-lock", proc.stdout, "the app's own lock marker was packed into the published archive")
 
     def test_the_reported_sizes_are_the_real_sizes_on_disk(self):
         converted = [event for event in self.events if event.get("stage") == "converted"]
         self.assertTrue(converted, "the run never reported a completed conversion")
         reported = converted[-1]
-        self.assertEqual(reported["source_bytes"], self.source_bytes,
-                         "the run reported a source size that is not the file's real size")
-        self.assertEqual(reported["target_bytes"], self.produced[0].stat().st_size,
-                         "the run reported a target size that is not the produced file's real size")
+        self.assertEqual(reported["source_bytes"], self.source_bytes, "the run reported a source size that is not the file's real size")
+        self.assertEqual(reported["target_bytes"], self.produced[0].stat().st_size, "the run reported a target size that is not the produced file's real size")
 
     def test_converting_to_7z_actually_saved_space(self):
         target = self.produced[0].stat().st_size
-        self.assertLess(target, self.source_bytes,
-                        f"repacking to 7z did not shrink the archive ({self.source_bytes:,} -> {target:,})")
+        self.assertLess(target, self.source_bytes, f"repacking to 7z did not shrink the archive ({self.source_bytes:,} -> {target:,})")
 
     def test_the_game_ended_up_in_its_category_folder(self):
         self.assertEqual(len(self.moved), 1)
         landed = self.moved[0]
-        self.assertTrue(landed.organized_path and landed.organized_path.exists(),
-                        f"{landed.display_name} was reported as moved but is not on disk")
+        self.assertTrue(landed.organized_path and landed.organized_path.exists(), f"{landed.display_name} was reported as moved but is not on disk")
         self.assertEqual(landed.organized_path.parent.parent.name, "Simulation")
 
     def test_the_run_reported_each_stage_of_the_conversion(self):
@@ -284,30 +268,22 @@ class SevenZipSourceIsRepackedAfterRenaming(unittest.TestCase):
 
     def test_the_rebuilt_archive_still_holds_the_whole_game(self):
         after = manifest(self.tool, self.produced[0])
-        self.assertEqual(after[0], self.before[0],
-                         f"the rebuilt archive holds {after[0]} files, the source declared {self.before[0]}")
-        self.assertEqual(after[1], self.before[1],
-                         f"the rebuilt archive holds {after[1]:,} bytes, the source declared {self.before[1]:,}")
+        self.assertEqual(after[0], self.before[0], f"the rebuilt archive holds {after[0]} files, the source declared {self.before[0]}")
+        self.assertEqual(after[1], self.before[1], f"the rebuilt archive holds {after[1]:,} bytes, the source declared {self.before[1]:,}")
 
     def test_the_generic_content_folder_was_renamed(self):
-        proc = subprocess.run([self.tool, "l", "-slt", "--", str(self.produced[0])], stdin=subprocess.DEVNULL,
-                              capture_output=True, text=True, errors="replace")
+        proc = subprocess.run([self.tool, "l", "-slt", "--", str(self.produced[0])], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace")
         paths = [line[7:] for line in proc.stdout.splitlines() if line.startswith("Path = ")]
-        self.assertTrue(any(p.startswith("Some Game\\") for p in paths),
-                        f"the content folder was not renamed to the game's name: {paths[:5]}")
-        self.assertFalse(any(p.startswith("Game\\") for p in paths),
-                        "the generically named content folder was published unchanged")
+        self.assertTrue(any(p.startswith("Some Game\\") for p in paths), f"the content folder was not renamed to the game's name: {paths[:5]}")
+        self.assertFalse(any(p.startswith("Game\\") for p in paths), "the generically named content folder was published unchanged")
 
     def test_the_rebuilt_archive_passes_its_own_integrity_test(self):
-        proc = subprocess.run([self.tool, "t", "--", str(self.produced[0])], stdin=subprocess.DEVNULL,
-                              capture_output=True)
+        proc = subprocess.run([self.tool, "t", "--", str(self.produced[0])], stdin=subprocess.DEVNULL, capture_output=True)
         self.assertEqual(proc.returncode, 0, "the archive this run produced does not verify")
 
     def test_the_rebuilt_archive_carries_no_app_internals(self):
-        proc = subprocess.run([self.tool, "l", "-slt", "--", str(self.produced[0])], stdin=subprocess.DEVNULL,
-                              capture_output=True, text=True, errors="replace")
-        self.assertNotIn(".organizer-lock", proc.stdout,
-                         "the app's own lock marker was packed into the published archive")
+        proc = subprocess.run([self.tool, "l", "-slt", "--", str(self.produced[0])], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace")
+        self.assertNotIn(".organizer-lock", proc.stdout, "the app's own lock marker was packed into the published archive")
 
     def test_no_staging_folder_survived_a_successful_run(self):
         leftovers = [p.name for p in self.library.rglob("*") if p.name.startswith(".organizer-repack-")]
@@ -346,11 +322,9 @@ class CorruptSourceIsRefused(unittest.TestCase):
         # Refusing to convert is not refusing to organise: the game is still filed under its category, and the
         # app still writes its own sidecar files beside it. What matters is that the only *archive* left is the
         # one that arrived, byte for byte.
-        survivors = sorted(p for p in self.library.rglob("*")
-                           if p.is_file() and p.suffix.lower() in ARCHIVE_EXTENSIONS)
+        survivors = sorted(p for p in self.library.rglob("*") if p.is_file() and p.suffix.lower() in ARCHIVE_EXTENSIONS)
         self.assertEqual(len(survivors), 1, f"a truncated archive produced or removed archives: {survivors}")
-        self.assertEqual(survivors[0].read_bytes(), self.truncated_bytes,
-                         "the truncated archive's bytes changed")
+        self.assertEqual(survivors[0].read_bytes(), self.truncated_bytes, "the truncated archive's bytes changed")
         text = self.log_path.read_text(encoding="utf-8", errors="replace")
         self.assertIn("SOURCE_INTEGRITY_FAILED", text, "the refusal was not recorded in the log")
 

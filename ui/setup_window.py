@@ -12,6 +12,7 @@ are unpacked to. Each has a Browse button, because a path this important is
 not one to type, and the checks below the boxes say what is wrong before
 anything is saved.
 """
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -21,7 +22,7 @@ from tkinter import filedialog, ttk
 from core.constants import APP_NAME
 from core.uri_actions import SetupRequest
 from services.setup_service import SetupService
-from ui.theme import (ACCENT_HI, BG, BORDER, ENTRY_BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, Theme)
+from ui.theme import ACCENT_HI, BG, BORDER, ENTRY_BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, Theme
 
 
 class SetupWindow(tk.Toplevel):
@@ -44,10 +45,11 @@ class SetupWindow(tk.Toplevel):
         # at all. The app folder defaults to the copy that is running, because
         # that is the one that knows where it lives.
         import sys
+
         self.library_var = tk.StringVar(value=self.prefill.library or str(config.library_root))
         # The app folder is where the app itself lives. In a frozen build, that's the folder containing the exe
         # (bundle root), not _internal. In source, it's the project root.
-        app_default = (self.prefill.app or str(Path(sys.executable).resolve().parent)) if getattr(sys, 'frozen', False) else (self.prefill.app or (str(Path(__file__).resolve().parents[1]) if not self.prefill.library else str(Path(self.prefill.library).expanduser().resolve())))
+        app_default = (self.prefill.app or str(Path(sys.executable).resolve().parent)) if getattr(sys, "frozen", False) else (self.prefill.app or (str(Path(__file__).resolve().parents[1]) if not self.prefill.library else str(Path(self.prefill.library).expanduser().resolve())))
         self.app_var = tk.StringVar(value=app_default)
         self.extract_var = tk.StringVar(value=self.prefill.extract or str(config.extract_folder))
 
@@ -77,18 +79,14 @@ class SetupWindow(tk.Toplevel):
         head = tk.Frame(self, bg=PANEL)
         head.grid(row=0, column=0, sticky="ew", padx=18, pady=(16, 6))
         head.columnconfigure(0, weight=1)
-        
+
         # Title and description
-        title_label = tk.Label(head, text=f"Set up {APP_NAME} on this PC", bg=PANEL, fg=TEXT,
-                   font=("TkDefaultFont", 17, "bold"), anchor="w")
+        title_label = tk.Label(head, text=f"Set up {APP_NAME} on this PC", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w")
         title_label.grid(row=0, column=0, sticky="w")
-        
-        desc_label = tk.Label(head, text="Three folders decide whether the catalog's Extract buttons work here. "
-                  "Set them once; the choices are saved beside the app.",
-                  bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w",
-                  justify="left", wraplength=620)
+
+        desc_label = tk.Label(head, text="Three folders decide whether the catalog's Extract buttons work here. Set them once; the choices are saved beside the app.", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left", wraplength=620)
         desc_label.grid(row=1, column=0, sticky="w", pady=(4, 12))
-        
+
         # Visual separator
         separator = tk.Frame(head, bg=ACCENT_HI, height=1, relief="flat")
         separator.grid(row=2, column=0, sticky="ew", pady=(4, 0))
@@ -97,45 +95,38 @@ class SetupWindow(tk.Toplevel):
         body = tk.Frame(self, bg=BG)
         body.grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 8))
         body.columnconfigure(0, weight=1)
-        
+
         rows = (
-            ("Game library", self.library_var,
-             "The folder the games are in - the whole library, categories and all"),
-            ("App folder", self.app_var,
-             f"Where {APP_NAME} itself lives. The Extract link is registered to open this copy"),
-            ("Extract to", self.extract_var,
-             "Where games are unpacked. Outside the game library: loose files there would be scanned as games"),
+            ("Game library", self.library_var, "The folder the games are in - the whole library, categories and all"),
+            ("App folder", self.app_var, f"Where {APP_NAME} itself lives. The Extract link is registered to open this copy"),
+            ("Extract to", self.extract_var, "Where games are unpacked. Outside the game library: loose files there would be scanned as games"),
         )
-        
+
         for index, (label, variable, hint) in enumerate(rows):
             # Field container for better visual grouping
             field_container = tk.Frame(body, bg=BG)
             field_container.grid(row=index, column=0, sticky="ew", pady=(0, 8))
             field_container.columnconfigure(0, weight=1)
-            
+
             # Label
-            label_widget = tk.Label(field_container, text=label, bg=BG, fg=ACCENT_HI,
-                       font=("TkDefaultFont", 10, "bold"), anchor="w")
+            label_widget = tk.Label(field_container, text=label, bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 10, "bold"), anchor="w")
             label_widget.grid(row=0, column=0, sticky="w")
-            
+
             # Input frame
             input_frame = tk.Frame(field_container, bg=BG)
             input_frame.grid(row=1, column=0, sticky="ew", pady=(2, 0))
             input_frame.columnconfigure(0, weight=1)
-            
-            entry = tk.Entry(input_frame, textvariable=variable, bg=ENTRY_BG, fg=TEXT,
-                            insertbackground=TEXT, font=("TkDefaultFont", 10), relief="flat",
-                            highlightbackground=BORDER, highlightthickness=1, bd=0)
+
+            entry = tk.Entry(input_frame, textvariable=variable, bg=ENTRY_BG, fg=TEXT, insertbackground=TEXT, font=("TkDefaultFont", 10), relief="flat", highlightbackground=BORDER, highlightthickness=1, bd=0)
             entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-            
+
             browse_btn = ttk.Button(input_frame, text="Browse…", command=self._browse_for(variable))
             browse_btn.grid(row=0, column=1, sticky="e")
-            
+
             # Hint text
-            hint_label = tk.Label(field_container, text=hint, bg=BG, fg=MUTED, font=("TkDefaultFont", 8),
-                   anchor="w", justify="left", wraplength=600)
+            hint_label = tk.Label(field_container, text=hint, bg=BG, fg=MUTED, font=("TkDefaultFont", 8), anchor="w", justify="left", wraplength=600)
             hint_label.grid(row=2, column=0, sticky="w", pady=(2, 0))
-            
+
             # Visual separator between fields (except after the last one)
             if index < len(rows) - 1:
                 separator = tk.Frame(body, bg=BORDER, height=1, relief="flat")
@@ -143,10 +134,10 @@ class SetupWindow(tk.Toplevel):
 
     def _browse_for(self, variable):
         def browse():
-            chosen = filedialog.askdirectory(parent=self, mustexist=True,
-                                             title="Choose a folder")
+            chosen = filedialog.askdirectory(parent=self, mustexist=True, title="Choose a folder")
             if chosen:
                 variable.set(chosen)
+
         return browse
 
     def _checks(self):
@@ -155,18 +146,14 @@ class SetupWindow(tk.Toplevel):
         check_container.grid(row=2, column=0, sticky="nsew", padx=18, pady=(0, 8))
         check_container.columnconfigure(0, weight=1)
         check_container.rowconfigure(1, weight=1)
-        
+
         # Header
         header_frame = tk.Frame(check_container, bg=PANEL2)
         header_frame.grid(row=0, column=0, sticky="ew", pady=(8, 8))
-        tk.Label(header_frame, text="Checks", bg=BG, fg=ACCENT_HI,
-                 font=("TkDefaultFont", 9, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
-        
+        tk.Label(header_frame, text="Checks", bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
+
         # Report area
-        self.report = tk.Text(check_container, height=10, bg=ENTRY_BG, fg=TEXT, wrap="word",
-                              font=("TkDefaultFont", 9), relief="flat",
-                              highlightthickness=1, highlightbackground=BORDER,
-                              state="disabled")
+        self.report = tk.Text(check_container, height=10, bg=ENTRY_BG, fg=TEXT, wrap="word", font=("TkDefaultFont", 9), relief="flat", highlightthickness=1, highlightbackground=BORDER, state="disabled")
         self.report.grid(row=1, column=0, sticky="nsew", padx=(8, 0), pady=(0, 8))
         # The three levels, each in its own colour so a problem is visible before
         # the message is read. The palette names the colours; nothing here invents one.
@@ -179,32 +166,30 @@ class SetupWindow(tk.Toplevel):
         footer_container = tk.Frame(self, bg=BG)
         footer_container.grid(row=3, column=0, sticky="ew", padx=18, pady=(18, 16))
         footer_container.columnconfigure(0, weight=1)
-        
+
         # Separator
         separator = tk.Frame(footer_container, bg=BORDER, height=1, relief="flat")
         separator.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
-        
+
         # Status and button section
         action_frame = tk.Frame(footer_container, bg=BG)
         action_frame.grid(row=1, column=0, sticky="ew")
         action_frame.columnconfigure(0, weight=1)
-        
-        self.status = tk.Label(action_frame, text="", bg=BG, fg=MUTED,
-                               font=("TkDefaultFont", 9), anchor="w")
+
+        self.status = tk.Label(action_frame, text="", bg=BG, fg=MUTED, font=("TkDefaultFont", 9), anchor="w")
         self.status.grid(row=0, column=0, sticky="w")
-        
+
         # Button container for better grouping
         button_frame = tk.Frame(action_frame, bg=BG)
         button_frame.grid(row=0, column=1, sticky="e")
-        
+
         ttk.Button(button_frame, text="Save setup", style="Primary.TButton", command=self.save).grid(row=0, column=0, sticky="e")
 
     # ------------------------------------------------------------------ behaviour
 
     def refresh_checks(self):
         """Run the checks against the boxes as they stand and show the rows."""
-        rows = self.service.checks(self.library_var.get(), self.app_var.get(),
-                                   self.extract_var.get())
+        rows = self.service.checks(self.library_var.get(), self.app_var.get(), self.extract_var.get())
         bullets = {"ok": "\u2022", "warn": "\u2022", "error": "\u2022"}
         self.report.configure(state="normal")
         self.report.delete("1.0", "end")
@@ -215,14 +200,12 @@ class SetupWindow(tk.Toplevel):
 
     def save(self):
         """Save the three folders and register the link, then show what happened."""
-        saved, rows = self.service.apply(self.config, self.library_var.get(),
-                                         self.app_var.get(), self.extract_var.get())
+        saved, rows = self.service.apply(self.config, self.library_var.get(), self.app_var.get(), self.extract_var.get())
         errors = [message for level, message in rows if level == "error"]
         if errors:
             self.status.configure(text="Not saved: " + errors[0], fg=RED)
         elif saved:
-            self.status.configure(text="Saved. The catalog's Extract buttons now work from this PC.",
-                                  fg=GREEN)
+            self.status.configure(text="Saved. The catalog's Extract buttons now work from this PC.", fg=GREEN)
             self._show_launch_button()
         else:
             self.status.configure(text="Not saved.", fg=RED)
@@ -232,9 +215,8 @@ class SetupWindow(tk.Toplevel):
 
     def _show_launch_button(self):
         """Show a button to close the wizard and launch the main application."""
-        if not hasattr(self, '_launch_btn'):
-            self._launch_btn = ttk.Button(self, text="Launch Steam Game Organizer",
-                                          style="Primary.TButton", command=self._launch_app)
+        if not hasattr(self, "_launch_btn"):
+            self._launch_btn = ttk.Button(self, text="Launch Steam Game Organizer", style="Primary.TButton", command=self._launch_app)
             self._launch_btn.grid(row=4, column=0, sticky="ew", padx=18, pady=(0, 16))
         else:
             self._launch_btn.grid()
@@ -243,6 +225,7 @@ class SetupWindow(tk.Toplevel):
         """Close the wizard and start the main application window."""
         import subprocess
         import sys
+
         entry = Path(self.app_var.get()) / "steam_game_organizer.exe"
         if not entry.is_file():
             entry = Path(self.app_var.get()) / "steam_game_organizer.py"
@@ -252,7 +235,5 @@ class SetupWindow(tk.Toplevel):
             else:
                 subprocess.Popen([sys.executable, str(entry)], start_new_session=True)
         except OSError as exc:
-            self.logger.warning('SETUP', f'LAUNCH_FAILED entry=[{entry}] error={exc}')
+            self.logger.warning("SETUP", f"LAUNCH_FAILED entry=[{entry}] error={exc}")
         self.destroy()
-
-

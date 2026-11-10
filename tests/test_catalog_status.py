@@ -13,6 +13,7 @@ The one thing none of this can prove is that a browser honours a `<script src>` 
 verified by hand against a real headless browser, because the whole design rests on it and a string in a
 generated page does not demonstrate it.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,9 +27,7 @@ from unittest import mock
 from core.logger import AppLogger
 from services import batch_extract_service, catalog_service
 from services.catalog_service import CatalogService
-from services.catalog_status import (STATUS_GLOBAL, STATUS_NAME, already_extracted, empty_status,
-                                       archive_has_changed_since_extraction, elapsed_text,
-                                       status_from_run, write_status)
+from services.catalog_status import STATUS_GLOBAL, STATUS_NAME, already_extracted, empty_status, archive_has_changed_since_extraction, elapsed_text, status_from_run, write_status
 from services.installer_detect import NEEDS_INSTALL_DIRNAME
 from tests.test_batch_extract import _game
 
@@ -110,8 +109,7 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         catalog that looks like the feature was never built.
         """
         self._generate()
-        self.assertTrue((self.root / STATUS_NAME).is_file(),
-                        f"the catalog was written without {STATUS_NAME} beside it")
+        self.assertTrue((self.root / STATUS_NAME).is_file(), f"the catalog was written without {STATUS_NAME} beside it")
 
     def test_the_status_file_carries_every_key_the_page_reads(self):
         """The page indexes the payload without checking the keys are there.
@@ -120,8 +118,7 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         banner rather than a visible absence, so the shape is pinned here instead of discovered in a browser.
         """
         status = empty_status()
-        for key in ("ran_at", "category", "destination", "total", "extracted", "skipped",
-                    "failed", "cancelled", "already_done", "needs_install", "elapsed"):
+        for key in ("ran_at", "category", "destination", "total", "extracted", "skipped", "failed", "cancelled", "already_done", "needs_install", "elapsed"):
             self.assertIn(key, status, f"{key} is missing, so the banner would show 'undefined'")
         self.assertEqual(status["ran_at"], "", "a status that claims a run happened when none did")
 
@@ -133,12 +130,10 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         information the banner exists to carry, gone because the page was refreshed by an unrelated action.
         """
         self._generate()
-        write_status(self.root, dict(empty_status(), ran_at="2026-10-04 05:12", total=3,
-                                    extracted=2, failed=1, elapsed="1h 4m"), self.logger)
+        write_status(self.root, dict(empty_status(), ran_at="2026-10-04 05:12", total=3, extracted=2, failed=1, elapsed="1h 4m"), self.logger)
         self._generate()
         again = _payload_of(self.root / STATUS_NAME)
-        self.assertEqual(again["ran_at"], "2026-10-04 05:12",
-                         "regenerating the catalog threw away the record of the run that just finished")
+        self.assertEqual(again["ran_at"], "2026-10-04 05:12", "regenerating the catalog threw away the record of the run that just finished")
         self.assertEqual(again["failed"], 1, "the failures went with it")
 
     def test_a_finished_run_is_reported_with_the_numbers_the_window_showed(self):
@@ -194,8 +189,7 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         """
         hostile = '"; alert(1); "'
         write_status(self.root, dict(empty_status(), ran_at="now", category=hostile), self.logger)
-        self.assertEqual(_payload_of(self.root / STATUS_NAME)["category"], hostile,
-                         "the name was mangled or executed on the way through")
+        self.assertEqual(_payload_of(self.root / STATUS_NAME)["category"], hostile, "the name was mangled or executed on the way through")
 
     def test_a_status_that_cannot_be_written_does_not_take_the_run_down(self):
         """The game folders are already unpacked by the time this runs.
@@ -206,8 +200,7 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         """
         blocker = self.root / STATUS_NAME
         blocker.mkdir()
-        self.assertIsNone(write_status(self.root, empty_status(), self.logger),
-                          "a status that could not be written reported success")
+        self.assertIsNone(write_status(self.root, empty_status(), self.logger), "a status that could not be written reported success")
 
 
 class AFinishedRunIsWrittenOutForSomebodyToRead(unittest.TestCase):
@@ -217,8 +210,7 @@ class AFinishedRunIsWrittenOutForSomebodyToRead(unittest.TestCase):
         '7944' does not answer that; '2h 12m' does. Zero and sub-minute are checked too, because a run that
         failed immediately is exactly the one whose elapsed time matters most.
         """
-        for seconds, expected in ((0, "0s"), (45, "45s"), (59, "59s"), (60, "1m"), (3599, "59m"),
-                                  (3600, "1h 0m"), (7944, "2h 12m"), (86399, "23h 59m")):
+        for seconds, expected in ((0, "0s"), (45, "45s"), (59, "59s"), (60, "1m"), (3599, "59m"), (3600, "1h 0m"), (7944, "2h 12m"), (86399, "23h 59m")):
             self.assertEqual(elapsed_text(seconds), expected, f"{seconds}s is not written as {expected}")
 
     def test_an_unusable_duration_does_not_raise(self):
@@ -230,14 +222,10 @@ class AFinishedRunIsWrittenOutForSomebodyToRead(unittest.TestCase):
 class TheUnpackedBadgeTellsTheTruth(AStatusFileTestCase):
     def test_a_game_already_unpacked_is_marked(self):
         self._unpack("Loop Miner", self.dest)
-        self.assertEqual(_unpacked_card(self._page()), 1,
-                         "a game already unpacked into the default destination is not marked, so Extract all "
-                         "reads as work that has not been done")
+        self.assertEqual(_unpacked_card(self._page()), 1, "a game already unpacked into the default destination is not marked, so Extract all reads as work that has not been done")
 
     def test_a_game_that_is_not_unpacked_is_not_marked(self):
-        self.assertEqual(_unpacked_card(self._page()), 0,
-                         "a game with nothing unpacked is marked as done, which is the one claim this badge "
-                         "must never make")
+        self.assertEqual(_unpacked_card(self._page()), 0, "a game with nothing unpacked is marked as done, which is the one claim this badge must never make")
 
     def test_an_empty_folder_is_not_treated_as_unpacked(self):
         """The planner's own rule, and for the same reason.
@@ -256,8 +244,7 @@ class TheUnpackedBadgeTellsTheTruth(AStatusFileTestCase):
         folder it means, which is what stops a reader who extracted elsewhere from being misled.
         """
         self._unpack("Loop Miner", self.base / "Somewhere Else")
-        self.assertEqual(_unpacked_card(self._page()), 0,
-                         "a game unpacked into a folder the page never checked is marked as unpacked")
+        self.assertEqual(_unpacked_card(self._page()), 0, "a game unpacked into a folder the page never checked is marked as unpacked")
 
     def test_a_game_unpacked_as_an_installer_is_marked_needs_install(self):
         """An installer repack unpacked to the default destination is unpacked but not ready.
@@ -267,18 +254,14 @@ class TheUnpackedBadgeTellsTheTruth(AStatusFileTestCase):
         """
         self._unpack_installer("Loop Miner", self.dest)
         page = self._page()
-        self.assertEqual(_unpacked_card(page), 0,
-                         "an installer layout was given the green Unpacked badge: " +
-                         "the two states cannot be read as the same thing")
-        self.assertEqual(page.count('class="badge badge-warn"'), 1,
-                         "no 'Needs install' badge was drawn for an installer folder")
+        self.assertEqual(_unpacked_card(page), 0, "an installer layout was given the green Unpacked badge: " + "the two states cannot be read as the same thing")
+        self.assertEqual(page.count('class="badge badge-warn"'), 1, "no 'Needs install' badge was drawn for an installer folder")
         self.assertIn("Needs install", page, "the badge text does not say what is still owed")
 
     def test_a_ready_game_keeps_the_unpacked_badge_in_front_of_the_installer_one(self):
         """A game that is genuinely unpacked and ready must still read green, not be downgraded to amber."""
         self._unpack("Loop Miner", self.dest)
-        self.assertEqual(_unpacked_card(self._page()), 1,
-                         "a ready-to-play unpacked game was not marked unpacked")
+        self.assertEqual(_unpacked_card(self._page()), 1, "a ready-to-play unpacked game was not marked unpacked")
 
     def test_two_cards_sharing_one_archive_name_are_neither_marked(self):
         """Two games can hold identically named archives, and the batch suffixes the second folder.
@@ -291,11 +274,9 @@ class TheUnpackedBadgeTellsTheTruth(AStatusFileTestCase):
             where = self.root / "RPG" / f"{folder} - 2024-01-01"
             where.mkdir(parents=True)
             (where / "Shared Title.zip").write_bytes(b"x")
-            (where / ".game-info.json").write_text('{"appid":"1","name":"Shared Title","genres":["Idle"]}',
-                                                   encoding="utf-8")
+            (where / ".game-info.json").write_text('{"appid":"1","name":"Shared Title","genres":["Idle"]}', encoding="utf-8")
         self._unpack("Shared Title", self.dest)
-        self.assertEqual(_unpacked_card(self._page()), 0,
-                         "one of two cards sharing an archive name was marked, and the page cannot know which")
+        self.assertEqual(_unpacked_card(self._page()), 0, "one of two cards sharing an archive name was marked, and the page cannot know which")
 
     def test_the_badge_uses_the_planners_own_predicate(self):
         """One rule, one definition.
@@ -304,10 +285,8 @@ class TheUnpackedBadgeTellsTheTruth(AStatusFileTestCase):
         be the one that is wrong: it is generated from a snapshot, while the planner decides at the moment of
         the click. Asserting the identity is what stops a second copy being introduced later.
         """
-        self.assertIs(catalog_service.already_extracted, batch_extract_service.already_extracted,
-                      "the catalog and the batch planner no longer share one definition of 'already unpacked'")
-        self.assertIs(batch_extract_service.already_extracted, already_extracted,
-                      "the batch planner grew a second copy of the predicate")
+        self.assertIs(catalog_service.already_extracted, batch_extract_service.already_extracted, "the catalog and the batch planner no longer share one definition of 'already unpacked'")
+        self.assertIs(batch_extract_service.already_extracted, already_extracted, "the batch planner grew a second copy of the predicate")
 
     def test_a_destination_that_cannot_be_read_is_not_an_unpacked_game(self):
         """An unreadable folder must answer 'not unpacked' rather than raise out of a generator.
@@ -317,8 +296,7 @@ class TheUnpackedBadgeTellsTheTruth(AStatusFileTestCase):
         """
         self._unpack("Loop Miner", self.dest)
         with mock.patch.object(Path, "iterdir", side_effect=OSError("access denied")):
-            self.assertFalse(already_extracted(self.dest / "Loop Miner"),
-                             "an unreadable destination was reported as an unpacked game")
+            self.assertFalse(already_extracted(self.dest / "Loop Miner"), "an unreadable destination was reported as an unpacked game")
         self.assertEqual(_unpacked_card(self._page()), 1, "the page disagrees with the planner when reading fails")
 
 
@@ -345,12 +323,10 @@ class TheBannerIsWiredToTheFileThatFeedsIt(AStatusFileTestCase):
         """
         tag = f'<script src="{STATUS_NAME}"></script>'
         _assert_has(self, self.text, tag, f"the page never loads {STATUS_NAME}, so no run can reach it")
-        self.assertLess(self.text.index(tag), self.text.index("function apply("),
-                        "the status file loads after the script that reads it, so the first read sees nothing")
+        self.assertLess(self.text.index(tag), self.text.index("function apply("), "the status file loads after the script that reads it, so the first read sees nothing")
 
     def test_the_script_reads_the_global_the_status_file_publishes(self):
-        _assert_has(self, self.text, f"window.{STATUS_GLOBAL}",
-                    "the page does not read the global the status file publishes")
+        _assert_has(self, self.text, f"window.{STATUS_GLOBAL}", "the page does not read the global the status file publishes")
 
     def test_the_banner_stays_hidden_until_a_run_has_been_reported(self):
         """A freshly scanned library has no run to report, and must not claim otherwise.
@@ -360,8 +336,7 @@ class TheBannerIsWiredToTheFileThatFeedsIt(AStatusFileTestCase):
         """
         element = self.text.split('<div id="run-status"', 1)[1].split(">", 1)[0]
         self.assertIn("hidden", element, "the banner starts visible, empty and unexplained")
-        _assert_has(self, self.text, "!run.ran_at",
-                    "the banner is not gated on a run having happened, so a fresh catalog reports one")
+        _assert_has(self, self.text, "!run.ran_at", "the banner is not gated on a run having happened, so a fresh catalog reports one")
 
     def test_a_run_with_failures_is_marked_as_a_warning(self):
         """A green banner over three failures is worse than no banner.
@@ -370,8 +345,7 @@ class TheBannerIsWiredToTheFileThatFeedsIt(AStatusFileTestCase):
         that are not there.
         """
         _assert_has(self, self.text, "run-status-warn", "a run with failures is not distinguished from a clean one")
-        _assert_has(self, self.text.replace(" ", ""), "run.failed||run.cancelled",
-                    "the warning covers neither failures nor a run that was cancelled")
+        _assert_has(self, self.text.replace(" ", ""), "run.failed||run.cancelled", "the warning covers neither failures nor a run that was cancelled")
 
     def test_the_footer_says_a_button_needs_the_handler_installed(self):
         """The one failure a reader cannot diagnose from the page.
@@ -390,10 +364,8 @@ class TheBannerIsWiredToTheFileThatFeedsIt(AStatusFileTestCase):
         show badges decided against the folder it no longer names, and would keep showing them until the
         reader happened to edit the box.
         """
-        _assert_has(self, self.text, "syncUnpackedBadges();",
-                    "the badges are never re-checked after the page loads")
-        _assert_has(self, self.text, "destBox.addEventListener('input',syncUnpackedBadges)",
-                    "typing another destination leaves the badges claiming a folder that was never checked")
+        _assert_has(self, self.text, "syncUnpackedBadges();", "the badges are never re-checked after the page loads")
+        _assert_has(self, self.text, "destBox.addEventListener('input',syncUnpackedBadges)", "typing another destination leaves the badges claiming a folder that was never checked")
 
 
 class TheExtractMarkerDetectsStaleArchives(unittest.TestCase):
@@ -417,12 +389,13 @@ class TheExtractMarkerDetectsStaleArchives(unittest.TestCase):
     def _write_marker(self, dest, size=None, mtime_ns=None):
         from services.catalog_status import extract_marker_path
         import json as _json
+
         marker = extract_marker_path(dest)
         info = {
-            'archive_size': size if size is not None else 0,
-            'archive_mtime_ns': mtime_ns if mtime_ns is not None else 0,
+            "archive_size": size if size is not None else 0,
+            "archive_mtime_ns": mtime_ns if mtime_ns is not None else 0,
         }
-        marker.write_text(_json.dumps(info), encoding='utf-8')
+        marker.write_text(_json.dumps(info), encoding="utf-8")
 
     def test_a_missing_marker_is_never_stale(self):
         """A folder without a marker is treated as never having been checked - never falsely flagged."""
@@ -436,14 +409,12 @@ class TheExtractMarkerDetectsStaleArchives(unittest.TestCase):
 
     def test_a_changed_size_is_stale(self):
         """A different archive size means the file on disk is a different version."""
-        self._write_marker(self.dest_folder, size=self.archive.stat().st_size - 1000,
-                           mtime_ns=self.archive.stat().st_mtime_ns)
+        self._write_marker(self.dest_folder, size=self.archive.stat().st_size - 1000, mtime_ns=self.archive.stat().st_mtime_ns)
         self.assertTrue(archive_has_changed_since_extraction(self.dest_folder, self.archive))
 
     def test_a_changed_mtime_is_stale(self):
         """Even with the same size, a different mtime means the archive was replaced."""
-        self._write_marker(self.dest_folder, size=self.archive.stat().st_size,
-                           mtime_ns=self.archive.stat().st_mtime_ns + 1)
+        self._write_marker(self.dest_folder, size=self.archive.stat().st_size, mtime_ns=self.archive.stat().st_mtime_ns + 1)
         self.assertTrue(archive_has_changed_since_extraction(self.dest_folder, self.archive))
 
     def test_a_missing_archive_is_not_stale(self):
@@ -463,13 +434,12 @@ class TheStaleBadgeTellsTheTruth(AStatusFileTestCase):
         stat = archive.stat()
         from services.catalog_status import extract_marker_path
         import json as _json
+
         marker = extract_marker_path(self.dest / "Loop Miner")
-        marker.write_text(_json.dumps({'archive_size': stat.st_size,
-                                       'archive_mtime_ns': stat.st_mtime_ns}), encoding='utf-8')
+        marker.write_text(_json.dumps({"archive_size": stat.st_size, "archive_mtime_ns": stat.st_mtime_ns}), encoding="utf-8")
         page = self._page()
         self.assertNotIn('data-stale="1"', page, "an unchanged archive was flagged as stale")
-        self.assertNotIn('class="badge badge-stale"', page,
-                         "a stale badge was drawn for a current archive")
+        self.assertNotIn('class="badge badge-stale"', page, "a stale badge was drawn for a current archive")
 
     def test_a_changed_archive_gets_a_stale_badge(self):
         """When the archive's size differs from the marker, the card gets a stale cue."""
@@ -477,9 +447,9 @@ class TheStaleBadgeTellsTheTruth(AStatusFileTestCase):
         archive = self.root / "Idle" / "Loop Miner - 2024-01-01" / "Loop Miner.zip"
         from services.catalog_status import extract_marker_path
         import json as _json
+
         marker = extract_marker_path(self.dest / "Loop Miner")
-        marker.write_text(_json.dumps({'archive_size': archive.stat().st_size - 500,
-                                       'archive_mtime_ns': archive.stat().st_mtime_ns}), encoding='utf-8')
+        marker.write_text(_json.dumps({"archive_size": archive.stat().st_size - 500, "archive_mtime_ns": archive.stat().st_mtime_ns}), encoding="utf-8")
         page = self._page()
         self.assertIn('data-stale="1"', page, "the stale archive was not flagged on its card")
         self.assertIn('class="badge badge-stale"', page, "the stale badge class is missing from the card")
@@ -490,9 +460,9 @@ class TheStaleBadgeTellsTheTruth(AStatusFileTestCase):
         archive = self.root / "Idle" / "Loop Miner - 2024-01-01" / "Loop Miner.zip"
         from services.catalog_status import extract_marker_path
         import json as _json
+
         marker = extract_marker_path(self.dest / "Loop Miner")
-        marker.write_text(_json.dumps({'archive_size': archive.stat().st_size - 500,
-                                       'archive_mtime_ns': archive.stat().st_mtime_ns}), encoding='utf-8')
+        marker.write_text(_json.dumps({"archive_size": archive.stat().st_size - 500, "archive_mtime_ns": archive.stat().st_mtime_ns}), encoding="utf-8")
         page = self._page()
         self.assertEqual(_unpacked_card(page), 1, "the unpacked badge was lost when the archive went stale")
         self.assertIn('data-stale="1"', page, "the stale flag was not set alongside the unpacked badge")
@@ -501,8 +471,7 @@ class TheStaleBadgeTellsTheTruth(AStatusFileTestCase):
         """The hide-extracted stat button exists when there are unpacked games to hide."""
         self._unpack("Loop Miner", self.dest)
         page = self._page()
-        self.assertIn('data-filter="hide_extracted"', page,
-                      "the hide-extracted filter button is missing from the page")
+        self.assertIn('data-filter="hide_extracted"', page, "the hide-extracted filter button is missing from the page")
 
 
 if __name__ == "__main__":

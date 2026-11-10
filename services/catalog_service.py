@@ -5,12 +5,12 @@ from urllib.request import pathname2url
 from urllib.parse import urlencode, quote
 import sys, threading
 from .banner_art import banner_data_uri
-from core.constants import APP_NAME,ENTRY_POINT,LIBRARY_RESERVED_DIRS
-from core.uri_actions import SCHEME,safe_folder_name
-from services.catalog_status import STATUS_NAME,already_extracted,empty_status,write_status,archive_has_changed_since_extraction
+from core.constants import APP_NAME, ENTRY_POINT, LIBRARY_RESERVED_DIRS
+from core.uri_actions import SCHEME, safe_folder_name
+from services.catalog_status import STATUS_NAME, already_extracted, empty_status, write_status, archive_has_changed_since_extraction
 from services.installer_detect import NEEDS_INSTALL_DIRNAME, has_needs_install_mark
 from utils.formatting import human_size
-from dataclasses import dataclass,field
+from dataclasses import dataclass, field
 import json, re, time
 
 # Module-level cache shared across all CatalogService instances: {resolved_library_root_str: categories_dict}.
@@ -21,27 +21,27 @@ import json, re, time
 _COLLECT_CACHE: dict[str, dict] = {}
 _COLLECT_CACHE_LOCK = threading.Lock()
 
-BANNER_PRIORITY = ('header_image','library_hero','capsule_imagev5','capsule_image','library_capsule','grid')
+BANNER_PRIORITY = ("header_image", "library_hero", "capsule_imagev5", "capsule_image", "library_capsule", "grid")
 
 # Generic custom banners per category. Every category gets its own coloured theme so categories
 # are distinguishable at a glance instead of all reusing the first game's art. Lowercased keys so
 # lookups are case-insensitive; anything not listed here falls back to the generated name-based banner.
 _CATEGORY_BANNERS = {
-    'action':      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c62828"/><stop offset="100%" stop-color="#ff1744"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="800" cy="150" r="60" fill="#ffcdd2" opacity=".8"/><path d="M760 110l40 80M760 190l40-80" stroke="#fff" stroke-width="12" fill="none" stroke-linecap="round"/></svg>',
-    'adventure':   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a237e"/><stop offset="100%" stop-color="#5c6bc0"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M200 240 L400 60 L600 240 L800 60 L1000 240" stroke="#e8eaf6" stroke-width="8" fill="none"/><circle cx="880" cy="80" r="20" fill="#ffd54f"/></svg>',
-    'rpg':         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4a148c"/><stop offset="100%" stop-color="#ab47bc"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M300 200 L360 100 L420 200 M450 200 L510 100 L570 200 M600 200 L660 100 L720 200" stroke="#e1bee7" stroke-width="10" fill="none" stroke-linecap="round"/><circle cx="900" cy="220" r="30" fill="#ce93d8"/></svg>',
-    'strategy':    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1b5e20"/><stop offset="100%" stop-color="#43a047"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="300" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="500" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="700" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="900" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/></svg>',
-    'shooter':     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3e2723"/><stop offset="100%" stop-color="#795548"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="80" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/><rect x="350" y="140" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/><rect x="600" y="80" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/><rect x="850" y="140" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/></svg>',
-    'racing':      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#d32f2f"/><stop offset="100%" stop-color="#ff5252"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="150" cy="240" r="25" fill="#e0e0e0"/><circle cx="240" cy="240" r="25" fill="#e0e0e0"/><circle cx="960" cy="240" r="25" fill="#e0e0e0"/><circle cx="1050" cy="240" r="25" fill="#e0e0e0"/><path d="M100 180 Q600 60 1100 180" stroke="#fff" stroke-width="3" fill="none"/></svg>',
-    'sports':      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2e7d32"/><stop offset="100%" stop-color="#4caf50"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="600" cy="150" r="100" fill="#fff" opacity=".15"/><path d="M100 150 L1100 150 M600 50 L600 250" stroke="#fff" stroke-width="2" opacity=".6"/></svg>',
-    'simulation':  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1565c0"/><stop offset="100%" stop-color="#42a5f5"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="200" y="80" width="200" height="140" fill="#bbdefb" opacity=".7" rx="8"/><rect x="450" y="120" width="200" height="100" fill="#bbdefb" opacity=".7" rx="8"/><rect x="700" y="80" width="200" height="140" fill="#bbdefb" opacity=".7" rx="8"/><rect x="950" y="130" width="150" height="70" fill="#bbdefb" opacity=".7" rx="8"/></svg>',
-    'indie':       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4a148c"/><stop offset="50%" stop-color="#8e24aa"/><stop offset="100%" stop-color="#ce93d8"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="200" cy="80" r="40" fill="#fff" opacity=".3"/><circle cx="1000" cy="220" r="50" fill="#fff" opacity=".2"/><circle cx="400" cy="200" r="30" fill="#fff" opacity=".4"/></svg>',
-    'casual':      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff6f00"/><stop offset="100%" stop-color="#ffb300"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="200" cy="150" r="30" fill="#fff" opacity=".8"/><circle cx="400" cy="120" r="25" fill="#fff" opacity=".8"/><circle cx="600" cy="180" r="35" fill="#fff" opacity=".8"/><circle cx="800" cy="100" r="20" fill="#fff" opacity=".8"/><circle cx="1000" cy="160" r="28" fill="#fff" opacity=".8"/></svg>',
-    'puzzle':      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4527a0"/><stop offset="100%" stop-color="#7e57c2"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="100" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="200" y="180" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="300" y="100" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="400" y="180" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="500" y="100" width="80" height="80" fill="#d1c4e9" opacity=".8"/></svg>',
-    'platformer':  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#33691e"/><stop offset="100%" stop-color="#689f38"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M0 250 L200 250 L200 200 L400 200 L400 150 L600 150 L600 100 L800 100 L800 50 L1000 50 L1000 0 L1200 0 L1200 300 L0 300 Z" fill="#2e7d32"/><circle cx="220" cy="230" r="12" fill="#fff"/><circle cx="420" cy="180" r="12" fill="#fff"/><circle cx="620" cy="130" r="12" fill="#fff"/><circle cx="820" cy="80" r="12" fill="#fff"/><circle cx="1020" cy="30" r="12" fill="#fff"/></svg>',
-    'horror':      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#000"/><stop offset="100%" stop-color="#212121"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="300" cy="100" r="30" fill="#4a148c" opacity=".6"/><circle cx="900" cy="200" r="40" fill="#6a1b9a" opacity=".6"/><path d="M500 150 Q600 50 700 150 Q800 250 900 150" stroke="#4a148c" stroke-width="4" fill="none"/></svg>',
-    'sandbox':     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#827717"/><stop offset="100%" stop-color="#c0ca33"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="200" width="100" height="60" fill="#fff" opacity=".8"/><rect x="250" y="150" width="100" height="110" fill="#fff" opacity=".8"/><rect x="400" y="220" width="100" height="40" fill="#fff" opacity=".8"/><rect x="550" y="100" width="100" height="160" fill="#fff" opacity=".8"/><rect x="700" y="180" width="100" height="80" fill="#fff" opacity=".8"/></svg>',
-    'survival':    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3e2723"/><stop offset="100%" stop-color="#5d4037"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M100 280 Q300 100 500 280 Q700 100 900 280 Q1100 100 1200 280" stroke="#8d6e63" stroke-width="8" fill="none"/><circle cx="600" cy="180" r="40" fill="#4e342e"/></svg>',
+    "action": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c62828"/><stop offset="100%" stop-color="#ff1744"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="800" cy="150" r="60" fill="#ffcdd2" opacity=".8"/><path d="M760 110l40 80M760 190l40-80" stroke="#fff" stroke-width="12" fill="none" stroke-linecap="round"/></svg>',
+    "adventure": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a237e"/><stop offset="100%" stop-color="#5c6bc0"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M200 240 L400 60 L600 240 L800 60 L1000 240" stroke="#e8eaf6" stroke-width="8" fill="none"/><circle cx="880" cy="80" r="20" fill="#ffd54f"/></svg>',
+    "rpg": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4a148c"/><stop offset="100%" stop-color="#ab47bc"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M300 200 L360 100 L420 200 M450 200 L510 100 L570 200 M600 200 L660 100 L720 200" stroke="#e1bee7" stroke-width="10" fill="none" stroke-linecap="round"/><circle cx="900" cy="220" r="30" fill="#ce93d8"/></svg>',
+    "strategy": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1b5e20"/><stop offset="100%" stop-color="#43a047"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="300" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="500" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="700" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/><rect x="900" y="100" width="100" height="100" fill="#c8e6c9" opacity=".7"/></svg>',
+    "shooter": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3e2723"/><stop offset="100%" stop-color="#795548"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="80" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/><rect x="350" y="140" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/><rect x="600" y="80" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/><rect x="850" y="140" width="200" height="40" fill="#d7ccc8" opacity=".8" rx="4"/></svg>',
+    "racing": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#d32f2f"/><stop offset="100%" stop-color="#ff5252"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="150" cy="240" r="25" fill="#e0e0e0"/><circle cx="240" cy="240" r="25" fill="#e0e0e0"/><circle cx="960" cy="240" r="25" fill="#e0e0e0"/><circle cx="1050" cy="240" r="25" fill="#e0e0e0"/><path d="M100 180 Q600 60 1100 180" stroke="#fff" stroke-width="3" fill="none"/></svg>',
+    "sports": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2e7d32"/><stop offset="100%" stop-color="#4caf50"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="600" cy="150" r="100" fill="#fff" opacity=".15"/><path d="M100 150 L1100 150 M600 50 L600 250" stroke="#fff" stroke-width="2" opacity=".6"/></svg>',
+    "simulation": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1565c0"/><stop offset="100%" stop-color="#42a5f5"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="200" y="80" width="200" height="140" fill="#bbdefb" opacity=".7" rx="8"/><rect x="450" y="120" width="200" height="100" fill="#bbdefb" opacity=".7" rx="8"/><rect x="700" y="80" width="200" height="140" fill="#bbdefb" opacity=".7" rx="8"/><rect x="950" y="130" width="150" height="70" fill="#bbdefb" opacity=".7" rx="8"/></svg>',
+    "indie": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4a148c"/><stop offset="50%" stop-color="#8e24aa"/><stop offset="100%" stop-color="#ce93d8"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="200" cy="80" r="40" fill="#fff" opacity=".3"/><circle cx="1000" cy="220" r="50" fill="#fff" opacity=".2"/><circle cx="400" cy="200" r="30" fill="#fff" opacity=".4"/></svg>',
+    "casual": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff6f00"/><stop offset="100%" stop-color="#ffb300"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="200" cy="150" r="30" fill="#fff" opacity=".8"/><circle cx="400" cy="120" r="25" fill="#fff" opacity=".8"/><circle cx="600" cy="180" r="35" fill="#fff" opacity=".8"/><circle cx="800" cy="100" r="20" fill="#fff" opacity=".8"/><circle cx="1000" cy="160" r="28" fill="#fff" opacity=".8"/></svg>',
+    "puzzle": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4527a0"/><stop offset="100%" stop-color="#7e57c2"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="100" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="200" y="180" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="300" y="100" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="400" y="180" width="80" height="80" fill="#d1c4e9" opacity=".8"/><rect x="500" y="100" width="80" height="80" fill="#d1c4e9" opacity=".8"/></svg>',
+    "platformer": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#33691e"/><stop offset="100%" stop-color="#689f38"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M0 250 L200 250 L200 200 L400 200 L400 150 L600 150 L600 100 L800 100 L800 50 L1000 50 L1000 0 L1200 0 L1200 300 L0 300 Z" fill="#2e7d32"/><circle cx="220" cy="230" r="12" fill="#fff"/><circle cx="420" cy="180" r="12" fill="#fff"/><circle cx="620" cy="130" r="12" fill="#fff"/><circle cx="820" cy="80" r="12" fill="#fff"/><circle cx="1020" cy="30" r="12" fill="#fff"/></svg>',
+    "horror": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#000"/><stop offset="100%" stop-color="#212121"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><circle cx="300" cy="100" r="30" fill="#4a148c" opacity=".6"/><circle cx="900" cy="200" r="40" fill="#6a1b9a" opacity=".6"/><path d="M500 150 Q600 50 700 150 Q800 250 900 150" stroke="#4a148c" stroke-width="4" fill="none"/></svg>',
+    "sandbox": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#827717"/><stop offset="100%" stop-color="#c0ca33"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><rect x="100" y="200" width="100" height="60" fill="#fff" opacity=".8"/><rect x="250" y="150" width="100" height="110" fill="#fff" opacity=".8"/><rect x="400" y="220" width="100" height="40" fill="#fff" opacity=".8"/><rect x="550" y="100" width="100" height="160" fill="#fff" opacity=".8"/><rect x="700" y="180" width="100" height="80" fill="#fff" opacity=".8"/></svg>',
+    "survival": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3e2723"/><stop offset="100%" stop-color="#5d4037"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M100 280 Q300 100 500 280 Q700 100 900 280 Q1100 100 1200 280" stroke="#8d6e63" stroke-width="8" fill="none"/><circle cx="600" cy="180" r="40" fill="#4e342e"/></svg>',
 }
 
 
@@ -49,11 +49,11 @@ def _category_banner(name: str) -> str:
     """Return a data URI for a custom category banner, or the generated name-based banner if none exists."""
     svg = _CATEGORY_BANNERS.get(name.strip().lower())
     if svg:
-        return 'data:image/svg+xml,' + quote(svg, safe='')
+        return "data:image/svg+xml," + quote(svg, safe="")
     return banner_data_uri(name)
 
-MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-          "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
+
+MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
 
 
 def sort_date(text) -> str:
@@ -74,8 +74,7 @@ def sort_date(text) -> str:
     month = re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", raw, re.IGNORECASE)
     day = re.search(r"\b(\d{1,2})\b", raw)
     day_value = int(day.group(1)) if day and int(day.group(1)) <= 31 else 0
-    return f"{year.group(1)}{MONTHS[month.group(1).lower()]:02d}{day_value:02d}" if month else (
-        f"{year.group(1)}00{day_value:02d}")
+    return f"{year.group(1)}{MONTHS[month.group(1).lower()]:02d}{day_value:02d}" if month else (f"{year.group(1)}00{day_value:02d}")
 
 
 @dataclass(frozen=True)
@@ -100,12 +99,12 @@ class LibrarySummary:
 
     # (category, game count, total archive bytes), by game count descending then name, so a display can
     # render a ranked list without sorting anything itself.
-    categories: tuple[tuple[str,int,int], ...] = ()
+    categories: tuple[tuple[str, int, int], ...] = ()
     # genre -> category -> count, read off the sidecars. A genre no game carries is not a key here.
-    genre_placement: dict[str,dict[str,int]] = field(default_factory=dict)
+    genre_placement: dict[str, dict[str, int]] = field(default_factory=dict)
     # Developer, casefolded -> ((game name, category), ...), only where that developer has 2+ games, because
     # one game is not a precedent. Sorted by name so the order does not depend on the directory walk.
-    developer_placement: dict[str,tuple[tuple[str,str],...]] = field(default_factory=dict)
+    developer_placement: dict[str, tuple[tuple[str, str], ...]] = field(default_factory=dict)
     total_games: int = 0
     # time.time() at the build, so a display can say how stale the figures are. 0.0 means never built, which
     # is how "not indexed yet" is told apart from "indexed, and there is nothing" - see `library_summary`.
@@ -116,7 +115,7 @@ class LibrarySummary:
         """Whether this summary was actually built. False means "not looked yet", not "no categories"."""
         return self.built_at > 0.0
 
-    def categories_for_genres(self,genres) -> tuple[tuple[str,int],...]:
+    def categories_for_genres(self, genres) -> tuple[tuple[str, int], ...]:
         """Where these genres already live: (category, games) pairs, most games first.
 
         The count is summed across the genres asked about, so a category holding three of a game's games'
@@ -127,19 +126,19 @@ class LibrarySummary:
         A genre nobody has is ignored rather than an error: the caller is holding whatever Steam returned for
         a game that may not be in the library at all, and "no category has this genre" is an answer.
         """
-        totals={}
+        totals = {}
         for genre in genres or ():
-            key=str(genre or '').strip()
+            key = str(genre or "").strip()
             # Compared casefolded, so a genre arriving as 'rpg' still finds the 'RPG' the sidecars carry. The
             # keys keep Steam's own capitalisation, because a display prints them; only the comparison is
             # folded. Eleven genres is one pass, and a case-mismatch reported as "nothing here has that" is a
             # wrong answer on a panel whose entire purpose is to say what is already in the library.
-            placement=next((counts for name,counts in self.genre_placement.items() if name.casefold()==key.casefold()),{})
-            for category,count in placement.items():
-                totals[category]=totals.get(category,0)+int(count)
-        return tuple(sorted(totals.items(),key=lambda item:(-item[1],item[0].casefold())))
+            placement = next((counts for name, counts in self.genre_placement.items() if name.casefold() == key.casefold()), {})
+            for category, count in placement.items():
+                totals[category] = totals.get(category, 0) + int(count)
+        return tuple(sorted(totals.items(), key=lambda item: (-item[1], item[0].casefold())))
 
-    def precedent_for(self,developer) -> tuple[tuple[str,str],...]:
+    def precedent_for(self, developer) -> tuple[tuple[str, str], ...]:
         """The same studio's other games and where they live. () when there is no precedent.
 
         Keyed casefolded, because the caller holds a developer string out of a Steam match and the sidecars
@@ -147,10 +146,10 @@ class LibrarySummary:
         game all return () rather than raising: on a library like this all three are ordinary outcomes, and
         only the first is even a mistake.
         """
-        return self.developer_placement.get(str(developer or '').strip().casefold(),())
+        return self.developer_placement.get(str(developer or "").strip().casefold(), ())
 
     @classmethod
-    def from_categories(cls,categories,built_at=None):
+    def from_categories(cls, categories, built_at=None):
         """Build the index from one `_collect()` result. Pure: no I/O, no logging, no service state.
 
         `categories` is the same dict the catalog renders from, so genre, developer and archive size are
@@ -158,23 +157,27 @@ class LibrarySummary:
         time this is called, which is what keeps a directory of loose .rar/.zip files - `Larage Games` on
         the real library - out of the category list rather than a phantom zero-game row in it.
         """
-        rows=[]; by_genre={}; by_developer={}; total=0
-        for category,games in (categories or {}).items():
-            games=list(games or ())
-            rows.append((category,len(games),sum(int(game.get('archive_size') or 0) for game in games)))
-            total+=len(games)
+        rows = []
+        by_genre = {}
+        by_developer = {}
+        total = 0
+        for category, games in (categories or {}).items():
+            games = list(games or ())
+            rows.append((category, len(games), sum(int(game.get("archive_size") or 0) for game in games)))
+            total += len(games)
             for game in games:
-                for value in game.get('genres') or ():
-                    genre=str(value or '').strip()
-                    if not genre: continue
-                    placement=by_genre.setdefault(genre,{})
-                    placement[category]=placement.get(category,0)+1
-                studio=str(game.get('developer') or '').strip()
-                if studio: by_developer.setdefault(studio.casefold(),[]).append((str(game.get('name') or '').strip(),category))
-        precedent={key:tuple(sorted(found,key=lambda item:(item[0].casefold(),item[1]))) for key,found in by_developer.items() if len(found)>=2}
-        return cls(categories=tuple(sorted(rows,key=lambda row:(-row[1],row[0].casefold()))),
-                   genre_placement=by_genre,developer_placement=precedent,total_games=total,
-                   built_at=time.time() if built_at is None else float(built_at))
+                for value in game.get("genres") or ():
+                    genre = str(value or "").strip()
+                    if not genre:
+                        continue
+                    placement = by_genre.setdefault(genre, {})
+                    placement[category] = placement.get(category, 0) + 1
+                studio = str(game.get("developer") or "").strip()
+                if studio:
+                    by_developer.setdefault(studio.casefold(), []).append((str(game.get("name") or "").strip(), category))
+        precedent = {key: tuple(sorted(found, key=lambda item: (item[0].casefold(), item[1]))) for key, found in by_developer.items() if len(found) >= 2}
+        return cls(categories=tuple(sorted(rows, key=lambda row: (-row[1], row[0].casefold()))), genre_placement=by_genre, developer_placement=precedent, total_games=total, built_at=time.time() if built_at is None else float(built_at))
+
 
 class CatalogService:
     """Builds an offline, clickable HTML game catalog (banner art + TOC + per-category header) from the
@@ -187,59 +190,64 @@ class CatalogService:
     expensive part and it was already happening on every scan and after every organize run; the metadata
     describing all 165 games used to be parsed and then thrown away with nothing reading it."""
 
-    CATALOG_NAME='Game Library.html'
+    CATALOG_NAME = "Game Library.html"
     # Every name this catalog has ever used, so a library organised by an earlier release is cleaned up
     # instead of collecting one more catalog per run.
-    LEGACY_CATALOGS=('Game Library (Steam Deck) - *.html','Game Library (Windows) - *.html',
-                     'Game Library - *.html','Game Library.html')
-    LEGACY_LAUNCHER='Open Game Library (Steam Deck).desktop'
-    def __init__(self,logger,extract_folders=()): 
-        self.logger=logger
+    LEGACY_CATALOGS = ("Game Library (Steam Deck) - *.html", "Game Library (Windows) - *.html", "Game Library - *.html", "Game Library.html")
+    LEGACY_LAUNCHER = "Open Game Library (Steam Deck).desktop"
+
+    def __init__(self, logger, extract_folders=()):
+        self.logger = logger
         from core.constants import ENTRY_POINT
-        if getattr(sys,'frozen',False):
-            self._setup_cmd = f"{ENTRY_POINT.replace('.py','.exe')} --setup"
+
+        if getattr(sys, "frozen", False):
+            self._setup_cmd = f"{ENTRY_POINT.replace('.py', '.exe')} --setup"
         else:
             self._setup_cmd = f"runtime{chr(92)}python.exe steam_game_organizer.py --setup"
         # The destinations the page offers. Passed in rather than read from config here, because the catalog
         # service is otherwise deliberately free of app configuration and can be pointed at any library.
-        self.extract_folders=[Path(p) for p in extract_folders] or [Path.home()/"Downloads"/"Extracted"]
+        self.extract_folders = [Path(p) for p in extract_folders] or [Path.home() / "Downloads" / "Extracted"]
         # The index retained from the walk generate() already performs. None means "not built yet", which is an
         # ordinary state on a process that reaches a screen before it has scanned anything.
-        self._summary=None; self._library_root=None
+        self._summary = None
+        self._library_root = None
         # Template caches - avoid regenerating static content on each render
-        self._css_cache=None
-        self._script_cache=None
+        self._css_cache = None
+        self._script_cache = None
 
-    def generate(self,library_root,write_launcher=False):
-        library_root=Path(library_root).expanduser().resolve()
-        if not library_root.is_dir(): return []
+    def generate(self, library_root, write_launcher=False):
+        library_root = Path(library_root).expanduser().resolve()
+        if not library_root.is_dir():
+            return []
         # generate() always walks fresh: the library may have changed since the last call (a game moved
         # category, an archive converted away). Clear the module-level _collect() cache so stale data
         # is not returned to any CatalogService instance.
         with _COLLECT_CACHE_LOCK:
             _COLLECT_CACHE.clear()
-        categories=self._collect(library_root)
+        categories = self._collect(library_root)
         # Retained here, ahead of the empty check and of anything being rendered or written: an empty library is
         # a valid index, and a write that fails four lines below still leaves metadata the scan just paid for.
-        self._retain(library_root,categories)
-        if not categories: return []
+        self._retain(library_root, categories)
+        if not categories:
+            return []
         self._remove_previous(library_root)
-        path=library_root/self.CATALOG_NAME
+        path = library_root / self.CATALOG_NAME
         try:
-            path.write_text(self._render(categories,self.extract_folders,library_root),encoding='utf-8')
+            path.write_text(self._render(categories, self.extract_folders, library_root), encoding="utf-8")
         except OSError as exc:
-            self.logger.warning('CATALOG',f'WRITE_FAILED path=[{path}] error={type(exc).__name__}')
+            self.logger.warning("CATALOG", f"WRITE_FAILED path=[{path}] error={type(exc).__name__}")
             return []
         # The status file is written only when it is not already there. A run's result is the thing a reader
         # comes back to the page for, and every scan regenerates the catalog - so overwriting it here would
         # erase the last run's outcome on the next scan, which is the one thing the banner exists to report.
-        if not (library_root/STATUS_NAME).exists():
-            write_status(library_root,empty_status(),self.logger)
-        if write_launcher: self._write_chrome_launcher(library_root,path)
-        self.logger.info('CATALOG',f'GENERATED files=1 games={sum(len(v) for v in categories.values())}')
+        if not (library_root / STATUS_NAME).exists():
+            write_status(library_root, empty_status(), self.logger)
+        if write_launcher:
+            self._write_chrome_launcher(library_root, path)
+        self.logger.info("CATALOG", f"GENERATED files=1 games={sum(len(v) for v in categories.values())}")
         return [path]
 
-    def _retain(self,library_root,categories):
+    def _retain(self, library_root, categories):
         """Keep the collected metadata as the library index instead of dropping it on the floor.
 
         `generate()` calls `_collect()` on every scan and again at the end of every organize run, and until
@@ -253,11 +261,11 @@ class CatalogService:
         categories and then regenerates the catalog (app/controller.py), so the index follows the moves for
         free; a scan ends the same way. Neither needs invalidating, because both end here.
         """
-        self._library_root=Path(library_root)
-        self._summary=LibrarySummary.from_categories(categories)
-        self.logger.info('CATALOG',f'INDEX_BUILT categories={len(self._summary.categories)} games={self._summary.total_games} developers={len(self._summary.developer_placement)}')
+        self._library_root = Path(library_root)
+        self._summary = LibrarySummary.from_categories(categories)
+        self.logger.info("CATALOG", f"INDEX_BUILT categories={len(self._summary.categories)} games={self._summary.total_games} developers={len(self._summary.developer_placement)}")
 
-    def library_summary(self,library_root=None) -> LibrarySummary:
+    def library_summary(self, library_root=None) -> LibrarySummary:
         """The library index, for the questions a category decision needs answered.
 
         Pass the library root and a cold call builds the index once and caches it. Reaching a screen before
@@ -272,11 +280,12 @@ class CatalogService:
         instance can be pointed at a different library and a summary of the previous one is worse than none.
         """
         if library_root is not None:
-            root=Path(library_root).expanduser().resolve()
-            if self._summary is None or root!=self._library_root: return self.rebuild_summary(root)
+            root = Path(library_root).expanduser().resolve()
+            if self._summary is None or root != self._library_root:
+                return self.rebuild_summary(root)
         return self._summary if self._summary is not None else LibrarySummary()
 
-    def rebuild_summary(self,library_root) -> LibrarySummary:
+    def rebuild_summary(self, library_root) -> LibrarySummary:
         """Walk the library and replace the retained index. The only path here that reads the disk.
 
         A root that is missing, is not a directory, or cannot be listed yields an empty-but-valid summary and
@@ -287,16 +296,18 @@ class CatalogService:
         Caching the failure would report a drive that is not plugged in as a library with no categories, and
         there would be no way back short of restarting the app.
         """
-        root=Path(library_root).expanduser().resolve()
-        self._library_root=root; self._summary=None
+        root = Path(library_root).expanduser().resolve()
+        self._library_root = root
+        self._summary = None
         if not root.is_dir():
-            self.logger.warning('CATALOG',f'INDEX_BUILD_FAILED path=[{root}] error=[NotADirectoryError]')
+            self.logger.warning("CATALOG", f"INDEX_BUILD_FAILED path=[{root}] error=[NotADirectoryError]")
             return LibrarySummary()
-        try: categories=self._collect(root)
+        try:
+            categories = self._collect(root)
         except OSError as exc:
-            self.logger.warning('CATALOG',f'INDEX_BUILD_FAILED path=[{root}] error={type(exc).__name__}')
+            self.logger.warning("CATALOG", f"INDEX_BUILD_FAILED path=[{root}] error={type(exc).__name__}")
             return LibrarySummary()
-        self._retain(root,categories)
+        self._retain(root, categories)
         return self._summary
 
     def invalidate_summary(self):
@@ -306,11 +317,12 @@ class CatalogService:
         where it came from and can remove the folder the run created - where holding on to the old numbers
         would be worse than paying for one fresh walk the next time something asks.
         """
-        self._summary=None; self._library_root=None
+        self._summary = None
+        self._library_root = None
         with _COLLECT_CACHE_LOCK:
             _COLLECT_CACHE.clear()
 
-    def _is_app_folder(self,folder):
+    def _is_app_folder(self, folder):
         r"""True when this folder is the app's own project folder rather than a game category.
 
         The library root is the app's own project folder when the app is installed there, which is the
@@ -322,19 +334,23 @@ class CatalogService:
         """
         return (folder / ENTRY_POINT).is_file()
 
-    def _remove_previous(self,library_root):
+    def _remove_previous(self, library_root):
         for pattern in self.LEGACY_CATALOGS:
             for old in library_root.glob(pattern):
-                if old.name==self.CATALOG_NAME: continue
-                try: old.unlink()
-                except OSError as exc: self.logger.warning('CATALOG',f'OLD_FILE_REMOVE_FAILED path=[{old}] error={type(exc).__name__}')
-        launcher=library_root/self.LEGACY_LAUNCHER
+                if old.name == self.CATALOG_NAME:
+                    continue
+                try:
+                    old.unlink()
+                except OSError as exc:
+                    self.logger.warning("CATALOG", f"OLD_FILE_REMOVE_FAILED path=[{old}] error={type(exc).__name__}")
+        launcher = library_root / self.LEGACY_LAUNCHER
         try:
-            if launcher.is_file() and not (library_root/self.CATALOG_NAME).is_file():
+            if launcher.is_file() and not (library_root / self.CATALOG_NAME).is_file():
                 launcher.unlink()
-        except OSError as exc: self.logger.warning('CATALOG',f'OLD_FILE_REMOVE_FAILED path=[{launcher}] error={type(exc).__name__}')
+        except OSError as exc:
+            self.logger.warning("CATALOG", f"OLD_FILE_REMOVE_FAILED path=[{launcher}] error={type(exc).__name__}")
 
-    def _write_chrome_launcher(self,library_root,html_path):
+    def _write_chrome_launcher(self, library_root, html_path):
         # Only written when the machine has no browser association for .html at all, in which case double
         # clicking the catalog would not open a browser. A desktop that already knows what to do with an HTML
         # file gets the catalog on its own, with nothing extra sitting in the library root.
@@ -344,189 +360,215 @@ class CatalogService:
         # inside it could not have been acted on. The caller asked the registry whether a launcher was needed
         # by searching PATH for five Linux package names and then for three Flatpak app ids, and on this
         # platform every one of those lookups fails - so the answer came from HKCR or it did not come at all.
-        file_url=f'file://{pathname2url(str(html_path))}'
+        file_url = f"file://{pathname2url(str(html_path))}"
         # A .url, not a .desktop. This wrote a Linux desktop entry into the library root on a Windows machine,
         # where Windows has no association for the extension - so the launcher could not be opened at all. The
         # file exists in the real library, naming a browser command that does not exist either: see
         # OrganizerService.chrome_command, which used to invent one when it found no browser.
-        launcher=library_root/'Open Game Library.url'
+        launcher = library_root / "Open Game Library.url"
         try:
             launcher.write_text(
-                "[InternetShortcut]\n"
-                f"URL={file_url}\n",
-                encoding='utf-8',
+                f"[InternetShortcut]\nURL={file_url}\n",
+                encoding="utf-8",
             )
             # The temporary older name is removed so a library that already has the dead .desktop does not keep
             # it beside the working one. LEGACY_LAUNCHER handles the release that wrote '(Steam Deck)'.
-            for stale in (library_root/'Open Game Library.desktop', library_root/self.LEGACY_LAUNCHER):
-                try: stale.unlink()
-                except OSError: pass
+            for stale in (library_root / "Open Game Library.desktop", library_root / self.LEGACY_LAUNCHER):
+                try:
+                    stale.unlink()
+                except OSError:
+                    pass
         except OSError as exc:
-            self.logger.warning('CATALOG',f'LAUNCHER_WRITE_FAILED path=[{launcher}] error={type(exc).__name__}')
+            self.logger.warning("CATALOG", f"LAUNCHER_WRITE_FAILED path=[{launcher}] error={type(exc).__name__}")
 
-    def _collect(self,library_root):
-        root=Path(library_root).expanduser().resolve()
-        key=str(root)
+    def _collect(self, library_root):
+        root = Path(library_root).expanduser().resolve()
+        key = str(root)
         with _COLLECT_CACHE_LOCK:
-            cached=_COLLECT_CACHE.get(key)
+            cached = _COLLECT_CACHE.get(key)
             if cached is not None:
                 return cached
-        categories={}
+        categories = {}
         for category_dir in sorted(p for p in root.iterdir() if p.is_dir() and p.name not in LIBRARY_RESERVED_DIRS and not self._is_app_folder(p)):
-            games=[]
+            games = []
             for game_dir in sorted(p for p in category_dir.iterdir() if p.is_dir()):
                 # A game subfolder with no archive is not a game: it is the folder left behind when the
                 # game was re-categorised, carrying the Steam link, the metadata and the artwork the
                 # organizer wrote. Cataloguing it rendered a card on the shelf for a game that is not
                 # there, with a broken Extract button, and every scan reported it as a scan problem.
                 # The empty-folder sweep is what removes these; the catalog only has to skip them.
-                if not self._find_archive(game_dir): continue
-                entry=self._read_game(game_dir,category_dir.name,library_root)
-                if entry: games.append(entry)
-            if games: categories[category_dir.name]=games
+                if not self._find_archive(game_dir):
+                    continue
+                entry = self._read_game(game_dir, category_dir.name, library_root)
+                if entry:
+                    games.append(entry)
+            if games:
+                categories[category_dir.name] = games
         with _COLLECT_CACHE_LOCK:
-            _COLLECT_CACHE[key]=categories
+            _COLLECT_CACHE[key] = categories
         return categories
 
-    def _read_game(self,game_dir,category_name,library_root):
-        meta_path=game_dir/'.game-info.json'
-        metadata={}
+    def _read_game(self, game_dir, category_name, library_root):
+        meta_path = game_dir / ".game-info.json"
+        metadata = {}
         if meta_path.is_file():
-            try: metadata=json.loads(meta_path.read_text(encoding='utf-8'))
-            except (OSError,ValueError): metadata={}
+            try:
+                metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                metadata = {}
         # A title that is only whitespace counts as no title. `"   "` is truthy, so the `or` chain used to keep
         # it and render a card whose heading was three spaces - present on the shelf, identifying nothing.
-        name=(str(metadata.get('name') or '').strip()
-              or re.sub(r'\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$','',game_dir.name).strip()
-              or game_dir.name)
-        appid=str(metadata.get('appid') or '').strip()
-        banner=self._find_banner(game_dir,self._asset_prefix(game_dir,metadata))
-        banner_rel=str(banner.relative_to(library_root)).replace('\\','/') if banner else ''
+        name = str(metadata.get("name") or "").strip() or re.sub(r"\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$", "", game_dir.name).strip() or game_dir.name
+        appid = str(metadata.get("appid") or "").strip()
+        banner = self._find_banner(game_dir, self._asset_prefix(game_dir, metadata))
+        banner_rel = str(banner.relative_to(library_root)).replace("\\", "/") if banner else ""
         # Relative folder reference: the catalog is written into the library root, so this path stays valid
         # if the whole Games folder is copied elsewhere. An absolute path would break the moment it moves.
-        folder_rel=str(game_dir.relative_to(library_root)).replace('\\','/')
-        archive=self._find_archive(game_dir)
+        folder_rel = str(game_dir.relative_to(library_root)).replace("\\", "/")
+        archive = self._find_archive(game_dir)
         return {
-            'name':name,'appid':appid,'category':category_name,
-            'description':metadata.get('description') or 'No description available.',
-            'release_date':metadata.get('release_date') or 'Unknown release date',
-            'developer':metadata.get('developer') or '', 'publisher':metadata.get('publisher') or '',
-            'genres':metadata.get('genres') or [], 'banner':banner_rel,
+            "name": name,
+            "appid": appid,
+            "category": category_name,
+            "description": metadata.get("description") or "No description available.",
+            "release_date": metadata.get("release_date") or "Unknown release date",
+            "developer": metadata.get("developer") or "",
+            "publisher": metadata.get("publisher") or "",
+            "genres": metadata.get("genres") or [],
+            "banner": banner_rel,
             # Steam's own tags. Written into the sidecar since tags were first captured, and read here for the
             # first time: they are the most descriptive thing Steam offers about a game - "Great Soundtrack",
             # "Immersive Sim", "Controller Support" - and none of it is visible anywhere else in the app.
-            'tags':self._clean_tags(metadata.get('tags')),
-            'folder':game_dir, 'folder_rel':folder_rel,
-            'archive':archive,
+            "tags": self._clean_tags(metadata.get("tags")),
+            "folder": game_dir,
+            "folder_rel": folder_rel,
+            "archive": archive,
             # Installer signature read from the archive's own index (no extraction): an InstallSignature('iso'/'repack',
             # program) if the archive is a launcher rather than a ready-to-play game, None if it is a game archive or could
             # not be inspected. _find_archive returns the basename, so resolve it against the game folder for the actual
             # file on disk. The on-disk "Needs Install" marker is the fallback; this is the pre-extraction preview.
-            'installer':self._archive_installer_kind(game_dir/archive) if archive else None,
+            "installer": self._archive_installer_kind(game_dir / archive) if archive else None,
             # Size on disk, so the catalog can sort and total a library rather than just list names.
-            'archive_size':self._archive_size(game_dir),
+            "archive_size": self._archive_size(game_dir),
             # Archive creation date: a reliable "is this a new file" signal the reader can compare against
             # the stale-extraction badge when an archive with the same name was replaced by a new download.
-            'archive_created':self._archive_created(game_dir),
+            "archive_created": self._archive_created(game_dir),
             # Full path to the archive on disk, for the stale-extraction check.
             # 'archive' above is a basename; this is the resolved path the marker was written from.
-            '_archive_path':str(game_dir/archive) if archive else '',
+            "_archive_path": str(game_dir / archive) if archive else "",
         }
 
-    def _archive_installer_kind(self,archive):
+    def _archive_installer_kind(self, archive):
         """InstallSignature('iso'/'repack' + program name) or None for the archive at `path`.
 
         Catalog generation must never be blocked by one archive this machine cannot inspect: any exception from the
         sniffer (missing tool, locked file, unrecognised format) is swallowed and the game simply gets no installer
         badge. The post-extraction "Needs Install" marker remains the hard guarantee.
         """
-        if not archive: return None
+        if not archive:
+            return None
         try:
             from services.archive_service import ArchiveService
+
             return ArchiveService(self.logger).archive_installer_kind(archive)
         except Exception as exc:
-            self.logger.warning('CATALOG',f'INSTALLER_KIND_FAILED path=[{Path(archive).name}] error={type(exc).__name__}')
+            self.logger.warning("CATALOG", f"INSTALLER_KIND_FAILED path=[{Path(archive).name}] error={type(exc).__name__}")
             return None
 
-    def _clean_tags(self,raw):
+    def _clean_tags(self, raw):
         """Steam's tag list, as a list of non-empty strings.
 
         Defensive about the type because this is read out of a JSON file the app wrote but a person can also
         edit: a string where a list was expected would otherwise iterate character by character and put
         single letters in the search index.
         """
-        if isinstance(raw,str): raw=[raw]
-        if not isinstance(raw,list): return []
-        seen=[]
+        if isinstance(raw, str):
+            raw = [raw]
+        if not isinstance(raw, list):
+            return []
+        seen = []
         for value in raw:
-            text=str(value or '').strip()
-            if text and text not in seen: seen.append(text)
+            text = str(value or "").strip()
+            if text and text not in seen:
+                seen.append(text)
         return seen
 
-    def _archive_size(self,game_dir):
+    def _archive_size(self, game_dir):
         try:
             for path in game_dir.iterdir():
-                if path.is_file() and path.suffix.lower() in ('.zip','.rar','.7z'): return path.stat().st_size
+                if path.is_file() and path.suffix.lower() in (".zip", ".rar", ".7z"):
+                    return path.stat().st_size
         except OSError:
             pass
         return 0
 
-    def _archive_created(self,game_dir):
+    def _archive_created(self, game_dir):
         """Archive file creation timestamp, as an ISO string for sorting/display."""
         try:
             for path in game_dir.iterdir():
-                if path.is_file() and path.suffix.lower() in ('.zip','.rar','.7z'):
-                    st=path.stat()
+                if path.is_file() and path.suffix.lower() in (".zip", ".rar", ".7z"):
+                    st = path.stat()
                     from datetime import datetime
-                    return datetime.fromtimestamp(st.st_ctime).strftime('%Y-%m-%d %H:%M')
+
+                    return datetime.fromtimestamp(st.st_ctime).strftime("%Y-%m-%d %H:%M")
         except OSError:
             pass
-        return ''
+        return ""
 
-    def _find_archive(self,game_dir):
+    def _find_archive(self, game_dir):
         """The game archive inside the folder, shown so the catalog lists what is actually on disk."""
         try:
-            return next((p.name for p in sorted(game_dir.iterdir()) if p.is_file() and p.suffix.lower() in ('.zip','.rar','.7z')),'')
+            return next((p.name for p in sorted(game_dir.iterdir()) if p.is_file() and p.suffix.lower() in (".zip", ".rar", ".7z")), "")
         except OSError:
-            return ''
+            return ""
 
-    def _safe_name(self,value):
-        value=re.sub(r'[<>:"/\\|?*\x00-\x1f]',"",str(value or "")).strip().rstrip(".")
-        return re.sub(r"\s+"," ",value) or "Unnamed Game"
+    def _safe_name(self, value):
+        value = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", str(value or "")).strip().rstrip(".")
+        return re.sub(r"\s+", " ", value) or "Unnamed Game"
 
     @staticmethod
     def _path_within(candidate, root):
         try:
-            candidate=Path(candidate).resolve(); root=Path(root).resolve()
+            candidate = Path(candidate).resolve()
+            root = Path(root).resolve()
         except OSError:
             return False
-        return candidate==root or root in candidate.parents
+        return candidate == root or root in candidate.parents
 
-    def _asset_prefix(self,game_dir,metadata):
+    def _asset_prefix(self, game_dir, metadata):
         # Assets are written on disk using the sanitized Steam name (see OrganizerService._asset_prefix), not
         # the raw folder name, so prefer the metadata name when available for an exact match.
-        name=metadata.get('name')
-        if name: return self._safe_name(name)
-        return re.sub(r'\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$','',game_dir.name).strip() or game_dir.name
+        name = metadata.get("name")
+        if name:
+            return self._safe_name(name)
+        return re.sub(r"\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$", "", game_dir.name).strip() or game_dir.name
 
-    def _find_banner(self,game_dir,prefix):
-        marker=prefix+'_'
-        files={}
-        for f in game_dir.glob('*'):
-            if f.suffix.lower() not in ('.jpg','.jpeg','.png','.webp'): continue
-            if f.stem.startswith(marker): files[f.stem[len(marker):]]=f
+    def _find_banner(self, game_dir, prefix):
+        marker = prefix + "_"
+        files = {}
+        for f in game_dir.glob("*"):
+            if f.suffix.lower() not in (".jpg", ".jpeg", ".png", ".webp"):
+                continue
+            if f.stem.startswith(marker):
+                files[f.stem[len(marker) :]] = f
         for key in BANNER_PRIORITY:
-            if key in files: return files[key]
-        for f in sorted(game_dir.glob('*')):
-            if f.suffix.lower() in ('.jpg','.jpeg','.png','.webp'): return f
+            if key in files:
+                return files[key]
+        for f in sorted(game_dir.glob("*")):
+            if f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
+                return f
         return None
 
-    def _store_url(self,appid): return f'https://store.steampowered.com/app/{appid}/'
-    def _steam_protocol_url(self,appid): return f'steam://store/{appid}'
+    def _store_url(self, appid):
+        return f"https://store.steampowered.com/app/{appid}/"
 
-    def _anchor(self,name): return re.sub(r'[^a-z0-9]+','-',name.casefold()).strip('-') or 'category'
+    def _steam_protocol_url(self, appid):
+        return f"steam://store/{appid}"
 
-    def _unpacked_archives(self,categories,extract_folders=()):
+    def _anchor(self, name):
+        return re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-") or "category"
+
+    def _unpacked_archives(self, categories, extract_folders=()):
         """Which archives on the page are already unpacked, and where.
 
         Returns (unpacked, needs_install, stale, unpacked_at, extracted_paths) keyed by
@@ -539,180 +581,190 @@ class CatalogService:
         """
         from services.catalog_status import read_extract_marker, resolve_extracted_root
 
-        folders=[Path(p).expanduser() for p in (extract_folders or [])] or [Path.home()/"Downloads"/"Extracted"]
-        by_stem={}
+        folders = [Path(p).expanduser() for p in (extract_folders or [])] or [Path.home() / "Downloads" / "Extracted"]
+        by_stem = {}
         for games in categories.values():
             for game in games:
-                name=game.get('archive') or ''
-                if name: by_stem.setdefault(Path(name).stem,[]).append(game)
-        unpacked=set()
-        needs_install=set()
-        stale=set()
-        unpacked_at={}
-        extracted_paths={}
-        launch_targets={}
-        setup_done={}
-        marker_dirs={}
-        for stem,group in by_stem.items():
-            if len(group)!=1: continue
-            name=group[0].get('archive') or ''
-            archive_path=group[0].get('_archive_path') or ''
-            if not name: continue
-            leaf=safe_folder_name(stem)
-            found=None
+                name = game.get("archive") or ""
+                if name:
+                    by_stem.setdefault(Path(name).stem, []).append(game)
+        unpacked = set()
+        needs_install = set()
+        stale = set()
+        unpacked_at = {}
+        extracted_paths = {}
+        launch_targets = {}
+        setup_done = {}
+        marker_dirs = {}
+        for stem, group in by_stem.items():
+            if len(group) != 1:
+                continue
+            name = group[0].get("archive") or ""
+            archive_path = group[0].get("_archive_path") or ""
+            if not name:
+                continue
+            leaf = safe_folder_name(stem)
+            found = None
             for dest in folders:
-                for candidate in (dest/leaf, dest/NEEDS_INSTALL_DIRNAME/leaf):
+                for candidate in (dest / leaf, dest / NEEDS_INSTALL_DIRNAME / leaf):
                     if already_extracted(candidate):
-                        found=candidate; break
-                if found: break
-            if not found: continue
+                        found = candidate
+                        break
+                if found:
+                    break
+            if not found:
+                continue
             unpacked.add(name)
-            marker=read_extract_marker(found) or {}
-            actual=resolve_extracted_root(found,folders) or found
-            extracted_paths[name]=actual
-            marker_dirs[name]=found
-            is_needs=bool(marker.get('needs_install')) or has_needs_install_mark(found) or has_needs_install_mark(actual)
-            if marker.get('setup_done') and not marker.get('needs_install'):
+            marker = read_extract_marker(found) or {}
+            actual = resolve_extracted_root(found, folders) or found
+            extracted_paths[name] = actual
+            marker_dirs[name] = found
+            is_needs = bool(marker.get("needs_install")) or has_needs_install_mark(found) or has_needs_install_mark(actual)
+            if marker.get("setup_done") and not marker.get("needs_install"):
                 setup_done.add(name)
-                is_needs=False
-            if is_needs: needs_install.add(name)
-            elif found.parent and found.parent.name==NEEDS_INSTALL_DIRNAME and not marker.get('setup_done'):
+                is_needs = False
+            if is_needs:
                 needs_install.add(name)
-            launch_target=marker.get('launch_target')
+            elif found.parent and found.parent.name == NEEDS_INSTALL_DIRNAME and not marker.get("setup_done"):
+                needs_install.add(name)
+            launch_target = marker.get("launch_target")
             if launch_target:
                 try:
-                    target_path=Path(str(launch_target)).expanduser()
-                    if target_path.is_file() and target_path.suffix.lower()=='.exe' and (not folders or any(self._path_within(target_path,f) for f in folders)):
-                        launch_targets[name]=str(target_path.resolve())
+                    target_path = Path(str(launch_target)).expanduser()
+                    if target_path.is_file() and target_path.suffix.lower() == ".exe" and (not folders or any(self._path_within(target_path, f) for f in folders)):
+                        launch_targets[name] = str(target_path.resolve())
                 except Exception:
                     pass
             if archive_path and archive_has_changed_since_extraction(found, archive_path):
                 stale.add(name)
-            when=marker.get('extracted_at')
-            if when: unpacked_at[name]=str(when)
-        return unpacked,needs_install,stale,unpacked_at,extracted_paths,launch_targets,setup_done,marker_dirs
+            when = marker.get("extracted_at")
+            if when:
+                unpacked_at[name] = str(when)
+        return unpacked, needs_install, stale, unpacked_at, extracted_paths, launch_targets, setup_done, marker_dirs
 
-    def _render(self,categories,extract_folders=(),library_root=''):
+    def _render(self, categories, extract_folders=(), library_root=""):
         # The destination is a free-text box, not a dropdown, so the configured folders are offered as
         # suggestions only - the datalist - and the box starts on the first of them.
-        folders=[str(Path(p).expanduser()) for p in (extract_folders or [])]
-        dest_choices=''.join(f'<option value="{escape(path)}"></option>' for path in folders)
-        dest_default=escape(folders[0] if folders else str(Path.home()/"Downloads"/"Extracted"))
+        folders = [str(Path(p).expanduser()) for p in (extract_folders or [])]
+        dest_choices = "".join(f'<option value="{escape(path)}"></option>' for path in folders)
+        dest_default = escape(folders[0] if folders else str(Path.home() / "Downloads" / "Extracted"))
         # Where the games are, prefilled rather than left empty. On the machine that ran the scan that value
         # is simply the library the page was written into, so every path on the page is already right before
         # anything is typed; on any other machine - a colleague's, a laptop, the same box after the Games folder has
         # been moved - it is overwritten with where the games actually are. Artwork and the category links are
         # relative to the page and survive a move by themselves, but a copied folder path and an Extract
         # source are not, so those two are rebuilt from this box.
-        root_default=escape(str(library_root)) if library_root else ''
-        total_games=sum(len(v) for v in categories.values())
-        total_art=sum(1 for v in categories.values() for g in v if g['banner'])
-        total_bytes=sum(int(g.get('archive_size') or 0) for v in categories.values() for g in v)
-        no_art=sum(1 for v in categories.values() for g in v if not g['banner'])
+        root_default = escape(str(library_root)) if library_root else ""
+        total_games = sum(len(v) for v in categories.values())
+        total_art = sum(1 for v in categories.values() for g in v if g["banner"])
+        total_bytes = sum(int(g.get("archive_size") or 0) for v in categories.values() for g in v)
+        no_art = sum(1 for v in categories.values() for g in v if not g["banner"])
         # Which cards carry the "already unpacked" badge. Checks all configured extract folders and uses
         # marker `extracted_root` when present; open-extracted links prefer the actual recorded root.
-        unpacked,needs_install,stale,unpacked_at,extracted_paths,launch_targets,setup_done,marker_dirs=self._unpacked_archives(categories,extract_folders)
+        unpacked, needs_install, stale, unpacked_at, extracted_paths, launch_targets, setup_done, marker_dirs = self._unpacked_archives(categories, extract_folders)
         # Count games that are already unpacked and have an archive, so the "Unextracted only" stat can show a
         # count that answers "how much is left to do?" at a glance.
-        has_archive=sum(1 for v in categories.values() for g in v if g['archive'])
-        already_unpacked=len(unpacked)
-        already_stale=len(stale)
+        has_archive = sum(1 for v in categories.values() for g in v if g["archive"])
+        already_unpacked = len(unpacked)
+        already_stale = len(stale)
         # Years are counted per-game for the rail's year chips. Decades would be too coarse on a shelf of 166
         # games spanning 1995–2025; a per-year count keeps each chip honest and the row short enough to scan.
-        year_counts={}
+        year_counts = {}
         for games in categories.values():
             for game in games:
-                raw=sort_date(game.get('release_date')) or ''
-                if len(raw)>=4:
-                    try: y=int(raw[:4])
-                    except ValueError: y=0
-                    if y>0: year_counts[y]=year_counts.get(y,0)+1
-        years=sorted(year_counts,reverse=True)
-        year_chips=''.join(f'<button class="chip-btn chip-btn-year" type="button" aria-pressed="false" data-year="{y}">{y}<span class="chip-count">{year_counts[y]}</span></button>' for y in years)
+                raw = sort_date(game.get("release_date")) or ""
+                if len(raw) >= 4:
+                    try:
+                        y = int(raw[:4])
+                    except ValueError:
+                        y = 0
+                    if y > 0:
+                        year_counts[y] = year_counts.get(y, 0) + 1
+        years = sorted(year_counts, reverse=True)
+        year_chips = "".join(f'<button class="chip-btn chip-btn-year" type="button" aria-pressed="false" data-year="{y}">{y}<span class="chip-count">{year_counts[y]}</span></button>' for y in years)
         # Games added recently, by days since the archive was created on disk. A 7/14/30 day chip lets a
         # reader narrow the shelf to what they just pulled in, without typing a date they do not know.
         from datetime import datetime as _dt
-        day_counts={}
-        for days in (7,14,30):
-            count=0
+
+        day_counts = {}
+        for days in (7, 14, 30):
+            count = 0
             for games in categories.values():
                 for game in games:
-                    created=game.get('archive_created') or ''
-                    if not created: continue
+                    created = game.get("archive_created") or ""
+                    if not created:
+                        continue
                     try:
-                        then=_dt.strptime(created,'%Y-%m-%d %H:%M')
+                        then = _dt.strptime(created, "%Y-%m-%d %H:%M")
                     except ValueError:
                         continue
-                    age=(_dt.now()-then).days
-                    if 0<=age<=days: count+=1
-            day_counts[days]=count
-        day_chips=''.join(f'<button class="chip-btn chip-btn-days" type="button" aria-pressed="false" data-days="{d}">{d}d<span class="chip-count">{day_counts[d]}</span></button>' for d in (7,14,30) if day_counts[d])
+                    age = (_dt.now() - then).days
+                    if 0 <= age <= days:
+                        count += 1
+            day_counts[days] = count
+        day_chips = "".join(f'<button class="chip-btn chip-btn-days" type="button" aria-pressed="false" data-days="{d}">{d}d<span class="chip-count">{day_counts[d]}</span></button>' for d in (7, 14, 30) if day_counts[d])
         # The genre rail is derived from what is actually on disk rather than a fixed vocabulary, so it stays
         # useful for a library of any shape and is never a row of filters that match nothing.
-        genre_counts={}
+        genre_counts = {}
         for games in categories.values():
             for game in games:
-                for genre in game['genres'][:6]:
-                    key=str(genre).strip()
-                    if key: genre_counts[key]=genre_counts.get(key,0)+1
-        top_genres=[name for name,_ in sorted(genre_counts.items(),key=lambda item:(-item[1],item[0].casefold()))[:24]]
+                for genre in game["genres"][:6]:
+                    key = str(genre).strip()
+                    if key:
+                        genre_counts[key] = genre_counts.get(key, 0) + 1
+        top_genres = [name for name, _ in sorted(genre_counts.items(), key=lambda item: (-item[1], item[0].casefold()))[:24]]
         # The same treatment for Steam's tags, which outnumber genres several times over and are the more
         # useful filter on a shelf of 165 games: "Great Soundtrack" or "Immersive Sim" narrows to a handful
         # where "Action" narrows to most of the library. Counted from what is on disk for the same reason -
         # a fixed vocabulary would be a row of filters that match nothing.
-        tag_counts={}
+        tag_counts = {}
         for games in categories.values():
             for game in games:
-                for tag in game['tags']:
-                    if tag: tag_counts[tag]=tag_counts.get(tag,0)+1
-        top_tags=[name for name,_ in sorted(tag_counts.items(),key=lambda item:(-item[1],item[0].casefold()))[:24]]
-        tag_chips=''.join(f'<button class="chip-btn chip-btn-tag" type="button" aria-pressed="false" data-genre="{escape(name)}">{escape(name)}<span class="chip-count">{tag_counts[name]}</span></button>' for name in top_tags)
+                for tag in game["tags"]:
+                    if tag:
+                        tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        top_tags = [name for name, _ in sorted(tag_counts.items(), key=lambda item: (-item[1], item[0].casefold()))[:24]]
+        tag_chips = "".join(f'<button class="chip-btn chip-btn-tag" type="button" aria-pressed="false" data-genre="{escape(name)}">{escape(name)}<span class="chip-count">{tag_counts[name]}</span></button>' for name in top_tags)
         # The hero already reports how many games have no artwork, but it was a number the reader could do
         # nothing with - on a shelf where a third of the cards are placeholders, "34 missing art" is exactly
         # the thing you want to filter down to and then go and fix. Rendered as a real toggle when there is
         # anything to filter, and still a plain tile when there is none, so a complete library is not offered
         # a filter that cannot narrow anything.
-        no_art_stat=(f'<button class="stat stat-filter" type="button" data-filter="noart" aria-pressed="false" '
-                     f'title="Show only the games with no artwork"><span class="stat-value">{no_art}</span>'
-                     f'<span class="stat-label">Missing art</span></button>' if no_art else
-                     f'<div class="stat stat-good"><span class="stat-value">{no_art}</span>'
-                     f'<span class="stat-label">Missing art</span></div>')
-        remaining=has_archive-already_unpacked
-        unextracted_stat=(f'<button class="stat stat-filter" type="button" data-filter="unextracted" aria-pressed="false" '
-                          f'title="Show only games that have not been unpacked yet"><span class="stat-value">{remaining}</span>'
-                          f'<span class="stat-label">To extract</span></button>' if remaining else
-                          f'<div class="stat stat-good"><span class="stat-value">{remaining}</span>'
-                          f'<span class="stat-label">To extract</span></div>')
-        stale_stat=(f'<button class="stat stat-filter" type="button" data-filter="stale" aria-pressed="false" '
-                     f'title="Show only games whose archive changed since extraction"><span class="stat-value">{already_stale}</span>'
-                     f'<span class="stat-label">New version</span></button>' if already_stale else
-                     f'<div class="stat stat-good"><span class="stat-value">{already_stale}</span>'
-                     f'<span class="stat-label">New version</span></div>')
-        hide_extracted_stat=(f'<button class="stat stat-filter" type="button" data-filter="hide_extracted" aria-pressed="false" '
-                             f'title="Hide already-extracted games, keeping only those with no archive or a new version available"><span class="stat-value">{already_unpacked}</span>'
-                             f'<span class="stat-label">Hide extracted</span></button>' if remaining < has_archive else
-                             '<div class="stat stat-good"><span class="stat-value">0</span>'
-                             '<span class="stat-label">Hide extracted</span></div>')
+        no_art_stat = f'<button class="stat stat-filter" type="button" data-filter="noart" aria-pressed="false" title="Show only the games with no artwork"><span class="stat-value">{no_art}</span><span class="stat-label">Missing art</span></button>' if no_art else f'<div class="stat stat-good"><span class="stat-value">{no_art}</span><span class="stat-label">Missing art</span></div>'
+        remaining = has_archive - already_unpacked
+        unextracted_stat = (
+            f'<button class="stat stat-filter" type="button" data-filter="unextracted" aria-pressed="false" title="Show only games that have not been unpacked yet"><span class="stat-value">{remaining}</span><span class="stat-label">To extract</span></button>' if remaining else f'<div class="stat stat-good"><span class="stat-value">{remaining}</span><span class="stat-label">To extract</span></div>'
+        )
+        stale_stat = (
+            f'<button class="stat stat-filter" type="button" data-filter="stale" aria-pressed="false" title="Show only games whose archive changed since extraction"><span class="stat-value">{already_stale}</span><span class="stat-label">New version</span></button>'
+            if already_stale
+            else f'<div class="stat stat-good"><span class="stat-value">{already_stale}</span><span class="stat-label">New version</span></div>'
+        )
+        hide_extracted_stat = (
+            f'<button class="stat stat-filter" type="button" data-filter="hide_extracted" aria-pressed="false" title="Hide already-extracted games, keeping only those with no archive or a new version available"><span class="stat-value">{already_unpacked}</span><span class="stat-label">Hide extracted</span></button>'
+            if remaining < has_archive
+            else '<div class="stat stat-good"><span class="stat-value">0</span><span class="stat-label">Hide extracted</span></div>'
+        )
         # data-toc-count is what lets the rail recount itself as a filter narrows the shelf. Without it the
         # numbers beside every category kept reporting the unfiltered totals, so a search matching 12 games
         # still showed 166 beside the category list.
-        toc_items=''.join(f'<li><a class="toc-link" href="#{self._anchor(name)}" data-target="{self._anchor(name)}"><span class="toc-dot" aria-hidden="true"></span><span class="toc-name">{escape(name)}</span><span class="count" data-toc-count="{self._anchor(name)}">{len(games)}</span></a></li>' for name,games in categories.items())
-        genre_chips=''.join(f'<button class="chip-btn" type="button" aria-pressed="false" data-genre="{escape(name)}">{escape(name)}<span class="chip-count">{genre_counts[name]}</span></button>' for name in top_genres)
+        toc_items = "".join(f'<li><a class="toc-link" href="#{self._anchor(name)}" data-target="{self._anchor(name)}"><span class="toc-dot" aria-hidden="true"></span><span class="toc-name">{escape(name)}</span><span class="count" data-toc-count="{self._anchor(name)}">{len(games)}</span></a></li>' for name, games in categories.items())
+        genre_chips = "".join(f'<button class="chip-btn" type="button" aria-pressed="false" data-genre="{escape(name)}">{escape(name)}<span class="chip-count">{genre_counts[name]}</span></button>' for name in top_genres)
         # Games that are already unpacked, shown first as a "ready to play" section so
         # the reader sees what they can jump straight into before browsing categories.
-        recent_games=[]
+        recent_games = []
         for games in categories.values():
             for g in games:
-                if g['archive'] and g['archive'] in unpacked:
+                if g["archive"] and g["archive"] in unpacked:
                     recent_games.append(g)
-        recent_games.sort(key=lambda g:unpacked_at.get(g['archive'],''),reverse=True)
-        recent_section=self._render_recent(recent_games,unpacked,needs_install,stale,unpacked_at,extracted_paths,launch_targets,setup_done,marker_dirs) if recent_games else ''
-        sections=recent_section+''.join(self._render_section(name,games,unpacked,needs_install,stale,unpacked_at,extracted_paths,launch_targets,setup_done,marker_dirs) for name,games in categories.items())
+        recent_games.sort(key=lambda g: unpacked_at.get(g["archive"], ""), reverse=True)
+        recent_section = self._render_recent(recent_games, unpacked, needs_install, stale, unpacked_at, extracted_paths, launch_targets, setup_done, marker_dirs) if recent_games else ""
+        sections = recent_section + "".join(self._render_section(name, games, unpacked, needs_install, stale, unpacked_at, extracted_paths, launch_targets, setup_done, marker_dirs) for name, games in categories.items())
         # Split into separate lines because a wall of prose is why this was 287 characters on one line: as a list
         # each point is separately readable, and the whole thing collapses out of the way until it is asked for.
-        subtitle='Cards open the Steam store page in your browser • Open in Steam launches the client • Copy the folder path to jump straight to the files • If the games live somewhere else now, set the game folder and both follow it — Extract also has to be inside the folder the app itself is pointed at'
-        help_points=[part.strip() for part in subtitle.split('•') if part.strip()]
-        help_items=''.join(f'<li>{escape(point)}</li>' for point in help_points)
+        subtitle = "Cards open the Steam store page in your browser • Open in Steam launches the client • Copy the folder path to jump straight to the files • If the games live somewhere else now, set the game folder and both follow it — Extract also has to be inside the folder the app itself is pointed at"
+        help_points = [part.strip() for part in subtitle.split("•") if part.strip()]
+        help_items = "".join(f"<li>{escape(point)}</li>" for point in help_points)
         return f'''<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -731,16 +783,16 @@ class CatalogService:
     <h1><span class="glyph" aria-hidden="true">&#127918;</span> Game Library</h1>
     <div class="stats">
       <div class="stat"><span class="stat-value">{total_games}</span><span class="stat-label">Games</span></div>
-      <div class="stat"><span class="stat-value">{day_counts.get(7,0)}</span><span class="stat-label">Added this week</span></div>
+      <div class="stat"><span class="stat-value">{day_counts.get(7, 0)}</span><span class="stat-label">Added this week</span></div>
       <div class="stat"><span class="stat-value">{len(categories)}</span><span class="stat-label">Categories</span></div>
       <div class="stat"><span class="stat-value">{total_art}</span><span class="stat-label">With artwork</span></div>
-      <div class="stat"><span class="stat-value">{escape(human_size(total_bytes)) if total_bytes else '0 B'}</span><span class="stat-label">On disk</span></div>
+      <div class="stat"><span class="stat-value">{escape(human_size(total_bytes)) if total_bytes else "0 B"}</span><span class="stat-label">On disk</span></div>
       {no_art_stat}
       {unextracted_stat}
       {stale_stat}
       {hide_extracted_stat}
     </div>
-    <p class="generated">Generated {escape(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))} — regenerates on every scan</p>
+    <p class="generated">Generated {escape(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))} — regenerates on every scan</p>
     <p class="tagline">{total_games} games across {len(categories)} categories</p>
   </div>
 </header>
@@ -789,8 +841,8 @@ class CatalogService:
           <code class="setup-cmd" id="setup-cmd" title="Click to copy">{escape(self._setup_cmd)}</code>
           <button class="btn-copy-cmd" id="setup-copy" title="Copy the command to the clipboard">Copy</button>
         </span>
-      {self._batch_button('',total_games,total_bytes,'Extract all','Unpack every game in the whole library',scope='the whole library') if total_games else ''}
-      {self._remaining_button(sum(1 for games in categories.values() for g in games if g['archive'] and g['archive'] not in unpacked),'Extract remaining','Unpack only games not already extracted') if total_games else ''}
+      {self._batch_button("", total_games, total_bytes, "Extract all", "Unpack every game in the whole library", scope="the whole library") if total_games else ""}
+      {self._remaining_button(sum(1 for games in categories.values() for g in games if g["archive"] and g["archive"] not in unpacked), "Extract remaining", "Unpack only games not already extracted") if total_games else ""}
       <button id="refresh-catalog" class="btn btn-ghost" type="button" data-refresh="{self._refresh_uri()}" title="Re-scan the library and refresh this page so Unpacked badges match what is on disk">Refresh catalog</button>
       <button id="multi-btn" class="btn btn-warning" type="button" data-multi="select" title="Select games to extract them together">Select games</button>
     <button id="extract-selected" class="btn btn-accent" type="button" data-multi="extract" title="Extract the selected games" hidden>Extract <span id="multi-count">0</span></button>
@@ -807,10 +859,10 @@ class CatalogService:
   <aside class="rail">
       <div id="batch-status" class="batch-status" role="status" aria-live="polite" hidden></div>
      <nav class="toc" aria-label="Categories"><p class="rail-title">Categories</p><ul>{toc_items}</ul></nav>
-    {f'<nav class="years" aria-label="Release years"><p class="rail-title">Years</p><div class="chip-row">{year_chips}</div></nav>' if year_chips else ''}
-    {f'<nav class="days" aria-label="Recently added"><p class="rail-title">Added</p><div class="chip-row">{day_chips}</div></nav>' if day_chips else ''}
-    {f'<nav class="genres" aria-label="Genres"><p class="rail-title">Genres</p><div class="chip-row">{genre_chips}</div></nav>' if genre_chips else ''}
-    {f'<nav class="tags-nav" aria-label="Tags"><p class="rail-title">Tags</p><div class="chip-row">{tag_chips}</div></nav>' if tag_chips else ''}
+    {f'<nav class="years" aria-label="Release years"><p class="rail-title">Years</p><div class="chip-row">{year_chips}</div></nav>' if year_chips else ""}
+    {f'<nav class="days" aria-label="Recently added"><p class="rail-title">Added</p><div class="chip-row">{day_chips}</div></nav>' if day_chips else ""}
+    {f'<nav class="genres" aria-label="Genres"><p class="rail-title">Genres</p><div class="chip-row">{genre_chips}</div></nav>' if genre_chips else ""}
+    {f'<nav class="tags-nav" aria-label="Tags"><p class="rail-title">Tags</p><div class="chip-row">{tag_chips}</div></nav>' if tag_chips else ""}
     <!-- Was a single 287-character paragraph sitting permanently at the bottom of the rail, which measured 144px
          of a 236px column to say six things the reader had not asked for yet. A disclosure costs one line until
          wanted, and native <details> needs no script and no state to get wrong. -->
@@ -842,22 +894,24 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
 </body>
 </html>'''
 
-    def _render_section(self,name,games,unpacked=(),needs_install=(),stale=(),unpacked_at=None,extracted_paths=None,launch_targets=None,setup_done=None,marker_dirs=None):
+    def _render_section(self, name, games, unpacked=(), needs_install=(), stale=(), unpacked_at=None, extracted_paths=None, launch_targets=None, setup_done=None, marker_dirs=None):
         # Custom per-category banner so every category looks distinct instead of all reusing the
         # first game's art. Falls back to the generated name-based banner for unknown categories.
-        header_image=_category_banner(name)
-        layers=f"--gen:url('{header_image}')"
-        real_banner=next((g['banner'] for g in games if g['banner']), '')
+        header_image = _category_banner(name)
+        layers = f"--gen:url('{header_image}')"
+        real_banner = next((g["banner"] for g in games if g["banner"]), "")
         if real_banner:
-            layers+=f";--real:url('{real_banner}')"
-        unpacked_at=unpacked_at or {}
-        cards=''.join(self._render_card(g,unpacked,needs_install,stale,unpacked_at,extracted_paths=extracted_paths,launch_targets=launch_targets,setup_done=setup_done,marker_dirs=marker_dirs) for g in games)
-        total=sum(int(g.get('archive_size') or 0) for g in games)
-        with_art=sum(1 for g in games if g['banner'])
-        facts=f'<span class="category-facts">{len(games)} game{"" if len(games)==1 else "s"}'
-        if total: facts+=f' <span class="dot">•</span> {escape(human_size(total))}'
-        if with_art<len(games): facts+=f' <span class="dot">•</span> {len(games)-with_art} without art'
-        facts+='</span>'
+            layers += f";--real:url('{real_banner}')"
+        unpacked_at = unpacked_at or {}
+        cards = "".join(self._render_card(g, unpacked, needs_install, stale, unpacked_at, extracted_paths=extracted_paths, launch_targets=launch_targets, setup_done=setup_done, marker_dirs=marker_dirs) for g in games)
+        total = sum(int(g.get("archive_size") or 0) for g in games)
+        with_art = sum(1 for g in games if g["banner"])
+        facts = f'<span class="category-facts">{len(games)} game{"" if len(games) == 1 else "s"}'
+        if total:
+            facts += f' <span class="dot">•</span> {escape(human_size(total))}'
+        if with_art < len(games):
+            facts += f' <span class="dot">•</span> {len(games) - with_art} without art'
+        facts += "</span>"
         return f'''<section id="{self._anchor(name)}" class="category" data-category="{escape(name)}">
   <div class="category-header" style="{layers}">
     <div class="category-titles">
@@ -865,8 +919,8 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
       {facts}
     </div>
    <div class="category-actions">
-      {self._batch_button(name,len(games),total,"Extract all","Unpack every game in this category")}
-      {self._remaining_button(sum(1 for g in games if g['archive'] and g['archive'] not in unpacked),'Extract remaining','Unpack only games in this category not already extracted')}
+      {self._batch_button(name, len(games), total, "Extract all", "Unpack every game in this category")}
+      {self._remaining_button(sum(1 for g in games if g["archive"] and g["archive"] not in unpacked), "Extract remaining", "Unpack only games in this category not already extracted")}
       <button class="jump-top" type="button" title="Jump back to the top of the catalog">&#8593; Top</button>
     </div>
   </div>
@@ -875,19 +929,19 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
 
     def _render_recent(self, games, unpacked=(), needs_install=(), stale=(), unpacked_at=None, extracted_paths=None, launch_targets=None, setup_done=None, marker_dirs=None):
         """A banner section at the top showing games already unpacked."""
-        unpacked_at=unpacked_at or {}
-        extracted_paths=extracted_paths or {}
-        cards = ''.join(self._render_card(g, unpacked, needs_install, stale, unpacked_at, show_badges=False, extracted_paths=extracted_paths, launch_targets=launch_targets, setup_done=setup_done, marker_dirs=marker_dirs) for g in games)
-        total = sum(int(g.get('archive_size') or 0) for g in games)
-        with_art = sum(1 for g in games if g['banner'])
-        facts = f'<span class="category-facts">{len(games)} game{"" if len(games)==1 else "s"} unpacked'
+        unpacked_at = unpacked_at or {}
+        extracted_paths = extracted_paths or {}
+        cards = "".join(self._render_card(g, unpacked, needs_install, stale, unpacked_at, show_badges=False, extracted_paths=extracted_paths, launch_targets=launch_targets, setup_done=setup_done, marker_dirs=marker_dirs) for g in games)
+        total = sum(int(g.get("archive_size") or 0) for g in games)
+        with_art = sum(1 for g in games if g["banner"])
+        facts = f'<span class="category-facts">{len(games)} game{"" if len(games) == 1 else "s"} unpacked'
         if total:
             facts += f' <span class="dot">•</span> {escape(human_size(total))}'
         if with_art < len(games):
-            facts += f' <span class="dot">•</span> {len(games)-with_art} without art'
-        facts += '</span>'
+            facts += f' <span class="dot">•</span> {len(games) - with_art} without art'
+        facts += "</span>"
         layers = f"--gen:url('{banner_data_uri('Recently extracted')}')"
-        return f'''<section id="{self._anchor('Recently extracted')}" class="category recent" data-category="Recently extracted">
+        return f'''<section id="{self._anchor("Recently extracted")}" class="category recent" data-category="Recently extracted">
   <div class="category-stuck" aria-hidden="true"><span class="category-stuck-name">Recently extracted</span></div>
   <div class="category-header" style="{layers}">
     <div class="category-titles">
@@ -901,7 +955,7 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
   <div class="grid">{cards}</div>
 </section>'''
 
-    def _batch_button(self,category,count,total_bytes,label,title,scope=""):
+    def _batch_button(self, category, count, total_bytes, label, title, scope=""):
         """A batch Extract link, carrying a category name and nothing else.
 
         The link names a category rather than a list of archives, so the app enumerates the library itself and a
@@ -915,20 +969,18 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
         """
         if not count:
             return ""
-        detail=f"{count} game{'' if count==1 else 's'}"
-        if total_bytes: detail+=f", {human_size(total_bytes)}"
-        shown=scope or category
-        return (f'<a class="btn btn-batch" href="{self._batch_uri(category)}" '
-                f'data-batch="{self._batch_uri(category)}" data-batch-count="{count}" '
-                f'data-batch-size="{int(total_bytes or 0)}" data-batch-name="{escape(shown)}" '
-                f'data-batch-confirm="{escape(title)} ({escape(detail)})">{label} {count}</a>')
+        detail = f"{count} game{'' if count == 1 else 's'}"
+        if total_bytes:
+            detail += f", {human_size(total_bytes)}"
+        shown = scope or category
+        return f'<a class="btn btn-batch" href="{self._batch_uri(category)}" data-batch="{self._batch_uri(category)}" data-batch-count="{count}" data-batch-size="{int(total_bytes or 0)}" data-batch-name="{escape(shown)}" data-batch-confirm="{escape(title)} ({escape(detail)})">{label} {count}</a>'
 
-    def _batch_uri(self,category):
+    def _batch_uri(self, category):
         """The steamgameorganizer:// link that unpacks a category, or the whole library when category is empty."""
-        query=urlencode({'category':category}) if category else ''
+        query = urlencode({"category": category}) if category else ""
         return f"{SCHEME}://extract-all?{query}" if query else f"{SCHEME}://extract-all"
 
-    def _remaining_button(self,count,label,title):
+    def _remaining_button(self, count, label, title):
         """A batch Extract link that unpacks only games not already extracted.
 
         Uses extract-remaining instead of extract-all so the same skip-existing logic runs,
@@ -936,88 +988,88 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
         """
         if not count:
             return ""
-        detail=f"{count} game{'' if count==1 else 's'}"
-        shown="the remaining games"
-        return (f'<a class="btn btn-batch" href="{self._remaining_uri()}" '
-                f'data-batch="{self._remaining_uri()}" data-batch-count="{count}" '
-                f'data-batch-size="0" data-batch-name="{escape(shown)}" '
-                f'data-batch-confirm="{escape(title)} ({escape(detail)})">{label} {count}</a>')
+        detail = f"{count} game{'' if count == 1 else 's'}"
+        shown = "the remaining games"
+        return f'<a class="btn btn-batch" href="{self._remaining_uri()}" data-batch="{self._remaining_uri()}" data-batch-count="{count}" data-batch-size="0" data-batch-name="{escape(shown)}" data-batch-confirm="{escape(title)} ({escape(detail)})">{label} {count}</a>'
 
     def _remaining_uri(self):
         return f"{SCHEME}://extract-remaining"
 
-    def _render_card(self,game,unpacked=(),needs_install=(),stale=(),unpacked_at=None,show_badges=True,extracted_paths=None,launch_targets=None,setup_done=None,marker_dirs=None):
-        unpacked_at=unpacked_at or {}
-        extracted_paths=extracted_paths or {}
-        launch_targets=launch_targets or {}
-        setup_done=setup_done or set()
-        marker_dirs=marker_dirs or {}
+    def _render_card(self, game, unpacked=(), needs_install=(), stale=(), unpacked_at=None, show_badges=True, extracted_paths=None, launch_targets=None, setup_done=None, marker_dirs=None):
+        unpacked_at = unpacked_at or {}
+        extracted_paths = extracted_paths or {}
+        launch_targets = launch_targets or {}
+        setup_done = setup_done or set()
+        marker_dirs = marker_dirs or {}
         # A game with no artwork used to get a flat grey block reading "No artwork", which on a shelf of 166
         # cards read as broken rather than art-free. It gets the same generated banner the categories get,
         # keyed on the game's own name, so every card looks designed and the shelf still reads as one shelf.
-        art=f"{banner_data_uri(game['name'])}" if not game['banner'] else escape(game['banner'])
-        appid=game['appid']
+        art = f"{banner_data_uri(game['name'])}" if not game["banner"] else escape(game["banner"])
+        appid = game["appid"]
         # A game with no Steam match still gets a card. It used to be dropped here instead, which quietly
         # under-reported the library: no AppID is a routine scan result, not a reason a folder on disk stops
         # being one of your games. Only the two Steam actions need an AppID, so only those go away - the
         # card keeps its artwork, its archive, its size and both path buttons, and says why the Steam
         # actions are missing rather than rendering a link to store.steampowered.com/app// .
-        linked=bool(appid)
-        link_open=(f'<a class="card-link" href="{self._store_url(appid)}" target="_blank" rel="noopener" '
-                   f'title="Open {escape(game["name"])} on Steam">' if linked else
-                   '<div class="card-link card-link-plain" title="No Steam match for this game">')
-        link_close='</a>' if linked else '</div>'
-        steam_button=(f'<a class="btn btn-steam" href="{self._steam_protocol_url(appid)}" title="Open in the Steam client">Open in Steam</a>' if linked else '')
-        no_match_badge='' if linked else '<span class="badge badge-muted">No Steam match</span>'
-        description=game['description']; truncated=description[:220]+('…' if len(description)>220 else '')
-        archive_badge=f'<span class="badge">{escape(game["archive"])}</span>' if game['archive'] else ''
+        linked = bool(appid)
+        link_open = f'<a class="card-link" href="{self._store_url(appid)}" target="_blank" rel="noopener" title="Open {escape(game["name"])} on Steam">' if linked else '<div class="card-link card-link-plain" title="No Steam match for this game">'
+        link_close = "</a>" if linked else "</div>"
+        steam_button = f'<a class="btn btn-steam" href="{self._steam_protocol_url(appid)}" title="Open in the Steam client">Open in Steam</a>' if linked else ""
+        no_match_badge = "" if linked else '<span class="badge badge-muted">No Steam match</span>'
+        description = game["description"]
+        truncated = description[:220] + ("…" if len(description) > 220 else "")
+        archive_badge = f'<span class="badge">{escape(game["archive"])}</span>' if game["archive"] else ""
         # The badge is drawn from the same predicate the batch planner skips on, so it cannot claim a game is
         # done that Extract all would unpack again. data-unpacked rides along so the script can retract the
         # badge when the reader types a different destination - the check was made against one folder only,
         # and saying so is better than leaving a claim standing that is no longer true.
         # Badges are suppressed in the "Recently extracted" banner, which duplicates cards that also appear in
         # their category section - showing the same badge twice would double the count the reader sees.
-        is_unpacked=bool(game['archive']) and game['archive'] in unpacked
-        is_needs_install=bool(game['archive']) and game['archive'] in needs_install
-        is_setup_done=bool(game['archive']) and game['archive'] in setup_done
+        is_unpacked = bool(game["archive"]) and game["archive"] in unpacked
+        is_needs_install = bool(game["archive"]) and game["archive"] in needs_install
+        is_setup_done = bool(game["archive"]) and game["archive"] in setup_done
         # Stale is a state (archive changed since extraction). Actions and data attrs use state; the visual
         # badge can be suppressed in duplicate/recent sections via show_badges.
-        is_stale=bool(game['archive']) and game['archive'] in stale
+        is_stale = bool(game["archive"]) and game["archive"] in stale
         # An installer repack is unpacked but not yet playable: show amber where an already-unpacked game shows
         # green, so the two states cannot be read as the same thing. Both carry data-result so the script retracts
         # whichever one a card has when the reader points the box somewhere else.
         if show_badges and is_needs_install:
-            unpacked_on=unpacked_at.get(game['archive'],'')
-            done_badge=(f'<span class="badge badge-warn" data-result title="Extracted into a {NEEDS_INSTALL_DIRNAME} '
-                        f'folder - run the installer there to install'+(f' on {unpacked_on}' if unpacked_on else '')+'">'
-                        '<svg class="badge-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" '
-                        'aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" '
-                        'stroke="currentColor" stroke-width="2.5"/><path d="M8 11l4 4 4-4" stroke="currentColor" '
-                        'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> Needs install'+(f' <span class="unpacked-on">{escape(unpacked_on)}</span>' if unpacked_on else '')+'</span>')
+            unpacked_on = unpacked_at.get(game["archive"], "")
+            done_badge = (
+                f'<span class="badge badge-warn" data-result title="Extracted into a {NEEDS_INSTALL_DIRNAME} '
+                f"folder - run the installer there to install" + (f" on {unpacked_on}" if unpacked_on else "") + '">'
+                '<svg class="badge-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+                'aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" '
+                'stroke="currentColor" stroke-width="2.5"/><path d="M8 11l4 4 4-4" stroke="currentColor" '
+                'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> Needs install' + (f' <span class="unpacked-on">{escape(unpacked_on)}</span>' if unpacked_on else "") + "</span>"
+            )
         elif show_badges and is_unpacked:
-            unpacked_on=unpacked_at.get(game['archive'],'')
-            done_title='Already unpacked into the folder Extract to defaults to'+(f' on {unpacked_on}' if unpacked_on else '')
-            done_badge=('<span class="badge badge-done" data-result title="'+escape(done_title)+'">Unpacked'+(f' <span class="unpacked-on">{escape(unpacked_on)}</span>' if unpacked_on else '')+'</span>')
+            unpacked_on = unpacked_at.get(game["archive"], "")
+            done_title = "Already unpacked into the folder Extract to defaults to" + (f" on {unpacked_on}" if unpacked_on else "")
+            done_badge = '<span class="badge badge-done" data-result title="' + escape(done_title) + '">Unpacked' + (f' <span class="unpacked-on">{escape(unpacked_on)}</span>' if unpacked_on else "") + "</span>"
         else:
-            done_badge=''
+            done_badge = ""
         if show_badges and is_stale:
-            stale_badge=('<span class="badge badge-stale" data-result title="The archive has changed since extraction - re-extract to update">'
-                         '<svg class="badge-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" '
-                         'aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" '
-                         'stroke="currentColor" stroke-width="2.5"/><path d="M12 11V5v6m0 0l4-4m-4 4l-4-4" '
-                         'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
-                         '</svg> New version</span>')
+            stale_badge = (
+                '<span class="badge badge-stale" data-result title="The archive has changed since extraction - re-extract to update">'
+                '<svg class="badge-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" '
+                'aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" '
+                'stroke="currentColor" stroke-width="2.5"/><path d="M12 11V5v6m0 0l4-4m-4 4l-4-4" '
+                'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+                "</svg> New version</span>"
+            )
         else:
-            stale_badge=''
+            stale_badge = ""
         # Pre-extraction installer badge: only for an archive that is an installer but has not been unpacked yet.
         # "Needs install" and "Unpacked" already speak for a game that has been touched; installer is the *preview*
         # of what the archive is when neither of those yet applies. No data-result attribute: this is a property of
         # the archive itself, not a run result, so the retract-on-destination-change script leaves it alone.
-        is_installer=show_badges and bool(game.get('installer')) and not is_unpacked and not is_needs_install
+        is_installer = show_badges and bool(game.get("installer")) and not is_unpacked and not is_needs_install
         if is_installer:
-            kind=game['installer'].kind
-            program=game['installer'].program.name
-            install_badge=(
+            kind = game["installer"].kind
+            program = game["installer"].program.name
+            install_badge = (
                 f'<span class="badge badge-install" title="This archive is a {kind} installer ({program}); '
                 f'unpack it then run {program} to install this game">'
                 '<svg class="badge-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" '
@@ -1026,122 +1078,127 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
                 'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> Installer</span>'
             )
         else:
-            install_badge=''
-        genre_badges=''.join(f'<span class="chip">{escape(str(g))}</span>' for g in game['genres'][:3])
+            install_badge = ""
+        genre_badges = "".join(f'<span class="chip">{escape(str(g))}</span>' for g in game["genres"][:3])
         # Steam's tags get their own row rather than sharing the badge line with genres. They answer a different
         # question - "what is this like to play" rather than "what kind of thing is it" - and mixing the two made
         # a card whose first badge row was six near-identical grey pills. Capped at four: past that the row stops
         # being a summary and starts being a wall, and the full list is in the search index either way.
-        tag_row=''
-        if game['tags']:
-            shown_tags=''.join(f'<span class="chip chip-tag" title="{escape(t)}">{escape(t)}</span>'
-                               for t in game['tags'][:4])
-            more=f'<span class="chip chip-more">+{len(game["tags"])-4}</span>' if len(game['tags'])>4 else ''
-            tag_row=f'<div class="tags">{shown_tags}{more}</div>'
-        size=int(game.get('archive_size') or 0)
-        size_line=f'<span class="size">{escape(human_size(size))}</span>' if size else ''
-        facts=[part for part in (escape(game['release_date']),escape(game['developer']) or '') if part]
-        added=escape(game['archive_created']) or ''
+        tag_row = ""
+        if game["tags"]:
+            shown_tags = "".join(f'<span class="chip chip-tag" title="{escape(t)}">{escape(t)}</span>' for t in game["tags"][:4])
+            more = f'<span class="chip chip-more">+{len(game["tags"]) - 4}</span>' if len(game["tags"]) > 4 else ""
+            tag_row = f'<div class="tags">{shown_tags}{more}</div>'
+        size = int(game.get("archive_size") or 0)
+        size_line = f'<span class="size">{escape(human_size(size))}</span>' if size else ""
+        facts = [part for part in (escape(game["release_date"]), escape(game["developer"]) or "") if part]
+        added = escape(game["archive_created"]) or ""
         if added:
-            facts.append(f'Added {added}')
-        fact_line='<p class="meta">'+' <span class="dot">•</span> '.join(facts)+'</p>' if facts else ''
+            facts.append(f"Added {added}")
+        fact_line = '<p class="meta">' + ' <span class="dot">•</span> '.join(facts) + "</p>" if facts else ""
         # Sort keys are precomputed here rather than parsed out of the rendered text in the browser.
         # The haystack also carries the release date and the description, so "2019" or "rogue-like" finds a game.
         # It used to be name, category, developer, publisher, archive and genres only, which made the two most
         # identifying things about a game - when it came out and what it is about - unsearchable. The description
         # is already truncated for display, so this costs the shelf about a fifth of a kilobyte per card.
-        haystack=' '.join([game['name'],game['category'],game['developer'],game['publisher'],game['archive'],
-                           str(game.get('release_date') or ''),str(game.get('archive_created') or ''),game['description'],
-                           ' '.join(str(g) for g in game['genres']),
-                           ' '.join(game['tags'])]).casefold()
-        sort_name=game['name'].casefold()
-        sort_date_key=sort_date(game['release_date'])
-        sort_size=str(size)
-        sort_added=game.get('archive_created') or ''
-        sort_days=''
-        created=game.get('archive_created') or ''
+        haystack = " ".join([game["name"], game["category"], game["developer"], game["publisher"], game["archive"], str(game.get("release_date") or ""), str(game.get("archive_created") or ""), game["description"], " ".join(str(g) for g in game["genres"]), " ".join(game["tags"])]).casefold()
+        sort_name = game["name"].casefold()
+        sort_date_key = sort_date(game["release_date"])
+        sort_size = str(size)
+        sort_added = game.get("archive_created") or ""
+        sort_days = ""
+        created = game.get("archive_created") or ""
         if created:
             try:
-                sort_days=str((datetime.now()-datetime.strptime(created,'%Y-%m-%d %H:%M')).days)
+                sort_days = str((datetime.now() - datetime.strptime(created, "%Y-%m-%d %H:%M")).days)
             except ValueError:
-                sort_days=''
+                sort_days = ""
         # One facet attribute carries genres and tags together, so a single chip in the rail filters either and
         # the two kinds of chip cannot disagree about what they match. The attribute name is kept from when it
         # only held genres because the script reads it, not because it describes only genres any more.
-        facets=[]
-        for value in list(game['genres'])+game['tags']:
-            text=str(value).strip()
-            if text and text not in facets: facets.append(text)
-        genre_attrs=''.join(f' data-genre="{escape(facet)}"' for facet in facets[:8])
-        extract_uri=self._extract_uri(game)
-        folder_uri=self._open_folder_uri(game)
+        facets = []
+        for value in list(game["genres"]) + game["tags"]:
+            text = str(value).strip()
+            if text and text not in facets:
+                facets.append(text)
+        genre_attrs = "".join(f' data-genre="{escape(facet)}"' for facet in facets[:8])
+        extract_uri = self._extract_uri(game)
+        folder_uri = self._open_folder_uri(game)
         # The library-relative folder and the archive name ride along on both path buttons, so the page can
         # rebuild a path under whichever game folder is typed into the toolbar. Without them the only copy of
         # either belongs to the machine that ran the scan, and both buttons break the moment the folder moves.
-        folder_attr=f' data-rel="{escape(game["folder_rel"])}"'
-        archive_attr=(f' data-archive="{escape(game["archive"])}"' if game['archive'] else '')
+        folder_attr = f' data-rel="{escape(game["folder_rel"])}"'
+        archive_attr = f' data-archive="{escape(game["archive"])}"' if game["archive"] else ""
         # Compute extracted folder path (for open-extracted). Prefer the absolute path recorded by the marker
         # (supports alternate extract roots/layouts); fall back to destination-relative <stem>/Needs Install layout.
-        extracted_rel = ''
-        extracted_path = ''
-        launch_target = ''
-        marker_dir = ''
-        if game.get('archive'):
-            stem = Path(game['archive']).stem
+        extracted_rel = ""
+        extracted_path = ""
+        launch_target = ""
+        marker_dir = ""
+        if game.get("archive"):
+            stem = Path(game["archive"]).stem
             leaf = safe_folder_name(stem)
-            actual = extracted_paths.get(game['archive'])
+            actual = extracted_paths.get(game["archive"])
             if actual:
-                try: extracted_path = str(Path(actual))
-                except Exception: extracted_path = ''
-            lt = launch_targets.get(game['archive'])
+                try:
+                    extracted_path = str(Path(actual))
+                except Exception:
+                    extracted_path = ""
+            lt = launch_targets.get(game["archive"])
             if lt:
-                try: launch_target = str(Path(lt))
-                except Exception: launch_target = ''
+                try:
+                    launch_target = str(Path(lt))
+                except Exception:
+                    launch_target = ""
             # Use extracted_path (actual content root) for marker_dir so pick-launcher/Play
             # target the game folder, not the marker folder. Fall back to marker_dirs.
-            actual_root = extracted_paths.get(game['archive'])
+            actual_root = extracted_paths.get(game["archive"])
             if actual_root:
-                try: marker_dir = str(Path(actual_root))
-                except Exception: marker_dir = ''
+                try:
+                    marker_dir = str(Path(actual_root))
+                except Exception:
+                    marker_dir = ""
             else:
-                md = marker_dirs.get(game['archive'])
+                md = marker_dirs.get(game["archive"])
                 if md:
-                    try: marker_dir = str(Path(md))
-                    except Exception: marker_dir = ''
+                    try:
+                        marker_dir = str(Path(md))
+                    except Exception:
+                        marker_dir = ""
             if is_needs_install:
-                extracted_rel = f'{NEEDS_INSTALL_DIRNAME}/{leaf}'
+                extracted_rel = f"{NEEDS_INSTALL_DIRNAME}/{leaf}"
             elif is_unpacked:
                 extracted_rel = leaf
-        extracted_attr = f' data-extracted-rel="{escape(extracted_rel)}"' if extracted_rel else ''
-        extracted_path_attr = f' data-extracted-path="{escape(extracted_path)}"' if extracted_path else ''
-        needs_install_attr = ' data-needs-install="1"' if is_needs_install else ''
-        setup_done_attr = ' data-setup-done="1"' if is_setup_done else ''
-        launch_target_attr = f' data-launch-target="{escape(launch_target)}"' if launch_target else ''
-        marker_dir_attr = f' data-marker-dir="{escape(marker_dir)}"' if marker_dir else ''
+        extracted_attr = f' data-extracted-rel="{escape(extracted_rel)}"' if extracted_rel else ""
+        extracted_path_attr = f' data-extracted-path="{escape(extracted_path)}"' if extracted_path else ""
+        needs_install_attr = ' data-needs-install="1"' if is_needs_install else ""
+        setup_done_attr = ' data-setup-done="1"' if is_setup_done else ""
+        launch_target_attr = f' data-launch-target="{escape(launch_target)}"' if launch_target else ""
+        marker_dir_attr = f' data-marker-dir="{escape(marker_dir)}"' if marker_dir else ""
         state_attrs = f"{extracted_attr}{extracted_path_attr}{needs_install_attr}{setup_done_attr}{launch_target_attr}{marker_dir_attr}"
-        play_action = ''
-        pick_launcher_action = ''
-        mark_installed_action = ''
+        play_action = ""
+        pick_launcher_action = ""
+        mark_installed_action = ""
         if (extracted_rel or extracted_path) and marker_dir:
-            pick_launcher_action=(f'<a class="btn btn-folder btn-pick-launcher" href="#" data-pick-launcher="1"{folder_attr}{archive_attr}{state_attrs} title="Choose the main game .exe once for Play">Pick launcher</a>')
+            pick_launcher_action = f'<a class="btn btn-folder btn-pick-launcher" href="#" data-pick-launcher="1"{folder_attr}{archive_attr}{state_attrs} title="Choose the main game .exe once for Play">Pick launcher</a>'
         if (extracted_rel or extracted_path) and launch_target and not is_needs_install and not is_stale:
-            play_action=(f'<a class="btn btn-play" href="#" data-play="1"{folder_attr}{archive_attr}{state_attrs} title="Play using the saved launcher, or choose it once">Play</a>')
+            play_action = f'<a class="btn btn-play" href="#" data-play="1"{folder_attr}{archive_attr}{state_attrs} title="Play using the saved launcher, or choose it once">Play</a>'
         if is_needs_install and not is_setup_done and marker_dir and (extracted_rel or extracted_path):
-            mark_installed_action=(f'<a class="btn btn-folder btn-mark-installed" href="#" data-mark-installed="1"{folder_attr}{archive_attr}{state_attrs} title="Mark setup/installation as complete so Play becomes available">Mark installed</a>')
+            mark_installed_action = f'<a class="btn btn-folder btn-mark-installed" href="#" data-mark-installed="1"{folder_attr}{archive_attr}{state_attrs} title="Mark setup/installation as complete so Play becomes available">Mark installed</a>'
 
         # Primary action: Extract / Re-extract / Play (ready) / Open installer / Open extracted
         if extract_uri and is_stale:
-            primary_button=(f'<a class="btn btn-extract btn-reextract" href="{extract_uri}" data-extract="{extract_uri}"{folder_attr}{archive_attr}{state_attrs} title="A newer archive is available - extract to update">Re-extract</a>')
+            primary_button = f'<a class="btn btn-extract btn-reextract" href="{extract_uri}" data-extract="{extract_uri}"{folder_attr}{archive_attr}{state_attrs} title="A newer archive is available - extract to update">Re-extract</a>'
         elif play_action:
-            primary_button=play_action
+            primary_button = play_action
         elif is_needs_install and (extracted_rel or extracted_path):
-            primary_button=(f'<a class="btn btn-open-extracted" href="#" data-open-extracted="1"{folder_attr}{archive_attr}{state_attrs} title="Open the folder with installer files">Open installer</a>')
+            primary_button = f'<a class="btn btn-open-extracted" href="#" data-open-extracted="1"{folder_attr}{archive_attr}{state_attrs} title="Open the folder with installer files">Open installer</a>'
         elif is_unpacked and (extracted_rel or extracted_path):
-            primary_button=(f'<a class="btn btn-open-extracted" href="#" data-open-extracted="1"{folder_attr}{archive_attr}{state_attrs} title="Open the extracted game folder">Open extracted</a>')
+            primary_button = f'<a class="btn btn-open-extracted" href="#" data-open-extracted="1"{folder_attr}{archive_attr}{state_attrs} title="Open the extracted game folder">Open extracted</a>'
         elif extract_uri:
-            primary_button=(f'<a class="btn btn-extract" href="{extract_uri}" data-extract="{extract_uri}"{folder_attr}{archive_attr}{state_attrs} title="Unpack this archive to the chosen destination">Extract</a>')
+            primary_button = f'<a class="btn btn-extract" href="{extract_uri}" data-extract="{extract_uri}"{folder_attr}{archive_attr}{state_attrs} title="Unpack this archive to the chosen destination">Extract</a>'
         else:
-            primary_button=''
+            primary_button = ""
         # Secondary actions: stale access, pick launcher, mark installed. Never duplicate primary.
         secondary_actions = []
         if is_stale and (extracted_rel or extracted_path) and not is_needs_install:
@@ -1152,21 +1209,21 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
             secondary_actions.append(pick_launcher_action)
         if mark_installed_action:
             secondary_actions.append(mark_installed_action)
-        secondary_open = ''.join(secondary_actions)
-        archive_abs=escape(str(game['folder']/game['archive'])) if game['archive'] else ''
-        checkbox=f'<input class="card-check" type="checkbox" data-archive-path="{archive_abs}"{archive_attr}>' if game['archive'] else ''
-        copy_button=(f'<button class="btn btn-copy" data-rel="{escape(game["folder_rel"])}" data-archive="{escape(game["archive"])}" data-copy="" title="Copy the folder path to the clipboard">Copy path</button>' if game['archive'] else '')
-        return f'''<article class="card" data-search="{escape(haystack)}" data-name="{escape(sort_name)}" data-date="{sort_date_key}" data-size="{sort_size}" data-added="{escape(sort_added)}" data-art="{'1' if game['banner'] else '0'}"{' data-days="'+sort_days+'"' if sort_days else ''}{' data-unpacked="1"' if is_unpacked or is_needs_install else ''}{' data-stale="1"' if is_stale else ''}{genre_attrs}>
+        secondary_open = "".join(secondary_actions)
+        archive_abs = escape(str(game["folder"] / game["archive"])) if game["archive"] else ""
+        checkbox = f'<input class="card-check" type="checkbox" data-archive-path="{archive_abs}"{archive_attr}>' if game["archive"] else ""
+        copy_button = f'<button class="btn btn-copy" data-rel="{escape(game["folder_rel"])}" data-archive="{escape(game["archive"])}" data-copy="" title="Copy the folder path to the clipboard">Copy path</button>' if game["archive"] else ""
+        return f'''<article class="card" data-search="{escape(haystack)}" data-name="{escape(sort_name)}" data-date="{sort_date_key}" data-size="{sort_size}" data-added="{escape(sort_added)}" data-art="{"1" if game["banner"] else "0"}"{' data-days="' + sort_days + '"' if sort_days else ""}{' data-unpacked="1"' if is_unpacked or is_needs_install else ""}{' data-stale="1"' if is_stale else ""}{genre_attrs}>
   {link_open}
     <div class="card-art">
-      <img loading="lazy" src="{art}" alt="{escape(game['name'])} artwork">
+      <img loading="lazy" src="{art}" alt="{escape(game["name"])} artwork">
       {checkbox}
       <span class="scrim" aria-hidden="true"></span>
-      <span class="card-cat">{escape(game['category'])}</span>
-       <span class="card-hover"><span class="hover-date">Releases {escape(game['release_date']) if game['release_date'] else 'date unknown'}</span><span class="hover-genres">{escape(', '.join(str(g) for g in game['genres'][:5]) if game['genres'] else 'No genres listed')}</span></span>
+      <span class="card-cat">{escape(game["category"])}</span>
+       <span class="card-hover"><span class="hover-date">Releases {escape(game["release_date"]) if game["release_date"] else "date unknown"}</span><span class="hover-genres">{escape(", ".join(str(g) for g in game["genres"][:5]) if game["genres"] else "No genres listed")}</span></span>
     </div>
     <div class="card-body">
-      <h3>{escape(game['name'])}</h3>
+      <h3>{escape(game["name"])}</h3>
       {fact_line}
       <p class="desc">{escape(truncated)}</p>
       {tag_row}
@@ -1186,6 +1243,7 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
     {steam_button}
    </div>
 </article>'''
+
     def _setup_uri(self):
         """The setup link, without a query.
 
@@ -1208,7 +1266,7 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
         """
         return f"{SCHEME}://refresh-catalog"
 
-    def _extract_uri(self,game):
+    def _extract_uri(self, game):
         """The steamgameorganizer:// link for a game's archive.
 
         Percent-encoded whole, because a library is full of names with spaces, ampersands and quotes in them
@@ -1219,24 +1277,24 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
         which the script fills in; leaving it out means the handler falls back to the first configured folder
         instead of a folder that was correct when the page was written.
         """
-        name=game.get('archive') or ''
+        name = game.get("archive") or ""
         if not name:
             return ""
-        source=Path(game['folder'])/name
-        return f"{SCHEME}://extract?{urlencode({'src':str(source)})}"
+        source = Path(game["folder"]) / name
+        return f"{SCHEME}://extract?{urlencode({'src': str(source)})}"
 
-    def _open_folder_uri(self,game):
+    def _open_folder_uri(self, game):
         """The steamgameorganizer://open-folder link that opens a game's folder in Explorer.
 
         The folder path is rebuilt from the toolbar-entered game folder at click time,
         exactly like the Extract links, so it follows the reader's edited root rather
         than being frozen to the machine that ran the scan.
         """
-        folder_rel=game.get('folder_rel') or ''
-        return f"{SCHEME}://open-folder?{urlencode({'path':folder_rel})}"
+        folder_rel = game.get("folder_rel") or ""
+        return f"{SCHEME}://open-folder?{urlencode({'path': folder_rel})}"
 
     def _script(self):
-        if getattr(self, '_script_cache', None) is not None:
+        if getattr(self, "_script_cache", None) is not None:
             return self._script_cache
         # Plain ES5-ish JS with no build step and no external requests, so the page stays fully offline.
         # execCommand('copy') is used rather than the async clipboard API because file:// pages are not a
@@ -1245,7 +1303,7 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
         # Raw, so the backslashes in the path-building regexes reach the browser as written. Read as a normal
         # string "\\\\" collapsed to one, and /[\\]+$/ is a character class with an escaped bracket in it: the
         # page's whole script would then be a syntax error and none of it would run.
-        self._script_cache = r'''
+        self._script_cache = r"""
 (function(){
    var doc=document.documentElement;
    var search=document.getElementById('search'), empty=document.getElementById('empty'), toast=document.getElementById('toast');
@@ -1819,13 +1877,13 @@ extractSelected.addEventListener('click',function(){
      }
    });
 })();
-'''
+"""
         return self._script_cache
 
     def _css(self):
-        if getattr(self, '_css_cache', None) is not None:
+        if getattr(self, "_css_cache", None) is not None:
             return self._css_cache
-        self._css_cache = '''
+        self._css_cache = """
 /* One set of custom properties per theme, switched by [data-theme] on <html>. Every colour below is one of
    these variables, so the light theme is a real theme rather than an inverted filter. Contrast against the
    surface each one is used on is at or above 4.5:1 for text and 3:1 for borders and large text. */
@@ -2166,12 +2224,8 @@ footer{text-align:center;color:var(--dim);padding:30px;font-size:.79rem;border-t
   body{background:#fff;color:#000;}
   .card,.category-header{border-color:#ccc;box-shadow:none;}
 }
-'''
+"""
         return self._css_cache
 
+
 # New in this release: offline HTML game catalog (TOC, category hero art, one portable file for every platform).
-
-
-
-
-

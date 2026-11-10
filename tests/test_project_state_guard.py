@@ -21,6 +21,7 @@ and fails if any byte or mtime moved. The writes are aimed at a temporary tree -
 `tests/tk_support.sandbox_app` is how every other test in the suite builds its window and its config; the
 second test here is what holds that mechanism to this same rule.
 """
+
 import json
 import unittest
 from pathlib import Path
@@ -38,21 +39,20 @@ from services.rollback_service import RollbackService
 from tests.tk_support import close_root, require_tk, sandbox_app
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG_DIR = ROOT / 'config'
+CONFIG_DIR = ROOT / "config"
 
 # The seam both tests are proved against. `None` aims their writes at a temporary tree; pointing this at ROOT
 # reproduces the defect, and it has to be a one-line edit somebody can actually make.
 PROJECT_UNDER_TEST = None
 
-WRITTEN_FILES = ('settings.json', 'scan-state.json', 'category-decisions.json', 'last-organization.json')
+WRITTEN_FILES = ("settings.json", "scan-state.json", "category-decisions.json", "last-organization.json")
 
 
 def snapshot_config():
     """Every real file under `config/`, as bytes and mtime. A missing directory reads as an empty snapshot."""
     if not CONFIG_DIR.is_dir():
         return {}
-    return {path: (path.read_bytes(), path.stat().st_mtime_ns)
-            for path in sorted(CONFIG_DIR.rglob('*')) if path.is_file()}
+    return {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in sorted(CONFIG_DIR.rglob("*")) if path.is_file()}
 
 
 def write_like_the_offending_tests(root):
@@ -63,18 +63,17 @@ def write_like_the_offending_tests(root):
     review decision is remembered, and an organize run records into the undo journal. `root` is a parameter
     because pointing it at the real project is the only way to watch this fail.
     """
-    library = root / 'Games'
+    library = root / "Games"
     library.mkdir(parents=True, exist_ok=True)
     config = AppConfig(root, library_root=library)
     config.save()
     config.convert_archives = True
-    logger = AppLogger(root / 'logs' / 'organizer.log')
-    controller = AppController(StateStore(), EventBus(), logger, type('Services', (), {})(), JobManager())
+    logger = AppLogger(root / "logs" / "organizer.log")
+    controller = AppController(StateStore(), EventBus(), logger, type("Services", (), {})(), JobManager())
     controller.config = config
     controller._scan_ok(ScanResult(archives=[]), lambda result: None)
-    controller.remember_category('guard-game', 'Simulation')
-    RollbackService(root, logger, organizer=OrganizerService(logger)).record(
-        [(library / 'Guard Game.zip', library / 'Guard Game.7z')])
+    controller.remember_category("guard-game", "Simulation")
+    RollbackService(root, logger, organizer=OrganizerService(logger)).record([(library / "Guard Game.zip", library / "Guard Game.7z")])
     return config
 
 
@@ -84,31 +83,26 @@ class TheSuiteDoesNotWriteThisProjectsOwnState(unittest.TestCase):
     the first would leave the mechanism that reached the file uncovered."""
 
     def _assert_untouched(self, before, after):
-        self.assertEqual(sorted(before), sorted(after),
-                         f'a file appeared under {CONFIG_DIR.name}/ during the run: '
-                         f'{sorted(set(after) - set(before))}')
+        self.assertEqual(sorted(before), sorted(after), f"a file appeared under {CONFIG_DIR.name}/ during the run: {sorted(set(after) - set(before))}")
         for path, (data, mtime) in sorted(before.items()):
-            self.assertEqual(data, after[path][0], f'{path.name} was rewritten')
-            self.assertEqual(mtime, after[path][1], f'{path.name} was touched without its bytes changing')
+            self.assertEqual(data, after[path][0], f"{path.name} was rewritten")
+            self.assertEqual(mtime, after[path][1], f"{path.name} was touched without its bytes changing")
 
     def _assert_config_has_files_to_protect(self):
         before = snapshot_config()
-        self.assertTrue(before, f'{CONFIG_DIR} holds no files, so this guard would pass without looking at '
-                                f'anything - it has nothing to protect')
+        self.assertTrue(before, f"{CONFIG_DIR} holds no files, so this guard would pass without looking at anything - it has nothing to protect")
         return before
 
     def test_the_writes_that_reached_the_real_config_go_to_a_temporary_tree(self):
         before = self._assert_config_has_files_to_protect()
 
         with TemporaryDirectory() as raw:
-            target = PROJECT_UNDER_TEST if PROJECT_UNDER_TEST is not None else Path(raw) / 'project'
+            target = PROJECT_UNDER_TEST if PROJECT_UNDER_TEST is not None else Path(raw) / "project"
             write_like_the_offending_tests(target)
             # The control, and it comes first on purpose: without it this test would be satisfied by the
             # exercised writes doing nothing at all, which is a different defect and an easier one to ship.
             for name in WRITTEN_FILES:
-                self.assertTrue((target / 'config' / name).is_file(),
-                                f'the exercised writes never produced {name}, so nothing was actually written '
-                                f'and the assertions below prove nothing')
+                self.assertTrue((target / "config" / name).is_file(), f"the exercised writes never produced {name}, so nothing was actually written and the assertions below prove nothing")
 
         self._assert_untouched(before, snapshot_config())
 
@@ -121,11 +115,11 @@ class TheSuiteDoesNotWriteThisProjectsOwnState(unittest.TestCase):
         self.addCleanup(close_root, root)
 
         app = sandbox_app(self, root, project_root=PROJECT_UNDER_TEST)
-        app.window.show('review')
+        app.window.show("review")
         root.update()
         # The save every scan starts with, driven through the window rather than through AppConfig, so this
         # covers the composition as well: a MainWindow holding a config rooted at the project.
-        app.window.views['scan'].api_var.set('sandbox-key')
+        app.window.views["scan"].api_var.set("sandbox-key")
         app.window.save_api()
         root.update()
         app.shutdown()
@@ -134,13 +128,8 @@ class TheSuiteDoesNotWriteThisProjectsOwnState(unittest.TestCase):
         # writes, and without the saved key it never reached the write either - and a guard that passes
         # because nothing happened is the failure mode this file exists to prevent.
         log = app.config.log_file
-        self.assertTrue(log.is_file() and log.stat().st_size > 0,
-                        f'the window logged nothing at all, so it never reached the code that writes: {log}')
-        self.assertEqual('sandbox-key',
-                         json.loads(app.config.settings_file.read_text(encoding='utf-8'))['steamgriddb_api_key'],
-                         'the window saved no API key, so it never reached AppConfig.save()')
+        self.assertTrue(log.is_file() and log.stat().st_size > 0, f"the window logged nothing at all, so it never reached the code that writes: {log}")
+        self.assertEqual("sandbox-key", json.loads(app.config.settings_file.read_text(encoding="utf-8"))["steamgriddb_api_key"], "the window saved no API key, so it never reached AppConfig.save()")
 
         self._assert_untouched(before, snapshot_config())
-        self.assertNotEqual(CONFIG_DIR, app.config.config_dir,
-                            'the window under test is pointed at the real config directory, so the run above '
-                            'proved nothing about the redirect')
+        self.assertNotEqual(CONFIG_DIR, app.config.config_dir, "the window under test is pointed at the real config directory, so the run above proved nothing about the redirect")

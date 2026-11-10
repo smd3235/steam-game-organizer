@@ -10,15 +10,17 @@ the bundle to a new folder does not wipe the setup. sync_to_appdata() copies eac
 config file there on write, and _migrate_from_appdata() brings them back when the
 local tree is fresh or invalid.
 """
+
 from dataclasses import dataclass, field
 from pathlib import Path
 import json, os, sys, tempfile, shutil
 import time
 from datetime import datetime, timezone
 
-from core.constants import APP_NAME,VERSION
+from core.constants import APP_NAME, VERSION
 
 ROTATED_LOGS = 10  # keep the last 10 run logs; older ones are removed
+
 
 @dataclass
 class AppConfig:
@@ -30,6 +32,7 @@ class AppConfig:
     contents of config/settings.json; settings_version is reserved for future
     migration of the settings schema.
     """
+
     project_root: Path
     library_root: Path | None = None
     developer_mode: bool = False
@@ -50,14 +53,14 @@ class AppConfig:
         exe updates that extract the bundle to a new folder. Only used
         when running as a frozen exe on Windows.
         """
-        if not getattr(sys, 'frozen', False):
+        if not getattr(sys, "frozen", False):
             return None
-        if os.name != 'nt':
+        if os.name != "nt":
             return None
-        base = os.environ.get('LOCALAPPDATA')
+        base = os.environ.get("LOCALAPPDATA")
         if not base:
             return None
-        return Path(base) / APP_NAME / 'config'
+        return Path(base) / APP_NAME / "config"
 
     def __post_init__(self):
         self.project_root = self.project_root.resolve()
@@ -80,8 +83,8 @@ class AppConfig:
             # One log file per run, timestamped so old runs are never overwritten
             # and a reader can tell which run produced which log. Rotation keeps
             # the last ROTATED_LOGS so a PC does not accumulate unbounded logs.
-            stamp=datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-            self.log_file=self.log_dir / f"organizer-{VERSION}-{stamp}.log"
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            self.log_file = self.log_dir / f"organizer-{VERSION}-{stamp}.log"
             self._rotate_logs()
         self._migrate_from_appdata()
         self.load()
@@ -91,13 +94,14 @@ class AppConfig:
     def _rotate_logs(self):
         """Keep only the last ROTATED_LOGS run logs; delete older ones so the
         logs directory does not grow without bound across runs."""
-        if not self.log_dir.is_dir(): return
-        logs=sorted(
-            (p for p in self.log_dir.glob("organizer-*.log") if p.is_file()),
-            key=lambda p:p.stat().st_mtime, reverse=True)
+        if not self.log_dir.is_dir():
+            return
+        logs = sorted((p for p in self.log_dir.glob("organizer-*.log") if p.is_file()), key=lambda p: p.stat().st_mtime, reverse=True)
         for old in logs[ROTATED_LOGS:]:
-            try: old.unlink()
-            except OSError: pass
+            try:
+                old.unlink()
+            except OSError:
+                pass
 
     def _migrate_from_appdata(self):
         """Copy config from %LOCALAPPDATA% when the local config is a fresh extract or has invalid settings.
@@ -109,7 +113,7 @@ class AppConfig:
         appdata = self._appdata_config_dir()
         if not appdata:
             return
-        appdata_settings = appdata / 'settings.json'
+        appdata_settings = appdata / "settings.json"
         if not appdata_settings.is_file():
             return
 
@@ -117,8 +121,8 @@ class AppConfig:
         local_is_valid = False
         if self.settings_file.is_file():
             try:
-                local_data = json.loads(self.settings_file.read_text(encoding='utf-8'))
-                local_root = local_data.get('library_root', '')
+                local_data = json.loads(self.settings_file.read_text(encoding="utf-8"))
+                local_root = local_data.get("library_root", "")
                 if local_root and Path(local_root).is_dir():
                     local_is_valid = True
             except (OSError, ValueError, AttributeError):
@@ -157,11 +161,11 @@ class AppConfig:
         without turning off the scan. Reading a missing key as True keeps every existing settings file, and
         every user who has never opened this control, on the behaviour they already had.
         """
-        return bool(self.settings.get("convert_archives",True))
+        return bool(self.settings.get("convert_archives", True))
 
     @convert_archives.setter
-    def convert_archives(self,value):
-        self.settings["convert_archives"]=bool(value)
+    def convert_archives(self, value):
+        self.settings["convert_archives"] = bool(value)
         self.save()
 
     @property
@@ -176,22 +180,23 @@ class AppConfig:
         scanner treats every directory in a category as a game folder. Extracting in place would hand the next
         scan several thousand files to reconsider.
         """
-        values=self.settings.get("extract_folders")
-        if not isinstance(values,list):
-            values=[self.settings["extract_folder"]] if self.settings.get("extract_folder") else []
-        cleaned=[]
+        values = self.settings.get("extract_folders")
+        if not isinstance(values, list):
+            values = [self.settings["extract_folder"]] if self.settings.get("extract_folder") else []
+        cleaned = []
         for value in values:
             try:
-                path=Path(value).expanduser()
+                path = Path(value).expanduser()
             except TypeError:
                 continue
-            if str(path) not in [str(p) for p in cleaned]: cleaned.append(path)
-        return cleaned or [Path.home()/"Downloads"/"Extracted"]
+            if str(path) not in [str(p) for p in cleaned]:
+                cleaned.append(path)
+        return cleaned or [Path.home() / "Downloads" / "Extracted"]
 
     @extract_folders.setter
-    def extract_folders(self,values):
-        self.settings["extract_folders"]=[str(Path(v).expanduser()) for v in values]
-        self.settings.pop("extract_folder",None)
+    def extract_folders(self, values):
+        self.settings["extract_folders"] = [str(Path(v).expanduser()) for v in values]
+        self.settings.pop("extract_folder", None)
         self.save()
 
     @property
@@ -200,8 +205,8 @@ class AppConfig:
         return self.extract_folders[0]
 
     @extract_folder.setter
-    def extract_folder(self,value):
-        self.extract_folders=[value]
+    def extract_folder(self, value):
+        self.extract_folders = [value]
 
     def ensure_directories(self):
         # A malformed older package could contain a zero-byte file where a
@@ -219,43 +224,47 @@ class AppConfig:
 
     def load(self):
         try:
-            data=json.loads(self.settings_file.read_text(encoding="utf-8"))
+            data = json.loads(self.settings_file.read_text(encoding="utf-8"))
             # Valid JSON is not the same as the JSON this file is written as. A settings.json holding [] or 42
             # - what a hand-edit or another tool leaves behind - reached data.get() and raised AttributeError out
             # of the constructor, so the app would not start at all over its own settings. saved_library_root()
             # below already catches that; this is the read that decides the startup path.
-            if not isinstance(data,dict): raise ValueError("settings file is not a JSON object")
-            value=data.get("library_root")
-            if value: self.library_root=self._resolve_library(value)
-            self.developer_mode=bool(data.get("developer_mode",False))
-            self.settings=data
+            if not isinstance(data, dict):
+                raise ValueError("settings file is not a JSON object")
+            value = data.get("library_root")
+            if value:
+                self.library_root = self._resolve_library(value)
+            self.developer_mode = bool(data.get("developer_mode", False))
+            self.settings = data
             if not self.library_root:
                 self.library_root = self.default_library_root()
             # Extract folders are deliberately not resolved here: a borrowed HD changes drive letters, so
             # D:\Games on the owner's PC may be E:\Games or F:\Games on the reader's. The reader chooses
             # where extraction goes through the Setup wizard rather than having a path silently rewritten.
-        except (OSError,ValueError):
-            self.settings={}
+        except (OSError, ValueError):
+            self.settings = {}
             if not self.library_root:
                 self.library_root = self.default_library_root()
 
-    def _resolve_library(self,value):
+    def _resolve_library(self, value):
         """Resolve a stored library path, falling back to the folder beside the app when the stored path
         does not exist on this machine. A borrowed HD changes drive letters - the path stored in
         settings.json may be on a drive that does not exist on this PC - but the library always sits
         beside the app, which is project_root."""
-        p=Path(value).expanduser()
-        if p.is_dir(): return p.resolve()
-        beside=self.project_root
-        if beside.is_dir(): return beside.resolve()
+        p = Path(value).expanduser()
+        if p.is_dir():
+            return p.resolve()
+        beside = self.project_root
+        if beside.is_dir():
+            return beside.resolve()
         return p.resolve()
 
     def saved_library_root(self):
         """The library root as it was last written to disk, or None. Used to avoid replacing a real library
         path with one that has since been deleted."""
         try:
-            value=json.loads(self.settings_file.read_text(encoding="utf-8")).get("library_root")
-        except (FileNotFoundError,json.JSONDecodeError,OSError,AttributeError):
+            value = json.loads(self.settings_file.read_text(encoding="utf-8")).get("library_root")
+        except (FileNotFoundError, json.JSONDecodeError, OSError, AttributeError):
             return None
         return value if value and Path(value).is_dir() else None
 
@@ -264,58 +273,72 @@ class AppConfig:
         # a directory that no longer exists is a worse starting point than no answer at all. Anything setting a
         # root - a scratch directory, a test - can hand it straight back rather than editing the file.
         self.ensure_directories()
-        data=dict(self.settings)
+        data = dict(self.settings)
         data.update(library_root=str(self.library_root) if self.library_root else "", developer_mode=self.developer_mode)
         if data["library_root"] and not Path(data["library_root"]).is_dir():
-            previous=self.saved_library_root()
+            previous = self.saved_library_root()
             if previous:
-                print(f"warning: not saving library root {data['library_root']} - the directory does not exist; keeping {previous}",file=sys.stderr)
-            data["library_root"]=str(previous or "")
-        fd,tmp=tempfile.mkstemp(prefix="settings.",suffix=".tmp",dir=self.config_dir)
+                print(f"warning: not saving library root {data['library_root']} - the directory does not exist; keeping {previous}", file=sys.stderr)
+            data["library_root"] = str(previous or "")
+        fd, tmp = tempfile.mkstemp(prefix="settings.", suffix=".tmp", dir=self.config_dir)
         try:
-            with os.fdopen(fd,"w",encoding="utf-8") as f: json.dump(data,f,indent=2); f.flush(); os.fsync(f.fileno())
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
             for attempt in range(4):
-                try: os.replace(tmp,self.settings_file); break
+                try:
+                    os.replace(tmp, self.settings_file)
+                    break
                 except PermissionError:
-                    if attempt==3: raise
-                    time.sleep(0.05*(attempt+1))
+                    if attempt == 3:
+                        raise
+                    time.sleep(0.05 * (attempt + 1))
         finally:
-            try: os.unlink(tmp)
-            except FileNotFoundError: pass
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
         self.sync_to_appdata()
 
-    def save_scan_summary(self,summary):
-            """Record what the last scan found, so the scanner can say so before the next one starts.
+    def save_scan_summary(self, summary):
+        """Record what the last scan found, so the scanner can say so before the next one starts.
 
-            Written to `state_file`, which this class had declared and never used. The scan screen has roughly 840px
-            of empty panel while idle - a fifth of its height - and the numbers a reader wants before pressing Scan
-            are exactly the ones a finished scan already computed and then threw away.
+        Written to `state_file`, which this class had declared and never used. The scan screen has roughly 840px
+        of empty panel while idle - a fifth of its height - and the numbers a reader wants before pressing Scan
+        are exactly the ones a finished scan already computed and then threw away.
 
-            Best effort by design. This is a convenience readout, so a locked or unwritable file is ignored rather
-            than raised: the scan it describes already succeeded, and the alternative is a scan reported as failed
-            because its summary could not be filed.
-            """
-            payload=dict(summary or {})
-            payload["recorded_at"]=time.time()
+        Best effort by design. This is a convenience readout, so a locked or unwritable file is ignored rather
+        than raised: the scan it describes already succeeded, and the alternative is a scan reported as failed
+        because its summary could not be filed.
+        """
+        payload = dict(summary or {})
+        payload["recorded_at"] = time.time()
+        try:
+            self.ensure_directories()
+            fd, tmp = tempfile.mkstemp(prefix="scan-state.", suffix=".tmp", dir=self.config_dir)
             try:
-                self.ensure_directories()
-                fd,tmp=tempfile.mkstemp(prefix="scan-state.",suffix=".tmp",dir=self.config_dir)
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, indent=2)
+                # Retried for the same reason settings.json is: this project lives in a synced folder, and a
+                # transient lock on the destination is not a reason to lose the summary.
+                for attempt in range(4):
+                    try:
+                        os.replace(tmp, self.state_file)
+                        break
+                    except PermissionError:
+                        if attempt == 3:
+                            raise
+                        time.sleep(0.05 * (attempt + 1))
+            finally:
                 try:
-                    with os.fdopen(fd,"w",encoding="utf-8") as f: json.dump(payload,f,indent=2)
-                    # Retried for the same reason settings.json is: this project lives in a synced folder, and a
-                    # transient lock on the destination is not a reason to lose the summary.
-                    for attempt in range(4):
-                        try: os.replace(tmp,self.state_file); break
-                        except PermissionError:
-                            if attempt==3: raise
-                            time.sleep(0.05*(attempt+1))
-                finally:
-                    try: os.unlink(tmp)
-                    except FileNotFoundError: pass
-            except (OSError,TypeError,ValueError):
-                return None
-            self.sync_to_appdata()
-            return payload
+                    os.unlink(tmp)
+                except FileNotFoundError:
+                    pass
+        except (OSError, TypeError, ValueError):
+            return None
+        self.sync_to_appdata()
+        return payload
 
     def load_scan_summary(self):
         """The last recorded scan summary, or None.
@@ -325,9 +348,7 @@ class AppConfig:
         is read during layout, before anything else has run.
         """
         try:
-            data=json.loads(self.state_file.read_text(encoding="utf-8"))
-        except (OSError,ValueError):
+            data = json.loads(self.state_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
             return None
-        return data if isinstance(data,dict) else None
-
-
+        return data if isinstance(data, dict) else None

@@ -10,6 +10,7 @@ Logs rotate by size: when the active file exceeds MAX_BYTES it is renamed to
 an unbounded log file. A level threshold can be raised above DEBUG to suppress
 noise in normal operation while keeping troubleshooting detail available.
 """
+
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import contextmanager
@@ -19,8 +20,8 @@ LEVELS = {"DEBUG": 0, "INFO": 1, "WARN": 2, "ERROR": 3}
 
 
 class AppLogger:
-    MAX_BYTES = 5 * 1024 * 1024   # 5 MB per file
-    MAX_FILES = 3                 # active + 2 rotated
+    MAX_BYTES = 5 * 1024 * 1024  # 5 MB per file
+    MAX_FILES = 3  # active + 2 rotated
 
     def __init__(self, path: Path, level: str = "DEBUG", console: bool = False, json_format: bool = False):
         self.path = path
@@ -40,7 +41,7 @@ class AppLogger:
 
     @contextmanager
     def context(self, correlation_id):
-        previous = getattr(self._local, 'correlation_id', '')
+        previous = getattr(self._local, "correlation_id", "")
         self._local.correlation_id = correlation_id
         try:
             yield correlation_id
@@ -81,7 +82,7 @@ class AppLogger:
     def write(self, level, component, message, correlation_id=""):
         if not self._should_log(level):
             return
-        correlation_id = correlation_id or getattr(self._local, 'correlation_id', '')
+        correlation_id = correlation_id or getattr(self._local, "correlation_id", "")
         if self.json_format:
             entry = {
                 "ts": datetime.now(timezone.utc).isoformat(),
@@ -138,4 +139,3 @@ class AppLogger:
 
         sys.excepthook = hooked
         return previous
-

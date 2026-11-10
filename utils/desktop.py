@@ -17,6 +17,7 @@ which on Windows means naming one of five Linux package names or shelling out to
 match, so the caller was told a browser was missing on a machine that had one. `os.startfile` asks the shell
 association instead, which is the same answer a double-click would get.
 """
+
 from __future__ import annotations
 
 import os
@@ -26,7 +27,7 @@ from pathlib import Path
 
 
 def _windows_only() -> bool:
-    return os.name == 'nt'
+    return os.name == "nt"
 
 
 def open_folder(path) -> bool:
@@ -56,7 +57,7 @@ def open_folder(path) -> bool:
     except (OSError, AttributeError):
         # A minimal Windows install has no shell association registered for directories. explorer.exe is
         # then the only route left, and it is always present.
-        opener = shutil.which('explorer')
+        opener = shutil.which("explorer")
         if not opener:
             return False
         try:
@@ -77,9 +78,9 @@ def open_url(url) -> bool:
     A url is refused if it is not a string or does not look like one. A scheme this app never builds would
     otherwise be passed to the shell verbatim, and the shell will open whatever it is told to.
     """
-    if not isinstance(url,str) or not url.strip():
+    if not isinstance(url, str) or not url.strip():
         return False
-    if not url.lower().startswith(('http://','https://','file://','mailto:')):
+    if not url.lower().startswith(("http://", "https://", "file://", "mailto:")):
         return False
 
     if not _windows_only():
@@ -88,16 +89,14 @@ def open_url(url) -> bool:
     try:
         os.startfile(url)  # type: ignore[attr-defined]
         return True
-    except (OSError,AttributeError):
+    except (OSError, AttributeError):
         # A machine with no shell association registered for http has no default browser to ask. rundll32
         # is the handler Windows itself ships, so it is the last route rather than an assumption.
-        handler=shutil.which('rundll32')
+        handler = shutil.which("rundll32")
         if not handler:
             return False
         try:
-            subprocess.Popen([handler,'url.dll,FileProtocolHandler',url],
-                             stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            subprocess.Popen([handler, "url.dll,FileProtocolHandler", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return True
         except OSError:
             return False
-

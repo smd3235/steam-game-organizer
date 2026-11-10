@@ -10,6 +10,7 @@ together.
 The stub 7z (tests.test_services._stub_archive_tools) runs the real extract() pipeline without
 the real tool, so this is green on a machine that has no 7-Zip installed.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,10 +45,7 @@ class InstallerBadgeSurvivesTheExtractLifecycle(unittest.TestCase):
             handle.writestr("setup.exe", b"MZ" * 16)
             handle.writestr("setup-1.bin", b"a" * 2048)
             handle.writestr("readme.txt", b"unpack me")
-        (self.game / ".game-info.json").write_text(
-            json.dumps({"appid": "123456", "name": "Airborne Empire",
-                        "description": "d", "release_date": "2020",
-                        "genres": ["Action"]}), encoding="utf-8")
+        (self.game / ".game-info.json").write_text(json.dumps({"appid": "123456", "name": "Airborne Empire", "description": "d", "release_date": "2020", "genres": ["Action"]}), encoding="utf-8")
         # The extract destination the catalog checks must match the one extract writes into, which
         # is the catalog's own destination stem rule: <dest>/<safe_folder_name(archive-stem)>.
         self.dest = self.root / "Extracted"
@@ -67,28 +65,22 @@ class InstallerBadgeSurvivesTheExtractLifecycle(unittest.TestCase):
 
     def test_pre_extract_badge_then_extract_then_post_extract_badge(self):
         page = self._page()
-        self.assertIn('class="badge badge-install"', page,
-                      "the archive did not get the pre-extraction installer preview badge")
+        self.assertIn('class="badge badge-install"', page, "the archive did not get the pre-extraction installer preview badge")
         self.assertIn("Installer</span>", page)
-        self.assertNotIn("badge badge-warn", page,
-                         "a post-extract mark appeared before anything was extracted")
+        self.assertNotIn("badge badge-warn", page, "a post-extract mark appeared before anything was extracted")
         self.assertNotIn("badge badge-done", page)
 
         stem = safe_folder_name(Path(self.archive_name).stem)
         result = self.extractor.extract(self.archive, self.dest / stem)
         self.assertTrue(result.ok, f"extraction failed: {result.message}")
         self.assertTrue(result.needs_install, "a repack payload was not flagged as needing install")
-        self.assertTrue((self.dest / NEEDS_INSTALL_DIRNAME / stem / "setup.exe").is_file(),
-                        "setup.exe was not extracted into the Needs Install folder at the destination root")
-        self.assertEqual(result.destination, self.dest / NEEDS_INSTALL_DIRNAME / stem,
-                         "the result did not point at the Needs Install folder")
+        self.assertTrue((self.dest / NEEDS_INSTALL_DIRNAME / stem / "setup.exe").is_file(), "setup.exe was not extracted into the Needs Install folder at the destination root")
+        self.assertEqual(result.destination, self.dest / NEEDS_INSTALL_DIRNAME / stem, "the result did not point at the Needs Install folder")
 
         page = self._page()
         self.assertIn("Needs install", page, "the amber badge text is missing after extraction")
-        self.assertEqual(page.count('class="badge badge-warn"'), 1,
-                         "the Needs install badge was not drawn exactly once")
-        self.assertNotIn('class="badge badge-install"', page,
-                         "the pre-extraction installer badge was not retracted after extraction")
+        self.assertEqual(page.count('class="badge badge-warn"'), 1, "the Needs install badge was not drawn exactly once")
+        self.assertNotIn('class="badge badge-install"', page, "the pre-extraction installer badge was not retracted after extraction")
 
 
 if __name__ == "__main__":

@@ -2,12 +2,12 @@ from pathlib import Path
 import os, re, subprocess, tempfile, zipfile
 import time
 import json
-from core.models import GameArchive,ScanResult
-from core.constants import ARCHIVE_EXTENSIONS,LIBRARY_RESERVED_DIRS,TEMP_DIR_PREFIX,TEMP_FILE_TAG,NO_WINDOW
+from core.models import GameArchive, ScanResult
+from core.constants import ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW
 from core.exceptions import CancellationError
-from services.installer_detect import InstallSignature,installer_from_names
+from services.installer_detect import InstallSignature, installer_from_names
 from services.library_service import _is_app_folder
-from utils.filename_utils import normalize_name,identity_key,version_key
+from utils.filename_utils import normalize_name, identity_key, version_key
 from utils.treewalk import walk_files
 
 # Installer-kind sniffs read each archive's index - a `7z l -slt` subprocess call for 7z/rar, a zipfile open
@@ -20,37 +20,37 @@ _installer_kind_cache: dict[str, tuple[int, int, InstallSignature | None]] = {}
 
 
 class ArchiveService:
-    def __init__(self,logger,mock=False): 
-        self.logger=logger
-        self.mock=mock
+    def __init__(self, logger, mock=False):
+        self.logger = logger
+        self.mock = mock
         # Cache for directory mtimes to enable incremental discovery
         self._discovery_cache = {}
 
     def _load_discovery_cache(self, library_root):
         """Load directory mtimes from config/scan-state.json for incremental discovery."""
         try:
-            config_dir = Path(library_root).parent / 'config'
-            state_file = config_dir / 'scan-state.json'
+            config_dir = Path(library_root).parent / "config"
+            state_file = config_dir / "scan-state.json"
             if not state_file.is_file():
                 return {}
-            data = json.loads(state_file.read_text(encoding='utf-8'))
-            return data.get('discovery_dir_mtimes', {})
+            data = json.loads(state_file.read_text(encoding="utf-8"))
+            return data.get("discovery_dir_mtimes", {})
         except (OSError, ValueError, AttributeError):
             return {}
 
     def _save_discovery_cache(self, library_root, dir_mtimes):
         """Save directory mtimes to config/scan-state.json for incremental discovery."""
         try:
-            config_dir = Path(library_root).parent / 'config'
-            state_file = config_dir / 'scan-state.json'
+            config_dir = Path(library_root).parent / "config"
+            state_file = config_dir / "scan-state.json"
             existing = {}
             if state_file.is_file():
                 try:
-                    existing = json.loads(state_file.read_text(encoding='utf-8'))
+                    existing = json.loads(state_file.read_text(encoding="utf-8"))
                 except (OSError, ValueError):
                     pass
-            existing['discovery_dir_mtimes'] = dir_mtimes
-            existing['recorded_at'] = time.time()
+            existing["discovery_dir_mtimes"] = dir_mtimes
+            existing["recorded_at"] = time.time()
             config_dir.mkdir(parents=True, exist_ok=True)
             fd, tmp = tempfile.mkstemp(prefix="scan-state.", suffix=".tmp", dir=config_dir)
             try:
@@ -91,24 +91,36 @@ class ArchiveService:
         except OSError:
             return 0
 
-    def discover(self,root,ctx=None,progress=None,new_only=False,unlock_zip=False,preview_only=False):
-        if self.mock: return self._mock(ctx,progress)
-        root=Path(root).expanduser().resolve(); result=ScanResult()
-        if not root.is_dir(): result.errors.append(f"Library folder does not exist: {root}"); return result
-        started=time.monotonic(); self.logger.info('ARCHIVE',f'DISCOVERY_START root=[{root}] new_only={int(new_only)} unlock_zip={int(unlock_zip)} preview_only={int(preview_only)}')
-        reserved={root/name for name in LIBRARY_RESERVED_DIRS}; candidates=0; total_size=0; supported=0; skipped=0
-        paths=sorted(walk_files(root))
-        for index,path in enumerate(paths,1):
-            if ctx: ctx.checkpoint()
+    def discover(self, root, ctx=None, progress=None, new_only=False, unlock_zip=False, preview_only=False):
+        if self.mock:
+            return self._mock(ctx, progress)
+        root = Path(root).expanduser().resolve()
+        result = ScanResult()
+        if not root.is_dir():
+            result.errors.append(f"Library folder does not exist: {root}")
+            return result
+        started = time.monotonic()
+        self.logger.info("ARCHIVE", f"DISCOVERY_START root=[{root}] new_only={int(new_only)} unlock_zip={int(unlock_zip)} preview_only={int(preview_only)}")
+        reserved = {root / name for name in LIBRARY_RESERVED_DIRS}
+        candidates = 0
+        total_size = 0
+        supported = 0
+        skipped = 0
+        paths = sorted(walk_files(root))
+        for index, path in enumerate(paths, 1):
+            if ctx:
+                ctx.checkpoint()
             # Hidden directories are not part of a game library. Syncthing keeps superseded copies under
             # .stversions, and on a real library that made discovery report 525 archives when the library held
             # 174: two thirds of the count, and every archive count and byte total on every screen, were old
             # versions being presented as games. It also swept in 82 truncated 32-byte downloads that 7z
             # rejects outright, which would each have been offered for conversion during Organize.
-            if any(parent.name.startswith('.') for parent in path.relative_to(root).parents):
-                skipped += 1; continue
+            if any(parent.name.startswith(".") for parent in path.relative_to(root).parents):
+                skipped += 1
+                continue
             if not path.is_file() or any(parent in reserved for parent in path.parents):
-                skipped += 1; continue
+                skipped += 1
+                continue
             # The app's own project folder is not a game category. When the app is installed inside the
             # library root - which is the default - every scan walked it as a folder of one game: the app
             # itself, and the feed listed its runtime files, its bundled Python and its timezone tables as
@@ -123,48 +135,60 @@ class ArchiveService:
             # would show no games with no way to continue. The root is the thing being scanned; only a
             # folder strictly inside it that happens to hold the entry point is the app's project folder.
             if any(_is_app_folder(parent) for parent in path.parents if parent != root):
-                skipped += 1; continue
+                skipped += 1
+                continue
             # Never offer the app's own in-flight work as a game. An extraction folder sits inside the game
             # folder while a conversion runs, and a nested archive inside the game archive shows up in it;
             # the no-library-root fallback writes the half-built replacement beside the source. Offering either
             # put a temp artefact into the review queue under a name of its own, and an Organize press would
             # then file it under a category as if it were a separate game.
             if self._is_own_temp_artefact(path):
-                skipped += 1; continue
+                skipped += 1
+                continue
             if path.suffix.lower() not in ARCHIVE_EXTENSIONS:
-                if progress and index % 25 == 0: progress(candidates,index,len(paths),total_size,supported,skipped,path)
+                if progress and index % 25 == 0:
+                    progress(candidates, index, len(paths), total_size, supported, skipped, path)
                 continue
             # Preview Only rewrites nothing. A password-protected zip cannot be inspected without rewriting it
             # (the unlock routine rebuilds the archive in place), so under preview it is reported as locked and
             # uninspectable instead of being opened. A plain zip is left alone just as it was found: the unlock
             # pass below is gated on unlock_zip, and preview does not set it.
-            if preview_only and path.suffix.lower()=='.zip' and self._is_encrypted_zip(path):
+            if preview_only and path.suffix.lower() == ".zip" and self._is_encrypted_zip(path):
                 skipped += 1
-                result.errors.append(f'Password-protected archive cannot be inspected in Preview Only: {path}')
-                self.logger.info('ARCHIVE',f'ZIP_LOCKED_IN_PREVIEW path=[{path}] reason=[rewriting to inspect is a write, and Preview Only writes nothing]')
-                if progress and index % 25 == 0: progress(candidates,index,len(paths),total_size,supported,skipped,path)
+                result.errors.append(f"Password-protected archive cannot be inspected in Preview Only: {path}")
+                self.logger.info("ARCHIVE", f"ZIP_LOCKED_IN_PREVIEW path=[{path}] reason=[rewriting to inspect is a write, and Preview Only writes nothing]")
+                if progress and index % 25 == 0:
+                    progress(candidates, index, len(paths), total_size, supported, skipped, path)
                 continue
             # Password removal runs on every matching file regardless of new_only, since new_only only
             # controls which archives are presented for (re)organization below. RAR conversion + the
             # official-name folder rename happen later, at organize time, once the Steam name is known.
-            if unlock_zip and path.suffix.lower()=='.zip': self._remove_zip_password(path,ctx)
+            if unlock_zip and path.suffix.lower() == ".zip":
+                self._remove_zip_password(path, ctx)
             if new_only and self._is_managed(path):
-                if progress and index % 25 == 0: progress(candidates,index,len(paths),total_size,supported,skipped,path)
+                if progress and index % 25 == 0:
+                    progress(candidates, index, len(paths), total_size, supported, skipped, path)
                 continue
             candidates += 1
-            try: size=path.stat().st_size
-            except OSError: size=0
-            total_size += size; supported += 1
-            title=normalize_name(path.name); result.archives.append(GameArchive(path,title,title,identity_key(title),path.suffix.lower(),version_key(path.name),size=size))
-            if progress: progress(candidates,index,len(paths),total_size,supported,skipped,path)
-        self.logger.info("ARCHIVE",f"DISCOVERY_FINISH archives={len(result.archives)} total_bytes={total_size} files_seen={len(paths)} elapsed_ms={int((time.monotonic()-started)*1000)}")
-        result.stale_build_dirs,result.stale_build_bytes=self._stale_build_dirs(root)
+            try:
+                size = path.stat().st_size
+            except OSError:
+                size = 0
+            total_size += size
+            supported += 1
+            title = normalize_name(path.name)
+            result.archives.append(GameArchive(path, title, title, identity_key(title), path.suffix.lower(), version_key(path.name), size=size))
+            if progress:
+                progress(candidates, index, len(paths), total_size, supported, skipped, path)
+        self.logger.info("ARCHIVE", f"DISCOVERY_FINISH archives={len(result.archives)} total_bytes={total_size} files_seen={len(paths)} elapsed_ms={int((time.monotonic() - started) * 1000)}")
+        result.stale_build_dirs, result.stale_build_bytes = self._stale_build_dirs(root)
         if result.stale_build_dirs:
-            self.logger.warning("ARCHIVE",f"STALE_BUILD_DIRS count={result.stale_build_dirs} bytes={result.stale_build_bytes}")
-        if progress: progress(len(result.archives),len(paths),len(paths),total_size,supported,skipped,None)
+            self.logger.warning("ARCHIVE", f"STALE_BUILD_DIRS count={result.stale_build_dirs} bytes={result.stale_build_bytes}")
+        if progress:
+            progress(len(result.archives), len(paths), len(paths), total_size, supported, skipped, None)
         return result
 
-    def _stale_build_dirs(self,root):
+    def _stale_build_dirs(self, root):
         """Build folders left behind by an earlier run, and the disk space they are still holding.
 
         A conversion stages its work in a TEMP_DIR_PREFIX folder and sweeps it in a finally block, but a run
@@ -172,18 +196,24 @@ class ArchiveService:
         discovery, so they cost nothing to scan and everything to ignore: this only measures them so the scan
         can say so, rather than deleting on its own initiative. Nothing is removed here.
         """
-        count=0; total=0
-        try: candidates=sorted(p for p in Path(root).rglob(f"{TEMP_DIR_PREFIX}*") if p.is_dir())
-        except OSError: return 0,0
+        count = 0
+        total = 0
+        try:
+            candidates = sorted(p for p in Path(root).rglob(f"{TEMP_DIR_PREFIX}*") if p.is_dir())
+        except OSError:
+            return 0, 0
         for folder in candidates:
             count += 1
             try:
                 for child in folder.rglob("*"):
                     try:
-                        if child.is_file() and not child.is_symlink(): total += child.stat().st_size
-                    except OSError: pass
-            except OSError: pass
-        return count,total
+                        if child.is_file() and not child.is_symlink():
+                            total += child.stat().st_size
+                    except OSError:
+                        pass
+            except OSError:
+                pass
+        return count, total
 
     def archive_installer_kind(self, path):
         """''iso', 'repack', or None: whether the archive at `path` is an installer rather than a ready-to-play game.
@@ -192,46 +222,49 @@ class ArchiveService:
         locked zip, a format the bundled 7z cannot read) returns None so a catalog is never stuck on the one
         archive this machine cannot inspect; the post-extraction "Needs Install" marker is the fallback for those.
         """
-        path=Path(path)
-        suffix=path.suffix.lower()
+        path = Path(path)
+        suffix = path.suffix.lower()
         # Stat is needed for the cache key; when the file is missing there is nothing
         # to cache, so proceed straight to the sniff (which will fail on its own).
-        stat=None; cache_key=None; cached=None
+        stat = None
+        cache_key = None
+        cached = None
         try:
-            stat=path.stat()
-            cache_key=str(path)
-            cached=_installer_kind_cache.get(cache_key)
-            if cached and cached[0]==stat.st_size and cached[1]==stat.st_mtime_ns:
+            stat = path.stat()
+            cache_key = str(path)
+            cached = _installer_kind_cache.get(cache_key)
+            if cached and cached[0] == stat.st_size and cached[1] == stat.st_mtime_ns:
                 return cached[2]
         except OSError:
             pass
         try:
-            if suffix=='.zip':
-                with zipfile.ZipFile(path) as handle: names=handle.namelist()
+            if suffix == ".zip":
+                with zipfile.ZipFile(path) as handle:
+                    names = handle.namelist()
             else:
                 # .7z/.7za/.rar are listed with the same bundled 7z the extractor uses; it reads 7z and rar indexes
                 # without unpacking, so this is a header scan, not an extraction. -slt gives one `Path =` line per
                 # member, which parses cleanly even when names contain spaces or unicode. No `--`/`-p` here: 7z does
                 # not use a "--" option terminator and a bare `-p` would ask for a password this archive has none.
                 from services.extract_service import ExtractService
-                tool,_reason=ExtractService.find_tool()
-                if not tool: 
+
+                tool, _reason = ExtractService.find_tool()
+                if not tool:
                     if stat is not None:
-                        _installer_kind_cache[cache_key]=(stat.st_size,stat.st_mtime_ns,None)
+                        _installer_kind_cache[cache_key] = (stat.st_size, stat.st_mtime_ns, None)
                     return None
-                proc=subprocess.run([tool,'l','-slt',str(path)],stdin=subprocess.DEVNULL,
-                                    capture_output=True,text=True,errors='replace',creationflags=NO_WINDOW)
-                if proc.returncode!=0: 
+                proc = subprocess.run([tool, "l", "-slt", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
+                if proc.returncode != 0:
                     if stat is not None:
-                        _installer_kind_cache[cache_key]=(stat.st_size,stat.st_mtime_ns,None)
+                        _installer_kind_cache[cache_key] = (stat.st_size, stat.st_mtime_ns, None)
                     return None
-                names=[m.group(1) for m in re.finditer(r'^Path = (.*)$',proc.stdout,re.M)]
-            result=installer_from_names(names)
+                names = [m.group(1) for m in re.finditer(r"^Path = (.*)$", proc.stdout, re.M)]
+            result = installer_from_names(names)
             if stat is not None:
-                _installer_kind_cache[cache_key]=(stat.st_size,stat.st_mtime_ns,result)
+                _installer_kind_cache[cache_key] = (stat.st_size, stat.st_mtime_ns, result)
             return result
         except Exception as exc:
-            self.logger.warning('ARCHIVE',f'INSTALLER_SNIFF_FAILED path=[{path.name}] error={type(exc).__name__}')
+            self.logger.warning("ARCHIVE", f"INSTALLER_SNIFF_FAILED path=[{path.name}] error={type(exc).__name__}")
             return None
 
     @staticmethod
@@ -246,22 +279,26 @@ class ArchiveService:
         except Exception:
             return False
 
-    def _remove_zip_password(self,path,ctx=None):
+    def _remove_zip_password(self, path, ctx=None):
         # A file that vanished between discovery and the unlock pass is not a failure: it was moved or
         # deleted by an earlier organize, and reporting a warning for it would put a red row on the
         # Done screen for a game that is already filed. Return False quietly rather than raising.
-        if not path.is_file(): return False
-        temp_name=None
+        if not path.is_file():
+            return False
+        temp_name = None
         try:
-            original_stat=path.stat()
+            original_stat = path.stat()
             with zipfile.ZipFile(path) as source:
-                entries=source.infolist()
-                if not any(info.flag_bits & 0x1 for info in entries if not info.is_dir()): return False
-                fd,temp_name=tempfile.mkstemp(prefix=f'.organizer-zip-{path.stem}.',suffix='.zip',dir=path.parent); os.close(fd)
-                with zipfile.ZipFile(temp_name,'w',compression=zipfile.ZIP_DEFLATED) as target:
+                entries = source.infolist()
+                if not any(info.flag_bits & 0x1 for info in entries if not info.is_dir()):
+                    return False
+                fd, temp_name = tempfile.mkstemp(prefix=f".organizer-zip-{path.stem}.", suffix=".zip", dir=path.parent)
+                os.close(fd)
+                with zipfile.ZipFile(temp_name, "w", compression=zipfile.ZIP_DEFLATED) as target:
                     for info in entries:
-                        if ctx:ctx.checkpoint()
-                        target.writestr(info,b'' if info.is_dir() else source.read(info,pwd=b'123'))
+                        if ctx:
+                            ctx.checkpoint()
+                        target.writestr(info, b"" if info.is_dir() else source.read(info, pwd=b"123"))
             # The replace has to happen with the source handle closed, which means outside the with block
             # above. It used to run inside it, so the archive was still open when os.replace tried to swap it -
             # and CPython opens a file without FILE_SHARE_DELETE, so on Windows that raises PermissionError
@@ -269,24 +306,32 @@ class ArchiveService:
             # decompressed and rewrote the whole archive on every scan and threw the result away, for every
             # encrypted zip, on the platform this app is primarily run on. It then went on to fail the archive's
             # integrity test for lack of a password and report it as corrupt.
-            os.replace(temp_name,path); temp_name=None
-            try:os.chmod(path,original_stat.st_mode & 0o7777); os.utime(path,(original_stat.st_atime,original_stat.st_mtime))
-            except OSError as metadata_error:self.logger.warning('ARCHIVE',f'ZIP_METADATA_RESTORE_FAILED path=[{path.name}] error={type(metadata_error).__name__}')
-            self.logger.info('ARCHIVE',f'ZIP_PASSWORD_REMOVED path=[{path.name}]'); return True
+            os.replace(temp_name, path)
+            temp_name = None
+            try:
+                os.chmod(path, original_stat.st_mode & 0o7777)
+                os.utime(path, (original_stat.st_atime, original_stat.st_mtime))
+            except OSError as metadata_error:
+                self.logger.warning("ARCHIVE", f"ZIP_METADATA_RESTORE_FAILED path=[{path.name}] error={type(metadata_error).__name__}")
+            self.logger.info("ARCHIVE", f"ZIP_PASSWORD_REMOVED path=[{path.name}]")
+            return True
         except CancellationError:
             raise
         except NotImplementedError:
-            return self._remove_zip_password_external(path,ctx)
+            return self._remove_zip_password_external(path, ctx)
         except Exception as exc:
-            self.logger.warning('ARCHIVE',f'ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error={type(exc).__name__}'); return False
+            self.logger.warning("ARCHIVE", f"ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error={type(exc).__name__}")
+            return False
         finally:
             # Both the failed replace and the NotImplementedError path (WinZip AES, which zipfile cannot
             # decrypt) can leave a rewritten temp archive sitting next to the game.
             if temp_name and os.path.exists(temp_name):
-                try: os.unlink(temp_name)
-                except OSError: pass
+                try:
+                    os.unlink(temp_name)
+                except OSError:
+                    pass
 
-    def _remove_zip_password_external(self,path,ctx=None):
+    def _remove_zip_password_external(self, path, ctx=None):
         # WinZip AES (method 99) is what every password-protected game zip in this library actually is, and
         # Python's zipfile cannot decrypt it - it raises NotImplementedError, which is why this fallback
         # exists. The old implementation used Info-ZIP unzip and zip, neither of which is installed on a
@@ -294,75 +339,96 @@ class ArchiveService:
         # FileNotFoundError, which was reported as a warning for a game that was already filed.
         # 7-Zip reads AES and accepts -p, and it is already required below to build the .7z, so it is the
         # one tool that is always here. The fallback now uses it directly.
-        if not path.is_file(): return False
-        temp_dir=None
-        temp_zip_path=None
+        if not path.is_file():
+            return False
+        temp_dir = None
+        temp_zip_path = None
         try:
-            original_stat=path.stat()
+            original_stat = path.stat()
             from services.extract_service import ExtractService
-            sevenzip,_reason=ExtractService.find_tool()
+
+            sevenzip, _reason = ExtractService.find_tool()
             if not sevenzip:
-                self.logger.warning('ARCHIVE',f'ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error=[no 7z/7za to decrypt WinZip AES]')
+                self.logger.warning("ARCHIVE", f"ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error=[no 7z/7za to decrypt WinZip AES]")
                 return False
-            temp_dir=Path(tempfile.mkdtemp(prefix='.organizer-unzip-',dir=str(path.parent)))
-            if ctx: ctx.checkpoint()
-            extract=subprocess.run([sevenzip,'x','-y','-p123',f'-o{temp_dir}',str(path)],
-                                   stdin=subprocess.DEVNULL,capture_output=True,text=True,errors='replace',creationflags=NO_WINDOW)
-            if extract.returncode!=0:
-                self.logger.warning('ARCHIVE',f'ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error=[7z extraction failed exit={extract.returncode}]')
+            temp_dir = Path(tempfile.mkdtemp(prefix=".organizer-unzip-", dir=str(path.parent)))
+            if ctx:
+                ctx.checkpoint()
+            extract = subprocess.run([sevenzip, "x", "-y", "-p123", f"-o{temp_dir}", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
+            if extract.returncode != 0:
+                self.logger.warning("ARCHIVE", f"ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error=[7z extraction failed exit={extract.returncode}]")
                 return False
-            if ctx: ctx.checkpoint()
+            if ctx:
+                ctx.checkpoint()
             # Create temp zip next to original to avoid cross-drive I/O that can stress flaky USB enclosures
-            temp_zip=path.with_name(f'{path.stem}.organizer-temp.{os.getpid()}.{time.time_ns()}.zip')
-            rebuilt=subprocess.run([sevenzip,'a','-tzip','-mx=1',str(temp_zip),'.'],
-                                   cwd=str(temp_dir),stdin=subprocess.DEVNULL,capture_output=True,text=True,errors='replace',creationflags=NO_WINDOW)
-            if rebuilt.returncode!=0:
-                self.logger.warning('ARCHIVE',f'ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error=[7z rebuild failed exit={rebuilt.returncode}]')
+            temp_zip = path.with_name(f"{path.stem}.organizer-temp.{os.getpid()}.{time.time_ns()}.zip")
+            rebuilt = subprocess.run([sevenzip, "a", "-tzip", "-mx=1", str(temp_zip), "."], cwd=str(temp_dir), stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
+            if rebuilt.returncode != 0:
+                self.logger.warning("ARCHIVE", f"ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error=[7z rebuild failed exit={rebuilt.returncode}]")
                 # Clean up on failure
                 try:
-                    if temp_zip.exists(): temp_zip.unlink()
-                except OSError: pass
+                    if temp_zip.exists():
+                        temp_zip.unlink()
+                except OSError:
+                    pass
                 return False
-            os.replace(str(temp_zip),str(path))
-            try:os.chmod(path,original_stat.st_mode & 0o7777); os.utime(path,(original_stat.st_atime,original_stat.st_mtime))
-            except OSError as metadata_error:self.logger.warning('ARCHIVE',f'ZIP_METADATA_RESTORE_FAILED path=[{path.name}] error={type(metadata_error).__name__}')
-            self.logger.info('ARCHIVE',f'ZIP_PASSWORD_REMOVED_7Z path=[{path.name}]'); return True
-        except CancellationError:raise
+            os.replace(str(temp_zip), str(path))
+            try:
+                os.chmod(path, original_stat.st_mode & 0o7777)
+                os.utime(path, (original_stat.st_atime, original_stat.st_mtime))
+            except OSError as metadata_error:
+                self.logger.warning("ARCHIVE", f"ZIP_METADATA_RESTORE_FAILED path=[{path.name}] error={type(metadata_error).__name__}")
+            self.logger.info("ARCHIVE", f"ZIP_PASSWORD_REMOVED_7Z path=[{path.name}]")
+            return True
+        except CancellationError:
+            raise
         except Exception as exc:
-            self.logger.warning('ARCHIVE',f'ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error={type(exc).__name__}'); return False
+            self.logger.warning("ARCHIVE", f"ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error={type(exc).__name__}")
+            return False
         finally:
             if temp_zip_path and os.path.exists(temp_zip_path):
-                try: os.unlink(temp_zip_path)
-                except OSError: pass
+                try:
+                    os.unlink(temp_zip_path)
+                except OSError:
+                    pass
             if temp_dir:
-                for child in sorted(temp_dir.rglob('*'),key=lambda item:len(item.parts),reverse=True):
+                for child in sorted(temp_dir.rglob("*"), key=lambda item: len(item.parts), reverse=True):
                     try:
                         child.unlink() if child.is_file() or child.is_symlink() else child.rmdir()
-                    except OSError: pass
-                try:temp_dir.rmdir()
-                except OSError: pass
-    def _is_own_temp_artefact(self,path):
+                    except OSError:
+                        pass
+                try:
+                    temp_dir.rmdir()
+                except OSError:
+                    pass
+
+    def _is_own_temp_artefact(self, path):
         """True for a file that is part of a conversion in progress rather than a game.
 
         Recognised by name in either position: a file carrying the temp tag is the half-built replacement, and
         anything inside a repack folder is extracted content that happens to be an archive - which the game
         archive legitimately contains and which will still be there, inside the real archive, once the
         conversion finishes."""
-        if TEMP_FILE_TAG in path.name: return True
+        if TEMP_FILE_TAG in path.name:
+            return True
         return any(parent.name.startswith(TEMP_DIR_PREFIX) for parent in path.parents)
 
-    def _is_managed(self,path):
-        parent=path.parent
-        return any((parent/name).is_file() for name in ('Open Steam Page.html','Open Steam Page.desktop','Open Steam Page in Chrome.desktop','Open Steam Page (Steam Deck).desktop','Open Steam Page (Windows).url'))
-    def _mock(self,ctx,progress=None):
-        names=["Captain of Industry v 0 8.zip","Re Story Chill Electronics Repairs v 1 0.zip","DO NOT FEED THE VIRUS Incremental.zip","Nerd Simulator.zip"]
-        result=ScanResult(); total=0
-        for i,n in enumerate(names,1):
-            if ctx: ctx.checkpoint()
-            p=Path("/mock/library")/n; title=normalize_name(n); result.archives.append(GameArchive(p,title,title,identity_key(title),p.suffix,version_key(n),size=i*1024)); total += i*1024
-            if progress: progress(i,i,len(names),total,i,0,p)
-        self.logger.info("ARCHIVE",f"MOCK_DISCOVERY archives={len(result.archives)}")
+    def _is_managed(self, path):
+        parent = path.parent
+        return any((parent / name).is_file() for name in ("Open Steam Page.html", "Open Steam Page.desktop", "Open Steam Page in Chrome.desktop", "Open Steam Page (Steam Deck).desktop", "Open Steam Page (Windows).url"))
+
+    def _mock(self, ctx, progress=None):
+        names = ["Captain of Industry v 0 8.zip", "Re Story Chill Electronics Repairs v 1 0.zip", "DO NOT FEED THE VIRUS Incremental.zip", "Nerd Simulator.zip"]
+        result = ScanResult()
+        total = 0
+        for i, n in enumerate(names, 1):
+            if ctx:
+                ctx.checkpoint()
+            p = Path("/mock/library") / n
+            title = normalize_name(n)
+            result.archives.append(GameArchive(p, title, title, identity_key(title), p.suffix, version_key(n), size=i * 1024))
+            total += i * 1024
+            if progress:
+                progress(i, i, len(names), total, i, 0, p)
+        self.logger.info("ARCHIVE", f"MOCK_DISCOVERY archives={len(result.archives)}")
         return result
-
-
-

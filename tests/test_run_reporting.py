@@ -4,6 +4,7 @@ Each test here was written because the thing it covers was measured to be missin
 was computed during discovery and thrown away, so no screen could show how big a file was; the run published
 two byte totals that nothing read, one of which could only ever be zero.
 """
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -22,9 +23,9 @@ from ui.theme import human_size
 from utils.filename_utils import identity_key, normalize_name
 
 try:
-    from .tk_support import TK_AVAILABLE,close_root,require_tk,sandbox_app
+    from .tk_support import TK_AVAILABLE, close_root, require_tk, sandbox_app
 except ImportError:
-    from tests.tk_support import TK_AVAILABLE,close_root,require_tk,sandbox_app
+    from tests.tk_support import TK_AVAILABLE, close_root, require_tk, sandbox_app
 
 
 def _archive(folder: Path, name: str, payload: int) -> Path:
@@ -80,7 +81,7 @@ class ArchiveSizeIsDiscovered(unittest.TestCase):
 
     def test_a_discovered_archive_reaches_the_review_pane_with_its_size(self):
         """Discovery and the review pane are separate units, so each can be correct alone while the size is
-dropped between them. This walks the real path end to end: files on disk, real discovery, real view."""
+        dropped between them. This walks the real path end to end: files on disk, real discovery, real view."""
         require_tk(self)
         root = tk.Tk()
         try:
@@ -166,33 +167,41 @@ class SpaceSavedIsReal(unittest.TestCase):
 
     def _conversion(self, name: str, source: int, final: int, status: str = "converted") -> ConversionResult:
         return ConversionResult(
-            status=status, source_size=source, final_size=final,
-            source_format="ZIP", target_format="7Z", final_name=Path(name).with_suffix(".7z").name,
+            status=status,
+            source_size=source,
+            final_size=final,
+            source_format="ZIP",
+            target_format="7Z",
+            final_name=Path(name).with_suffix(".7z").name,
         )
 
     def test_saved_is_the_difference_between_source_and_final(self):
         from ui.done_view import _saved_bytes
+
         self.assertEqual(_saved_bytes(self._conversion("A.zip", 1000, 400)), 600)
         self.assertEqual(_saved_bytes(self._conversion("B.zip", 1000, 1000)), 0)
 
     def test_an_archive_that_grew_reports_no_saving(self):
         from ui.done_view import _saved_bytes
+
         self.assertEqual(_saved_bytes(self._conversion("C.zip", 1000, 1400)), 0)
 
     def test_a_failed_conversion_reports_no_saving(self):
         from ui.done_view import _saved_bytes
+
         self.assertEqual(_saved_bytes(self._conversion("D.zip", 1000, 0, status="failed")), 0)
 
     def test_unknown_sizes_report_no_saving_rather_than_a_guess(self):
         from ui.done_view import _saved_bytes
+
         self.assertEqual(_saved_bytes(self._conversion("E.zip", 0, 0)), 0)
 
     def test_total_saved_ignores_archives_that_did_not_actually_shrink(self):
         """The Done headline is a sum over the archives that really shrank. Including one that grew would
         understate the saving, and including a failed one would invent it."""
         from ui.done_view import _saved_bytes
-        notes = [self._conversion("A.zip", 1000, 400), self._conversion("B.zip", 1000, 1000),
-                 self._conversion("C.zip", 1000, 1400), self._conversion("D.zip", 1000, 250)]
+
+        notes = [self._conversion("A.zip", 1000, 400), self._conversion("B.zip", 1000, 1000), self._conversion("C.zip", 1000, 1400), self._conversion("D.zip", 1000, 250)]
         shrunk = [n for n in notes if _saved_bytes(n) > 0]
         self.assertEqual(sum(_saved_bytes(n) for n in shrunk), 1350)
 
@@ -203,6 +212,7 @@ class RunStatePublishesOnlyWhatIsRead(unittest.TestCase):
 
     def test_completed_run_publishes_duration_and_no_phantom_totals(self):
         import time
+
         store = StateStore()
         view = type("V", (), {})()
         view.state = store
@@ -213,6 +223,7 @@ class RunStatePublishesOnlyWhatIsRead(unittest.TestCase):
         view.done_bytes = 123
         view.on_done = lambda archives: None
         from ui.organize_view import OrganizeView
+
         OrganizeView._done(view, [])
         snapshot = store.get()
         self.assertGreater(snapshot.run_seconds, 4.0)
@@ -278,9 +289,11 @@ class WorkerUpdatesReachTheUiThread(unittest.TestCase):
         """The drain reschedules itself at the end, so an exception escaping a callback used to stop every
         later UI update for the rest of the session: the worker carried on and the screen froze."""
         reached = []
+
         def worker():
             self.app._dispatch(lambda: (_ for _ in ()).throw(ValueError("boom")))
             self.app._dispatch(lambda: reached.append(1))
+
         threading.Thread(target=worker, daemon=True).start()
         for _ in range(10):
             self.root.update()
@@ -395,6 +408,7 @@ class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
 
     def _game(self, primary=None, assets=None):
         from core.models import ArtworkResult, OrganizationDecision
+
         return GameArchive(
             path=Path("Games/Idle/Incremedieval - 2026-09-03/Incremedieval.7z"),
             display_name="Incremedieval",
@@ -409,18 +423,18 @@ class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
 
     def test_the_done_summary_counts_assets_when_there_is_no_primary_image(self):
         from ui.done_view import DoneView
+
         view = DoneView(self.root, lambda: None)
         game = self._game(assets={"header_image": self._asset("header_image.jpg")})
         view.show([game])
         self.root.update()
         summary = str(view.summary.cget("text"))
-        self.assertIn("1 artwork copied", summary,
-                      f"a game with a downloaded asset and no primary image is reported as having no artwork: "
-                      f"{summary!r}")
+        self.assertIn("1 artwork copied", summary, f"a game with a downloaded asset and no primary image is reported as having no artwork: {summary!r}")
 
     def test_a_game_with_no_artwork_at_all_is_still_reported_as_having_none(self):
         """The other half. Counting assets must not turn the total into a number that is simply always >= 1."""
         from ui.done_view import DoneView
+
         view = DoneView(self.root, lambda: None)
         view.show([self._game()])
         self.root.update()
@@ -430,6 +444,7 @@ class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
         """OrganizerService only copies assets whose path is a real file, so a path left over from a pruned
         cache would be counted here as artwork the run never wrote."""
         from ui.done_view import DoneView
+
         view = DoneView(self.root, lambda: None)
         game = self._game(assets={"header_image": self.assets_dir / "gone.jpg"})
         view.show([game])
@@ -440,6 +455,7 @@ class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
         """The same wrong answer on the screen shown *before* the run, which is where a user decides whether to
         bother running it at all."""
         from ui.organize_view import OrganizeView
+
         state = StateStore()
         game = self._game(assets={"header_image": self._asset("header_image.jpg")})
         state.update(scan_result=ScanResult(archives=[game]))
@@ -453,10 +469,8 @@ class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
         view.refresh()
         self.root.update()
         text = str(view.list.get("1.0", "end"))
-        self.assertIn("artwork included", text,
-                      f"the plan calls a game with downloaded artwork 'artwork unavailable': {text!r}")
+        self.assertIn("artwork included", text, f"the plan calls a game with downloaded artwork 'artwork unavailable': {text!r}")
 
 
 if __name__ == "__main__":
     unittest.main()
-

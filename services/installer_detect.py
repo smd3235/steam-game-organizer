@@ -11,6 +11,7 @@ that wants to flag one - the catalog badge, the run banner - stay in step. The s
 folder and to a list of archive member names, so the badge the catalog draws before extraction and the move the
 extract step performs afterwards cannot disagree.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -22,14 +23,22 @@ from utils.treewalk import walk_files
 # own .exe is never one of these, so a normal archive is never mistaken for an installer even though it ships an
 # executable. Detection also requires a .bin alongside one, which closes the obvious false positive of a game that
 # happens to be launched by a file called setup.exe.
-INSTALLER_EXE_NAMES = frozenset({
-    'setup.exe', 'setup_install.exe', 'install.exe', 'installer.exe',
-    'autostart.exe', 'run.exe', 'run_installer.exe', 'setup_game.exe',
-})
+INSTALLER_EXE_NAMES = frozenset(
+    {
+        "setup.exe",
+        "setup_install.exe",
+        "install.exe",
+        "installer.exe",
+        "autostart.exe",
+        "run.exe",
+        "run_installer.exe",
+        "setup_game.exe",
+    }
+)
 
 # Where an installer archive is parked after extraction, so it is obvious at a glance that it has not been run yet.
 # Named in plain English because a person reads this label, not a machine.
-NEEDS_INSTALL_DIRNAME = 'Needs Install'
+NEEDS_INSTALL_DIRNAME = "Needs Install"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -40,6 +49,7 @@ class InstallSignature:
     program is the file the user has to open - the iso to mount, or the exe to run - so a message can be specific
     instead of generic.
     """
+
     kind: str
     program: Path
 
@@ -58,20 +68,20 @@ def installer_from_names(names) -> InstallSignature | None:
         member = Path(name)
         suffix = member.suffix.lower()
         base = member.name.casefold()
-        if suffix == '.iso':
+        if suffix == ".iso":
             if iso is None:
                 iso = member
         elif base in INSTALLER_EXE_NAMES:
             if exe is None:
                 exe = member
-        elif suffix == '.bin':
+        elif suffix == ".bin":
             saw_bin = True
         if iso is not None or (exe is not None and saw_bin):
             break
     if iso is not None:
-        return InstallSignature(kind='iso', program=iso)
+        return InstallSignature(kind="iso", program=iso)
     if exe is not None and saw_bin:
-        return InstallSignature(kind='repack', program=exe)
+        return InstallSignature(kind="repack", program=exe)
     return None
 
 
@@ -114,4 +124,3 @@ def has_needs_install_mark(root) -> bool:
     if root.parent and root.parent.name == NEEDS_INSTALL_DIRNAME:
         return True
     return (root / NEEDS_INSTALL_DIRNAME).is_dir()
-

@@ -4,6 +4,7 @@ Read-only: `7z t` decompresses to verify checksums but writes nothing, so it is 
 library with little free space. Intended to be the audit after the partial-archive incident, and to be
 pointable at a library root that is not the configured one.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -32,6 +33,7 @@ def main() -> int:
     # already knows both the PATH lookup and the real install folders.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from services.extract_service import ExtractService
+
     seven_zip, reason = ExtractService.find_tool()
     if not root.is_dir():
         print(f"library root not found: {root}")
@@ -43,8 +45,7 @@ def main() -> int:
     total = bad = 0
     for category, game, archive in archives(root):
         total += 1
-        check = subprocess.run([seven_zip, "t", "-bso0", "-bsp0", str(archive)],
-                               capture_output=True, text=True, check=False)
+        check = subprocess.run([seven_zip, "t", "-bso0", "-bsp0", str(archive)], capture_output=True, text=True, check=False)
         if check.returncode == 0:
             continue
         bad += 1
@@ -59,4 +60,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

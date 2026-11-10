@@ -7,6 +7,7 @@ Usage:
     runtime\python.exe tools\compare_backups.py -f services/steam_service.py --diff
     runtime\python.exe tools\compare_backups.py --list-changed  # Find files that changed across backups
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,10 +32,7 @@ def list_backups() -> list[Path]:
 
 def extract_file(archive: Path, internal_path: str, output_dir: Path) -> Path:
     """Extract a single file from archive to output_dir."""
-    result = subprocess.run(
-        [str(SEVEN_ZIP), "x", str(archive), f"-o{output_dir}", "-r", internal_path],
-        capture_output=True, text=True, timeout=120
-    )
+    result = subprocess.run([str(SEVEN_ZIP), "x", str(archive), f"-o{output_dir}", "-r", internal_path], capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         return None
     # 7z preserves directory structure, so file is at output_dir / internal_path
@@ -60,18 +58,18 @@ def get_file_versions(file_path: str) -> list[tuple[datetime, Path, bytes]]:
 
 def show_diff_from_content(old_content: bytes, new_content: bytes, context: int = 3):
     """Show unified diff between two file contents."""
-    old_lines = old_content.decode('utf-8', errors='replace').splitlines(keepends=True)
-    new_lines = new_content.decode('utf-8', errors='replace').splitlines(keepends=True)
-    
+    old_lines = old_content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    new_lines = new_content.decode("utf-8", errors="replace").splitlines(keepends=True)
+
     diff = list(difflib.unified_diff(old_lines, new_lines, n=context))
     if diff:
         # Replace problematic characters for Windows console
         for line in diff:
-            line = line.replace('\u2192', '->').replace('\u2705', '[OK]').replace('\u274c', '[FAIL]')
+            line = line.replace("\u2192", "->").replace("\u2705", "[OK]").replace("\u274c", "[FAIL]")
             try:
                 sys.stdout.write(line)
             except UnicodeEncodeError:
-                sys.stdout.write(line.encode('ascii', 'replace').decode('ascii'))
+                sys.stdout.write(line.encode("ascii", "replace").decode("ascii"))
     else:
         print("  (no differences)")
 
@@ -82,11 +80,11 @@ def compare_all_versions(file_path: str, show_diff_output: bool = False):
     if not versions:
         print(f"File not found in any backup: {file_path}")
         return
-    
+
     print(f"Found {len(versions)} version(s) of {file_path}:")
     for i, (mtime, backup, content) in enumerate(versions):
-        print(f"  {i+1}. {backup.name} ({mtime.strftime('%Y-%m-%d %H:%M')}) - {len(content)} bytes")
-    
+        print(f"  {i + 1}. {backup.name} ({mtime.strftime('%Y-%m-%d %H:%M')}) - {len(content)} bytes")
+
     if show_diff_output and len(versions) >= 2:
         print("\n--- Diffs (oldest -> newest) ---")
         for i in range(len(versions) - 1):
@@ -102,22 +100,22 @@ def auto_recover(file_path: str, test_cmd: str = None) -> bool:
     if not versions:
         print(f"File not found in any backup: {file_path}")
         return False
-    
-    
+
     # Test from newest to oldest (skip current/newest if it's the broken one)
     for i in range(len(versions) - 1, -1, -1):
         mtime, backup, content = versions[i]
-        print(f"Testing version {i+1}/{len(versions)}: {backup.name} ({mtime.strftime('%Y-%m-%d %H:%M')})")
-        
+        print(f"Testing version {i + 1}/{len(versions)}: {backup.name} ({mtime.strftime('%Y-%m-%d %H:%M')})")
+
         # Write to actual location
         target = ROOT / file_path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)
-        
+
         if test_cmd:
             print(f"  Running test: {test_cmd}")
             # Parse command into list for proper Windows execution
             import shlex
+
             try:
                 cmd_list = shlex.split(test_cmd, posix=False)
             except ValueError:
@@ -129,7 +127,7 @@ def auto_recover(file_path: str, test_cmd: str = None) -> bool:
             print(f"  [FAIL] FAILED - {result.stderr[:200]}")
         else:
             print("  (No test command provided - manual verification needed)")
-    
+
     print("No working version found in backups")
     return False
 
@@ -139,31 +137,31 @@ def list_changed_files() -> dict[str, int]:
     backups = list_backups()
     if len(backups) < 2:
         return {}
-    
+
     # Use manifest files for quick comparison
     file_sizes = {}
     for backup in backups:
         manifest = backup.with_suffix(".manifest.txt")
         if not manifest.exists():
             continue
-        with open(manifest, encoding='utf-8', errors='replace') as f:
+        with open(manifest, encoding="utf-8", errors="replace") as f:
             for line in f:
-                if '....A' in line or 'D....' in line:
+                if "....A" in line or "D...." in line:
                     parts = line.split()
                     if len(parts) >= 6:
-                        name = ' '.join(parts[5:])
-                        if '....A' in line:  # file
+                        name = " ".join(parts[5:])
+                        if "....A" in line:  # file
                             size = int(parts[3])
                             if name not in file_sizes:
                                 file_sizes[name] = set()
                             file_sizes[name].add((backup.name, size))
-    
+
     # Find files with multiple sizes across backups
     changed = {}
     for name, versions in file_sizes.items():
         if len(versions) > 1:
             changed[name] = len(versions)
-    
+
     return dict(sorted(changed.items(), key=lambda x: -x[1]))
 
 

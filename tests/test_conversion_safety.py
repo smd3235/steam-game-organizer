@@ -4,6 +4,7 @@ Both exist because a rebuild of incomplete data is a *valid* archive: it passes 
 and the intact source is deleted, so nothing downstream can notice. The only place to catch that is before the
 source is removed.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -35,8 +36,7 @@ def _require_seven_zip(case):
     platforms, so its absence is a broken environment and is reported as one.
     """
     if not _seven_zip():
-        case.fail("7-Zip is required for these checks and was not found on PATH or at the standard install "
-                  "location; the application needs it to convert anything.")
+        case.fail("7-Zip is required for these checks and was not found on PATH or at the standard install location; the application needs it to convert anything.")
 
 
 @pytest.mark.notkinter
@@ -61,8 +61,7 @@ class ArchiveManifestDescribesTheArchive(unittest.TestCase):
     def test_a_complete_extraction_is_not_short(self):
         extracted = self.dir / "out"
         extracted.mkdir()
-        subprocess.run([_seven_zip(), "x", "-y", f"-o{extracted}", "--", str(self.archive)],
-                       stdin=subprocess.DEVNULL, capture_output=True)
+        subprocess.run([_seven_zip(), "x", "-y", f"-o{extracted}", "--", str(self.archive)], stdin=subprocess.DEVNULL, capture_output=True)
         self.assertFalse(self.service._extraction_is_short(self.archive, extracted))
 
     def test_an_extraction_missing_a_file_is_caught(self):
@@ -77,8 +76,7 @@ class ArchiveManifestDescribesTheArchive(unittest.TestCase):
         broken = self.dir / "Broken.zip"
         broken.write_bytes(self.archive.read_bytes()[:200])
         extracted = self.dir / "broken-out"
-        subprocess.run([_seven_zip(), "x", "-y", f"-o{extracted}", "--", str(broken)],
-                       stdin=subprocess.DEVNULL, capture_output=True)
+        subprocess.run([_seven_zip(), "x", "-y", f"-o{extracted}", "--", str(broken)], stdin=subprocess.DEVNULL, capture_output=True)
         # The manifest of a truncated archive describes only what survived, so this case is caught by the
         # source integrity test instead - which is exactly why both checks exist.
         self.assertFalse(self.service._source_is_intact(broken))
@@ -90,8 +88,7 @@ class ArchiveManifestDescribesTheArchive(unittest.TestCase):
         missing = self.dir / "gone.zip"
         claimed = self.service._archive_manifest(missing)
         self.assertIsNone(claimed, "a missing archive should report an unknown manifest, not an empty one")
-        self.assertFalse(self.service._extraction_is_short(missing, self.dir),
-                         "an unreadable manifest must not be mistaken for a short extraction")
+        self.assertFalse(self.service._extraction_is_short(missing, self.dir), "an unreadable manifest must not be mistaken for a short extraction")
 
 
 class DirectoriesAreNotCountedAsFiles(unittest.TestCase):
@@ -114,9 +111,7 @@ class DirectoriesAreNotCountedAsFiles(unittest.TestCase):
         (self.tree / "data" / "nested" / "b.bin").write_bytes(b"b" * 7000)
         (self.tree / "readme.txt").write_bytes(b"hello")
         self.archive = self.dir / "Game.7z"
-        proc = subprocess.run([_seven_zip(), "a", "-t7z", "-mx=1", "-bso0", "-bsp0",
-                               str(self.archive), str(self.tree / "*")],
-                              stdin=subprocess.DEVNULL, capture_output=True)
+        proc = subprocess.run([_seven_zip(), "a", "-t7z", "-mx=1", "-bso0", "-bsp0", str(self.archive), str(self.tree / "*")], stdin=subprocess.DEVNULL, capture_output=True)
         self.assertEqual(proc.returncode, 0, "could not build the fixture archive")
 
     def tearDown(self):
@@ -132,17 +127,14 @@ class DirectoriesAreNotCountedAsFiles(unittest.TestCase):
     def test_a_complete_extraction_of_a_real_7z_is_not_short(self):
         extracted = self.dir / "out"
         extracted.mkdir()
-        subprocess.run([_seven_zip(), "x", "-y", f"-o{extracted}", "--", str(self.archive)],
-                       stdin=subprocess.DEVNULL, capture_output=True)
-        self.assertFalse(self.service._extraction_is_short(self.archive, extracted),
-                         "a faithful extraction was mistaken for a short one")
+        subprocess.run([_seven_zip(), "x", "-y", f"-o{extracted}", "--", str(self.archive)], stdin=subprocess.DEVNULL, capture_output=True)
+        self.assertFalse(self.service._extraction_is_short(self.archive, extracted), "a faithful extraction was mistaken for a short one")
 
     def test_an_extraction_missing_a_file_is_still_caught(self):
         extracted = self.dir / "partial"
         (extracted / "data").mkdir(parents=True)
         (extracted / "data" / "a.bin").write_bytes(b"a" * 5000)
-        self.assertTrue(self.service._extraction_is_short(self.archive, extracted),
-                        "fixing the directory count must not blunt the check that catches real loss")
+        self.assertTrue(self.service._extraction_is_short(self.archive, extracted), "fixing the directory count must not blunt the check that catches real loss")
 
 
 class StaleBuildDirsAreSweptAtStartup(unittest.TestCase):
@@ -199,8 +191,7 @@ class StaleBuildDirsAreSweptAtStartup(unittest.TestCase):
         keep.mkdir()
         (keep / "precious.txt").write_text("do not delete", encoding="utf-8")
         self.service.sweep_stale_build_dirs(self.library)
-        self.assertTrue((keep / "precious.txt").exists(),
-                        "sweeping reached beyond the app's own staging folders")
+        self.assertTrue((keep / "precious.txt").exists(), "sweeping reached beyond the app's own staging folders")
 
     def test_the_game_folders_are_never_searched(self):
         """A stale folder beside a game rather than under Processing is the fallback layout for when no
@@ -223,4 +214,3 @@ class StaleBuildDirsAreSweptAtStartup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

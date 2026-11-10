@@ -9,6 +9,7 @@ have to hold once per entry instead of once.
 The rest is about the two things a batch has that a single extract does not: it runs for hours, so it has to
 report where it is and be stoppable; and it touches many archives, so one bad one must not cost the rest.
 """
+
 from __future__ import annotations
 
 import os
@@ -181,8 +182,7 @@ class PlanningABatchKnowsWhatItWouldDo(unittest.TestCase):
     def test_the_destination_is_the_parent_and_each_game_gets_a_folder_inside_it(self):
         plan = self._plan("Idle")
         for item in plan.items:
-            self.assertEqual(item.destination.parent, self.dest,
-                             "a game's folder is not inside the requested destination")
+            self.assertEqual(item.destination.parent, self.dest, "a game's folder is not inside the requested destination")
 
     def test_an_installer_archive_gets_a_needs_install_destination(self):
         """An installer archive (setup.exe + .bin) must land in <dest>/Needs Install/, not crash plan_batch.
@@ -192,14 +192,14 @@ class PlanningABatchKnowsWhatItWouldDo(unittest.TestCase):
         which is why Extract all on a library with repacks silently produced no UI at all.
         """
         from services.installer_detect import NEEDS_INSTALL_DIRNAME
+
         folder = self.root / "Idle" / "Repack Game - 2024-01-01"
         folder.mkdir(parents=True, exist_ok=True)
         archive = folder / "Repack Game.zip"
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as handle:
             handle.writestr("setup.exe", b"x" * 100)
             handle.writestr("game.bin", b"y" * 4096)
-        (folder / ".game-info.json").write_text('{"appid":"1","name":"Repack Game","genres":["RPG"]}',
-                                                  encoding="utf-8")
+        (folder / ".game-info.json").write_text('{"appid":"1","name":"Repack Game","genres":["RPG"]}', encoding="utf-8")
         plan = self._plan("Idle")
         installers = [item for item in plan.items if NEEDS_INSTALL_DIRNAME in item.destination.parts]
         self.assertTrue(installers, "no item placed under Needs Install/")
@@ -232,6 +232,7 @@ class RunningABatchReportsEveryGame(unittest.TestCase):
         Written as a real class taking the constructor the job actually calls, so on_progress stays bound rather
         than being bypassed - a stub that ignored the callback would pass a test about progress attribution.
         """
+
         class _Fake:
             def __init__(self, logger, on_progress=None):
                 self.on_progress = on_progress
@@ -246,8 +247,7 @@ class RunningABatchReportsEveryGame(unittest.TestCase):
                     return ExtractResult(archive, destination, False, "Extraction failed (exit 2)", code=2)
                 destination.mkdir(parents=True, exist_ok=True)
                 (destination / "game.bin").write_bytes(b"a" * 1000)
-                return ExtractResult(archive, destination, True, "Extracted 1 file(s)",
-                                     extracted_bytes=1000, file_count=1, code=0)
+                return ExtractResult(archive, destination, True, "Extracted 1 file(s)", extracted_bytes=1000, file_count=1, code=0)
 
         self.addCleanup(setattr, batch_extract_service, "ExtractService", batch_extract_service.ExtractService)
         batch_extract_service.ExtractService = _Fake
@@ -293,9 +293,7 @@ class RunningABatchReportsEveryGame(unittest.TestCase):
                 # extraction and "item" when the verdict lands, so a test keyed on the stage would read a game that
                 # was being unpacked continuously as one that never reported itself - which is the assertion
                 # reading the wrong field rather than the window being wrong.
-                self.assertTrue(any(n == name and state == EXTRACTING for _, n, state in self.seen),
-                                f"{name} never reported itself as extracting; saw "
-                                f"{sorted({(n, state) for _, n, state in self.seen})}")
+                self.assertTrue(any(n == name and state == EXTRACTING for _, n, state in self.seen), f"{name} never reported itself as extracting; saw {sorted({(n, state) for _, n, state in self.seen})}")
 
     def test_one_failing_game_does_not_stop_the_rest(self):
         """The same rule the organize run was given after one unmovable archive aborted a whole library."""
@@ -306,7 +304,7 @@ class RunningABatchReportsEveryGame(unittest.TestCase):
         self.assertEqual((job.succeeded, job.failed), (2, 1))
 
     def test_a_failure_names_its_reason(self):
-        """"Failed" with no reason is an outcome nobody can act on."""
+        """ "Failed" with no reason is an outcome nobody can act on."""
         self._games("Broken")
         job = self._run(fail_for=("Broken",))
         self.assertIn("exit 2", job.plan.items[0].detail)
@@ -347,19 +345,16 @@ class RunningABatchReportsEveryGame(unittest.TestCase):
                 destination.mkdir(parents=True, exist_ok=True)
                 (destination / "setup.exe").write_bytes(b"MZ")
                 (destination / "setup-1.bin").write_bytes(b"a" * 1000)
-                return ExtractResult(archive, destination, True, "Extracted 2 files",
-                                     extracted_bytes=2000, file_count=2, code=0, needs_install=True)
+                return ExtractResult(archive, destination, True, "Extracted 2 files", extracted_bytes=2000, file_count=2, code=0, needs_install=True)
 
         self._games("Repack")
         batch_extract_service.ExtractService = _InstallerFake
         job = self._run()
         item = job.plan.items[0]
         self.assertEqual(item.state, DONE)
-        self.assertIn("needs install", item.detail.lower(),
-                      f"the row's detail did not flag the installer: {item.detail!r}")
+        self.assertIn("needs install", item.detail.lower(), f"the row's detail did not flag the installer: {item.detail!r}")
         self.assertEqual(job.needs_install, 1, "the run did not count the installer")
-        self.assertIn("need install", job.summary().lower(),
-                      "the summary did not surface installers at the run level")
+        self.assertIn("need install", job.summary().lower(), "the summary did not surface installers at the run level")
 
     def test_remaining_drains_to_zero(self):
         self._games("Alpha", "Beta")
@@ -387,13 +382,13 @@ class RunningABatchReportsEveryGame(unittest.TestCase):
 # A stub archiver that ignores the real 7z argument list and just prints progress lines, so extract() can be
 # driven end to end - real Popen, real pipe, real cancel check - without a real 7-Zip. Written through the
 # project's own _write_stub so it is a form this platform can actually execute.
-_STUB_PROGRESS = '''#!/usr/bin/env python3
+_STUB_PROGRESS = """#!/usr/bin/env python3
 import sys
 for line in ("10% 1 - a", "50% 2 - b", "90% 3 - c"):
     print(line)
     sys.stdout.flush()
 sys.exit(0)
-'''
+"""
 
 
 class CancelReachesTheArchiveTool(unittest.TestCase):
@@ -427,8 +422,7 @@ class CancelReachesTheArchiveTool(unittest.TestCase):
     def test_a_cancel_stops_the_run_instead_of_being_ignored(self):
         result = self._service().extract(self.archive, self.root / "out", cancel=lambda: True)
         self.assertFalse(result.ok, "a cancelled extraction reported success")
-        self.assertIn("part-way", result.message,
-                      f"a cancelled extraction did not say where its files are: {result.message!r}")
+        self.assertIn("part-way", result.message, f"a cancelled extraction did not say where its files are: {result.message!r}")
 
     def test_a_cancel_that_never_arrives_still_completes(self):
         """The other half: the fix cannot simply refuse to run, or every extraction would report cancelled."""
@@ -470,18 +464,18 @@ class TheCatalogOffersTheBatchButtons(unittest.TestCase):
         library rather than a named folder. The script on the page rebuilds this link the same way as the
         per-category ones, so it carries the same shape: steamgameorganizer://extract-all with no query."""
         import re
+
         library_links = re.findall(r'data-batch="(steamgameorganizer://extract-all[^"]*)"', self.text)
         self.assertTrue(library_links, "no batch link carries the data-batch the script rebuilds from")
-        self.assertIn("steamgameorganizer://extract-all\"", self.text,
-                      "the whole-library link does not end at the action with no query string")
+        self.assertIn('steamgameorganizer://extract-all"', self.text, "the whole-library link does not end at the action with no query string")
 
     def test_the_buttons_state_how_many_games_they_cover(self):
         """A button reading 'Extract all' over a shelf of 176 games is not enough evidence to agree to hours of
         unpacking, so the count is on the button and the size is in the confirmation."""
         import re
+
         counts = re.findall(r'data-batch-count="(\d+)"', self.text)
-        self.assertEqual(sorted(int(c) for c in counts), [1, 1, 2, 2, 3, 3],
-                         f"the batch buttons do not carry the real counts: {counts}")
+        self.assertEqual(sorted(int(c) for c in counts), [1, 1, 2, 2, 3, 3], f"the batch buttons do not carry the real counts: {counts}")
 
     def test_the_batch_links_rebuild_from_the_destination_box(self):
         """Rebuilt from the pristine data-batch on every keystroke, exactly like the single Extract links, so
@@ -499,16 +493,14 @@ class TheCatalogOffersTheBatchButtons(unittest.TestCase):
     def test_the_confirmation_names_the_count_and_the_destination(self):
         self.assertIn("data-batch-confirm=", self.text)
         self.assertIn("To: '+dest", self.text)
-        self.assertIn("free space", self.text,
-                      "the prompt does not mention that a batch needs several times the archive size in room")
+        self.assertIn("free space", self.text, "the prompt does not mention that a batch needs several times the archive size in room")
 
     def test_the_single_extract_links_are_left_alone(self):
         """One archive is small and reversible; a prompt on every card would make the button tiresome. So the
         confirmation is bound to the batch links only."""
         self.assertEqual(self.text.count("data-batch-count="), 6, "an unexpected number of batch buttons appeared")
         self.assertIn('class="btn btn-extract"', self.text, "the per-game Extract button is gone")
-        self.assertIn("querySelectorAll('.btn-extract')", self.text,
-                      "the single Extract links are no longer rebuilt from the destination box")
+        self.assertIn("querySelectorAll('.btn-extract')", self.text, "the single Extract links are no longer rebuilt from the destination box")
 
     def test_the_single_game_button_is_still_on_the_card(self):
         """The whole point of the three levels: this one game, this category, everything."""
@@ -524,6 +516,7 @@ class TheWindowShowsEveryGame(unittest.TestCase):
 
     def setUp(self):
         from tests.tk_support import close_root, require_tk
+
         require_tk(self)
         import tkinter as tk
 
@@ -537,15 +530,16 @@ class TheWindowShowsEveryGame(unittest.TestCase):
 
     def _plan(self, already_done=0):
         from services.batch_extract_service import BatchItem, BatchPlan
+
         plan = BatchPlan(destination=self.root_dir / "Out", category="Idle", already_done=already_done)
         for index, name in enumerate(("Alpha", "Beta", "Gamma"), 1):
-            plan.items.append(BatchItem(archive=Path(f"C:/library/{name}.zip"), destination=Path(f"C:/out/{name}"),
-                                        name=name, size=index * 1024 * 1024))
+            plan.items.append(BatchItem(archive=Path(f"C:/library/{name}.zip"), destination=Path(f"C:/out/{name}"), name=name, size=index * 1024 * 1024))
         plan.total_bytes = sum(item.size for item in plan.items)
         return plan
 
     def _window(self, already_done=0):
         from ui.batch_extract_window import BatchExtractWindow
+
         self.plan = self._plan(already_done)
         self.window = BatchExtractWindow(self.root, self.plan, self.logger)
         return self.window
@@ -640,8 +634,7 @@ class TheWindowShowsEveryGame(unittest.TestCase):
         self.root.update()
         self.assertTrue(job.cancel_requested, "the Stop button did not reach the job")
         self.assertIn("STOPPING", str(window.cancel_btn.cget("text")))
-        self.assertEqual(str(window.cancel_btn.cget("state")), "disabled",
-                         "the Stop button stayed live while stopping, so it could be pressed twice")
+        self.assertEqual(str(window.cancel_btn.cget("state")), "disabled", "the Stop button stayed live while stopping, so it could be pressed twice")
 
     def test_closing_mid_run_cancels_first_rather_than_leaving_the_tool_writing(self):
         window = self._window()
@@ -656,6 +649,7 @@ class TheWindowShowsEveryGame(unittest.TestCase):
         """A run of 176 with three failures is a success with caveats, and the caveats should not require
         scrolling through a hundred rows to find."""
         from services.batch_extract_service import FAILED as STATE_FAILED
+
         window = self._window()
         job = BatchExtractJob(window.plan, self.logger)
         window.job = job

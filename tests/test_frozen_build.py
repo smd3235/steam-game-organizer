@@ -8,6 +8,7 @@ sibling folders, so a build that left those inside `_internal/` would ship an ap
 cannot unpack anything. These tests run the builder against a scratch tree and check the
 layout it produces, not the one in this checkout.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -23,6 +24,7 @@ from tools import build_frozen
 
 try:
     import PyInstaller  # noqa: F401
+
     HAS_PYINSTALLER = True
 except ImportError:
     HAS_PYINSTALLER = False
@@ -68,12 +70,12 @@ class FrozenBuildLaysOutTheBundle(unittest.TestCase):
         self.assertTrue(exe.is_file(), f"no exe at {exe}")
         for name in ("core", "services", "runtime", "VERSION.txt"):
             self.assertTrue((bundle / name).exists(), f"bundle is missing {name}")
-        self.assertTrue((bundle / "runtime" / "7z.exe").is_file(),
-                        "the frozen app has no 7z.exe to unpack with")
+        self.assertTrue((bundle / "runtime" / "7z.exe").is_file(), "the frozen app has no 7z.exe to unpack with")
 
     def test_the_exported_reg_points_at_the_runtime_python(self):
         """A .reg for a target PC must reference the bundled interpreter, not the one that ran the build."""
         from tools import install_protocol_handler as installer
+
         dest = self.root / "handler.reg"
         entry = Path("D:/app/steam_game_organizer.py")
         installer.export_windows_reg(dest, r"C:\Python313\python.exe", entry)
@@ -82,10 +84,10 @@ class FrozenBuildLaysOutTheBundle(unittest.TestCase):
         # The .reg doubles every backslash, so the path reads `runtime\\python.exe` in the file, and quotes inside
         # the value are escaped as `\"`. Both are the .reg format, not Python string escapes.
         self.assertIn("runtime\\\\python.exe", text)
-        self.assertIn(r'\"%1\"', text)
+        self.assertIn(r"\"%1\"", text)
         # The scheme handler still carries the interpreter that ran the build, which is what
         # the target PC will actually run the entry point with.
-        self.assertIn(r'\"C:\\Python313\\python.exe\"', text)
+        self.assertIn(r"\"C:\\Python313\\python.exe\"", text)
 
 
 if __name__ == "__main__":

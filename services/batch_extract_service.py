@@ -17,6 +17,7 @@ Two decisions worth stating, because both were the alternative and both were wor
 Skip-if-already-extracted is on by default. Without it, "Extract all" on a shelf of 176 games re-unpacks
 everything already unpacked on every click, and the button stops being usable after the first hour.
 """
+
 from dataclasses import dataclass, field
 from pathlib import Path
 import threading
@@ -128,8 +129,7 @@ def plan_batch(library_root, destination, category="", logger=None, skip_existin
         if skip_existing and already_extracted(target):
             plan.already_done += 1
             continue
-        plan.items.append(BatchItem(archive=archive.path, destination=target,
-                                    name=archive.display_name or archive.path.stem, size=size))
+        plan.items.append(BatchItem(archive=archive.path, destination=target, name=archive.display_name or archive.path.stem, size=size))
     plan.total_bytes = sum(item.size for item in plan.items)
     return plan
 
@@ -186,8 +186,7 @@ class BatchExtractJob:
     def run(self):
         """The whole queue. Returns True when every game that ran succeeded."""
         self.started_at = time.monotonic()
-        self.logger.info('BATCH', f'START dest=[{self.plan.destination}] games=[{self.plan.count}] '
-                                   f'category=[{self.plan.category}]')
+        self.logger.info("BATCH", f"START dest=[{self.plan.destination}] games=[{self.plan.count}] category=[{self.plan.category}]")
         if not self.plan.items:
             self.finished_at = time.monotonic()
             self.done.set()
@@ -210,8 +209,7 @@ class BatchExtractJob:
             service = ExtractService(self.logger, on_progress=self._sub_progress(item))
 
             try:
-                result = service.extract(item.archive, item.destination,
-                                         password=self.password, cancel=self._cancel.is_set)
+                result = service.extract(item.archive, item.destination, password=self.password, cancel=self._cancel.is_set)
             except CancellationError:
                 item.state = CANCELLED
                 item.detail = "cancelled"
@@ -224,7 +222,7 @@ class BatchExtractJob:
                 item.state = FAILED
                 item.detail = f"{type(exc).__name__}: {exc}"
                 self.failed += 1
-                self.logger.warning('BATCH', f'ITEM_FAILED name=[{item.name}] error=[{type(exc).__name__}]')
+                self.logger.warning("BATCH", f"ITEM_FAILED name=[{item.name}] error=[{type(exc).__name__}]")
                 self._emit("item", item)
                 continue
 
@@ -247,7 +245,7 @@ class BatchExtractJob:
                 item.state = FAILED
                 item.detail = result.message
                 self.failed += 1
-                self.logger.warning('BATCH', f'ITEM_FAILED name=[{item.name}] reason=[{result.message[:200]}]')
+                self.logger.warning("BATCH", f"ITEM_FAILED name=[{item.name}] reason=[{result.message[:200]}]")
             self._emit("item", item)
 
         # Everything still queued when the run ends was never reached, which is only possible after a cancel.
@@ -259,9 +257,7 @@ class BatchExtractJob:
                 self._emit("item", item)
 
         self.finished_at = time.monotonic()
-        self.logger.info('BATCH', f'FINISH ok=[{self.succeeded}] failed=[{self.failed}] '
-                                  f'skipped=[{self.skipped}] cancelled=[{self.cancelled}] '
-                                  f'seconds=[{int(self.finished_at - self.started_at)}]')
+        self.logger.info("BATCH", f"FINISH ok=[{self.succeeded}] failed=[{self.failed}] skipped=[{self.skipped}] cancelled=[{self.cancelled}] seconds=[{int(self.finished_at - self.started_at)}]")
         self.done.set()
         self._emit("finished", None)
         return self.failed == 0 and self.cancelled == 0
@@ -302,4 +298,3 @@ class BatchExtractJob:
             parts.append(f"{self.needs_install} need install")
         written = human_size(self.written) if self.written else "0 B"
         return f"{', '.join(parts)} in {elapsed}  •  {written} unpacked"
-

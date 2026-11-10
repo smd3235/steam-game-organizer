@@ -8,6 +8,7 @@ suite look green while four real UI assertions never ran.
 The stub is now only installed when tkinter genuinely cannot be imported, and it always declares Tk so
 callers can distinguish "no GUI toolkit here" from "this module was stubbed".
 """
+
 import shutil
 import sys
 import tempfile
@@ -18,11 +19,12 @@ TK_AVAILABLE = True
 try:
     import tkinter as _tk
 
-    TK_AVAILABLE = hasattr(_tk, 'Tk')
+    TK_AVAILABLE = hasattr(_tk, "Tk")
 except ModuleNotFoundError:
     TK_AVAILABLE = False
 
 if not TK_AVAILABLE:
+
     class _Dummy:
         def __init__(self, *args, **kwargs):
             pass
@@ -30,8 +32,8 @@ if not TK_AVAILABLE:
     class _TclError(Exception):
         pass
 
-    tkinter_stub = types.ModuleType('tkinter')
-    tkinter_stub.__file__ = '<tkinter stub>'
+    tkinter_stub = types.ModuleType("tkinter")
+    tkinter_stub.__file__ = "<tkinter stub>"
     tkinter_stub.TclError = _TclError
     tkinter_stub.Tk = None
     tkinter_stub.Toplevel = _Dummy
@@ -45,9 +47,9 @@ if not TK_AVAILABLE:
     tkinter_stub.Radiobutton = _Dummy
     tkinter_stub.Checkbutton = _Dummy
     tkinter_stub.PhotoImage = _Dummy
-    sys.modules.setdefault('tkinter', tkinter_stub)
+    sys.modules.setdefault("tkinter", tkinter_stub)
 
-    ttk_stub = types.ModuleType('tkinter.ttk')
+    ttk_stub = types.ModuleType("tkinter.ttk")
     ttk_stub.Style = _Dummy
     ttk_stub.Button = _Dummy
     ttk_stub.Combobox = _Dummy
@@ -57,22 +59,22 @@ if not TK_AVAILABLE:
     ttk_stub.Label = _Dummy
     ttk_stub.Entry = _Dummy
     ttk_stub.LabelFrame = _Dummy
-    sys.modules.setdefault('tkinter.ttk', ttk_stub)
+    sys.modules.setdefault("tkinter.ttk", ttk_stub)
 
-    filedialog_stub = types.ModuleType('tkinter.filedialog')
+    filedialog_stub = types.ModuleType("tkinter.filedialog")
     filedialog_stub.askdirectory = lambda *args, **kwargs: None
-    sys.modules.setdefault('tkinter.filedialog', filedialog_stub)
+    sys.modules.setdefault("tkinter.filedialog", filedialog_stub)
 
-    messagebox_stub = types.ModuleType('tkinter.messagebox')
+    messagebox_stub = types.ModuleType("tkinter.messagebox")
     messagebox_stub.showinfo = lambda *args, **kwargs: None
     messagebox_stub.showwarning = lambda *args, **kwargs: None
     messagebox_stub.showerror = lambda *args, **kwargs: None
     messagebox_stub.askyesno = lambda *args, **kwargs: True
-    sys.modules.setdefault('tkinter.messagebox', messagebox_stub)
+    sys.modules.setdefault("tkinter.messagebox", messagebox_stub)
 
-    simpledialog_stub = types.ModuleType('tkinter.simpledialog')
+    simpledialog_stub = types.ModuleType("tkinter.simpledialog")
     simpledialog_stub.askstring = lambda *args, **kwargs: None
-    sys.modules.setdefault('tkinter.simpledialog', simpledialog_stub)
+    sys.modules.setdefault("tkinter.simpledialog", simpledialog_stub)
 
 
 def require_tk(case):
@@ -85,8 +87,7 @@ def require_tk(case):
     to skip.
     """
     if not TK_AVAILABLE:
-        case.fail('tkinter could not be imported, so a test that builds a real window cannot run. The '
-                  'application needs the Tk bindings to start - this install is missing them.')
+        case.fail("tkinter could not be imported, so a test that builds a real window cannot run. The application needs the Tk bindings to start - this install is missing them.")
 
 
 def close_root(root):
@@ -105,7 +106,7 @@ def close_root(root):
         return
     try:
         try:
-            pending = root.tk.call('after', 'info')
+            pending = root.tk.call("after", "info")
             if pending:
                 # after info can return a tuple/list of pending ids
                 for p in list(pending):
@@ -117,7 +118,7 @@ def close_root(root):
             pass
         # Also try to cancel common widget-level jobs if they exist
         try:
-            for attr in ('_after_jobs', '_jobs'):
+            for attr in ("_after_jobs", "_jobs"):
                 jobs = getattr(root, attr, None)
                 if jobs:
                     for job_id in list(jobs):
@@ -163,10 +164,11 @@ def sandbox_app(case, root, mock=True, project_root=None):
     from unittest.mock import patch
     import app.application as application
     from core.config import AppConfig
-    sandbox=Path(project_root) if project_root is not None else Path(tempfile.mkdtemp(prefix='organizer-test-root-'))
-    games=sandbox/'Games'
+
+    sandbox = Path(project_root) if project_root is not None else Path(tempfile.mkdtemp(prefix="organizer-test-root-"))
+    games = sandbox / "Games"
     if project_root is None:
-        case.addCleanup(shutil.rmtree,sandbox,ignore_errors=True)
-        games.mkdir(parents=True,exist_ok=True)
-    with patch.object(application,'AppConfig',lambda *_a,**_k:AppConfig(sandbox,library_root=games)):
-        return application.Application(root,mock=mock)
+        case.addCleanup(shutil.rmtree, sandbox, ignore_errors=True)
+        games.mkdir(parents=True, exist_ok=True)
+    with patch.object(application, "AppConfig", lambda *_a, **_k: AppConfig(sandbox, library_root=games)):
+        return application.Application(root, mock=mock)

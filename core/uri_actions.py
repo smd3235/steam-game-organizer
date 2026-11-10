@@ -16,6 +16,7 @@ Three rules, and each one exists because without it the link is a remote file-wr
 
 Nothing here runs a command or touches the disk beyond resolving paths; the caller does that.
 """
+
 from __future__ import annotations
 
 import os
@@ -29,6 +30,7 @@ from core.constants import ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS
 
 SCHEME = "steamgameorganizer"
 UNSAFE_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
 
 # Folders a typed destination may never be. The catalog page accepts a free-text path, and unpacking a 40 GB
 # game into one of these is unrecoverable without root, so they are refused by name rather than left to the
@@ -45,13 +47,15 @@ def _system_paths():
     never have matched a resolved destination - which begins with a drive letter - and a list that reads as
     though it covers two platforms is worse than one that says plainly which platform it does.
     """
-    paths=set()
-    for variable in ("SystemRoot","ProgramFiles","ProgramFiles(x86)","ProgramData","ProgramW6432"):
-        value=os.environ.get(variable)
-        if value: paths.add(value)
+    paths = set()
+    for variable in ("SystemRoot", "ProgramFiles", "ProgramFiles(x86)", "ProgramData", "ProgramW6432"):
+        value = os.environ.get(variable)
+        if value:
+            paths.add(value)
     return tuple(sorted(os.path.normcase(os.path.normpath(p)) for p in paths))
 
-SYSTEM_PATHS=_system_paths()
+
+SYSTEM_PATHS = _system_paths()
 
 
 @dataclass
@@ -63,6 +67,7 @@ class ExtractRequest:
 @dataclass
 class PlayRequest:
     """A request to launch a validated game executable under configured extract folders."""
+
     exe: Path
     marker_dir: Path | None = None
 
@@ -70,6 +75,7 @@ class PlayRequest:
 @dataclass
 class ExtractRootRequest:
     """A request that targets an extracted root/marker directory under extract folders."""
+
     folder: Path
 
 
@@ -177,8 +183,7 @@ def _destination_parent(raw_destination, bases, library_root):
     get wrong.
     """
     if not bases:
-        raise UriRefused("No extract folder is configured, so there is nowhere to unpack to."
-                         + _setup_hint())
+        raise UriRefused("No extract folder is configured, so there is nowhere to unpack to." + _setup_hint())
     raw_destination = (raw_destination or "").strip()
     if not raw_destination:
         return bases[0]
@@ -222,11 +227,10 @@ def parse_batch_uri(uri: str, library_root: Path, extract_base):
     if parts.scheme.casefold() != SCHEME:
         raise UriRefused(f"Unsupported link type: {parts.scheme or 'none'}")
     action = (parts.netloc or parts.path.lstrip("/")).strip().casefold()
-    if action not in ("extract-all","extract-remaining"):
+    if action not in ("extract-all", "extract-remaining"):
         raise UriRefused(f"Unknown action: {action or 'none'}")
     if library_root is None:
-        raise UriRefused("No game library is configured, so there is nothing to extract from."
-                         + _setup_hint())
+        raise UriRefused("No game library is configured, so there is nothing to extract from." + _setup_hint())
     bases = _configured_bases(extract_base)
     query = parse_qs(parts.query)
     parent = _destination_parent((query.get("dest") or [""])[0], bases, library_root)
@@ -251,8 +255,7 @@ def parse_multi_uri(uri: str, library_root: Path, extract_base):
     if action != "extract-multi":
         raise UriRefused(f"Unknown action: {action or 'none'}")
     if library_root is None:
-        raise UriRefused("No game library is configured, so there is nothing to extract from."
-                         + _setup_hint())
+        raise UriRefused("No game library is configured, so there is nothing to extract from." + _setup_hint())
     bases = _configured_bases(extract_base)
     query = parse_qs(parts.query)
     parent = _destination_parent((query.get("dest") or [""])[0], bases, library_root)
@@ -330,19 +333,19 @@ def _parse_extract_root_action(uri: str, extract_folders, expected_action: str, 
         raise UriRefused(f"That folder cannot be opened: {exc}") from exc
     if not folder.is_dir():
         raise UriRefused(f"That folder is not there any more: {folder.name}")
-    if must_have_marker and not (folder / '.sgo-extract-info').is_file():
+    if must_have_marker and not (folder / ".sgo-extract-info").is_file():
         raise UriRefused(f"That extracted folder has no marker information: {folder.name}")
     return folder
 
 
 def parse_pick_launcher_uri(uri: str, extract_folders) -> Path:
     """Returns the extracted marker/root directory for a pick-launcher action."""
-    return _parse_extract_root_action(uri, extract_folders, 'pick-launcher', must_have_marker=True)
+    return _parse_extract_root_action(uri, extract_folders, "pick-launcher", must_have_marker=True)
 
 
 def parse_mark_installed_uri(uri: str, extract_folders) -> Path:
     """Returns the extracted marker/root directory for a mark-installed action."""
-    return _parse_extract_root_action(uri, extract_folders, 'mark-installed', must_have_marker=True)
+    return _parse_extract_root_action(uri, extract_folders, "mark-installed", must_have_marker=True)
 
 
 def parse_play_uri(uri: str, extract_folders) -> PlayRequest:
@@ -356,18 +359,17 @@ def parse_play_uri(uri: str, extract_folders) -> PlayRequest:
     if parts.scheme.casefold() != SCHEME:
         raise UriRefused(f"Unsupported link type: {parts.scheme or 'none'}")
     action = (parts.netloc or parts.path.lstrip("/")).strip().casefold()
-    if action != 'play':
+    if action != "play":
         raise UriRefused(f"Unknown action: {action or 'none'}")
     bases = _configured_bases(extract_folders)
     if not bases:
         raise UriRefused("No extract folder is configured." + _setup_hint())
     query = parse_qs(parts.query)
-    raw_exe = (query.get('exe') or [''])[0]
-    raw_marker = (query.get('path') or query.get('marker') or [''])[0]
+    raw_exe = (query.get("exe") or [""])[0]
+    raw_marker = (query.get("path") or query.get("marker") or [""])[0]
     marker_dir = None
     if raw_marker:
-        marker_dir = _parse_extract_root_action(
-            f"{SCHEME}://pick-launcher?path={raw_marker}", extract_folders, 'pick-launcher', must_have_marker=False)
+        marker_dir = _parse_extract_root_action(f"{SCHEME}://pick-launcher?path={raw_marker}", extract_folders, "pick-launcher", must_have_marker=False)
     exe_path = None
     if raw_exe:
         exe = Path(raw_exe).expanduser()
@@ -377,10 +379,11 @@ def parse_play_uri(uri: str, extract_folders) -> PlayRequest:
             exe_path = exe.resolve(strict=True)
         except OSError as exc:
             raise UriRefused(f"That launcher cannot be opened: {exc}") from exc
-        if not exe_path.is_file() or exe_path.suffix.lower() != '.exe':
+        if not exe_path.is_file() or exe_path.suffix.lower() != ".exe":
             raise UriRefused("Play links may only launch .exe files inside extract folders.")
     elif marker_dir is not None:
         from services.catalog_status import get_launch_target
+
         exe_path = get_launch_target(marker_dir, bases)
         if exe_path is None:
             raise UriRefused("No saved launcher is set for this game. Use Pick launcher first.")
@@ -427,7 +430,7 @@ def parse_uri(uri: str, library_root: Path, extract_base):
     offers that same list, and every entry in it has already been chosen by the user, so each is trusted
     equally - but nothing outside the list is.
     """
-    bases=_configured_bases(extract_base)
+    bases = _configured_bases(extract_base)
     if not uri:
         raise UriRefused("No action was given.")
     parts = urlsplit(str(uri))
@@ -439,8 +442,7 @@ def parse_uri(uri: str, library_root: Path, extract_base):
         raise UriRefused(f"Unknown action: {action or 'none'}")
 
     if library_root is None:
-        raise UriRefused("No game library is configured, so there is nothing to extract from."
-                         + _setup_hint())
+        raise UriRefused("No game library is configured, so there is nothing to extract from." + _setup_hint())
     raw_source = (parse_qs(parts.query).get("src") or [""])[0]
     if not raw_source:
         raise UriRefused("The link did not say which archive to extract.")
@@ -483,7 +485,7 @@ def _typed_destination(raw: str, library_root: Path) -> Path:
         raise UriRefused(f"Refused: {expanded} is the filesystem root.")
     if expanded == Path.home().resolve():
         raise UriRefused(f"Refused: {expanded} is your home folder. Pick a folder inside it.")
-# Every folder on the way up is checked, not just the destination itself, so C:\Windows\System32\games is
+    # Every folder on the way up is checked, not just the destination itself, so C:\Windows\System32\games is
     # refused as readily as the destination that contains it. That is also what catches a junction, which
     # resolve() rewrites to its target and an exact-match list would then wave through.
     for parent in (expanded, *expanded.parents):
@@ -502,26 +504,28 @@ def _typed_destination(raw: str, library_root: Path) -> Path:
         if not ancestor.is_dir() or not os.access(ancestor, os.W_OK):
             raise UriRefused(f"Cannot create a folder there: {ancestor} is not writable.")
     return expanded
+
+
 def parse_open_folder_uri(uri: str, library_root) -> Path:
     """Returns the library folder path a steamgameorganizer://open-folder link carries, or refuses."""
     parts = urlsplit(str(uri))
     if parts.scheme.casefold() != SCHEME:
         raise UriRefused(f"Unsupported link type: {parts.scheme or 'none'}")
-    action = (parts.netloc or parts.path.lstrip('/')).strip().casefold()
-    if action != 'open-folder':
+    action = (parts.netloc or parts.path.lstrip("/")).strip().casefold()
+    if action != "open-folder":
         raise UriRefused(f"Unknown action: {action or 'none'}")
     if library_root is None:
-        raise UriRefused('No game library is configured.' + _setup_hint())
-    raw = (parse_qs(parts.query).get('path') or [''])[0]
+        raise UriRefused("No game library is configured." + _setup_hint())
+    raw = (parse_qs(parts.query).get("path") or [""])[0]
     if not raw:
-        raise UriRefused('The link did not say which folder to open.')
+        raise UriRefused("The link did not say which folder to open.")
     folder = Path(raw).expanduser()
     if not _within(folder, library_root):
-        raise UriRefused(f'Refused: {raw} is outside the game library.' + _setup_hint())
+        raise UriRefused(f"Refused: {raw} is outside the game library." + _setup_hint())
     try:
         folder = folder.resolve(strict=True)
     except OSError as exc:
-        raise UriRefused(f'That folder cannot be opened: {exc}') from exc
+        raise UriRefused(f"That folder cannot be opened: {exc}") from exc
     if not folder.is_dir():
-        raise UriRefused(f'That folder is not there any more: {folder.name}')
+        raise UriRefused(f"That folder is not there any more: {folder.name}")
     return folder

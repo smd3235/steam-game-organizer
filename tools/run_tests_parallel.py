@@ -6,6 +6,7 @@ Strategy:
 - Tkinter tests: sequential
 - Frozen/Integration/Geometry: sequential
 """
+
 import subprocess
 import sys
 import time
@@ -56,47 +57,50 @@ FROZEN_INTEGRATION = [
     "tests/test_workflow_smoke.py",
 ]
 
+
 def run_tests(test_files, parallel=False, description=""):
     cmd = ["runtime\\python.exe", "-m", "pytest"] + test_files
     if parallel:
         cmd += ["-n", "auto", "--dist=loadfile"]
     cmd += ["--tb=short"]
-    
-    print(f"\n{'='*60}")
+
+    print(f"\n{'=' * 60}")
     print(f"Running: {description}")
     print(f"Command: {' '.join(cmd)}")
-    print(f"{'='*60}")
-    
+    print(f"{'=' * 60}")
+
     start = time.time()
     result = subprocess.run(cmd, cwd=r"E:\Game Installers\0. Steam Game Organizer")
     elapsed = time.time() - start
     print(f"\nCompleted in {elapsed:.1f}s (exit code: {result.returncode})")
     return result.returncode, elapsed
 
+
 def main():
     total_start = time.time()
-    
+
     # 1. Non-tkinter tests in parallel
     rc1, t1 = run_tests(NON_TKINTER, parallel=True, description="Non-tkinter tests (parallel)")
-    
+
     # 2. Tkinter tests sequential
     rc2, t2 = run_tests(TKINTER, parallel=False, description="Tkinter tests (sequential)")
-    
+
     # 3. Frozen/Integration tests sequential
     rc3, t3 = run_tests(FROZEN_INTEGRATION, parallel=False, description="Frozen/Integration tests (sequential)")
-    
+
     total = time.time() - total_start
-    
-    print(f"\n{'='*60}")
+
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
-    print(f"  Non-tkinter (parallel):   {t1:.1f}s  {'PASS' if rc1==0 else 'FAIL'}")
-    print(f"  Tkinter (sequential):     {t2:.1f}s  {'PASS' if rc2==0 else 'FAIL'}")
-    print(f"  Frozen/Integration:       {t3:.1f}s  {'PASS' if rc3==0 else 'FAIL'}")
+    print(f"{'=' * 60}")
+    print(f"  Non-tkinter (parallel):   {t1:.1f}s  {'PASS' if rc1 == 0 else 'FAIL'}")
+    print(f"  Tkinter (sequential):     {t2:.1f}s  {'PASS' if rc2 == 0 else 'FAIL'}")
+    print(f"  Frozen/Integration:       {t3:.1f}s  {'PASS' if rc3 == 0 else 'FAIL'}")
     print(f"  TOTAL:                    {total:.1f}s")
-    print(f"  Overall:                  {'PASS' if all(r==0 for r in [rc1,rc2,rc3]) else 'FAIL'}")
-    
-    return 0 if all(r==0 for r in [rc1,rc2,rc3]) else 1
+    print(f"  Overall:                  {'PASS' if all(r == 0 for r in [rc1, rc2, rc3]) else 'FAIL'}")
+
+    return 0 if all(r == 0 for r in [rc1, rc2, rc3]) else 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -13,6 +13,7 @@ The window owns no work. It starts a BatchExtractJob on a thread, is handed ever
 and drains that queue on the Tk thread - the same arrangement app/application.py uses for its own jobs, so the
 app has one way of doing this rather than two.
 """
+
 from __future__ import annotations
 
 import queue
@@ -23,9 +24,8 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 
-from ui.theme import (ACCENT_HI, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, Theme, human_duration, human_size,
-                      pin_bottom)
-from services.batch_extract_service import (CANCELLED, DONE, EXTRACTING, FAILED, QUEUED, SKIPPED, BatchExtractJob)
+from ui.theme import ACCENT_HI, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, Theme, human_duration, human_size, pin_bottom
+from services.batch_extract_service import CANCELLED, DONE, EXTRACTING, FAILED, QUEUED, SKIPPED, BatchExtractJob
 
 # The word shown for each state. The colour is not here: each state is a tag on the Text, configured once below,
 # so a row cannot be written in a colour that was never declared in the palette.
@@ -94,64 +94,57 @@ class BatchExtractWindow(tk.Toplevel):
         head = tk.Frame(self, bg=PANEL)
         head.grid(row=0, column=0, sticky="ew", padx=18, pady=(16, 6))
         head.columnconfigure(0, weight=1)
-        
+
         if self.scanning:
             # Scanning mode header
-            title_label = tk.Label(head, text="Scanning library", bg=PANEL, fg=TEXT,
-                          font=("TkDefaultFont", 17, "bold"), anchor="w")
+            title_label = tk.Label(head, text="Scanning library", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w")
             title_label.grid(row=0, column=0, sticky="w")
-            subtitle_label = tk.Label(head, text="discovering archives and checking installer signatures",
-                         bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w")
+            subtitle_label = tk.Label(head, text="discovering archives and checking installer signatures", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w")
             subtitle_label.grid(row=1, column=0, sticky="w")
             return
-        
+
         # Extraction mode header
-        main_title = tk.Label(head, text=f"Extracting {self.plan.count} game{'s' if self.plan.count != 1 else ''}", bg=PANEL, fg=TEXT,
-                   font=("TkDefaultFont", 17, "bold"), anchor="w")
+        main_title = tk.Label(head, text=f"Extracting {self.plan.count} game{'s' if self.plan.count != 1 else ''}", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w")
         main_title.grid(row=0, column=0, sticky="w")
-        
+
         category_frame = tk.Frame(head, bg=PANEL)
         category_frame.grid(row=1, column=0, sticky="w", pady=(2, 0))
-        category_label = tk.Label(category_frame, text=self.plan.category, bg=PANEL, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold"),
-                   anchor="w")
+        category_label = tk.Label(category_frame, text=self.plan.category, bg=PANEL, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold"), anchor="w")
         category_label.grid(row=0, column=0, sticky="w")
-        
+
         destination_frame = tk.Frame(head, bg=PANEL)
         destination_frame.grid(row=2, column=0, sticky="w", pady=(4, 0))
-        destination_label = tk.Label(destination_frame, text=f"To  {self.plan.destination}", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8),
-                  anchor="w", justify="left", wraplength=660)
+        destination_label = tk.Label(destination_frame, text=f"To  {self.plan.destination}", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w", justify="left", wraplength=660)
         destination_label.grid(row=0, column=0, sticky="w")
-        
+
         if self.plan.already_done:
             already_frame = tk.Frame(head, bg=PANEL)
             already_frame.grid(row=3, column=0, sticky="w", pady=(2, 0))
-            already_label = tk.Label(already_frame, text=f"{self.plan.already_done} already unpacked, so left alone", bg=PANEL, fg=MUTED,
-                      font=("TkDefaultFont", 8), anchor="w")
+            already_label = tk.Label(already_frame, text=f"{self.plan.already_done} already unpacked, so left alone", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w")
             already_label.grid(row=0, column=0, sticky="w")
 
     def _summary_row(self):
         bar_container = tk.Frame(self, bg=PANEL)
         bar_container.grid(row=1, column=0, sticky="ew", padx=18, pady=(4, 8))
         bar_container.columnconfigure(0, weight=1)
-        
+
         # Progress bar section
         progress_frame = tk.Frame(bar_container, bg=PANEL)
         progress_frame.grid(row=0, column=0, sticky="ew")
         progress_frame.columnconfigure(0, weight=1)
-        
+
         self.bar = ttk.Progressbar(progress_frame, style="Dark.Horizontal.TProgressbar", mode="determinate", maximum=100)
         self.bar.grid(row=0, column=0, sticky="w", padx=(0, 12))
         self.bar["value"] = 0
-        
+
         # Info section
         info_frame = tk.Frame(bar_container, bg=PANEL)
         info_frame.grid(row=0, column=1, sticky="ew", padx=(12, 0))
         info_frame.columnconfigure(0, weight=1)
-        
-        self.remaining = tk.Label(info_frame, text="Starting...", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 9, "bold"),
-                                   anchor="w")
+
+        self.remaining = tk.Label(info_frame, text="Starting...", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 9, "bold"), anchor="w")
         self.remaining.grid(row=0, column=0, sticky="ew")
-        
+
         self.metrics = tk.Label(info_frame, text="", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w")
         self.metrics.grid(row=1, column=0, sticky="ew", pady=(6, 0))
 
@@ -161,16 +154,14 @@ class BatchExtractWindow(tk.Toplevel):
         table_container.grid(row=2, column=0, sticky="nsew", padx=18, pady=(0, 10))
         table_container.columnconfigure(0, weight=1)
         table_container.rowconfigure(0, weight=1)
-        
-        self.list = tk.Text(table_container, bg=PANEL2, fg=TEXT, relief="flat", wrap="none", height=12, undo=False,
-                            font=("TkDefaultFont", 9), padx=10, pady=8, state="disabled", tabs=FIELD_STOPS)
+
+        self.list = tk.Text(table_container, bg=PANEL2, fg=TEXT, relief="flat", wrap="none", height=12, undo=False, font=("TkDefaultFont", 9), padx=10, pady=8, state="disabled", tabs=FIELD_STOPS)
         self.list.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
         scroll = ttk.Scrollbar(table_container, orient="vertical", command=self.list.yview, style="Dark.Vertical.TScrollbar")
         scroll.grid(row=0, column=1, sticky="ns", padx=(0, 12), pady=12)
         self.list.configure(yscrollcommand=scroll.set)
-        
-        for state, colour in ((QUEUED, MUTED), (EXTRACTING, ACCENT_HI), (DONE, GREEN), (FAILED, RED),
-                              (SKIPPED, MUTED), (CANCELLED, ORANGE)):
+
+        for state, colour in ((QUEUED, MUTED), (EXTRACTING, ACCENT_HI), (DONE, GREEN), (FAILED, RED), (SKIPPED, MUTED), (CANCELLED, ORANGE)):
             self.list.tag_configure(state, foreground=colour)
         self.list.tag_configure("size", foreground=MUTED)
         self.list.tag_configure("detail", foreground=MUTED)
@@ -180,23 +171,22 @@ class BatchExtractWindow(tk.Toplevel):
         foot = tk.Frame(self, bg=PANEL)
         foot.grid(row=3, column=0, sticky="ew", padx=18, pady=(0, 16))
         foot.columnconfigure(0, weight=1)
-        
+
         # Summary section
         summary_frame = tk.Frame(foot, bg=PANEL)
         summary_frame.grid(row=0, column=0, sticky="ew")
         summary_frame.columnconfigure(0, weight=1)
-        
-        self.summary = tk.Label(summary_frame, text="", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w",
-                                justify="left", wraplength=620)
+
+        self.summary = tk.Label(summary_frame, text="", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left", wraplength=620)
         self.summary.grid(row=0, column=0, sticky="w")
-        
+
         # Button section
         button_frame = tk.Frame(foot, bg=PANEL)
         button_frame.grid(row=0, column=1, sticky="e")
-        
+
         self.cancel_btn = ttk.Button(button_frame, text="STOP RUN", style="Danger.TButton", command=self._stop)
         self.cancel_btn.grid(row=0, column=0, sticky="e")
-        
+
         self.close_btn = ttk.Button(button_frame, text="CLOSE", style="Secondary.TButton", command=self._on_close)
         self.close_btn.grid(row=0, column=1, sticky="e", padx=(8, 0))
 
@@ -238,8 +228,7 @@ class BatchExtractWindow(tk.Toplevel):
             self.cancel_btn.configure(state="disabled")
             self.remaining.configure(text=f"Nothing to extract from {plan.category or 'the whole library'}.")
             if plan.already_done:
-                self.remaining.configure(text=f"Nothing to extract from {plan.category or 'the whole library'}. "
-                                             f"{plan.already_done} already unpacked, so left alone.")
+                self.remaining.configure(text=f"Nothing to extract from {plan.category or 'the whole library'}. {plan.already_done} already unpacked, so left alone.")
         self.close_btn.focus_set()
 
     def _queue(self, stage="", item=None, detail=""):
@@ -396,10 +385,7 @@ def run_batch_window(master, plan=None, logger=None, password="", on_finished=No
     start extraction. The caller must invoke window.set_plan(plan) once the background plan_batch completes.
     When scanning=False, plan must be provided and start() is called immediately.
     """
-    window = BatchExtractWindow(master, plan, logger=logger, password=password,
-                                on_finished=on_finished, scanning=scanning)
+    window = BatchExtractWindow(master, plan, logger=logger, password=password, on_finished=on_finished, scanning=scanning)
     if not scanning:
         window.start()
     return window
-
-

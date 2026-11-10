@@ -7,6 +7,7 @@ A third case drives that same branch through the stub archiver end to end - real
 so the argv the sniffer builds and the live parse are pinned together without a 7-Zip dependency and without canned
 output.
 """
+
 from __future__ import annotations
 
 import io
@@ -41,8 +42,7 @@ def _service(tmp: Path) -> ArchiveService:
 def _slt(names: list[str]) -> subprocess.CompletedProcess:
     """A canned 7z `l -slt` listing built from member names."""
     blocks = "\n\n".join(f"Path = {n}\nFolder = -\nSize = 0\n" for n in names)
-    return subprocess.CompletedProcess(args=[], returncode=0,
-                                       stdout=blocks + "\n" if blocks else "")
+    return subprocess.CompletedProcess(args=[], returncode=0, stdout=blocks + "\n" if blocks else "")
 
 
 @pytest.mark.notkinter
@@ -67,8 +67,7 @@ class ZipBranch(unittest.TestCase):
     def test_a_nested_wrapper_repack_is_detected(self):
         with TemporaryDirectory() as d:
             tmp = Path(d)
-            archive = _zip(tmp / "wrapped.zip",
-                           {"Airborne/setup.exe": b"", "Airborne/setup-2.bin": b""})
+            archive = _zip(tmp / "wrapped.zip", {"Airborne/setup.exe": b"", "Airborne/setup-2.bin": b""})
             sig = _service(tmp).archive_installer_kind(archive)
             self.assertEqual(sig.kind, "repack")
             self.assertEqual(sig.program.name, "setup.exe")
@@ -89,10 +88,7 @@ class ZipBranch(unittest.TestCase):
 class SevenZListingBranch(unittest.TestCase):
     def _patched(self, tmp, stdout, returncode=0):
         tool, _reason = ExtractService.find_tool() or ("fake-7z", None)
-        with patch.object(ExtractService, "find_tool", return_value=(tool, None)), \
-             patch("services.archive_service.subprocess.run",
-                   return_value=subprocess.CompletedProcess(args=[], returncode=returncode,
-                                                            stdout=stdout)) as mocked:
+        with patch.object(ExtractService, "find_tool", return_value=(tool, None)), patch("services.archive_service.subprocess.run", return_value=subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout)) as mocked:
             sig = _service(tmp).archive_installer_kind(tmp / "game.7z")
         return sig, mocked
 
@@ -155,6 +151,7 @@ class StubDrivenListing(unittest.TestCase):
 
     def _stub_service(self, tmp: Path) -> ArchiveService:
         from tests.test_services import _stub_archive_tools
+
         bin_dir = tmp / "bin"
         _stub_archive_tools(bin_dir, tools=("7z",))
         stub = bin_dir / ("7z.bat" if os.name == "nt" else "7z")
@@ -208,20 +205,26 @@ class DiscoverySkipsTheAppProjectFolder(unittest.TestCase):
     """
 
     def _library(self, tmp: Path) -> Path:
-        library = tmp / "Games"; library.mkdir()
-        action = library / "Action"; action.mkdir()
-        game = action / "Loop Miner - 2020-01-01"; game.mkdir()
+        library = tmp / "Games"
+        library.mkdir()
+        action = library / "Action"
+        action.mkdir()
+        game = action / "Loop Miner - 2020-01-01"
+        game.mkdir()
         (game / "Loop Miner.zip").write_bytes(b"PK\x03\x04" + b"0" * 512)
-        app = library / "Steam Game Organizer"; app.mkdir()
+        app = library / "Steam Game Organizer"
+        app.mkdir()
         (app / "steam_game_organizer.py").write_text("# stub\n")
         (app / "state.py").write_text("x = 1\n")
         (app / "argparse.py").write_text("x = 1\n")
-        rt = app / "runtime"; rt.mkdir()
+        rt = app / "runtime"
+        rt.mkdir()
         (rt / "python.exe").write_bytes(b"\0" * 64)
         (rt / "tk86t.dll").write_bytes(b"\0" * 64)
         for name in ("cmd.py", "gzip.py", "random.py"):
             (rt / name).write_text("x = 1\n")
-        tz = rt / "lib" / "tzdata"; tz.mkdir(parents=True)
+        tz = rt / "lib" / "tzdata"
+        tz.mkdir(parents=True)
         for name in ("Accra", "Juba", "Tripoli", "Bahia"):
             (tz / name).write_text("x = 1\n")
         return library
@@ -231,11 +234,8 @@ class DiscoverySkipsTheAppProjectFolder(unittest.TestCase):
             tmp = Path(d)
             archives = _service(tmp).discover(self._library(tmp)).archives
             names = [a.path.name for a in archives]
-            self.assertEqual(names, ["Loop Miner.zip"],
-                             f"expected only the game, got {names}")
-            self.assertFalse(any("state.py" in n or "argparse.py" in n or "Accra" in n
-                                 for n in names),
-                             "the app folder was scanned as a game")
+            self.assertEqual(names, ["Loop Miner.zip"], f"expected only the game, got {names}")
+            self.assertFalse(any("state.py" in n or "argparse.py" in n or "Accra" in n for n in names), "the app folder was scanned as a game")
 
     def test_renaming_the_project_folder_does_not_re_add_it(self):
         with TemporaryDirectory() as d:
@@ -244,9 +244,7 @@ class DiscoverySkipsTheAppProjectFolder(unittest.TestCase):
             (library / "Steam Game Organizer").rename(library / "SGO Renamed")
             archives = _service(tmp).discover(library).archives
             names = [a.path.name for a in archives]
-            self.assertEqual(names, ["Loop Miner.zip"],
-                             f"expected only the game after rename, got {names}")
-
+            self.assertEqual(names, ["Loop Miner.zip"], f"expected only the game after rename, got {names}")
 
     def test_the_library_root_is_scanned_when_it_is_the_app_folder(self):
         """The shared-library layout: the app is installed in the game folder, so the library root
@@ -259,27 +257,29 @@ class DiscoverySkipsTheAppProjectFolder(unittest.TestCase):
         """
         with TemporaryDirectory() as d:
             tmp = Path(d)
-            library = tmp / "Games"; library.mkdir()
-            action = library / "Action"; action.mkdir()
-            game = action / "Loop Miner - 2020-01-01"; game.mkdir()
+            library = tmp / "Games"
+            library.mkdir()
+            action = library / "Action"
+            action.mkdir()
+            game = action / "Loop Miner - 2020-01-01"
+            game.mkdir()
             (game / "Loop Miner.zip").write_bytes(b"PK\x03\x04" + b"0" * 512)
             # The library root itself is the app folder in this layout.
             (library / "steam_game_organizer.py").write_text("# stub\n")
             (library / "state.py").write_text("x = 1\n")
-            rt = library / "runtime"; rt.mkdir()
+            rt = library / "runtime"
+            rt.mkdir()
             (rt / "python.exe").write_bytes(b"\0" * 64)
             for name in ("cmd.py", "gzip.py"):
                 (rt / name).write_text("x = 1\n")
-            cache = library / "cache" / "artwork"; cache.mkdir(parents=True)
+            cache = library / "cache" / "artwork"
+            cache.mkdir(parents=True)
             for name in ("1029780_steam_fallback.jpg", "header_image.jpg"):
                 (cache / name).write_bytes(b"\xff\xd8\xff\xd9")
             archives = _service(tmp).discover(library).archives
             names = [a.path.name for a in archives]
-            self.assertEqual(names, ["Loop Miner.zip"],
-                             f"the library root was treated as the app folder and nothing was found: {names}")
-            self.assertFalse(any("state.py" in n or "cmd.py" in n or "steam_fallback" in n
-                                 for n in names),
-                             "the app folder was scanned as a game")
+            self.assertEqual(names, ["Loop Miner.zip"], f"the library root was treated as the app folder and nothing was found: {names}")
+            self.assertFalse(any("state.py" in n or "cmd.py" in n or "steam_fallback" in n for n in names), "the app folder was scanned as a game")
 
 
 if __name__ == "__main__":

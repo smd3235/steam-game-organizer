@@ -20,6 +20,7 @@ The handler registration still cannot travel: the registry is per-machine, so th
 a new PC is `runtime\python.exe tools\install_protocol_handler.py`, which registers the bundled
 interpreter - the one command a copied folder still needs.
 """
+
 from pathlib import Path
 from dataclasses import dataclass
 import argparse
@@ -66,6 +67,7 @@ class CopyStep:
     install tree without copying anything - the layout is the contract between this tool and
     the folder a friend receives, and a silent change to it is a runtime that starts nowhere.
     """
+
     kind: str
     destination: Path
     source: Path = None
@@ -77,8 +79,7 @@ def build_plan(source: Path, destination: Path, sevenzip: Path = None):
     """The operations that turn a Python install into a self-contained runtime folder."""
     version = sysconfig.get_config_var("LDVERSION") or f"python{sys.version_info.major}{sys.version_info.minor}"
     plan = []
-    for name in ("python.exe", "pythonw.exe", f"{version}.dll", "python3.dll",
-                 "vcruntime140.dll", "vcruntime140_1.dll"):
+    for name in ("python.exe", "pythonw.exe", f"{version}.dll", "python3.dll", "vcruntime140.dll", "vcruntime140_1.dll"):
         if (source / name).is_file():
             plan.append(CopyStep("file", destination / name, source / name))
     for folder in ("DLLs", "tcl", "tk"):
@@ -111,8 +112,7 @@ def execute(plan):
         elif step.kind == "tree":
             if step.destination.exists():
                 shutil.rmtree(step.destination)
-            shutil.copytree(step.source, step.destination,
-                            ignore=shutil.ignore_patterns(*step.exclude))
+            shutil.copytree(step.source, step.destination, ignore=shutil.ignore_patterns(*step.exclude))
         else:
             step.destination.write_text(step.content, encoding="utf-8")
 
@@ -122,8 +122,7 @@ def _source_install(explicit):
     if source.resolve() == RUNTIME.resolve():
         sys.exit("the runtime cannot be built from itself; point --from at a full Python install")
     if not (source / "Lib" / "os.py").is_file() or not (source / "DLLs").is_dir():
-        sys.exit(f"{source} is not a full Python install (no Lib/os.py or DLLs/); "
-                 "run this tool with an interpreter that has them, or pass --from DIR")
+        sys.exit(f"{source} is not a full Python install (no Lib/os.py or DLLs/); run this tool with an interpreter that has them, or pass --from DIR")
     return source
 
 
@@ -134,6 +133,7 @@ def _find_pillow(source: Path):
     and the probe will catch the missing dependency at runtime.
     """
     import importlib.util
+
     spec = importlib.util.find_spec("PIL")
     if spec and spec.submodule_search_locations:
         return Path(spec.submodule_search_locations[0])
@@ -154,13 +154,10 @@ def _probe(destination):
     python = destination / "python.exe"
     if not python.is_file():
         sys.exit("the runtime was built without python.exe")
-    probe = subprocess.run([str(python), "-c",
-                            "import sys, tkinter, urllib.request, PIL; print(sys.version.split()[0])"],
-                           capture_output=True, text=True)
+    probe = subprocess.run([str(python), "-c", "import sys, tkinter, urllib.request, PIL; print(sys.version.split()[0])"], capture_output=True, text=True)
     if probe.returncode != 0:
         if "No module named 'PIL'" in probe.stderr:
-            sys.exit("Pillow is missing from the bundled runtime - artwork cannot be decoded.\n"
-                     "Rebuild with: python tools/bundle_runtime.py")
+            sys.exit("Pillow is missing from the bundled runtime - artwork cannot be decoded.\nRebuild with: python tools/bundle_runtime.py")
         sys.exit(f"the bundled interpreter cannot import its own standard library:\n{probe.stderr.strip()}")
     return probe.stdout.strip()
 
@@ -176,6 +173,7 @@ def check():
     print(f"runtime : python {version} with tkinter, {total / 1e6:.1f} MB in {RUNTIME}")
     print(f"  7z.exe   : {'bundled' if sevenzip.is_file() else 'NOT bundled - Extract needs 7-Zip installed'}")
     from tools.install_protocol_handler import _registered_command
+
     command = _registered_command()
     hint = "runtime\\python.exe tools\\install_protocol_handler.py"
     print(f"  handler  : {command if command else 'not registered - run: ' + hint}")
@@ -185,34 +183,25 @@ def check():
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--from", dest="source", metavar="DIR",
-                        help="build from a specific Python install (default: this interpreter's)")
-    parser.add_argument("--sevenzip", metavar="PATH",
-                        help="bundle this 7z.exe (default: the one this machine has)")
-    parser.add_argument("--check", action="store_true",
-                        help="report what runtime/ holds, build nothing")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--from", dest="source", metavar="DIR", help="build from a specific Python install (default: this interpreter's)")
+    parser.add_argument("--sevenzip", metavar="PATH", help="bundle this 7z.exe (default: the one this machine has)")
+    parser.add_argument("--check", action="store_true", help="report what runtime/ holds, build nothing")
     arguments = parser.parse_args()
     if arguments.check:
         return check()
     source = _source_install(arguments.source)
     sevenzip = _locate_sevenzip(arguments.sevenzip)
     if not sevenzip:
-        print("warning: no 7-Zip found on this machine; building the runtime without 7z.exe",
-              file=sys.stderr)
+        print("warning: no 7-Zip found on this machine; building the runtime without 7z.exe", file=sys.stderr)
     plan = build_plan(source, RUNTIME, sevenzip)
     execute(plan)
     version = _probe(RUNTIME)
-    end_to_end = subprocess.run([str(RUNTIME / "python.exe"),
-                                 str(APP_ROOT / "steam_game_organizer.py"), "--version"],
-                                capture_output=True, text=True)
+    end_to_end = subprocess.run([str(RUNTIME / "python.exe"), str(APP_ROOT / "steam_game_organizer.py"), "--version"], capture_output=True, text=True)
     if end_to_end.returncode != 0:
         sys.exit(f"the bundled interpreter cannot run the app:\n{end_to_end.stderr.strip()}")
     files = [p for p in RUNTIME.rglob("*") if p.is_file()]
-    print(f"built {RUNTIME}: python {version}, {len(files)} files, "
-          f"{sum(p.stat().st_size for p in files) / 1e6:.1f} MB"
-          + (", 7z.exe bundled" if sevenzip else ", no 7z.exe (none found)"))
+    print(f"built {RUNTIME}: python {version}, {len(files)} files, {sum(p.stat().st_size for p in files) / 1e6:.1f} MB" + (", 7z.exe bundled" if sevenzip else ", no 7z.exe (none found)"))
     print(f"end-to-end: {end_to_end.stdout.strip()}")
     print("next step on this machine: runtime\\python.exe tools\\install_protocol_handler.py")
     return 0

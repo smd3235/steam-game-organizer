@@ -17,6 +17,7 @@ It is a post-build step rather than a spec change because PyInstaller has no doc
 tell COLLECT to leave a data tree at the bundle root; the destination paths in `datas` are
 relative to `_internal/`, not to the bundle.
 """
+
 import os
 import shutil
 import stat
@@ -48,7 +49,7 @@ def run_backup_if_needed():
         # Import and run the backup logic
         sys.path.insert(0, str(ROOT / "tools"))
         from auto_backup import latest_backup_age_days, run_tests, create_backup, delete_old_backups
-        
+
         # Check if backup needed (no backup in last 3 days)
         age = latest_backup_age_days()
         if age is not None and age < 3:
@@ -58,22 +59,22 @@ def run_backup_if_needed():
             if deleted:
                 print(f"Cleaned {deleted} old backup(s)")
             return 0
-        
+
         # Run tests first
         print("Running test suite before backup...")
         if not run_tests():
             print("ERROR: Tests failed. Backup aborted.")
             return 1
         print("Tests passed.")
-        
+
         # Create backup
         create_backup()
-        
+
         # Clean old backups
         deleted = delete_old_backups(30)
         if deleted:
             print(f"Cleaned {deleted} old backup(s)")
-        
+
         return 0
     except Exception as e:
         print(f"Backup error (non-fatal): {e}")
@@ -91,6 +92,7 @@ def main():
                 shutil.copytree(str(src), dst)
                 backup[name] = dst
     if DIST.exists():
+
         def _on_rmtree_error(func, path, exc_info):
             # Some files (e.g. runtime/7z.exe) may be locked by a running process.
             # Try to clear the read-only attribute and retry once.
@@ -99,6 +101,7 @@ def main():
                 func(path)
             except OSError:
                 pass
+
         # Retry the rmtree a few times: Windows Defender or an indexer can hold
         # a DLL open just long enough to fail the first pass.
         for _ in range(5):
@@ -107,6 +110,7 @@ def main():
                 break
             except PermissionError:
                 import time
+
                 time.sleep(1)
         else:
             # PyInstaller will overwrite whatever it can; stale files are harmless.
@@ -114,7 +118,8 @@ def main():
     try:
         result = subprocess.run(
             [sys.executable, "-m", "PyInstaller", str(SPEC), "--noconfirm", "--clean"],
-            cwd=ROOT, check=False,
+            cwd=ROOT,
+            check=False,
         )
         if result.returncode != 0:
             return result.returncode
