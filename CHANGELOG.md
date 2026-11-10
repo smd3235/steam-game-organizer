@@ -25,6 +25,18 @@
 
 ## 9.33
 
+### 2026-11-10 21:05:00 — Expanded README.md with detailed feature sections
+
+- `README.md`: added ⌨️ Command-line flags section (`--setup`, `--uri`, `--version`, `--diagnostics`, `--health`, `--mock`) with examples.
+- Added 📄 `Game Library.html` catalog page section — browse/filter/search/sort, status badges (Unpacked/Needs install/New version/Installer/No Steam match), multi-select extraction, setup and refresh actions, one-HTML-file rationale.
+- Added 🔍 Extraction markers (`.sgo-extract-info`) section — size/mtime, needs_install flag, launch_target, setup_done/installed_at; owned by `services/catalog_status.py`.
+- Added ↩️ Undo journal section — journaled to `config/last-organization.json`, never deletes folders it didn't create.
+- Added 🔁 Drive letter resolution section — `AppConfig.load()` auto-resolves `library_root` when stored path doesn't exist.
+- Added 🔧 Troubleshooting table — 8 symptom/cause/fix pairs.
+- Added ❓ FAQ section — 8 Q&A pairs (piracy, Steam client, Python-free runtime, no deletion, undo, cross-drive, data privacy).
+- No source code changed — docs-only change, no frozen exe rebuild required.
+- Changelog entry added in the same change as the doc change.
+
 ### 2026-11-10 20:58:00 — Reorganized README.md with logical section order, emojis, and style enhancements
 
 - `README.md`: reorganized section flow for a better reader experience — overview → key capabilities → install & run → first-launch setup wizard → protocol handler → app workflow → repository layout → running on your machine → project status → license → bundled runtime → quick links.
