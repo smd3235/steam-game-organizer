@@ -99,6 +99,11 @@ class TestReleaseTagTitles(unittest.TestCase):
         ("Synth Wave DRM Free", "Synth Wave"),
         ("Pixel Raiders-Razor1911", "Pixel Raiders"),
         ("Astral Plains-SteamRG.com", "Astral Plains"),
+        # Outlier styles found scanning every .7z in E:\Game Installers:
+        # a bracketed release group after a hyphenated title keeps the hyphen; a trailing -RUNE is cut;
+        # dot-separated titles with a trailing -RUNE collapse like any other tag.
+        ("Galactic Frontier - Unknown Regions [FitGirl Repack]", "Galactic Frontier - Unknown Regions"),
+        ("Star Trek - Outposts Unknown [FitGirl Repack]", "Star Trek - Outposts Unknown"),
     ]
 
     # A hyphen inside the title itself is kept, because it is part of the name: "Half-Life 2" must not become
@@ -131,6 +136,25 @@ class TestReleaseTagTitles(unittest.TestCase):
         self.assertEqual(normalize_name("Alpha Forge v 0 8.zip"), "Alpha Forge")
         self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
         self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
+        # Outliers found scanning every .7z in E:\Game Installers:
+        # a glued 8-digit date is stripped; a glued version glommed onto a huge number keeps only the letter-prefix.
+        self.assertEqual(normalize_name("ElderScrolls20260107"), "Elder Scrolls")
+        self.assertEqual(normalize_name("NovaLauncher2v10112645585273"), "Nova Launcher2v")
+
+    def test_real_world_outlier_patterns_are_normalized_correctly(self):
+        # Edge cases found in the live library that must not be collapsed, mangled, or dropped:
+        # camelCase with no separator keeps trailing digits; a camelCase lowercase run is not split;
+        # odd casing splits at every uppercase boundary; an ampersand and trailing digits survive;
+        # a mixed alphanumeric suffix survives; a single digit after a dot becomes " <digit>";
+        # hyphenated words stay whole; a digit-hyphen-word stays whole.
+        self.assertEqual(normalize_name("ZetaQuestAdventure10"), "Zeta Quest Adventure10")
+        self.assertEqual(normalize_name("TidyuptheCity10"), "Tidyupthe City10")
+        self.assertEqual(normalize_name("My.Weird.MORE.Title"), "My Weird MORE Title")
+        self.assertEqual(normalize_name("Iron&Steel171"), "Iron&Steel171")
+        self.assertEqual(normalize_name("Crystal Realms 7x9b"), "Crystal Realms 7x9b")
+        self.assertEqual(normalize_name("Toast.1"), "Toast 1")
+        self.assertEqual(normalize_name("Omega Factor-X"), "Omega Factor-X")
+        self.assertEqual(normalize_name("Deep Vault 7-Gold"), "Deep Vault 7-Gold")
 
 
 class TestVersionSuffixStripping(unittest.TestCase):

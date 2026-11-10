@@ -23,6 +23,14 @@
 
 ## 9.33
 
+### 2026-11-10 20:08:00 — Added real-library outlier naming patterns to filename-utils tests
+
+- `tests/test_filename_utils.py`: Extended the `TAGGED` list with bracketed release-group tags found scanning every `.7z` in `E:\Game Installers` (`[FitGirl Repack]` after hyphenated titles) so `normalize_name()` is pinned on real bracketed-tag shapes.
+- Added `test_real_world_outlier_patterns_are_normalized_correctly` pinning edge cases found in the live library: camelCase with no separator keeps trailing digits, lowercase camel runs are not split, odd casing splits at every uppercase boundary, ampersands and trailing digits survive, mixed alphanumeric suffixes survive, single digits after dots become ` <digit>`, and hyphenated words stay whole.
+- Extended the version-suffix test with a glued 8-digit date (`ElderScrolls20260107` → `Elder Scrolls`) and a glued version glommed onto a huge number (`NovaLauncher2v10112645585273` → `Nova Launcher2v`).
+- All expected values verified against `normalize_name()`'s actual output across all 280 `.7z` files.
+- Changelog entry added in the same change as the code change.
+
 ### 2026-11-10 19:55:00 — Added realistic packaged-style fake game names to filename-utils tests
 
 - `tests/test_filename_utils.py`: Extended the `TAGGED` list with fictional titles in real downloaded-archive packaging styles (SteamRIP, TENOKE, FitGirl, DODI, RELOADED, [NoDLC], ElAmigos, DRM Free, Razor1911, SteamRG) so `normalize_name()` is exercised against the same shapes real library archives use.
