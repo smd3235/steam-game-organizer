@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-10 23:55:00 — Reorganized AGENTS.md for better flow
+
+- `AGENTS.md`: Reorganized sections so rules at a glance come first, followed by setup, change workflow, build pipeline, bundled runtime, logging, platform, testing, lint, screenshots, long-running commands, proving tests fail, Git/GitHub workflow, doc accuracy, Definition of Done, and comment style. Consolidated duplicate rules (comment on every change, push to GitHub on every change, changelog with every change). Improved readability and logical ordering; no behavior change.
+
 ### 2026-11-10 23:45:00 — Default ZIP password constant; incremental discovery tests
 
 - `core/constants.py`: added `DEFAULT_ZIP_PASSWORD = "123"` — the FitGirl/repack zip password now lives in one place instead of being hardcoded in `archive_service.py`, `organizer_service.py`, `controller.py`, and `tools/overnight_repair.py`.
