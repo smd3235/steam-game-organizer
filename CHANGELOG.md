@@ -25,6 +25,15 @@
 
 ## 9.33
 
+### 2026-11-10 20:58:00 — Reorganized README.md with logical section order, emojis, and style enhancements
+
+- `README.md`: reorganized section flow for a better reader experience — overview → key capabilities → install & run → first-launch setup wizard → protocol handler → app workflow → repository layout → running on your machine → project status → license → bundled runtime → quick links.
+- Added emoji badges to section headers, capability tables, phase tables, and file-type links for visual scanning.
+- Updated test count from 738+ to 739 tests.
+- Style enhancements: more callout blocks (`[!IMPORTANT]`, `[!TIP]`, `[!NOTE]`), emoji-decorated tables, consistent icon usage across all sections.
+- No source code changed — docs-only change, no frozen exe rebuild required.
+- Changelog entry added in the same change as the doc change.
+
 ### 2026-11-10 20:55:00 — Removed redundant/outdated content across markdown docs
 
 - `project_overview.md`: removed the duplicate "Comment rule" section — it already exists verbatim in AGENTS.md, which is the operating manual for contributing. Removed `debug/` from the state-directory list (`config/`, `cache/`, `logs/`); `debug/` holds diagnostics code, not user state.
