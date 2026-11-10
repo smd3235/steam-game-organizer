@@ -19,7 +19,7 @@ from unittest.mock import patch, MagicMock
 
 from app.jobs import JobContext
 from core.config import AppConfig
-from core.constants import COMPRESSION_LEVEL, COMPRESSION_THREADS, canonical_category, suggest_category
+from core.constants import COMPRESSION_LEVEL, COMPRESSION_THREADS, canonical_category, suggest_category, DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 from core.logger import AppLogger
 from core.models import ArtworkResult, GameArchive, SteamMatch
@@ -1049,7 +1049,8 @@ class TestServices(unittest.TestCase):
             library = LibraryService(logger)
             organizer = OrganizerService(logger)
             with ToolCallSpy() as spy:
-                converted = library.convert_pending_archives(root, organizer, JobContext("T"), unlocker=None, zip_password="123")
+                # The hardcoded "123" zip password now comes from DEFAULT_ZIP_PASSWORD in core.constants.
+                converted = library.convert_pending_archives(root, organizer, JobContext("T"), unlocker=None, zip_password=DEFAULT_ZIP_PASSWORD)
             self.assertEqual(converted, 1, "the leftover zip was not converted")
             extract = [c for c in spy.calls if len(c) > 1 and c[1] == "x"]
             self.assertTrue(extract, "no 7z extract call was made")

@@ -1,6 +1,6 @@
 from core.models import ScanResult
 from app.events import Event
-from core.constants import UNSORTED_EVIDENCE, canonical_category, suggest_category_with_evidence, LIBRARY_RESERVED_DIRS
+from core.constants import UNSORTED_EVIDENCE, canonical_category, suggest_category_with_evidence, LIBRARY_RESERVED_DIRS, DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 import shutil
 import json
@@ -243,7 +243,8 @@ class AppController:
                     repair_outcomes = []
                     candidates = self.services.library.pending_candidates(root)
                     work = [(game_dir, pending, appid, name) for game_dir, pending, _size, appid, name in candidates]
-                    converted = self.services.library.convert_pending_archives(root, self.services.organizer, ctx, dedupe_journal, self._repair_progress, unlocker=(self.services.archive._remove_zip_password if unlock_zip else None), outcomes=repair_outcomes, zip_password=("123" if unlock_zip else ""), work=work)
+                    # The hardcoded "123" zip password now comes from DEFAULT_ZIP_PASSWORD in core.constants.
+                    converted = self.services.library.convert_pending_archives(root, self.services.organizer, ctx, dedupe_journal, self._repair_progress, unlocker=(self.services.archive._remove_zip_password if unlock_zip else None), outcomes=repair_outcomes, zip_password=(DEFAULT_ZIP_PASSWORD if unlock_zip else ""), work=work)
                     if dedupe_journal:
                         self.services.rollback.record(dedupe_journal)
                     # No owned_dirs here, and deliberately: these rows land in the library's Archive/, which

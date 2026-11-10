@@ -5,6 +5,18 @@
 
 ## 9.33
 
+### 2026-11-10 23:45:00 — Default ZIP password constant; incremental discovery tests
+
+- `core/constants.py`: added `DEFAULT_ZIP_PASSWORD = "123"` — the FitGirl/repack zip password now lives in one place instead of being hardcoded in `archive_service.py`, `organizer_service.py`, `controller.py`, and `tools/overnight_repair.py`.
+- `services/archive_service.py`: `_remove_zip_password` reads `pwd` from `DEFAULT_ZIP_PASSWORD.encode()` instead of `b"123"`; import updated.
+- `services/organizer_service.py`: `move()` passes `zip_password=DEFAULT_ZIP_PASSWORD` instead of `"123"`; import updated.
+- `app/controller.py`: repair pass passes `zip_password=DEFAULT_ZIP_PASSWORD` instead of `"123"`; import updated.
+- `tests/test_services.py`: repair-pass test passes `zip_password=DEFAULT_ZIP_PASSWORD` instead of `"123"`; import updated.
+- `tools/overnight_repair.py`: `ZIP_PASSWORD = DEFAULT_ZIP_PASSWORD` instead of `"123"`; import updated.
+- `tests/test_archive_service.py`: added `DiscoveryIncrementalCache` test class covering `_walk_changed_files()` incremental discovery and `discover(use_cache=...)`: empty cache returns all files, matching cache skips unchanged directories, new top-level category triggers re-walk, `use_cache=False` always walks everything.
+- Library scan for packaging keywords (`update`, `dlc`, `goty`, `complete`, `final`, `gold`, `definitive`, `remastered`) found zero matches; `incremental` confirmed as a legitimate idle/incremental genre (10 titles), so no new trailing words were added to `utils/filename_utils.py`.
+- `ruff check .` clean; all 805 tests pass (`OK`, 2 pre-existing `test_workflow_smoke.py` failures unchanged).
+
 ### 2026-11-10 23:30:00 — Reverted filename_utils trailing-word additions; incremental is a legit genre
 
 - `utils/filename_utils.py`: reverted `incremental`, `complete`, `final` from the trailing-word stripping regex — `incremental` is a legitimate game genre (idle/incremental games), so stripping it would rename folders the player didn't ask renamed. Kept the original `multi|proper|portable|iso` list.

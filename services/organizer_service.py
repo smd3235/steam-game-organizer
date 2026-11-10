@@ -5,7 +5,7 @@ import ctypes
 from html import escape
 from datetime import datetime
 import re
-from core.constants import canonical_category, ARCHIVE_EXTENSIONS, LOCK_MARKER, COMPRESSION_LEVEL, COMPRESSION_THREADS, MIN_COMPRESSION_LEVEL, LEVEL_RAM_BYTES, RAM_HEADROOM_BYTES, PROCESSING_DIRNAME, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW
+from core.constants import canonical_category, ARCHIVE_EXTENSIONS, LOCK_MARKER, COMPRESSION_LEVEL, COMPRESSION_THREADS, MIN_COMPRESSION_LEVEL, LEVEL_RAM_BYTES, RAM_HEADROOM_BYTES, PROCESSING_DIRNAME, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW, DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 from services.extract_service import ExtractService
 from utils.filename_utils import version_key
@@ -1455,7 +1455,8 @@ class OrganizerService:
         # Repack/rename only after the archive is already safely in its final folder: organizing is the
         # critical step and must complete regardless of whether the best-effort RAR conversion succeeds. The
         # conversion setting is enforced inside _repack_with_official_name, so this call is safe either way.
-        archive.path = self._repack_with_official_name(archive, on_progress=on_progress, zip_password="123", library_root=destination)
+        # The zip password "123" was hardcoded here; it now comes from DEFAULT_ZIP_PASSWORD in core.constants.
+        archive.path = self._repack_with_official_name(archive, on_progress=on_progress, zip_password=DEFAULT_ZIP_PASSWORD, library_root=destination)
         target = archive.path
         archive.organized_path = target
         prefix = self._asset_prefix(archive)

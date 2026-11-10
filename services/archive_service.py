@@ -8,7 +8,7 @@ import os, re, subprocess, tempfile, zipfile
 import time
 import json
 from core.models import GameArchive, ScanResult
-from core.constants import ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW
+from core.constants import ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW, DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 from services.installer_detect import InstallSignature, installer_from_names
 from services.library_service import _is_app_folder
@@ -365,7 +365,9 @@ class ArchiveService:
                     for info in entries:
                         if ctx:
                             ctx.checkpoint()
-                        target.writestr(info, b"" if info.is_dir() else source.read(info, pwd=b"123"))
+                        # "123" was hardcoded here as the FitGirl/repack zip password; it now comes from
+                        # DEFAULT_ZIP_PASSWORD so the value lives in core.constants, not four call sites.
+                        target.writestr(info, b"" if info.is_dir() else source.read(info, pwd=DEFAULT_ZIP_PASSWORD.encode()))
             # The replace has to happen with the source handle closed, which means outside the with block
             # above. It used to run inside it, so the archive was still open when os.replace tried to swap it -
             # and CPython opens a file without FILE_SHARE_DELETE, so on Windows that raises PermissionError

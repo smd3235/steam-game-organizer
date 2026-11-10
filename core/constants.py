@@ -375,3 +375,8 @@ RAM_HEADROOM_BYTES = 768 * 1024 * 1024
 # Thread count for the compressor. Each 7z thread holds its own match finder, so the default thread count
 # multiplies the level's memory cost. Two keeps a multi-hour unattended run predictable.
 COMPRESSION_THREADS = 2
+
+# The default password for WinZip AES-encrypted game zips in this library. Every archive that ships
+# password-protected uses the same value, so it lives here in one place instead of being spelled out
+# in archive_service.py, organizer_service.py, controller.py, and the repair tools.
+DEFAULT_ZIP_PASSWORD = "123"

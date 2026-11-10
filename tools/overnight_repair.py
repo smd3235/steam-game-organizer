@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.jobs import JobContext
+from core.constants import DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 from core.config import AppConfig
 from core.logger import AppLogger
@@ -42,7 +43,7 @@ PEAK_FACTOR = 3.0
 RESERVE_BYTES = 8 * 1024**3
 
 # The password these archives ship with, matching the app's "Remove ZIP password 123" option.
-ZIP_PASSWORD = "123"
+ZIP_PASSWORD = DEFAULT_ZIP_PASSWORD
 
 
 class SpaceGuard:
