@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.tmp
+*.log
+cache/
+logs/
+.agent-cache/
+.pytest_cache/
+.ruff_cache/
+config/
+backup/
+build/
+dist/
+runtime/
+# The frozen build's working folder is a build artefact; rebuild with
+# python tools/build_frozen.py instead of committing it.

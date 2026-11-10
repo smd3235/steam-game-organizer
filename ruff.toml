@@ -1,0 +1,63 @@
+# Lint gate for this project.
+#
+# There was no config here, which is why `ruff check` reported 618 findings and none of them could be acted
+# on: 490 of them were the same eight star imports reported once per colour per line. The rules below are the
+# ones that have caught real defects in this codebase, and the ignores are each there for a stated reason
+# rather than to make a number smaller.
+
+target-version = "py310"
+line-length = 400          # the codebase writes one statement per line and does not wrap most of them
+
+# The bundled interpreter and 7-Zip (tools/bundle_runtime.py copies them into
+# runtime/): a third-party product's own source is not this project's code, and
+# linting the standard library reported 4418 findings that were never ours to fix.
+exclude = ["runtime", "dist"]
+
+[lint]
+# Deliberately not E4/E7: this codebase writes one statement per line with semicolons as its house style, so
+# E701/E702 reported 2456 sites that are the style rather than a fault, and swamping a real finding in 2456
+# uninteresting ones is how a lint gate stops being read.
+select = ["F", "B", "RET", "SIM", "UP"]
+ignore = [
+    # ruff 0.16.10 used to mis-parse any *statement that begins with the identifier `match`*: it read the name
+    # as the structural-pattern-matching soft keyword and reported "compound statements on the same line as
+    # simple statements". Verified against a one-line reproduction, and CPython compiled every reported file
+    # without complaint. Those locals were renamed to `steam_match` in 9.10, which cleared all six - and the
+    # parser then reported real findings inside the files it had previously failed to read at all. If a
+    # `match=` assignment is ever reintroduced, expect the six phantom reports back.
+    #
+    # E701/E702 are not selected either: this codebase writes one statement per line with semicolons as its
+    # house style, and selecting them reported 2456 sites that are the style rather than a fault.
+
+    # `try: ... except: pass` is the established idiom here, and in almost every case the comment above it
+    # explains which failure is being ignored and why. contextlib.suppress() would drop that explanation into
+    # a name that has to be looked up, across 61 sites, for no behaviour change.
+    "SIM105",
+
+    # `Optional[X]` -> `X | None` needs 3.10 and buys nothing on a project whose targets are SteamOS 3.11 and
+    # CPython 3.13.
+    "UP045",
+
+    # B008 flags every `def f(x=len(y))`. The one site here binds a loop variable and a count into a closure's
+    # defaults on purpose, which is the fix for the late-binding bug rather than the cause of it.
+    "B008",
+
+    # Style preferences this codebase does not share: collapsible ifs, merged with-statements, merged branches.
+    "SIM102", "SIM117", "SIM114", "SIM101", "SIM201",
+
+    # UP031 printf formatting: three %-style sites, all deliberate and readable.
+    "UP031",
+    # UP022 capture_output: the artwork panel wants stdout and stderr as separate handles to check in turn.
+    "UP022",
+]
+
+[lint.per-file-ignores]
+    # Tests are allowed to reach for names a test does not itself use - they exist to pin an attribute or a
+    # module's import-time behaviour, and importing is the assertion.
+    "tests/*" = ["F401", "B011"]
+    # The catalog and library pages embed JavaScript and CSS as strings; their contents are not Python.
+    "services/catalog_service.py" = ["E501"]
+    "tools/*" = ["E501"]
+
+[lint.flake8-quotes]
+inline-quotes = "single"
