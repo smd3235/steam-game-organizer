@@ -5,7 +5,10 @@
 
 ## 9.33
 
-### 2026-11-10 23:42:00 — Finalized AGENTS.md organization, eliminated rule redundancy
+### 2026-11-10 23:44:00 — Reorganized project_overview.md, removed duplicate flowcharts
+
+- `project_overview.md`: Removed 7 mermaid flowcharts that each duplicated a text table below them (How to use, Data flow, URI handler, Launcher discovery, Commands, Testing conventions, Key decisions). Kept the scannable tables as single source of truth. Removed standalone Platform rule and Comment style sections — both live in AGENTS.md now and are referenced from the quick-reference table. Data flow now lists phases as a single table; URI handler actions as one table; key decisions as one table; commands as one table; testing conventions as one table. 346 lines (was 374). No behavior change.
+
 
 - `AGENTS.md`: Reorganized into a clean linear flow: Rules at a Glance → Prerequisites & Setup → Change Workflow → Build → Bundled Runtime → Logging → Platform → Testing → Lint → Screenshots → Long-Running Commands → Git/GitHub Workflow → Doc Accuracy → Definition of Done → Comment Style. Eliminated duplicated rules — each rule now appears once in Rules at a Glance and is referenced (not repeated) by Change Workflow, Git table, and Definition of Done. Removed duplicate mermaid flowcharts and the standalone "Proving a Test Can Fail" section (merged into Testing hygiene). 298 lines (was 615 originally).
 
