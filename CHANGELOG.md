@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-10 23:55:00 — fix: mock steam data missing Delta Realm Incremental entry
+
+- `services/steam_service.py`: Added `"deltarealmincremental": ("100003", "Delta Realm")` to the `_mock()` fixture data. The archive `Delta Realm Incremental.zip` normalizes to identity key `deltarealmincremental`, which did not match any mock entry, so `steam.found` was `False` and `approve_all()` skipped it. This left `2.zip` in Incoming after organize, failing `test_review_to_organize_to_done_moves_real_files` and `test_undo_puts_a_real_organized_run_back_where_it_started`. Broke up the long single-line `data = {...}` dict across multiple lines for readability while making the fix.
+
 ### 2026-11-10 23:45:00 — ui/, tools/, and entry point formatting and readability improvements
 
 - `ui/artwork_view.py`: Broke up long `tk.Label` and `ttk.Button` grid calls across multiple lines.

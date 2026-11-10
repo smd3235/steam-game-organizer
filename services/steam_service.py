@@ -819,7 +819,19 @@ class SteamService:
         # names or AppIDs are hardcoded in any production path. These five
         # entries let the app be tested without hitting Steam's servers.
         # Game names and AppIDs are fictional and do not correspond to any real Steam products.
-        data = {"alphaforge": ("100001", "Alpha Forge"), "betavoyager": ("100002", "Beta Voyager"), "gammaquest": ("100003", "Gamma Quest"), "deltarealm": ("100003", "Delta Realm"), "epsilononline": ("100004", "Epsilon Online"), "cosmiccat": ("100005", "Cosmic Cat Colony"), "neonnexus": ("100006", "Neon Nexus"), "stellarempires": ("100007", "Stellar Empires"), "dimensiondrift": ("100008", "Dimension Drift"), "pixelpirates": ("100009", "Pixel Pirates")}
+        data = {
+            "alphaforge": ("100001", "Alpha Forge"),
+            "betavoyager": ("100002", "Beta Voyager"),
+            "gammaquest": ("100003", "Gamma Quest"),
+            "deltarealm": ("100003", "Delta Realm"),
+            "deltarealmincremental": ("100003", "Delta Realm"),
+            "epsilononline": ("100004", "Epsilon Online"),
+            "cosmiccat": ("100005", "Cosmic Cat Colony"),
+            "neonnexus": ("100006", "Neon Nexus"),
+            "stellarempires": ("100007", "Stellar Empires"),
+            "dimensiondrift": ("100008", "Dimension Drift"),
+            "pixelpirates": ("100009", "Pixel Pirates"),
+        }
         appid, name = data.get(identity_key(title), ("", ""))
         steam_match = SteamMatch(bool(appid), appid, name, ["Simulation"], ["Single-player"], "Mock Steam metadata", ["Simulation"], "", "High" if appid else "Low", "mock", "Deterministic fixture" if appid else "No fixture")
         steam_match.score = 1.0 if appid else 0.0
