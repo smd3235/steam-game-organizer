@@ -85,6 +85,20 @@ dist\steam_game_organizer\steam_game_organizer.exe
 runtime\python.exe steam_game_organizer.py
 ```
 
+> [!TIP]
+> **Frozen exe users need nothing installed.** The exe ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. A friend's PC with nothing installed can run it just by double-clicking the exe.
+
+### Install what you need
+
+| Task | What to install | Where to get it |
+|------|-----------------|-----------------|
+| Run from source | Python 3.13 | [python.org](https://www.python.org/downloads/windows/) — check "Add Python to PATH" during install |
+| Develop / change code | Python 3.13 + `ruff` + `PyInstaller` | Python from above; `pip install ruff`; `runtime\python.exe -m pip install pyinstaller` |
+| Build the frozen exe / bundle runtime | Python 3.13 + 7-Zip + PyInstaller | 7-Zip from [7-zip.org](https://www.7-zip.org/download.html) — install to `C:\Program Files\7-Zip` |
+
+> [!NOTE]
+> You do **not** need Python, 7-Zip, or anything else installed on a friend's PC if you give them a copied app folder that includes `runtime/`. The frozen exe is fully self-contained.
+
 ### 2. Set up
 
 The first launch opens the setup wizard. Pick three folders:
@@ -123,9 +137,10 @@ This verifies `dist\steam_game_organizer\runtime\7z.exe` exists before reporting
 
 ### Prerequisites
 
-- Python 3.13 (the bundled runtime in `runtime/` works for building)
-- `ruff` for linting
-- `PyInstaller` (installed in `runtime/Lib/site-packages`)
+- **Python 3.13** — [python.org](https://www.python.org/downloads/windows/) (install for all users, check "Add Python to PATH")
+- **ruff** — [github.com/astral-sh/ruff](https://github.com/astral-sh/ruff/releases) (`pip install ruff`)
+- **PyInstaller** — [pyinstaller.org](https://pyinstaller.org/en/stable/) (`runtime\python.exe -m pip install pyinstaller`)
+- **7-Zip** — [7-zip.org](https://www.7-zip.org/download.html) (install to `C:\Program Files\7-Zip`, needed for `runtime\7z.exe` and building the frozen exe)
 
 ### Test and lint
 
@@ -234,6 +249,21 @@ Never commit build artifacts or user settings. The frozen exe is what users run.
 ## License
 
 Add a license here if you want others to reuse or modify the code. Without one, all rights are reserved by default.
+
+### Bundled runtime components (`runtime/`)
+
+`runtime/` is built locally by `tools\bundle_runtime.py` and is **not committed to git** — it's rebuilt from your own machine when you set up or rebuild the frozen exe. It contains third-party software, each under its own license:
+
+| Component | License | Notes |
+|-----------|---------|-------|
+| Python 3.13 + Tcl/Tk | PSF License v2 | Permissive. Copyright notice retained in `runtime\LICENSE.txt`. |
+| 7-Zip (`7z.exe`) | GNU LGPL + unRAR restriction | Permissive for use; LGPL source-offer obligations apply if you redistribute modified binaries publicly. |
+| Pillow | HPND | Permissive. Copyright notice retained. |
+| Microsoft VC++ redistributable | Microsoft | Windows only; don't alter notices or imply endorsement. |
+
+For a tiny personal project shared among friends, copying the whole app folder (including `runtime/`) to another PC is fine. If you ever publish a pre-built exe publicly, review the LGPL and Microsoft terms — you may need to include source offers or notices.
+
+`tools\bundle_runtime.py` writes a `THIRD-PARTY-NOTICES.txt` into `runtime/` with attribution for Python, 7-Zip, and Pillow.
 
 ---
 

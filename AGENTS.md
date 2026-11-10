@@ -28,6 +28,48 @@
 
 ---
 
+## Prerequisites & Setup
+
+Different ways to run the app need different things installed:
+
+| You want to… | What you need | How to get it |
+|--------------|---------------|---------------|
+| **Run the frozen exe** (`dist\steam_game_organizer\steam_game_organizer.exe`) | **Nothing.** It ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. Double-click and go. | Download the latest release from GitHub, or build it yourself (see **Build** below). |
+| **Run from source** (`runtime\python.exe steam_game_organizer.py`) | Python 3.13 (the bundled runtime works if you already built it). | [python.org](https://www.python.org/downloads/windows/) — install for all users, check "Add Python to PATH". |
+| **Develop / change code** | Python 3.13 + `ruff` (lint) + `PyInstaller` (frozen build). | See **Development toolchain** below. |
+| **Build the frozen exe / bundle runtime** | Python 3.13 + 7-Zip (for `runtime\7z.exe`) + PyInstaller. | See **Build** and **Bundled runtime** below. |
+
+### Development toolchain
+
+Install these on your Windows machine if you plan to modify code:
+
+1. **Python 3.13** — [python.org](https://www.python.org/downloads/windows/). During install, check **"Add Python to PATH"** and **"Install for all users"**.
+2. **ruff** — [github.com/astral-sh/ruff](https://github.com/astral-sh/ruff/releases). Quick install:
+   ```powershell
+   pip install ruff
+   ```
+3. **PyInstaller** — [pyinstaller.org](https://pyinstaller.org/en/stable/). Installed inside the bundled runtime:
+   ```powershell
+   runtime\python.exe -m pip install pyinstaller
+   ```
+4. **7-Zip** — [7-zip.org](https://www.7-zip.org/download.html). Required for `runtime\7z.exe` (archive extraction) and for building the frozen exe. Install to the default location (`C:\Program Files\7-Zip`) so `tools\bundle_runtime.py` can find it automatically.
+
+### Verify your setup
+
+```powershell
+python --version           # should be Python 3.13.x
+ruff --version             # should print a version
+7z                         # should print 7-Zip help
+```
+
+> [!TIP]
+> You do **not** need Python, 7-Zip, or anything else installed on a friend's PC if you give them a copied app folder that includes `runtime/`. The frozen exe is fully self-contained. The only thing a fresh copy needs is a one-time registry step:
+> ```powershell
+> runtime\python.exe tools\install_protocol_handler.py
+> ```
+
+---
+
 ## Build
 
 After any code change, rebuild the exe:
