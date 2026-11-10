@@ -550,8 +550,8 @@ class TestServices(unittest.TestCase):
 
         with TemporaryDirectory() as d:
             root = Path(d)
-            old = root / "Game 1.0.zip"
-            new = root / "Game 1.1.rar"
+            old = root / "Quantum Quest 1.0.zip"
+            new = root / "Quantum Quest 1.1.rar"
             old.write_text("old")
             new.write_text("new")
             logger = AppLogger(root / "x.log")
@@ -563,16 +563,16 @@ class TestServices(unittest.TestCase):
             result = []
             items = []
             for path, version in ((old, (1, 0)), (new, (1, 1))):
-                item = GameArchive(path, "Game", "Game", "game", path.suffix, version)
+                item = GameArchive(path, "Quantum Quest", "Quantum Quest", "quantumquest", path.suffix, version)
                 item.decision.accepted = True
                 item.decision.category = "Factory"
-                item.steam = SteamMatch(found=True, appid="123", name="Game", release_date="2 Jan, 2020")
+                item.steam = SteamMatch(found=True, appid="123", name="Quantum Quest", release_date="2 Jan, 2020")
                 items.append(item)
             controller.organize(items, root, lambda moved: (result.extend(moved), finished.set()))
             self.assertTrue(finished.wait(5))
             jobs.shutdown()
-            self.assertTrue((root / "Automation" / "Game - 2020-01-02" / "Game 1.1.rar").exists())
-            self.assertTrue((root / "Archive" / "Game 1.0.zip").exists())
+            self.assertTrue((root / "Automation" / "Quantum Quest - 2020-01-02" / "Quantum Quest 1.1.rar").exists())
+            self.assertTrue((root / "Archive" / "Quantum Quest 1.0.zip").exists())
 
     def test_organize_skips_queue_entries_whose_file_is_gone(self):
         # Pressing Organize repeatedly used to loop forever. The queue is a snapshot from scan time; once an
