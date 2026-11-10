@@ -5,6 +5,12 @@
 
 ## 9.33
 
+### 2026-11-10 23:02:00 — core/ formatting and readability improvements
+
+- `core/logger.py`: Split `import threading, uuid, traceback, sys, json` into separate import lines, one per statement, matching the house style.
+- `core/config.py`: Split `import json, os, sys, tempfile, shutil` into separate import lines. `extract_folders` getter now uses a `seen` set for dedup instead of rebuilding `[str(p) for p in cleaned]` on every iteration (was O(n²)).
+- `core/constants.py`: Broke up two long lines (>200 chars) — the `specificity` tuple and the `inferred["Management"]` entry — across multiple lines for readability. No behavior change.
+
 ### 2026-11-10 22:56:00 — app/ formatting and readability improvements
 
 - `app/controller.py`: Reorganized imports (stdlib grouped first, then local, merged duplicate `core.constants` import). Broke up long lines (>200 chars) across `scan()`, `scan_new_artwork()`, `verify_all()`, `verify_one()`, and `organize()` — `convert_pending_archives` calls, `library.audit()`, `suggest_category_with_evidence()` ternaries, `logger.debug()` calls, nested `download_assets`/`lookup` ternary, `relay` lambda, and `on_progress` dispatch lambda. No behavior change.

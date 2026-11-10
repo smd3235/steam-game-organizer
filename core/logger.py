@@ -14,7 +14,11 @@ noise in normal operation while keeping troubleshooting detail available.
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import contextmanager
-import threading, uuid, traceback, sys, json
+import threading
+import uuid
+import traceback
+import sys
+import json
 
 LEVELS = {"DEBUG": 0, "INFO": 1, "WARN": 2, "ERROR": 3}
 

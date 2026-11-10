@@ -13,7 +13,11 @@ local tree is fresh or invalid.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-import json, os, sys, tempfile, shutil
+import json
+import os
+import sys
+import tempfile
+import shutil
 import time
 from datetime import datetime, timezone
 
@@ -184,12 +188,15 @@ class AppConfig:
         if not isinstance(values, list):
             values = [self.settings["extract_folder"]] if self.settings.get("extract_folder") else []
         cleaned = []
+        seen = set()
         for value in values:
             try:
                 path = Path(value).expanduser()
             except TypeError:
                 continue
-            if str(path) not in [str(p) for p in cleaned]:
+            key = str(path)
+            if key not in seen:
+                seen.add(key)
                 cleaned.append(path)
         return cleaned or [Path.home() / "Downloads" / "Extracted"]
 
