@@ -18,6 +18,69 @@ Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized
 
 ## Data flow
 
+```mermaid
+flowchart TD
+    subgraph Phase1["1. Discover"]
+    D1[CatalogService._collect walks category folders]
+    D2[Skips non-archive folders, app project folder]
+    D3[Reads .game-info.json sidecars]
+    D4[Records banner art + installer signature per game]
+    end
+
+    subgraph Phase2["2. Organize"]
+    O1[AppController.organize / OrganizerService.move]
+    O2[Groups archives by identity key]
+    O3[Promotes newest version]
+    O4[Archives older copies + re-categorized leftovers to Archive/]
+    O5[Repacks zip/rar → 7z adaptive compression]
+    O6[Writes metadata + Steam shortcut + artwork]
+    end
+
+    subgraph Phase3["3. Catalog"]
+    C1[CatalogService.generate writes Game Library.html]
+    C2[Writes Game Library.status.js beside library root]
+    C3[Retains LibrarySummary index: categories, genres, developers, sizes]
+    end
+
+    subgraph Phase4["4. Done screen"]
+    S1[Reports moved / failed / skipped]
+    S2[Buttons open library folder or game folder]
+    end
+
+    subgraph Phase5["5. Undo"]
+    U1[RollbackService reads config/last-organization.json]
+    U2[Restores each archived file to its source]
+    U3[Prunes emptied folders this run created into Archive/]
+    U4[Never deletes a folder it didn't make]
+    end
+
+    subgraph Phase6["6. Batch extract"]
+    B1[services/batch_extract_service.py]
+    B2[Unpacks to user-chosen folders outside library]
+    B3[Relocates installer layouts to Needs Install]
+    B4[Writes per-result status beside catalog]
+    end
+
+    D1 --> D2 --> D3 --> D4
+    D4 --> O1
+    O1 --> O2 --> O3 --> O4 --> O5 --> O6
+    O6 --> C1
+    C1 --> C2 --> C3
+    C3 --> S1
+    S1 --> S2
+    O6 --> U1
+    U1 --> U2 --> U3 --> U4
+    D4 --> B1
+    B1 --> B2 --> B3 --> B4
+    
+    style D1 fill:#f9f,stroke:#333
+    style O1 fill:#bbf,stroke:#333
+    style C1 fill:#bfb,stroke:#333
+    style S1 fill:#fff3e0,stroke:#e65100
+    style U1 fill:#fdd,stroke:#c00
+    style B1 fill:#e1f5fe,stroke:#01579b
+```
+
 1. **Discover** (`CatalogService._collect`) — walks category folders under the library root, skips anything without an archive, skips the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game.
 2. **Organize** (`AppController.organize` / `OrganizerService.move`) — groups archives by identity key, promotes the newest version, archives older copies and re-categorized leftovers to `Archive/`, repacks `.zip/.rar` → `.7z` (adaptive compression level against real memory headroom), writes metadata + Steam shortcut + artwork into each game folder.
 3. **Catalog** (`CatalogService.generate`) — writes `Game Library.html` plus `Game Library.status.js` beside the library root; retains a `LibrarySummary` index (categories, genres, developers, archive sizes) so screens can ask placement questions without re-walking.
@@ -28,6 +91,39 @@ Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized
 ---
 
 ## URI / protocol handler
+
+```mermaid
+flowchart TD
+    subgraph URI["steamgameorganizer:// URI"]
+    U1[extract — ExtractRequest via core/uri_actions.py]
+    U2[extract-all / extract-multi — category or whole library / hand-picked selection → BatchExtractWindow]
+    U3[setup — prefill three-folder setup wizard text boxes]
+    U4[open-extracted — open extracted/installer folder under configured extract folder]
+    U5[play — launch validated .exe under configured extract folders; marker's persisted launch_target if exe omitted]
+    U6[pick-launcher — file picker constrained to extracted root, validate .exe, persist launch_target, regenerate catalog]
+    U7[mark-installed — persist setup_done, installed_at, needs_install=false, regenerate catalog]
+    U8[refresh-catalog — regenerate Game Library.html against live library, re-open it]
+    U9[open-folder — open game/library source folder in Explorer]
+    end
+
+    subgraph Validation["Validation layer"]
+    V1[Source resolves inside configured library root]
+    V2[Exists with archive extension]
+    V3[Destination not inside system folder or library itself]
+    V4[PATH fields treated as hostile input]
+    end
+
+    subgraph Handler["Handler"]
+    H[core/uri_actions.py — owns SCHEME + SYSTEM_PATHS]
+    end
+
+    URI -->|all actions| H
+    H -->|validates against| V1 & V2 & V3 & V4
+    
+    style URI fill:#f9f,stroke:#333
+    style V1 fill:#fdd,stroke:#c00
+    style H fill:#bbf,stroke:#333
+```
 
 The app registers `steamgameorganizer://` under `HKCU\Software\Classes` (per user, no elevation). Supported actions:
 
@@ -49,6 +145,20 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 > URI actions treat every field as hostile input — a link can be crafted by any page, so the source must resolve inside the configured library root, must exist with an archive extension, and the destination must not sit inside a system folder or the library itself.
 
 ### Launcher discovery
+
+```mermaid
+flowchart TD
+    LD[discover_game_launchers in catalog_status.py]
+    LD -->|scan extracted root| SC[max depth 3, 250 candidates]
+    SC -->|filter| FL[installers, uninstallers, crash handlers, redistributables, helper tools]
+    FL -->|score by| SC2[depth / name / size]
+    SC2 -->|ranked list| PL[Pick launcher — user chooses]
+    PL -->|persist| MK[.sgo-extract-info launch_target]
+    MK -->|subsequent Play actions use it| PA[play]
+    
+    style LD fill:#bbf,stroke:#333
+    style PL fill:#bfb,stroke:#333
+```
 
 `services/catalog_status.py:discover_game_launchers` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size; returns a ranked list for user choice via Pick launcher. The chosen `launch_target` persists to `.sgo-extract-info` and subsequent Play actions use it.
 
@@ -112,6 +222,22 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 ## Key decisions already made (do not re-litigate without cause)
 
+```mermaid
+flowchart TD
+    D1[Move to Archive/, never delete] -->|rationale| R1[Empty folders + re-categorized leftovers reviewed before deleting; rmtree only fallback when library_root unknown]
+    D2[Two folder rules] -->|rationale| R2[_folder_is_disposable vs _folder_is_prunable are deliberately different; never merge]
+    D3[Ownership gating] -->|rationale| R3[Undo only prunes folders created_game_dir says this run made; pre-existing folders belong to the user]
+    D4[Reserved dirs] -->|rationale| R4[Archive and Processing under library root never treated as categories; app's own project folder never swept]
+    D5[Windows-only] -->|rationale| R5[os.startfile, CREATE_NO_WINDOW, 7z.exe bundled in runtime/; platform branching raises/refuses]
+    D6[Frozen exe rebuild required] -->|rationale| R6[After any code change: python tools/build_frozen.py; user runs only frozen exe]
+    D7[Atomic writes] -->|rationale| R7[temp-file + os.replace with retry on PermissionError (OneDrive locks)]
+    D8[runtime/ ships with exe] -->|rationale| R8[Excluded from lint/version scans; not this project's code]
+    
+    style D1 fill:#bfb,stroke:#333
+    style D5 fill:#fdd,stroke:#c00
+    style D6 fill:#bbf,stroke:#333
+```
+
 | Decision | Rationale |
 |----------|-----------|
 | **Move to `Archive/`, never delete.** | Empty game folders, empty categories, re-categorized source folders, and rollback-emptied folders are moved into `Archive/` (with `(n)` collision suffixes) so the user can review before deleting. `rmtree` is only a fallback when `library_root` is unknown. |
@@ -127,6 +253,19 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 ## Commands
 
+```mermaid
+flowchart TD
+    C1[Tests] -->|runtime\python.exe -m unittest discover -q| OK[OK, no skips expected]
+    C2[Lint] -->|ruff check .| CLEAN[Clean]
+    C3[Build] -->|python tools/build_frozen.py| EXE[dist\steam_game_organizer\steam_game_organizer.exe]
+    C4[Layout audit] -->|runtime\python.exe tools\layout_audit.py| CLIP[Clipping, off-window widgets, sibling overlap]
+    C5[Contrast audit] -->|runtime\python.exe tools\analyze_screenshot.py <shot.png>| WCAG[WCAG contrast ratios]
+    
+    style OK fill:#bfb,stroke:#333
+    style CLEAN fill:#bfb,stroke:#333
+    style EXE fill:#bbf,stroke:#333
+```
+
 | Command | Purpose |
 |---------|---------|
 | `runtime\python.exe -m unittest discover -q` | Tests — expect `OK` with no skips — PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug |
@@ -138,6 +277,39 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 ---
 
 ## Testing conventions
+
+```mermaid
+flowchart TD
+    subgraph Guard["Test guard layer"]
+    SANDBOX[tests/tk_support.py:sandbox_app]
+    STATE[test_project_state_guard.py]
+    end
+
+    subgraph Checks["Static checks"]
+    ZERO[test_zero_skips.py]
+    PLAT[test_platform.py]
+    DEAD[test_dead_code.py]
+    REL[test_release_structure.py]
+    end
+
+    subgraph Runtime["Runtime checks"]
+    RENDER[test_render_integrity.py]
+    CONTRAST[test_contrast.py]
+    FROZEN[test_frozen_build.py]
+    end
+
+    SANDBOX -->|roots AppConfig in temp tree| STATE
+    STATE -->|fails if any byte/mtime moved| REAL[real config/ untouched]
+    ZERO -->|AST scan| NOSKIP[no unittest.skip]
+    PLAT -->|string scan| NOPOSIX[no xdg-open, /home/, flatpak...]
+    DEAD -->|asserts| NODEAD[superseded names gone]
+    REL -->|walks tree| NOVER[version only in VERSION.txt, USER_AGENT, CHANGELOG.md]
+    FROZEN -->|builds scratch tree| BUNDLE[runtime/7z.exe present]
+    
+    style SANDBOX fill:#bfb,stroke:#333
+    style STATE fill:#bfb,stroke:#333
+    style REAL fill:#fdd,stroke:#c00
+```
 
 > [!IMPORTANT]
 > Use `tests/tk_support.py:sandbox_app` to root `AppConfig` in a temp tree — never construct the real app against the real `config/` in tests (tests race on `settings.json`; `test_project_state_guard.py` enforces this). `sandbox_app` patches `app.application.AppConfig` to point at a temporary tree; `close_root` cancels pending Tk `after` callbacks before `destroy()` so geometry tests don't leave `invalid command name _tick` noise on stderr.

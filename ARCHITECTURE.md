@@ -2,13 +2,133 @@
 
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
+[![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
+[![Tests: unittest](https://img.shields.io/badge/tests-unittest-success.svg)](tests/)
 
 > [!IMPORTANT]
 > Windows is the only platform. Pure standard library for everything except image decoding: Pillow is a runtime dependency, because tkinter's own `PhotoImage` reads PNG and GIF and the artwork Steam serves is JPEG.
 
 ---
 
+## Module map
+
+```mermaid
+flowchart TD
+    subgraph Entry["Entry point"]
+        E1[steam_game_organizer.py]
+    end
+
+    subgraph App["app/"]
+        A1[application.py]
+        A2[controller.py]
+        A3[jobs.py]
+        A4[events.py]
+    end
+
+    subgraph Core["core/"]
+        C1[config.py]
+        C2[constants.py]
+        C3[models.py]
+        C4[uri_actions.py]
+        C5[logger.py]
+        C6[state.py]
+        C7[exceptions.py]
+    end
+
+    subgraph Services["services/"]
+        S1[archive_service.py]
+        S2[batch_extract_service.py]
+        S3[catalog_service.py]
+        S4[catalog_status.py]
+        S5[extract_service.py]
+        S6[installer_detect.py]
+        S7[library_service.py]
+        S8[organizer_service.py]
+        S9[rollback_service.py]
+        S10[setup_service.py]
+        S11[steam_service.py]
+        S12[artwork_service.py]
+        S13[banner_art.py]
+    end
+
+    subgraph UI["ui/"]
+        U1[main_window.py]
+        U2[scan_view.py]
+        U3[review_view.py]
+        U4[organize_view.py]
+        U5[artwork_view.py]
+        U6[done_view.py]
+        U7[batch_extract_window.py]
+        U8[setup_window.py]
+        U9[theme.py]
+        U10[palette.py]
+    end
+
+    subgraph Utils["utils/"]
+        X1[filename_utils.py]
+        X2[formatting.py]
+        X3[desktop.py]
+        X4[treewalk.py]
+    end
+
+    subgraph Debug["debug/"]
+        D1[diagnostics.py]
+    end
+
+    subgraph Tools["tools/"]
+        T1[build_frozen.py]
+        T2[bundle_runtime.py]
+        T3[install_protocol_handler.py]
+        T4[overnight_repair.py]
+        T5[analyze_screenshot.py]
+        T6[layout_audit.py]
+        T7[dead_space_audit.py]
+        T8[verify_archives.py]
+    end
+
+    E1 -->|owns| A1
+    E1 -->|uri handler| C4
+    A1 -->|composes| S1 & S3 & S5 & S7 & S8 & S9 & S10
+    A1 -->|owns| U1
+    A2 -->|orchestrates| S7 & S8 & S3
+    A2 -->|progress on| A4
+    A2 -->|worker exec| A3
+    C1 -->|project root| S1 & S3 & S7 & S8 & S9
+    C4 -->|scheme + SYSTEM_PATHS| S5 & S10 & U7
+    S3 -->|generates| HTML[Game Library.html]
+    S3 -->|writes| JS[Game Library.status.js]
+    S5 -->|extracts with| 7z[runtime/7z.exe]
+    S9 -->|journal| RJ[config/last-organization.json]
+    S10 -->|registers| HK[HKCU\steamgameorganizer://]
+    U1 -->|views| U2 & U3 & U4 & U5 & U6
+    T1 -->|builds| BUNDLE[dist\steam_game_organizer\]
+    
+    style E1 fill:#f9f,stroke:#333
+    style A1 fill:#bbf,stroke:#333
+    style S3 fill:#bfb,stroke:#333
+    style S5 fill:#bfb,stroke:#333
+    style 7z fill:#fdd,stroke:#c00
+    style BUNDLE fill:#bbf,stroke:#333
+```
+
+---
+
 ## Entry point
+
+```mermaid
+flowchart TD
+    E[steam_game_organizer.py] -->|--setup| SW[Setup wizard / 3 folders]
+    E -->|--uri steamgameorganizer://| URI[core/uri_actions.py parses request]
+    E -->|--version| V[Print VERSION]
+    E -->|--diagnostics| DIAG[debug/diagnostics.py]
+    E -->|--health| HL[Health check output]
+    E -->|--mock| MK[Mock Steam backend]
+    E -->|no flags| GUI[Launch tkinter MainWindow, state zoomed]
+    E -->|frozen launch| PRE[Pre-load catalog_service + extract_service from bundle fs]
+    
+    style E fill:#f9f,stroke:#333
+    style GUI fill:#bfb,stroke:#333
+```
 
 | File | Role |
 |------|------|
@@ -19,6 +139,22 @@
 
 ## Frozen build
 
+```mermaid
+flowchart TD
+    A[Source code change] --> B[python tools/build_frozen.py]
+    B --> C[PyInstaller reads steam_game_organizer.spec]
+    C --> D[Collect stage: everything into _internal/]
+    D --> E[Lift: move core/, services/, ui/, utils/, app/, debug/, tools/, assets/, runtime/ out of _internal/]
+    E --> F[Backup config/, cache/, logs/ to temp dir]
+    F --> G[Wipe old bundle]
+    G --> H[Restore config/, cache/, logs/]
+    H --> I[Verify runtime/7z.exe exists]
+    I --> J[dist\steam_game_organizer\steam_game_organizer.exe ready]
+    
+    style A fill:#f9f,stroke:#333
+    style J fill:#bbf,stroke:#333,stroke-width:2px
+```
+
 - `steam_game_organizer.spec` — a PyInstaller onedir spec, written by hand. The datas are listed explicitly so the contents are reviewable rather than inferred from an import scan, which would drag in the stdlib test suite and the whole tcl/tk tree.
 - `tools/build_frozen.py` — runs the spec, then moves the exe into the bundle folder and lifts `core/`, `services/`, `runtime/` and the rest out of `_internal/`. PyInstaller's COLLECT stage puts every data and binary into `_internal/` by default, which is wrong here: the app resolves its project root as `Path(__file__).resolve().parent` and walks it for `runtime/7z.exe` and the other sibling folders, so a build that left those inside `_internal/` would ship an app that cannot unpack anything. The destination paths in `datas` are relative to `_internal/`, so the lift is a post-build step rather than a spec change.
 - The exe lives inside the bundle, not beside it. The default onedir layout puts the exe at `dist/<name>.exe` and the bundle at `dist/<name>/`, which would leave the runtime one folder out of reach; moving the exe restores the source-checkout layout the app already assumes.
@@ -28,7 +164,121 @@
 
 ---
 
+## Bundled runtime
+
+```mermaid
+flowchart TD
+    subgraph "Your machine (source of runtime)"
+    M1[Python 3.13 install]
+    M2[7-Zip install]
+    M3[Tcl/Tk (bundled with Python)]
+    end
+    
+    subgraph "tools\bundle_runtime.py"
+    B1[Copies python.exe, DLLs, Lib, tcl, tk]
+    B2[Copies 7z.exe]
+    B3[Writes python313._pth]
+    B4[Writes THIRD-PARTY-NOTICES.txt]
+    B5[Writes LICENSE.txt]
+    end
+    
+    subgraph "runtime/ at project root"
+    R1[python.exe]
+    R2[DLLs/]
+    R3[Lib/]
+    R4[tcl/, tk/]
+    R5[7z.exe]
+    end
+    
+    subgraph "dist\steam_game_organizer\runtime/ (inside frozen bundle)"
+    FR1[Same tree as above]
+    end
+    
+    M1 --> B1
+    M2 --> B2
+    B3 --> R4
+    B4 --> R5
+    B5 --> R5
+    R1 --> FR1
+    R2 --> FR1
+    R3 --> FR1
+    R4 --> FR1
+    R5 --> FR1
+    
+    style M1 fill:#e1f5fe,stroke:#01579b
+    style M2 fill:#e1f5fe,stroke:#01579b
+    style B1 fill:#fff3e0,stroke:#e65100
+    style R1 fill:#bfb,stroke:#333
+    style FR1 fill:#bfb,stroke:#333
+```
+
+`runtime/` at the project root is a **vendored product, not this project's code**: `tools/bundle_runtime.py` copies a Python (with Tcl/Tk, so the setup wizard opens) and a 7-Zip into it from the machine's own installs. The same tree ships inside the frozen bundle as `dist/steam_game_organizer/runtime/`.
+
+> [!TIP]
+> **It must ship.** Nothing a friend's PC needs is installed, so a `.gitignore` entry or a build step that drops `runtime/` breaks every copied folder. `.gitignore` deliberately has no entry for it.
+
+| Item | Requirement |
+|------|-------------|
+| `runtime/7z.exe` | Required. `build_frozen.py` verifies it exists before reporting success; without it extraction tools report no archiver. |
+| Lint / version scan | Excluded (`runtime` and `dist`). `ruff.toml` excludes them; `tests/test_release_structure.py` skips them in `NOT_SOURCE`, because their files declare Python's and 7-Zip's versions — findings that are not this project's to fix. |
+| Interpreter path | The bundled `python313._pth` makes `sys.path` exactly what the file says, so the script's own folder is *not* added the way a normal launch adds it — the entry point inserts it itself. Any new entry point or tool meant to run under the bundled interpreter has to do the same, or it dies with `ModuleNotFoundError` on a copy. |
+
+---
+
 ## Wiring
+
+```mermaid
+flowchart TD
+    subgraph Composition["Composition root"]
+    APP[app/application.py]
+    end
+
+    subgraph Controller["Controller & lifecycle"]
+    CTL[app/controller.py]
+    JOB[app/jobs.py]
+    EVT[app/events.py]
+    end
+
+    subgraph Services["Service layer"]
+    ARC[services/archive_service.py]
+    CAT[services/catalog_service.py]
+    EXT[services/extract_service.py]
+    LIB[services/library_service.py]
+    ORG[services/organizer_service.py]
+    ROLL[services/rollback_service.py]
+    SETUP[services/setup_service.py]
+    STEAM[services/steam_service.py]
+    ART[services/artwork_service.py]
+    end
+
+    subgraph Core["core/"]
+    CFG[core/config.py]
+    URI[core/uri_actions.py]
+    LOG[core/logger.py]
+    end
+
+    subgraph UI["UI layer"]
+    MW[ui/main_window.py]
+    end
+
+    APP -->|builds services| CAT & EXT & LIB & ORG & ROLL & SETUP
+    APP -->|owns| MW
+    CTL -->|orchestrates phases| LIB & ORG & CAT
+    CTL -->|journals moves| ROLL
+    CTL -->|progress on| EVT
+    CTL -->|worker exec| JOB
+    CAT -->|generates| HTML[Game Library.html]
+    EXT -->|extracts with| 7z[runtime/7z.exe]
+    URI -->|scheme + SYSTEM_PATHS| EXT & SETUP & MW
+    SETUP -->|registers| HK[HKCU\steamgameorganizer://]
+    CFG -->|project root paths| CAT & LIB & ORG & ROLL
+    
+    style APP fill:#bbf,stroke:#333
+    style CTL fill:#bbf,stroke:#333
+    style CFG fill:#bfb,stroke:#333
+    style HTML fill:#fdd,stroke:#c00
+    style 7z fill:#fdd,stroke:#c00
+```
 
 | Module | Role |
 |--------|------|
@@ -40,6 +290,29 @@
 ---
 
 ## core
+
+```mermaid
+flowchart TD
+    subgraph CoreModules["core/"]
+    CFG[config.py]
+    CTS[constants.py]
+    MDL[models.py]
+    URI[uri_actions.py]
+    LOG[logger.py]
+    STT[state.py]
+    EXC[exceptions.py]
+    end
+
+    CFG -->|AppConfig| URI
+    CFG -->|library_root| LOG
+    URI -->|SCHEME + SYSTEM_PATHS| CFG
+    URI -->|ExtractRequest| MDL
+    LOG -->|AppLogger| CFG
+    STT -->|StateStore| CFG
+    
+    style CFG fill:#bfb,stroke:#333
+    style URI fill:#bfb,stroke:#333
+```
 
 | Module | Role |
 |--------|------|
@@ -55,12 +328,56 @@
 
 ## services
 
+```mermaid
+flowchart TD
+    subgraph ServiceLayer["services/"]
+    ARC[archive_service.py]
+    BATCH[batch_extract_service.py]
+    CAT[catalog_service.py]
+    CSTAT[catalog_status.py]
+    EXT[extract_service.py]
+    IDET[installer_detect.py]
+    LIB[library_service.py]
+    ORG[organizer_service.py]
+    ROLL[rollback_service.py]
+    SETUP[setup_service.py]
+    STEAM[steam_service.py]
+    ART[artwork_service.py]
+    BANNER[banner_art.py]
+    end
+
+    subgraph Core["core/"]
+    CFG[config.py]
+    URI[uri_actions.py]
+    end
+
+    CFG -->|library root| LIB & ORG & CAT
+    URI -->|SCHEME + SYSTEM_PATHS| EXT & SETUP
+    CAT -->|generates| HTML[Game Library.html]
+    CAT -->|writes| JS[Game Library.status.js]
+    EXT -->|extracts with| 7z[runtime/7z.exe]
+    EXT -->|writes markers| MK[.sgo-extract-info]
+    CSTAT -->|markers + launcher scan| MK
+    ORG -->|moves + converts| ROLL[last-organization.json]
+    ROLL -->|restores| SRC[source folders]
+    SETUP -->|registers| HK[HKCU\steamgameorganizer://]
+    STEAM -->|store API| ART
+    ART -->|cached artwork| CAT[banner]
+    
+    style CAT fill:#bfb,stroke:#333
+    style EXT fill:#bfb,stroke:#333
+    style ORG fill:#bfb,stroke:#333
+    style HTML fill:#fdd,stroke:#c00
+    style MK fill:#fff3e0,stroke:#e65100
+    style 7z fill:#fdd,stroke:#c00
+```
+
 | Module | Role |
 |--------|------|
 | `services/archive_service.py` | Archive discovery and scan telemetry. |
 | `services/batch_extract_service.py` | Plans and runs batch extractions outside the library; smallest-first sort, `(n)` collision handling, installer archives routed to `Needs Install`, skip-if-already-extracted. |
-| `services/catalog_status.py` | Writes `Game Library.status.js` beside the catalog after every batch/run and provides marker helpers for `.sgo-extract-info` (`read_extract_marker`, `resolve_extracted_root`, `archive_has_changed_since_extraction`) so catalog/status/URI logic can resolve actual extracted roots safely. |
 | `services/catalog_service.py` | Generates the browsable library page (`Game Library.html`) and the artwork banner. Holds the embedded HTML, CSS and JavaScript. The page carries a **Refresh catalog** button (`steamgameorganizer://refresh-catalog`) because a `file://` page cannot re-scan disk; unpacked/needs-install/stale state is resolved at generation time across configured extract roots using extraction markers (`extracted_root`/timestamps/`launch_target`/`setup_done`) and conventional layouts. Cards expose dynamic actions (Play/Pick launcher/Mark installed when applicable, Extract/Re-extract, Open installer/Open extracted, Open source) and embed `data-extracted-path`/`data-marker-dir`/`data-launch-target`/`data-play`/`data-pick-launcher`/`data-mark-installed` for secure protocol links. |
+| `services/catalog_status.py` | Writes `Game Library.status.js` beside the catalog after every batch/run and provides marker helpers for `.sgo-extract-info` (`read_extract_marker`, `resolve_extracted_root`, `archive_has_changed_since_extraction`, `get_launch_target`, `update_extract_marker`, `mark_setup_done`) so catalog/status/URI logic can resolve actual extracted roots and launcher/user state safely. `discover_game_launchers()` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size; returns a ranked list for user choice via Pick launcher. |
 | `services/extract_service.py` | Finds the archive tool and performs extraction. `find_tool()` / `find_unrar()` check `PATH` and then the real install folders (`C:\Program Files\7-Zip`, `%ProgramFiles%\WinRAR`), because 7-Zip is not on `PATH` on a normal PC. It writes `.sgo-extract-info` (archive size/mtime, extracted root, `needs_install`) and preserves compatible user-state fields (`launch_target`, `setup_done`, `installed_at`) from prior marker candidates across re-extract while recomputing extraction facts. |
 | `services/installer_detect.py` | Recognises archives that unpack to a Windows installer (setup.exe + .bin, or a mountable .iso) so they are relocated to `Needs Install` rather than left as a game folder holding no runnable game. |
 | `services/library_service.py` | The whole-library audit — Steam link normalization plus artwork refresh, which reports per folder as it goes. Runs `_sweep_empty_categories()` after scans: empty game folders and empty categories are moved to `Archive/` rather than deleted, so the user can review them before deleting. |
@@ -70,12 +387,41 @@
 | `services/steam_service.py` | Direct Steam Store search/details API, with a mock backend. |
 | `services/artwork_service.py` | Cached Steam artwork retrieval with source fallback. |
 | `services/banner_art.py` | Composes the banner image. |
-| `services/catalog_status.py` | Writes `Game Library.status.js` beside the catalog after every batch/run and provides marker helpers for `.sgo-extract-info` (`read_extract_marker`, `resolve_extracted_root`, `archive_has_changed_since_extraction`, `get_launch_target`, `update_extract_marker`, `mark_setup_done`) so catalog/status/URI logic can resolve actual extracted roots and launcher/user state safely. `discover_game_launchers()` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size; returns a ranked list for user choice via Pick launcher. |
-| `core/uri_actions.py` | Parses a `steamgameorganizer://` URI into validated requests or refuses it. Owns `SCHEME`, the one definition of the scheme, and `SYSTEM_PATHS`, the folders a typed destination may not sit inside — the Windows folders read from the environment. Parses `setup`, `refresh-catalog`, `open-folder` (library source folder), `open-extracted` (extracted/installer folder, resolved under configured extract folders), `play` (validated `.exe`/marker launch target under configured extract folders), `pick-launcher` (marker path), and `mark-installed` (marker path). |
 
 ---
 
 ## ui
+
+```mermaid
+flowchart TD
+    subgraph UI["ui/"]
+    MW[main_window.py]
+    SV[scan_view.py]
+    RV[review_view.py]
+    OV[organize_view.py]
+    AV[artwork_view.py]
+    DV[done_view.py]
+    BEW[batch_extract_window.py]
+    SW[setup_window.py]
+    TH[theme.py]
+    PL[palette.py]
+    WD[widgets/]
+    end
+
+    MW -->|left nav rail| SV & RV & OV & AV & DV
+    MW -->|owns| TH & PL
+    TH -->|widgets| WD
+    PL -->|palette| TH
+    BEW -->|Toplevel queue| MW
+    SW -->|Toplevel wizard| MW
+    WD -->|game_card, game_list, artwork_panel, metadata_panel| SV & RV & OV & AV & DV
+    
+    style MW fill:#bbf,stroke:#333
+    style TH fill:#bfb,stroke:#333
+    style PL fill:#bfb,stroke:#333
+```
+
+Theme colours reach a view only through an explicit import. They were star-imports until 9.8, which meant every view silently depended on every colour anyone had ever added.
 
 | Module | Role |
 |--------|------|
@@ -86,8 +432,6 @@
 | `ui/theme.py` | The ttk theme and the shared widgets (`PhaseTimeline`, `ActivityFeed`, `Sparkline`, the wheel and scroll helpers). Re-exports the palette. |
 | `ui/palette.py` | The colours, in one place, outside the UI layer so the controller can use them too. |
 | `ui/widgets/` | `game_card`, `game_list`, `artwork_panel`, `metadata_panel`. |
-
-Theme colours reach a view only through an explicit import. They were star-imports until 9.8, which meant every view silently depended on every colour anyone had ever added.
 
 ---
 
@@ -112,6 +456,31 @@ Theme colours reach a view only through an explicit import. They were star-impor
 
 ## tools
 
+```mermaid
+flowchart TD
+    subgraph Tools["tools/"]
+    BUILD[build_frozen.py]
+    BUNDLE[bundle_runtime.py]
+    PROTO[in
+stall_protocol_handler.py]
+    REPAIR[overnight_repair.py]
+    SHOT[analyze_screenshot.py]
+    LAYOUT[layout_audit.py]
+    DEAD[dead_space_audit.py]
+    ICON[build_icon.py]
+    VERIFY[verify_archives.py]
+    PROBE[tk_probe.py]
+    end
+
+    BUILD -->|runs spec + lifts| BUNDLE[dist\steam_game_organizer\]
+    BUNDLE -->|copies into| RUNTIME[runtime/]
+    PROTO -->|registers| HK[HKCU\steamgameorganizer://]
+    VERIFY -->|7z t over all| ARCH[archives - hours]
+    
+    style BUILD fill:#bbf,stroke:#333
+    style VERIFY fill:#fdd,stroke:#c00
+```
+
 Development and installation scripts, not part of the application:
 
 | Tool | Role |
@@ -126,6 +495,33 @@ Development and installation scripts, not part of the application:
 ---
 
 ## tests
+
+```mermaid
+flowchart TD
+    subgraph TestLayer["tests/"]
+    TK[tk_support.py:sandbox_app]
+    GUARD[test_project_state_guard.py]
+    ZERO[test_zero_skips.py]
+    PLAT[test_platform.py]
+    DEAD[test_dead_code.py]
+    REL[test_release_structure.py]
+    RENDER[test_render_integrity.py]
+    CONTRAST[test_contrast.py]
+    FROZEN[test_frozen_build.py]
+    end
+
+    TK -->|roots AppConfig in temp tree| GUARD
+    GUARD -->|fails if real config/ writes| STATE[real config/ untouched]
+    ZERO -->|AST scan| NO_SKIPS[no unittest.skip]
+    PLAT -->|string scan| NO_POSIX[no xdg-open, /home/, flatpak...]
+    DEAD -->|asserts| NO_DEAD[superseded names gone]
+    REL -->|walks tree| NO_EXTRA_VERSION[version only in VERSION.txt, USER_AGENT, CHANGELOG.md]
+    FROZEN -->|builds scratch tree| BUNDLE_OK[runtime/7z.exe present]
+    
+    style TK fill:#bfb,stroke:#333
+    style GUARD fill:#bfb,stroke:#333
+    style STATE fill:#fdd,stroke:#c00
+```
 
 `runtime\python.exe -m unittest discover -q` — 781 tests, `OK` with no skips expected. The frozen-build test runs because PyInstaller is installed in the bundled runtime; any skip that is not that one is a bug.
 
@@ -177,6 +573,17 @@ All optimizations below are in the current development version and are cumulativ
 | O11 | `core/logger.py` | `AppLogger.write()` tracks approximate bytes since last rotate check; `_rotate()` only invoked every ~500KB accumulated | `stat()` on the active log file on every `write()` call during high-frequency scan logging | **Low** — CPU overhead only, not user-facing |
 
 ### Cache Invalidation
+
+```mermaid
+flowchart TD
+    GEN[CatalogService.generate()] -->|clears| CC[_COLLECT_CACHE]
+    INV[CatalogService.invalidate_summary()] -->|clears| CC
+    ST[stat-based caches O3-O5] -->|keyed on| KEY[(path, size, mtime_ns)]
+    KEY -->|self-invalidate when file changes| FRESH[fresh data]
+    
+    style CC fill:#fdd,stroke:#c00
+    style FRESH fill:#bfb,stroke:#333
+```
 
 - `CatalogService.generate()` clears `_COLLECT_CACHE` so a second call after the library changed (game moved category) gets fresh data.
 - `CatalogService.invalidate_summary()` clears `_COLLECT_CACHE` for paths that change the library without regenerating the catalog (Undo).

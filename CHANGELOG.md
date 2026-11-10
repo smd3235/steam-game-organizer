@@ -7,7 +7,17 @@
 
 ---
 
-## 9.33
+## 9.33 — development (unreleased)
+
+### 2026-11-10 — Overhauled AGENTS.md, ARCHITECTURE.md, project_overview.md with extensive Mermaid diagrams
+
+- `AGENTS.md`: Rewrote with Mermaid diagrams for how-to-use flow, change-before-you-change flow, prerequisites & setup, development toolchain, frozen build pipeline, bundled runtime, logging rotation, test logs, platform, test result, test hygiene/sandbox flow, long-running commands, proving a test can fail, Git/GitHub workflow, commit-after-build checklist, keeping docs accurate, definition of done.
+- `ARCHITECTURE.md`: Rewrote with Mermaid diagrams for module map, entry point, frozen build pipeline, bundled runtime, wiring, core module dependencies, service layer wiring, UI module layout, tools, test guard layer, performance optimization cache invalidation flow.
+- `project_overview.md`: Rewrote with Mermaid diagrams for data flow phases, URI/protocol handler routing + validation layer, launcher discovery, key decisions flow, commands flow, testing conventions guard/checks/runtime layers.
+- `README.md` and `CHANGELOG.md` already had Mermaid diagrams from earlier overhauls; all four docs now use GFM badges, alert blocks, tables, and Mermaid diagrams consistently.
+- Changelog entry added in the same change as the doc change.
+
+---
 
 ### 2026-11-10 — Corrected "frozen exe needs nothing installed" note (GitHub doesn't ship runtime/)
 
@@ -24,17 +34,17 @@
 
 ---
 
-### 2026-11-10 — Setup prerequisites guide added to AGENTS.md and README.md (install links, dev toolchain)
+### 2026-11-10 — Git/GitHub workflow instructions added to AGENTS.md (commit-after-rebuild rule)
 
-- `AGENTS.md`: New **Prerequisites & Setup** section covering what to install for each use case (frozen exe needs nothing; source needs Python 3.13; development needs Python 3.13 + ruff + PyInstaller; building needs 7-Zip too). Includes links to python.org, ruff, PyInstaller, and 7-Zip, plus a verify-your-setup command block.
-- `README.md`: Expanded **Quick start** with an "Install what you need" table and a note that frozen exe users need nothing installed. Expanded **Development Prerequisites** with links to python.org, ruff, PyInstaller, and 7-Zip.
+- `AGENTS.md`: New **Git / GitHub workflow** section covering branch-before-change, conventional commit messages, push regularly, PR requirements, and the commit-after-every-frozen-rebuild rule (`dist/steam_game_organizer/runtime/7z.exe` verified present before committing). Also added a **Commit-after-build checklist** (changelog → docs → lint → tests → build → commit + push) so every change produces a dated, searchable GitHub log entry. Step 6 explicitly requires pushing to GitHub so the project on GitHub is updated — never leave work committed locally only.
 - Changelog entry added in the same change as the doc change.
 
 ---
 
-### 2026-11-10 — Git/GitHub workflow instructions added to AGENTS.md (commit-after-rebuild rule)
+### 2026-11-10 — Setup prerequisites guide added to AGENTS.md and README.md (install links, dev toolchain)
 
-- `AGENTS.md`: New **Git / GitHub workflow** section covering branch-before-change, conventional commit messages, push regularly, PR requirements, and the commit-after-every-frozen-rebuild rule (`dist/steam_game_organizer/runtime/7z.exe` verified present before committing). Also added a **Commit-after-build checklist** (changelog → docs → lint → tests → build → commit + push) so every change produces a dated, searchable GitHub log entry. Step 6 explicitly requires pushing to GitHub so the project on GitHub is updated — never leave work committed locally only.
+- `AGENTS.md`: New **Prerequisites & Setup** section covering what to install for each use case (frozen exe needs nothing; source needs Python 3.13; development needs Python 3.13 + ruff + PyInstaller; building needs 7-Zip too). Includes links to python.org, ruff, PyInstaller, and 7-Zip, plus a verify-your-setup command block.
+- `README.md`: Expanded **Quick start** with an "Install what you need" table and a note that frozen exe users need nothing installed. Expanded **Development Prerequisites** with links to python.org, ruff, PyInstaller, and 7-Zip.
 - Changelog entry added in the same change as the doc change.
 
 ---
@@ -341,7 +351,7 @@ Removed 124 `# vX.Y change log:` note blocks from 47 source files. History now l
 
 ### 2026-11-03 — Rebuilt the frozen exe
 
-`python tools/build_frozen.py` re-run after the spec cleanup so `dist/steam_game_organizer/` ships the corrected build.
+`python tools\build_frozen.py` re-run after the spec cleanup so `dist/steam_game_organizer/` ships the corrected build.
 
 ---
 

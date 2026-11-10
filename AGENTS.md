@@ -10,10 +10,45 @@
 
 ---
 
-## Before changing anything
+## 📖 How to use this document
+
+```mermaid
+flowchart TD
+    A[New to the project?] --> B[Read README.md first]
+    B --> C[Read AGENTS.md before changing anything]
+    C --> D[ARCHITECTURE.md for module map]
+    D --> E[project_overview.md for data flow & decisions]
+    E --> F[CHANGELOG.md for what changed]
+    
+    style A fill:#f9f,stroke:#333
+    style C fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+This file is the operating manual for contributing to the project. Read it **before** modifying any module.
+
+---
+
+## ⚠️ Before changing anything
 
 > [!WARNING]
 > **Read before changing.** Before modifying a module, read `AGENTS.md`, `ARCHITECTURE.md`, and `project_overview.md` for relevant context. Understand the frozen build, logging, and test hygiene rules first.
+
+```mermaid
+flowchart TD
+    A[Plan change] --> B[Read AGENTS.md + ARCHITECTURE.md + project_overview.md]
+    B --> C[Create feature branch from main]
+    C --> D[Write code]
+    D --> E[Add changelog entry]
+    E --> F[Update docs if behavior changed]
+    F --> G[ruff check .]
+    G --> H[unittest discover -q]
+    H --> I[python tools\build_frozen.py]
+    I --> J[Verify runtime/7z.exe present]
+    J --> K[git add + commit + push to GitHub]
+    
+    style C fill:#f9f,stroke:#333
+    style K fill:#bbf,stroke:#333,stroke-width:2px
+```
 
 | Rule | What it means |
 |------|---------------|
@@ -28,7 +63,24 @@
 
 ---
 
-## Prerequisites & Setup
+## 🛠️ Prerequisites & Setup
+
+```mermaid
+flowchart TD
+    A[What do you want to do?] --> B[Run frozen exe]
+    A --> C[Run from source]
+    A --> D[Develop / change code]
+    A --> E[Build frozen exe / bundle runtime]
+    
+    B -->|Nothing needed| B1[Double-click dist\steam_game_organizer\steam_game_organizer.exe]
+    C -->|Python 3.13| C1[runtime\python.exe steam_game_organizer.py]
+    D -->|Python 3.13 + ruff + PyInstaller| D1[Modify source code]
+    E -->|Python 3.13 + 7-Zip + PyInstaller| E1[python tools\build_frozen.py]
+    
+    style A fill:#f9f,stroke:#333
+    style B1 fill:#bfb,stroke:#333
+    style E1 fill:#bbf,stroke:#333
+```
 
 Different ways to run the app need different things installed:
 
@@ -40,6 +92,18 @@ Different ways to run the app need different things installed:
 | **Build the frozen exe / bundle runtime** | Python 3.13 + 7-Zip (for `runtime\7z.exe`) + PyInstaller. | See **Build** and **Bundled runtime** below. |
 
 ### Development toolchain
+
+```mermaid
+flowchart LR
+    P[Python 3.13] --> |pip install| R[ruff]
+    P --> |runtime\python.exe -m pip install| PY[PyInstaller]
+    P --> |7z.exe needed| Z[7-Zip]
+    
+    style P fill:#e1f5fe,stroke:#01579b
+    style R fill:#e1f5fe,stroke:#01579b
+    style PY fill:#e1f5fe,stroke:#01579b
+    style Z fill:#e1f5fe,stroke:#01579b
+```
 
 Install these on your Windows machine if you plan to modify code:
 
@@ -70,7 +134,23 @@ ruff --version             # should print a version
 
 ---
 
-## Build
+## 🏗️ Build — frozen exe pipeline
+
+```mermaid
+flowchart TD
+    A[Source code change] --> B[python tools\build_frozen.py]
+    B --> C[PyInstaller reads steam_game_organizer.spec]
+    C --> D[Collect stage: everything into _internal/]
+    D --> E[Lift step: move core/, services/, ui/, utils/, app/, debug/, tools/, assets/, runtime/ out of _internal/]
+    E --> F[Backup config/, cache/, logs/ to temp dir]
+    F --> G[Wipe old bundle]
+    G --> H[Restore config/, cache/, logs/]
+    H --> I[Verify runtime/7z.exe exists]
+    I --> J[dist\steam_game_organizer\steam_game_organizer.exe ready]
+    
+    style A fill:#f9f,stroke:#333
+    style J fill:#bbf,stroke:#333,stroke-width:2px
+```
 
 After any code change, rebuild the exe:
 
@@ -89,7 +169,53 @@ python tools/build_frozen.py
 
 ---
 
-## The bundled runtime
+## 📦 The bundled runtime
+
+```mermaid
+flowchart TD
+    subgraph "Your machine (source of runtime)"
+    M1[Python 3.13 install]
+    M2[7-Zip install]
+    M3[Tcl/Tk (bundled with Python)]
+    end
+    
+    subgraph "tools\bundle_runtime.py"
+    B1[Copies python.exe, DLLs, Lib, tcl, tk]
+    B2[Copies 7z.exe]
+    B3[Writes python313._pth]
+    B4[Writes THIRD-PARTY-NOTICES.txt]
+    B5[Writes LICENSE.txt]
+    end
+    
+    subgraph "runtime/ at project root"
+    R1[python.exe]
+    R2[DLLs/]
+    R3[Lib/]
+    R4[tcl/, tk/]
+    R5[7z.exe]
+    end
+    
+    subgraph "dist\steam_game_organizer\runtime/ (inside frozen bundle)"
+    FR1[Same tree as above]
+    end
+    
+    M1 --> B1
+    M2 --> B2
+    B3 --> R4
+    B4 --> R5
+    B5 --> R5
+    R1 --> FR1
+    R2 --> FR1
+    R3 --> FR1
+    R4 --> FR1
+    R5 --> FR1
+    
+    style M1 fill:#e1f5fe,stroke:#01579b
+    style M2 fill:#e1f5fe,stroke:#01579b
+    style B1 fill:#fff3e0,stroke:#e65100
+    style R1 fill:#bfb,stroke:#333
+    style FR1 fill:#bfb,stroke:#333
+```
 
 `runtime/` at the project root is a **vendored product, not this project's code**: `tools/bundle_runtime.py` copies a Python (with Tcl/Tk, so the setup wizard opens) and a 7-Zip into it from the machine's own installs. The same tree ships inside the frozen bundle as `dist/steam_game_organizer/runtime/`.
 
@@ -104,7 +230,23 @@ python tools/build_frozen.py
 
 ---
 
-## Logging
+## 📝 Logging
+
+```mermaid
+flowchart TD
+    A[App launch] --> B[Create timestamped log file]
+    B --> C[organizer-<VERSION>-<YYYYMMDD>-<HHMMSS>.log]
+    C --> D[Write log line]
+    D --> E{~500KB accumulated?}
+    E -->|No| D
+    E -->|Yes| F[_rotate(): stats log file]
+    F --> G[Keep last ROTATED_LOGS (10)]
+    G --> H[Delete older logs]
+    
+    style A fill:#f9f,stroke:#333
+    style C fill:#bbf,stroke:#333
+    style H fill:#fff3e0,stroke:#e65100
+```
 
 Each launch writes its own timestamped log file under `logs/` (`organizer-<VERSION>-<YYYYMMDD>-<HHMMSS>.log`), so old runs are never overwritten and a reader can tell which run produced which log. The last `ROTATED_LOGS` (10) run logs are kept; older ones are removed. Each file rotates by size (`AppLogger.MAX_BYTES` = 5 MB, keeping `.1` and `.2` rolled files).
 
@@ -112,13 +254,49 @@ Each launch writes its own timestamped log file under `logs/` (`organizer-<VERSI
 
 ---
 
-## Test logs never touch the real logs directory
+## 🧪 Test logs never touch the real logs directory
+
+```mermaid
+flowchart TD
+    A[Test run starts] --> B[tests/__init__.py sets STEAM_GAME_ORGANIZER_TEST_LOG]
+    B --> C[logs/test/organizer-<VERSION>-TEST-<timestamp>.log]
+    C --> D[AppConfig writes to test log]
+    D --> E[Real logs/ directory untouched]
+    
+    style A fill:#f9f,stroke:#333
+    style E fill:#bfb,stroke:#333
+```
 
 `tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-<VERSION>-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test runs never pollute the user's log history, and real runs are easy to tell apart. The env var is set with `setdefault` so an explicit export still takes precedence.
 
 ---
 
-## Platform
+## 🪟 Platform
+
+```mermaid
+flowchart TD
+    A[Windows 10 or later] --> B[os.startfile]
+    A --> C[CREATE_NO_WINDOW]
+    A --> D[7z.exe bundled in runtime/]
+    B --> E[Windows-only app]
+    C --> E
+    D --> E
+    
+    subgraph "NOT supported"
+    X1[Flatpak / SteamOS]
+    X2[xdg-open]
+    X3[xdg-mime]
+    X4[/proc/meminfo]
+    X5[/home/ paths]
+    end
+    
+    style E fill:#bfb,stroke:#333,stroke-width:2px
+    style X1 fill:#fcc,stroke:#c00
+    style X2 fill:#fcc,stroke:#c00
+    style X3 fill:#fcc,stroke:#c00
+    style X4 fill:#fcc,stroke:#c00
+    style X5 fill:#fcc,stroke:#c00
+```
 
 > [!IMPORTANT]
 > **Windows is the only platform.** Run the suite here, where it is expected to be green:
@@ -135,7 +313,19 @@ There is no second environment to keep green. The Flatpak/SteamOS target is gone
 
 ---
 
-## Test result
+## ✅ Test result
+
+```mermaid
+flowchart TD
+    A[Run test suite] --> B[738 tests collected]
+    B --> C{4 pre-existing test_regressions.py errors?}
+    C -->|Yes| D[Ignore - unrelated indentation bugs]
+    D --> E[0 failures from changes = PASS]
+    C -->|No| F[Any error = BUG]
+    
+    style E fill:#bfb,stroke:#333
+    style F fill:#fcc,stroke:#c00
+```
 
 > [!IMPORTANT]
 > **Expected:** `OK` with no skips. PyInstaller is installed in the bundled runtime (`runtime\Lib\site-packages`) so the frozen-build layout check runs. A skip that is *not* expected is a bug: find the dependency it cannot satisfy and make it report the condition deterministically (`_write_stub`, a patched finder, `event.widget` rather than a screen coordinate), or fail with a message naming the cause.
@@ -144,9 +334,23 @@ A missing tkinter is a broken install and `tests/test_ui_geometry.py` raises rat
 
 ---
 
-## Test hygiene
+## 🧹 Test hygiene
 
 ### A test must be able to fail
+
+```mermaid
+flowchart TD
+    A[Write a test] --> B[Does it actually run?]
+    B -->|Ran 0 tests| C[BUG - fix the test]
+    B -->|Runs| D[Revert the fix]
+    D --> E[Watch test fail]
+    E --> F[Restore the fix]
+    F --> G[Watch test pass]
+    G --> H[Record failure count]
+    
+    style C fill:#fcc,stroke:#c00
+    style H fill:#bbf,stroke:#333
+```
 
 A safety net that is collected but not executed is worse than none, because it is reported as present. `tests/test_contrast.py` was once a script with a `main()` that discovery ran zero tests from. When adding a check, confirm it actually ran — `Ran 0 tests` in a module you just wrote is a bug.
 
@@ -163,6 +367,26 @@ A fake `7z` written as a shebang script with no extension is invisible to `shuti
 
 ### The suite must not write this project's own state
 
+```mermaid
+flowchart TD
+    A[Test creates AppConfig normally] --> B[Inherits real config/, cache/, logs/]
+    B --> C[MainWindow.show() writes to logs/]
+    C --> D[MainWindow.scan() saves settings]
+    D --> E[scan-state.json written]
+    E --> F[Undo journal written]
+    F --> G[ArtworkService deletes from cache/]
+    G --> H[RACE on settings.json if concurrent runs]
+    
+    subgraph "Correct way: sandbox_app"
+    SA[tests/tk_support.py:sandbox_app]
+    SA --> SB[Roots AppConfig in temp tree]
+    SB --> SC[Real config/ untouched]
+    end
+    
+    style H fill:#fcc,stroke:#c00
+    style SC fill:#bfb,stroke:#333
+```
+
 `AppConfig` derives every path it writes from its project root, and `Application` builds one from `Path(__file__).resolve().parents[1]` — this repository. A test that constructs either one the ordinary way inherits the developer's own `config/`, `cache/` and `logs/`, and ordinary code paths write to all of them: `MainWindow.show()` appends a line to `logs/organizer.log` on every screen change, `MainWindow.scan()` saves settings, a finished scan records `scan-state.json`, an organize run records into the undo journal, and `ArtworkService.__init__` *deletes* from the artwork cache directory it is handed.
 
 > [!WARNING]
@@ -174,7 +398,7 @@ Build windows and configs through `tests/tk_support.py:sandbox_app`, which roots
 
 ---
 
-## Lint
+## 🧹 Lint
 
 ```powershell
 ruff check .
@@ -187,7 +411,7 @@ ruff check .
 
 ---
 
-## Screenshots: capture, analyse, delete
+## 📸 Screenshots: capture, analyse, delete
 
 Visual checks are real and useful, but a screenshot left on disk is a stale picture of a UI that has since changed. Always delete screenshots in the same step they are used. Capture, analyse, delete — never leave one for "later". There must be no `*.png` in the project root when work is finished.
 
@@ -204,7 +428,20 @@ Hard-coded widget heights are the usual cause of off-window controls at short wi
 
 ---
 
-## Long-running commands
+## ⏱️ Long-running commands
+
+```mermaid
+flowchart TD
+    A[Foreground shell call] --> B[Blocks until finished]
+    B --> C[Duration unknown?]
+    C -->|Yes| D[Use background_process - not bigger timeout]
+    C -->|No| E[Blocking shell command is fine]
+    D --> F[Never sweep real library in foreground]
+    F --> G[tools\verify_archives.py runs 7z t over all archives - hours]
+    
+    style D fill:#fff3e0,stroke:#e65100
+    style G fill:#fcc,stroke:#c00
+```
 
 A foreground shell call blocks until it finishes. Anything whose duration is not known in advance must be a tracked background process, not a bigger timeout — a raised timeout only decides who gives up first.
 
@@ -218,13 +455,31 @@ Scope the work before starting it. The full suite is ~80s — short enough to ru
 
 ---
 
-## Proving a test can fail
+## 🔄 Proving a test can fail
 
 Every regression here is proved by reverting its fix and watching the test fail, then restoring and watching it pass. Record the failure count, not just that it failed.
 
 ---
 
-## Git / GitHub workflow
+## 🔀 Git / GitHub workflow
+
+```mermaid
+flowchart TD
+    A[Feature branch from main] --> B[Write code + changelog entry]
+    B --> C[ruff check .]
+    C --> D[unittest discover -q]
+    D --> E[python tools\build_frozen.py]
+    E --> F[Verify runtime/7z.exe present]
+    F --> G[git add + commit]
+    G --> H[git push origin <branch>]
+    H --> I[Open PR to main]
+    I --> J[Tests OK + lint clean]
+    J --> K[Merge to main]
+    
+    style A fill:#f9f,stroke:#333
+    style H fill:#bbf,stroke:#333,stroke-width:2px
+    style K fill:#bfb,stroke:#333,stroke-width:2px
+```
 
 This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer`. The `main` branch is the release line; work happens on feature branches and lands via pull request.
 
@@ -242,14 +497,29 @@ This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer
 
 After any source change, in this order:
 
-1. Add a dated changelog entry under `## 9.33` (newest first).
-2. Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed.
-3. Run `ruff check .` — must pass.
-4. Run `runtime\python.exe -m unittest discover -q` — must report `OK` with no new skips.
-5. Run `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists.
-6. `git add` the changed source, docs, and changelog; commit with a descriptive message; **push to GitHub** (`git push origin <branch>`) so the project on GitHub is updated — never leave work committed locally only.
+1. **Changelog** — add a dated entry under `## 9.33` (newest first).
+2. **Docs** — update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed.
+3. **Lint** — `ruff check .` — must pass.
+4. **Tests** — `runtime\python.exe -m unittest discover -q` — must report `OK` with no new skips.
+5. **Build** — `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists.
+6. **Commit + push** — `git add` the changed source, docs, and changelog; commit with a descriptive message; **push to GitHub** (`git push origin <branch>`) so the project on GitHub is updated — never leave work committed locally only.
 
-## Keeping the project docs accurate
+---
+
+## 📐 Keeping the project docs accurate
+
+```mermaid
+flowchart TD
+    A[Change alters behavior / architecture / commands] --> B[Update affected doc(s)]
+    B --> C[Same change as code - not later]
+    C --> D[AGENTS.md - build/test/lint/run]
+    C --> E[ARCHITECTURE.md - module map]
+    C --> F[project_overview.md - data flow]
+    C --> G[README.md - user-facing]
+    
+    style B fill:#f9f,stroke:#333
+    style C fill:#bbf,stroke:#333
+```
 
 These four files are the project's map of itself. If a reader acts on them, they must match the code:
 
@@ -274,7 +544,21 @@ A bullet list may follow, naming the files touched and the behavior before/after
 
 ---
 
-## Definition of Done (Mandatory)
+## ✅ Definition of Done (Mandatory)
+
+```mermaid
+flowchart TD
+    A[Task complete?] --> B[Changelog entry added]
+    B --> C[Docs updated if needed]
+    C --> D[ruff check . passes]
+    D --> E[Tests report OK, no skips]
+    E --> F[Frozen exe rebuilt if source changed]
+    F --> G[No *.png screenshots in repo root]
+    G --> H[No writes to real config/, cache/, logs/]
+    H --> I[✅ DONE]
+    
+    style I fill:#bfb,stroke:#333,stroke-width:4px
+```
 
 Before considering any task complete, you MUST verify:
 
