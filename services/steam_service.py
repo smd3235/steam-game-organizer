@@ -1,5 +1,4 @@
-# 2026-11-10 19:09:45 — Replaced boring "Test Game" names with fun creative fictional names
-# to make tests more engaging while avoiding intellectual property concerns.
+# Replaced real Steam game names with fictional ones in _mock() to avoid intellectual property concerns. Full dated entry in CHANGELOG.md.
 
 import contextlib
 import http.client
@@ -294,8 +293,7 @@ class SteamService:
                         self.cache[key] = steam_match
                         self._mark_cache_dirty()
                         return steam_match
-                    else:
-                        self.logger.info("STEAM", f"FILENAME_APPID_MISMATCH title=[{title}] appid={filename_appid} steam=[{name}] score={score:.3f} (below {ARCHIVE_APPID_MIN_SCORE}); falling back")
+                    self.logger.info("STEAM", f"FILENAME_APPID_MISMATCH title=[{title}] appid={filename_appid} steam=[{name}] score={score:.3f} (below {ARCHIVE_APPID_MIN_SCORE}); falling back")
 
         # Fast path 2: AppID from archive internals (steam_appid.txt or appmanifest_*.acf)
         # An archive that ships its own steam_settings already states its AppID. That is not a guess to be

@@ -1,5 +1,4 @@
-# 2026-11-10 19:07:06 — Replaced real Steam game names with fictional ones in _mock() method
-# to avoid intellectual property concerns. All test functionality preserved.
+# Replaced real Steam game names with fictional ones in _mock() to avoid intellectual property concerns. Full dated entry in CHANGELOG.md.
 
 from pathlib import Path
 import os, re, subprocess, tempfile, zipfile

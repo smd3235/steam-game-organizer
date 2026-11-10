@@ -1,5 +1,4 @@
-# 2026-11-10 19:09:45 — Replaced boring "Test Game" names with fun creative fictional names
-# to make tests more engaging while avoiding intellectual property concerns.
+# Replaced boring "Test Game" names with fun creative fictional names to make tests more engaging while avoiding intellectual property concerns. Full dated entry in CHANGELOG.md.
 
 import unittest
 
@@ -17,12 +16,12 @@ class TestFilename(unittest.TestCase):
         # These three each needed an entry in a 52-row lookup table that spelled the official title out by hand. The
         # title now comes from the AppID the archive ships, so the only thing left to get right here is that the
         # filename still normalizes to something a Steam search can be built from.
-        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Cosmic Cat Colony")
-        self.assertEqual(normalize_name("MySummerCar Repack 2024-01-02.zip", "Quantum Quest")
-        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip", "Neon Nexus")
+        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
+        self.assertEqual(normalize_name("MySummerCar Repack 2024-01-02.zip"), "My Summer Car")
+        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
 
     def test_a_tagged_name_needs_no_alias_either(self):
-        self.assertEqual(normalize_name("AirborneEmpireFitGirl.zip"), "Beta Voyager")
+        self.assertEqual(normalize_name("AirborneEmpireFitGirl.zip"), "Airborne Empire")
         self.assertEqual(normalize_name("FarmToTable10122.zip"), "Farm To Table")
 
     def test_identity(self):
@@ -73,27 +72,27 @@ class TestReleaseTagTitles(unittest.TestCase):
     twin normalizes to, so the two spellings collapse to one identity key and the Steam cache is hit."""
 
     TAGGED = [
-        ("Brave.New.Wonders-SteamRIP.com", "Galactic Guardians"),
-        ("Mars Attracts-Steam RIP com", "Quantum Quest"),
-        ("Nivalis Nights-Steam RIP com", "Cosmic Cat Colony"),
-        ("Sintopia-Steam RIP com", "Neon Nexus"),
-        ("Some Game-SteamRG.com", "Stellar Empires"),
-        ("Some Game-RELOADED", "Dimension Drift"),
-        ("Some Game.REPACKED", "Time Travelers"),
-        ("Some Game REPACKED", "Space Rangers"),
-        ("Some Game FitGirl Repack", "Pixel Pirates"),
-        ("Some Game DODI", "Cyber Samurai"),
-        ("Some Game-Razor1911", "Dragon's Lair"),
-        ("Some Game DRM Free", "Fantasy Kingdom"),
-        ("Some Game [NoDLC]", "Mystic Realms"),
-        ("Some Game (ElAmigos)", "Neon Warriors"),
-        ("MySummerCar Repack 2024-01-02.zip", "Quantum Quest"),
+        ("Brave.New.Wonders-SteamRIP.com", "Brave New Wonders"),
+        ("Mars Attracts-Steam RIP com", "Mars Attracts"),
+        ("Nivalis Nights-Steam RIP com", "Nivalis Nights"),
+        ("Sintopia-Steam RIP com", "Sintopia"),
+        ("Some Game-SteamRG.com", "Some Game"),
+        ("Some Game-RELOADED", "Some Game"),
+        ("Some Game.REPACKED", "Some Game"),
+        ("Some Game REPACKED", "Some Game"),
+        ("Some Game FitGirl Repack", "Some Game"),
+        ("Some Game DODI", "Some Game"),
+        ("Some Game-Razor1911", "Some Game"),
+        ("Some Game DRM Free", "Some Game"),
+        ("Some Game [NoDLC]", "Some Game"),
+        ("Some Game (ElAmigos)", "Some Game"),
+        ("MySummerCar Repack 2024-01-02.zip", "My Summer Car"),
     ]
 
     # A hyphen inside the title itself is kept, because it is part of the name: "Half-Life 2" must not become
     # "Half Life 2", and that would rename a real folder to chase cosmetics. What matters for these spellings is
     # that the two forms collapse to one identity, so the Steam cache is hit and the game is grouped once.
-    TAGGED_HYPHENATED = [("Brave-New-Wonders-SteamRip-com", "Galactic Guardians"), ("Some-Game-SteamRIP.com", "Stellar Empires"), ("Rust-RELOADED", "Dimension Drift")]
+    TAGGED_HYPHENATED = [("Brave-New-Wonders-SteamRip-com", "Brave-New-Wonders"), ("Some-Game-SteamRIP.com", "Some-Game"), ("Rust-RELOADED", "Rust")]
 
     REAL = ["Stellar Empires", "Time Travelers", "Half-Life 2", "Fear Itself", "Dome Keeper", "Portal 2", "Rust", "Baldurs Gate 3", "Republique", "Perfect Vermin", "The Idle Class", "Multiplayer", "Portable Heirloom"]
 
@@ -118,8 +117,8 @@ class TestReleaseTagTitles(unittest.TestCase):
     def test_a_real_version_suffix_still_goes(self):
         # The tag rule cuts from the tag onwards, so it must not swallow a version that belongs to the title.
         self.assertEqual(normalize_name("Alpha Forge v 0 8.zip"), "Alpha Forge")
-        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Cosmic Cat Colony")
-        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Neon Nexus")
+        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
+        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
 
 
 class TestVersionSuffixStripping(unittest.TestCase):

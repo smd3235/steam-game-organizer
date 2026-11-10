@@ -40,23 +40,38 @@ Each user organizes the games they own. The app reads your local library folder,
 
 ## 🎯 Overview
 
-Steam Game Organizer is a comprehensive Windows application designed to help you organize your Steam game library. It scans your archive files (zip, rar, 7z), verifies them against Steam's store metadata, sorts them into category folders, downloads artwork, and builds a clickable HTML catalog you can open in your browser.
+Steam Game Organizer is a comprehensive Windows application that takes the games you have downloaded from outside of Steam and turns them into a neatly organized, fully browsable library.
 
-### What makes it special:
+It scans your archive files (`.zip`, `.rar`, `.7z`), matches each one against Steam's store metadata, converts archives to **7z** for better compression, sorts them into category folders, downloads artwork, and builds a beautiful, clickable HTML catalog you can open in your browser — packed with detail on every game.
 
-- **Self-contained runtime**: Ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/` — no installation required on the target machine
-- **Smart organization**: Automatically categorizes games based on Steam metadata and user preferences
-- **Powerful catalog**: Generates a beautiful HTML game library with search, filters, and one-click actions
-- **Full undo support**: Every organize operation is journaled and can be reversed
-- **Cross-machine compatibility**: Works on any Windows 10+ machine with auto drive-letter resolution
+> [!IMPORTANT]
+> **This app does not support or condone piracy.** Use it only for games you own and have the right to organize. It does not provide — and does not explain — how to obtain games you do not own.
+
+### What it does
+
+| Step | What happens |
+|------|--------------|
+| **Scan** | Walks your library folder, finds every `.zip`/`.rar`/`.7z`, and matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork). |
+| **Convert** | Rebuilds `.zip` and `.rar` archives as `.7z` with adaptive compression tuned to your free RAM — better compression, smaller on-disk footprint. |
+| **Organize** | Files each game into `Category / Game — release date` folders with metadata, Steam shortcuts, and artwork sidecars. |
+| **Catalog** | Generates a self-contained `Game Library.html` — a detailed, searchable, filterable catalog with Extract / Play / Open links for every game. |
+
+### What makes it special
+
+- **Built for outside-Steam downloads**: Normalizes games you have acquired outside of Steam into your own library.
+- **7z conversion**: Converts archives to 7z for better compression and a smaller on-disk footprint.
+- **Self-contained runtime**: Ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/` — no installation required on the target machine.
+- **Powerful catalog**: Generates a beautiful HTML game library with search, filters, category chips, and one-click actions.
+- **Full undo support**: Every organize operation is journaled and can be reversed.
+- **Cross-machine compatibility**: Works on any Windows 10+ machine with auto drive-letter resolution.
 
 ### Current Version Status
 
-**Version 9.33** is the current development version. The version stays at 9.33 until a formal release is cut. Every change between releases is logged in [CHANGELOG.md](CHANGELOG.md) with detailed timestamps (YYYY-MM-DD HH:MM:SS format), making it easy to track exactly when each change was made. The version number itself is not critical — what matters is the detailed change history that GitHub provides.
+**Version 9.33** is the current development version. The version stays at 9.33 until a formal release is cut. Every change between releases is logged in [CHANGELOG.md](CHANGELOG.md) with detailed timestamps (YYYY-MM-DD HH:MM:SS format), making it easy to track exactly when each change was made.
 
 ### Public Readiness
 
-**Yes, this project is ready to be made public.** Here's why:
+**Yes, this project is ready to be made public.**
 
 1. **No sensitive data in production code**: The app queries the live Steam Store API at runtime — no Steam game names, titles, or AppIDs are hardcoded in any production code path
 2. **Test data is isolated**: The test suite contains a small deterministic fixture (5 entries) used only in `--mock` offline test mode, never shipped to users
@@ -67,14 +82,14 @@ Steam Game Organizer is a comprehensive Windows application designed to help you
 
 ### Test Data Privacy Note
 
-The `/tests/` directory contains test fixtures with example Steam game names and AppIDs (e.g., "Captain of Industry" with AppID 1594320). These are:
+The `/tests/` directory contains test fixtures with example Steam game names and AppIDs (e.g., "Alpha Forge" with AppID 100001). These are:
 
 - **Deterministic fixtures** used only in `--mock` offline test mode
 - **Never shipped to users** and never queried during normal operation
-- **Publicly available Steam data** that anyone could look up
+- **Fictional data** that does not correspond to real Steam games
 - **Cool to look at** for developers who understand what they're examining
 
-If you're concerned about having any data in the project, these test files could be excluded from the repository, but they provide valuable insight into how the tests work and what the app does. The production code contains zero hardcoded Steam data.
+The production code contains zero hardcoded Steam data.
 
 ---
 

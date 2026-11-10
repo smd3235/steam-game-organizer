@@ -23,6 +23,28 @@
 
 ## 9.33
 
+### 2026-11-10 19:42:00 — Fixed test_filename_utils.py syntax breakage and wrong expectations from fictional-names rename
+
+- `tests/test_filename_utils.py`: Fixed `normalize_name()` calls missing closing parens and passing a second argument to a one-parameter function (syntax error prevented the module from loading — 0 tests ran).
+- Corrected wrong expected values introduced by the fictional-names rename: `normalize_name()` strips packaging words and does not alias titles, so expected values now match actual output (e.g., "MySummerCar Repack 2024-01-02.zip" → "My Summer Car", not a fictional alias).
+- Restored TAGGED/TAGGED_HYPHENATED expected values to `normalize_name()`'s real output so the tagged/collapse tests pass.
+- Changelog entry added in the same change as the code change.
+
+### 2026-11-10 19:41:00 — Removed unnecessary else after return in steam_service.py (RET505)
+
+- `services/steam_service.py`: Removed an `else:` block whose body only ran when the preceding `if` returned, so the log line now falls through naturally on the false path with identical behavior.
+- `services/archive_service.py` / `services/steam_service.py`: Replaced dated changelog-style header comments with brief explanatory comments; the full dated entry lives in CHANGELOG.md.
+- Changelog entry added in the same change as the code change.
+
+### 2026-11-10 19:37:00 — Rewrote README.md Overview section to be fancy and clear
+
+- `README.md`: Rewrote the 🎯 Overview section to clearly explain that the app takes games downloaded from outside of Steam, converts them to 7z for better compression, organizes them into category folders, and builds a detailed clickable HTML catalog.
+- Added an anti-piracy notice: the app does not support or condone piracy, and does not provide or explain how to obtain games you do not own.
+- Updated the Test Data Privacy Note example to use fictional names (Alpha Forge / AppID 100001) matching the test fixture rename.
+- Changelog entry added in the same change as the doc change.
+
+---
+
 ### 2026-11-10 18:23:20 — Reformatted all Python files with ruff format for clean GitHub viewing
 
 - Applied `ruff format` to all 98 Python source files across `app/`, `core/`, `services/`, `ui/`, `utils/`, `debug/`, `tools/`, `tests/`, and project root. Whitespace, operator spacing, quote style, and call argument layout normalized — no logic changes.
