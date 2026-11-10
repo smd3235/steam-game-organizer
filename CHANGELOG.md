@@ -23,6 +23,13 @@
 
 ## 9.33
 
+### 2026-11-10 19:55:00 — Added realistic packaged-style fake game names to filename-utils tests
+
+- `tests/test_filename_utils.py`: Extended the `TAGGED` list with fictional titles in real downloaded-archive packaging styles (SteamRIP, TENOKE, FitGirl, DODI, RELOADED, [NoDLC], ElAmigos, DRM Free, Razor1911, SteamRG) so `normalize_name()` is exercised against the same shapes real library archives use.
+- Extended `TestGluedDigitStamp.GLUED` with version/date stamps (`Star Miner v1.4.2.7z`, `Cyber City 2026-11-01.zip`) so glued stamp removal is pinned on realistic forms.
+- All expected values verified against `normalize_name()`'s actual output.
+- Changelog entry added in the same change as the code change.
+
 ### 2026-11-10 19:42:00 — Fixed test_filename_utils.py syntax breakage and wrong expectations from fictional-names rename
 
 - `tests/test_filename_utils.py`: Fixed `normalize_name()` calls missing closing parens and passing a second argument to a one-parameter function (syntax error prevented the module from loading — 0 tests ran).

@@ -42,7 +42,7 @@ class TestGluedDigitStamp(unittest.TestCase):
     part of the game's name and the search was then built from it. Four digits is the floor on purpose: "Portal2"
     and "GTA5" are titles, and a stamp is never that short."""
 
-    GLUED = ["FarmToTable10122.zip", "Brave New Wonders20260916", "Some Game20250101"]
+    GLUED = ["FarmToTable10122.zip", "Brave New Wonders20260916", "Some Game20250101", "Star Miner v1.4.2.7z", "Cyber City 2026-11-01.zip"]
     KEPT = ["Portal2", "GTA5", "Half-Life 2", "Supercar Collection Simulator Racing Series 20260916", "Some Game 20260916"]
 
     def test_a_glued_stamp_is_cut(self):
@@ -87,6 +87,18 @@ class TestReleaseTagTitles(unittest.TestCase):
         ("Some Game [NoDLC]", "Some Game"),
         ("Some Game (ElAmigos)", "Some Game"),
         ("MySummerCar Repack 2024-01-02.zip", "My Summer Car"),
+        # Packaged styles copied from real downloaded archives (fictional titles, real packaging shapes):
+        # release-group tags, dot-separated titles, version stamps, and date stamps.
+        ("Nova Forge-SteamRIP.com", "Nova Forge"),
+        ("Quantum Drift-TENOKE", "Quantum Drift"),
+        ("Void Runners.FitGirl Repack", "Void Runners"),
+        ("Neon Overdrive-DODI", "Neon Overdrive"),
+        ("Iron Clad-RELOADED", "Iron Clad"),
+        ("Deep Vault [NoDLC]", "Deep Vault"),
+        ("Rift Walker (ElAmigos)", "Rift Walker"),
+        ("Synth Wave DRM Free", "Synth Wave"),
+        ("Pixel Raiders-Razor1911", "Pixel Raiders"),
+        ("Astral Plains-SteamRG.com", "Astral Plains"),
     ]
 
     # A hyphen inside the title itself is kept, because it is part of the name: "Half-Life 2" must not become
