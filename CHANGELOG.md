@@ -9,7 +9,12 @@
 
 ## 9.33 — development (unreleased)
 
-### 2026-11-10 — Docs overhaul: all markdown files rewritten with Mermaid diagrams, internal code links, and per-file change rule
+### 2026-11-10 — Removed scratch scripts from project root
+
+- Deleted `check_bytes.py`, `fix_indent.py`, `fix_indent2.py`, `fix_all_indent.py` from the root. They were one-off scratch scripts with hardcoded absolute paths to the developer's machine and were not part of the shipped application.
+- Changelog entry added in the same change as the code change.
+
+---
 
 - `README.md`: Rewritten with extensive Mermaid diagrams for app workflow, key capabilities, install & run, setup wizard, protocol handler, frozen build pipeline, development workflow, performance optimizations, repository layout, running on your machine, license, bundled runtime, and quick links to every key code section. Removed all references to sharing with other users' machines — the app is for organizing your own game library. Added rule: every file change requires a comment explaining what changed and why, and the project must be updated on GitHub.
 - `AGENTS.md`: Rewritten with Mermaid diagrams for how-to-use flow, change-before-you-change flow, prerequisites & setup, development toolchain, frozen build pipeline, bundled runtime, logging rotation, test logs, platform, test result, test hygiene/sandbox flow, long-running commands, proving a test can fail, Git/GitHub workflow, commit-after-build checklist, keeping docs accurate, definition of done. Removed all references to sharing with other users' machines.
