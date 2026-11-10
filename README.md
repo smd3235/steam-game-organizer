@@ -103,9 +103,11 @@ runtime\python.exe steam_game_organizer.py
 
 The first launch opens the setup wizard. Pick three folders:
 
-- **Game library** — where your archives live
-- **App folder** — where the app lives (detected automatically)
-- **Extract to** — where extracted games go
+- **Game library** — where your `.zip`/`.rar`/`.7z` archives live
+- **App folder** — where the app itself lives. The wizard detects this automatically, but here's what it means:
+  - **Frozen exe:** the app folder is `dist\steam_game_organizer\` — the folder that contains `steam_game_organizer.exe` plus `core/`, `services/`, `runtime/`, and the other bundled folders. Example: `E:\Game Installers\0. Steam Game Organizer\dist\steam_game_organizer\`
+  - **From source:** the app folder is the project root — where `steam_game_organizer.py` sits. Example: `E:\Game Installers\0. Steam Game Organizer\`
+- **Extract to** — where extracted games go (any folder outside your library)
 
 ### 3. Scan → Organize → Play
 

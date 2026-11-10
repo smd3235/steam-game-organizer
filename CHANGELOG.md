@@ -9,6 +9,13 @@
 
 ## 9.33
 
+### 2026-11-10 — Expanded app-folder explanation in README.md setup section
+
+- `README.md`: Expanded the **App folder** bullet in "2. Set up" to explain concretely where it is for frozen exe installs (`dist\steam_game_organizer\`) versus source installs (the project root), with example paths like `E:\Game Installers\0. Steam Game Organizer\dist\steam_game_organizer\`.
+- Changelog entry added in the same change as the doc change.
+
+---
+
 ### 2026-11-10 — Setup prerequisites guide added to AGENTS.md and README.md (install links, dev toolchain)
 
 - `AGENTS.md`: New **Prerequisites & Setup** section covering what to install for each use case (frozen exe needs nothing; source needs Python 3.13; development needs Python 3.13 + ruff + PyInstaller; building needs 7-Zip too). Includes links to python.org, ruff, PyInstaller, and 7-Zip, plus a verify-your-setup command block.
