@@ -63,7 +63,7 @@ ruff --version             # should print a version
 ```
 
 > [!TIP]
-> You do **not** need Python, 7-Zip, or anything else installed on a friend's PC if you give them a copied app folder that includes `runtime/`. The frozen exe is fully self-contained. The only thing a fresh copy needs is a one-time registry step:
+> You do **not** need Python, 7-Zip, or anything else installed on a friend's PC if you give them a copied app folder that includes `runtime/` — **but GitHub doesn't ship `runtime/` or `dist/`**. Build the frozen exe once on your machine (`python tools\build_frozen.py`, needs Python 3.13, PyInstaller, and 7-Zip), then copy the whole `dist\steam_game_organizer\` folder to your friend. The frozen exe is fully self-contained. The only thing a fresh copy needs is a one-time registry step:
 > ```powershell
 > runtime\python.exe tools\install_protocol_handler.py
 > ```

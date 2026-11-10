@@ -9,6 +9,14 @@
 
 ## 9.33
 
+### 2026-11-10 — Corrected "frozen exe needs nothing installed" note (GitHub doesn't ship runtime/)
+
+- `README.md`: Corrected the setup tip — GitHub only has source code (`runtime/`, `dist/`, `build/` are gitignored). Users must build the frozen exe once with `python tools\build_frozen.py` (needs Python 3.13, PyInstaller, 7-Zip) before copying `dist\steam_game_organizer\` to a friend's PC.
+- `AGENTS.md`: Same correction in the Prerequisites tip — clarified that GitHub doesn't ship `runtime/` or `dist/`, and the build step is required before copying to another PC.
+- Changelog entry added in the same change as the doc change.
+
+---
+
 ### 2026-11-10 — Expanded app-folder explanation in README.md setup section
 
 - `README.md`: Expanded the **App folder** bullet in "2. Set up" to explain concretely where it is for frozen exe installs (`dist\steam_game_organizer\`) versus source installs (the project root), with example paths like `E:\Game Installers\0. Steam Game Organizer\dist\steam_game_organizer\`.

@@ -86,7 +86,11 @@ runtime\python.exe steam_game_organizer.py
 ```
 
 > [!TIP]
-> **Frozen exe users need nothing installed.** The exe ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. A friend's PC with nothing installed can run it just by double-clicking the exe.
+> **Frozen exe users need nothing installed — but GitHub doesn't ship one.** GitHub only has the source code (`runtime/`, `dist/`, and `build/` are gitignored). To get a runnable frozen exe, build it yourself once:
+> ```powershell
+> python tools\build_frozen.py
+> ```
+> This needs Python 3.13, PyInstaller, and 7-Zip on your machine. After the build, `dist\steam_game_organizer\steam_game_organizer.exe` ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. A friend's PC with nothing installed can then run it just by double-clicking the exe.
 
 ### Install what you need
 
