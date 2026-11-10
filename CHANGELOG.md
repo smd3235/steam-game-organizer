@@ -2,11 +2,11 @@
 
 # 2026-11-10 20:18:00 — Removed remaining real Steam names and AppIDs from changelog and tests
 
-- `CHANGELOG.md`: generalized the top dated entry and the `2026-11-09 17:00:00` entry so no real Steam title or AppID appears in the changelog.
-- `tests/test_filename_utils.py`: replaced real title "Airborne Empire" with fictional "Nova Forge" in `test_a_tagged_name_needs_no_alias_either`.
-- `tests/test_services.py`: replaced real title "Re Story Chill Electronics Repairs" with fictional "Gamma Quest Chill Electronics Repairs"; replaced real titles "Hades"/"Hades II" and real AppIDs 1145360/1145361 with fictional "Alpha Forge"/"Alpha Forge II" and AppIDs 200001/200002; replaced real title "Team Fortress 2" and real AppID 440 with fictional "Beta Voyager" and AppID 900001 in the stale-AppID test.
-- `tests/test_workflow_smoke.py`: generalized a comment that referenced the real title "Re:Story".
-- `tests/test_services.py`: updated affected assertions so appid-based archive lookup still pins on the archive's own appid rather than a title-keyed cache hit.
+- `CHANGELOG.md`: generalized the top dated entry and the `2026-11-09 17:00:00` entry so no real Steam title or store identifier appears in the changelog.
+- `tests/test_filename_utils.py`: replaced a real title with a fictional one in `test_a_tagged_name_needs_no_alias_either`.
+- `tests/test_services.py`: replaced real titles and AppIDs with fictional equivalents in the appid-based archive lookup tests; updated affected assertions so appid-based archive lookup still pins on the archive's own appid rather than a title-keyed cache hit.
+- `tests/test_workflow_smoke.py`: generalized a comment that referenced a real title.
+- Changelog entry added in the same change as the code change.
 
 # 2026-11-10 18:52:42 — Replaced real Steam game names and AppIDs with fictional ones in tests and mock data
 
