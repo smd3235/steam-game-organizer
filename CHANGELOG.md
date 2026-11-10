@@ -25,6 +25,12 @@
 
 ## 9.33
 
+### 2026-11-10 21:15:00 — Expanded README.md Quick links table with detailed code-section descriptions
+
+- `README.md`: replaced one-line "What it does" descriptions in the 🔗 Quick links table with multi-sentence, paragraph-length descriptions for all 35 code sections (entry point, config, constants, models, URI actions, logger, application, controller, all 13 services, 9 UI modules, 6 utils, diagnostics, 3 build tools). Each entry now covers the class/function names, key behaviors, file paths it touches, and safety invariants.
+- No source code changed — docs-only change, no frozen exe rebuild required.
+- Changelog entry added in the same change as the doc change.
+
 ### 2026-11-10 21:05:00 — Expanded README.md with detailed feature sections
 
 - `README.md`: added ⌨️ Command-line flags section (`--setup`, `--uri`, `--version`, `--diagnostics`, `--health`, `--mock`) with examples.
