@@ -115,7 +115,12 @@ class TestEvidenceShape(unittest.TestCase):
     def test_a_description_win_names_the_rule_and_its_keywords(self):
         category, evidence = suggest_category_with_evidence(["Simulation"], "Alpha Forge", "Build and manage a factory with automation")
         self.assertEqual(category, "Automation")
-        self.assertEqual(evidence, CategoryEvidence(chosen="Automation", score=104, basis="description", terms=("automation", "factory", "build and manage a factory"), runners_up=(("Simulation", 54),), considered=2))
+        self.assertEqual(evidence, CategoryEvidence(chosen="Automation", score=104,
+                                                    basis="description",
+                                                    terms=("automation", "factory",
+                                                             "build and manage a factory"),
+                                                    runners_up=(("Simulation", 54),),
+                                                    considered=2))
 
     def test_a_tag_win_is_a_rule_that_only_saw_tags_or_steam_categories(self):
         # An ignored genre leaves the field to the rule, so a hit that only the tags
@@ -182,7 +187,12 @@ class TestEvidenceIsSafeToCarry(unittest.TestCase):
 
     def test_the_value_is_json_native(self):
         payload = json.dumps(dataclasses.asdict(self._evidence()))
-        self.assertEqual(json.loads(payload), {"chosen": "Automation", "score": 104, "basis": "description", "terms": ["automation", "factory", "build and manage a factory"], "runners_up": [["Simulation", 54]], "considered": 2})
+        self.assertEqual(json.loads(payload), {"chosen": "Automation", "score": 104,
+                                               "basis": "description",
+                                               "terms": ["automation", "factory",
+                                                         "build and manage a factory"],
+                                               "runners_up": [["Simulation", 54]],
+                                               "considered": 2})
 
     def test_the_value_is_frozen(self):
         evidence = suggest_category_with_evidence(["Simulation"], "Plain Title", "An ordinary description")[1]
@@ -251,7 +261,12 @@ class TestControllerRecordsEvidence(unittest.TestCase):
             results = self._run(controller.verify_all, [self._archive()], lambda *a: None)
             self.assertEqual(results[0].decision.category, "Automation")
             self.assertEqual(results[0].decision.suggested_category, "Automation")
-            self.assertEqual(results[0].decision.evidence, CategoryEvidence(chosen="Automation", score=101, basis="description", terms=("automate", "factory"), runners_up=(("Simulation", 53),), considered=2))
+            self.assertEqual(results[0].decision.evidence,
+                             CategoryEvidence(chosen="Automation", score=101,
+                                              basis="description",
+                                              terms=("automate", "factory"),
+                                              runners_up=(("Simulation", 53),),
+                                              considered=2))
             jobs.shutdown()
 
     def test_verify_one_attaches_the_evidence_to_the_decision(self):
@@ -265,7 +280,12 @@ class TestControllerRecordsEvidence(unittest.TestCase):
             result = self._run(controller.verify_one, self._archive(), "Factory Game")
             self.assertEqual(result.decision.category, "Automation")
             self.assertEqual(result.decision.suggested_category, "Automation")
-            self.assertEqual(result.decision.evidence, CategoryEvidence(chosen="Automation", score=101, basis="description", terms=("automate", "factory"), runners_up=(("Simulation", 53),), considered=2))
+            self.assertEqual(result.decision.evidence,
+                             CategoryEvidence(chosen="Automation", score=101,
+                                              basis="description",
+                                              terms=("automate", "factory"),
+                                              runners_up=(("Simulation", 53),),
+                                              considered=2))
             self.assertEqual(result.decision.accepted, False)
             jobs.shutdown()
 
@@ -312,8 +332,12 @@ class TestControllerRecordsEvidence(unittest.TestCase):
             controller = self._controller(logger, jobs, self._Steam())
             with patch.object(logger, "debug") as debug:
                 self._run(controller.verify_all, [self._archive()], lambda *a: None)
-            messages = [call.args[1] for call in debug.call_args_list if call.args and call.args[0] == "CATEGORY"]
-            self.assertTrue(any("basis=[description]" in m and "terms=[automate|factory]" in m and "runners_up=[Simulation:53]" in m for m in messages), "the debug log no longer says which rule won and what it matched: %r" % (messages,))
+            messages = [call.args[1] for call in debug.call_args_list
+                        if call.args and call.args[0] == "CATEGORY"]
+            self.assertTrue(any("basis=[description]" in m and "terms=[automate|factory]" in m
+                                 and "runners_up=[Simulation:53]" in m for m in messages),
+                            "the debug log no longer says which rule won and what it matched: %r"
+                            % (messages,))
             jobs.shutdown()
 
 

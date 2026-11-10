@@ -33,8 +33,15 @@ BANNED = (
     ("xdg-mime / mimeapps.list", lambda text: "xdg-mime" in text or "mimeapps.list" in text, "the XDG association mechanism, replaced by HKCR in html_handler()."),
     ("flatpak", lambda text: "flatpak" in text, "the Flatpak sandbox. v9.19 removed the host re-exec and this pass removed the remaining flatpak run/info browser fallback in the review view."),
     ("/proc/meminfo", lambda text: "/proc/meminfo" in text, "the Linux memory source. Windows asks GlobalMemoryStatusEx; keeping a second reading meant a second answer to one question."),
-    ("/home/<user> paths", lambda text: any(p in text for p in ("/home/", "/root/", "/usr/bin")), "POSIX home and binary paths. They cannot resolve on this platform, and a catalog that shows one tells the reader to look somewhere that does not exist."),
-    ("Linux browser package names", lambda text: any(n in text for n in ("google-chrome-stable", "chromium-browser", "com.google.ChromeDev", "org.chromium.Chromium")), "Debian package names and Flatpak app ids. Chrome installs into Program Files without putting itself on PATH, so every one of these lookups returned None on this machine."),
+    ("/home/<user> paths",
+     lambda text: any(p in text for p in ("/home/", "/root/", "/usr/bin")),
+     "POSIX home and binary paths. They cannot resolve on this platform, and a catalog "
+     "that shows one tells the reader to look somewhere that does not exist."),
+    ("Linux browser package names",
+     lambda text: any(n in text for n in ("google-chrome-stable", "chromium-browser",
+                                          "com.google.ChromeDev", "org.chromium.Chromium")),
+     "Debian package names and Flatpak app ids. Chrome installs into Program Files without "
+     "putting itself on PATH, so every one of these lookups returned None on this machine."),
 )
 
 

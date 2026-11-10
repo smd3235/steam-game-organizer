@@ -5,6 +5,25 @@
 
 ## 9.33
 
+### 2026-11-10 23:25:00 — tests/ formatting and readability improvements
+
+- `tests/test_archive_service.py`: Broke up the nested `patch()`/`patch.object()` `with` statement into separate variables for readability.
+- `tests/test_contrast.py`: Split `import os, sys, unittest` into separate import lines.
+- `tests/test_dead_code.py`: Broke up the long `REMOVED` tuple entry for `jobs.JobContext.wait_for_cancel` across multiple lines.
+- `tests/test_zero_skips.py`: Broke up the `SKIP_NAMES` frozenset across multiple lines.
+- `tests/test_lifecycle.py`: Split `import unittest, time` into separate import lines.
+- `tests/test_library_summary.py`: Broke up long `assertEqual` calls for `categories_for_genres(["Casual", "RPG"])` and `precedent_for("Bewolba Studios")` across multiple lines.
+- `tests/test_filename_utils.py`: Broke up the long `REAL` list across multiple lines.
+- `tests/test_catalog_page.py`: Broke up `_write_game()` signature, two `.sgo-extract-info` `write_text` calls, and the `for attr in (...)` tuple across multiple lines.
+- `tests/test_catalog_render.py`: Broke up the `self._game(...)` call across multiple lines.
+- `tests/test_category_evidence.py`: Broke up `CategoryEvidence(...)` constructions in `test_a_description_win_names_the_rule_and_its_keywords`, `test_the_value_is_json_native`, two `verify_all`/`verify_one` evidence assertions, and the debug-log `assertTrue` across multiple lines.
+- `tests/test_review_context_panels.py`: Broke up the `for decision in (...)` tuple and the `OrganizationDecision(...)` construction across multiple lines.
+- `tests/test_platform.py`: Broke up the two long `BANNED` tuple entries (`/home/<user> paths` and `Linux browser package names`) across multiple lines.
+- `tests/test_ui_geometry.py`: Broke up `ConversionResult(...)`, the `archives` list, three `for event in (...)` tuples, two `repair_update`/`progress_update` calls across multiple lines.
+- `tests/test_workflow_smoke.py`: Broke up three long `assertNotIn`/`assertEqual`/`assertIn` calls across multiple lines.
+- `tests/test_services.py`: Broke up `type("Services", ...)`, `unreadable` dict, `cases` list, `return b"..."` bytes concatenation, `cache.write_text(json.dumps(...))`, `artwork.download_assets` lambda, `assertEqual(observed, ...)`, `assertEqual(max(...), ...)`, two `assertIn(stages[-1], ...)` calls, and a `with patch.object(...)` block across multiple lines.
+- No behavior change.
+
 ### 2026-11-10 23:10:00 — services/ formatting and readability improvements
 
 - `services/archive_service.py`: Split `import os, re, subprocess, tempfile, zipfile` into separate import lines. `_remove_zip_password_external` now passes `DEFAULT_ZIP_PASSWORD` to 7z (`-p" + DEFAULT_ZIP_PASSWORD`) instead of hardcoded `-p123`.

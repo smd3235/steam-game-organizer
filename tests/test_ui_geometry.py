@@ -275,10 +275,20 @@ class TestUiGeometry(unittest.TestCase):
                 item.decision.accepted = True
                 item.decision.category = "Simulation"
                 item.steam = SteamMatch(found=True, appid="1", name=name)
-                item.conversion = ConversionResult(status=status, message=message, source_format="RAR", target_format="7Z" if status in ("converted", "rebuilt") else "", final_name=f"{name}.7z", final_size=1_500_000_000, free_bytes_at_failure=2_000_000 if status == "failed" else 0)
+                item.conversion = ConversionResult(
+                    status=status, message=message, source_format="RAR",
+                    target_format="7Z" if status in ("converted", "rebuilt") else "",
+                    final_name=f"{name}.7z", final_size=1_500_000_000,
+                    free_bytes_at_failure=2_000_000 if status == "failed" else 0)
                 return item
 
-            archives = [archive("Good Game", "converted"), archive("Bad Game", "failed", "7z build exited 255: Break signaled"), archive("Untouched", "skipped", "7z/7za not installed"), archive("Fine", "not_needed"), archive("Declined", "")]
+            archives = [
+                archive("Good Game", "converted"),
+                archive("Bad Game", "failed", "7z build exited 255: Break signaled"),
+                archive("Untouched", "skipped", "7z/7za not installed"),
+                archive("Fine", "not_needed"),
+                archive("Declined", ""),
+            ]
             archives[-1].decision.accepted = False
             archives[-1].decision.skipped = True
             done.show(archives)
@@ -427,7 +437,12 @@ class TestUiGeometry(unittest.TestCase):
             organize.work.grid()
             organize.timeline.reset()
             root.update_idletasks()
-            for event in ({"stage": "organizing", "file": "Bad.rar", "game": "Bad", "index": 1, "total": 1}, {"stage": "extracting", "file": "Bad.rar", "source_bytes": 900}, {"stage": "compressing", "file": "Bad.rar", "extracted_bytes": 1800}, {"stage": "failed", "file": "Bad.rar", "message_text": "7z build exited 255: Break signaled"}):
+            for event in (
+                {"stage": "organizing", "file": "Bad.rar", "game": "Bad", "index": 1, "total": 1},
+                {"stage": "extracting", "file": "Bad.rar", "source_bytes": 900},
+                {"stage": "compressing", "file": "Bad.rar", "extracted_bytes": 1800},
+                {"stage": "failed", "file": "Bad.rar", "message_text": "7z build exited 255: Break signaled"},
+            ):
                 organize.progress_update(event)
             root.update_idletasks()
             states = dict(organize.timeline.states)
@@ -498,7 +513,11 @@ class TestUiGeometry(unittest.TestCase):
             archive = GameArchive(Path("/tmp/Alpha Quest v1.7z"), "Alpha Quest v1", "Alpha Quest", identity_key("alpha quest"), ".7z")
             archive.steam = SteamMatch(found=True, appid="1", name="Alpha Quest", confidence="High")
             review.archives = [archive]
-            for event, expected in (({"asset": "cover", "state": "start", "detail": "Alpha Quest"}, "start"), ({"asset": "cover", "state": "downloaded", "detail": "3 of 5  •  412 KB"}, "412 KB"), ({"asset": "hero", "state": "failed", "detail": "TimeoutError"}, "failed")):
+            for event, expected in (
+                ({"asset": "cover", "state": "start", "detail": "Alpha Quest"}, "start"),
+                ({"asset": "cover", "state": "downloaded", "detail": "3 of 5  •  412 KB"}, "412 KB"),
+                ({"asset": "hero", "state": "failed", "detail": "TimeoutError"}, "failed"),
+            ):
                 review._progress(1, 1, archive, archive.steam, None, event)
                 root.update_idletasks()
                 text = review.progress.cget("text")
@@ -701,7 +720,11 @@ class TestUiGeometry(unittest.TestCase):
             scan.begin_scan()
             readings = []
             for percent in (0, 25, 50, 75, 100):
-                scan.repair_update({"stage": "compressing", "file": "Big.zip", "source_bytes": 4 * 1024**3, "extracted_bytes": 9 * 1024**3, "progress": percent / 100, "tool_percent": percent, "tool_file": "data/pak.bin", "level": 9})
+                scan.repair_update(
+                    {"stage": "compressing", "file": "Big.zip",
+                     "source_bytes": 4 * 1024**3, "extracted_bytes": 9 * 1024**3,
+                     "progress": percent / 100, "tool_percent": percent,
+                     "tool_file": "data/pak.bin", "level": 9})
                 readings.append(scan.progress["value"])
             self.assertTrue(all(v > 0 for v in readings), f"the bar sat at zero through the whole conversion: {readings}")
             self.assertEqual(readings, sorted(readings), f"the bar went backwards during one stage: {readings}")
@@ -739,7 +762,11 @@ class TestUiGeometry(unittest.TestCase):
             organize.ctx = object()
             readings = []
             for percent in (0, 25, 50, 75, 100):
-                organize.progress_update({"stage": "compressing", "file": "Big.7z", "source_bytes": 4 * 1024**3, "extracted_bytes": 9 * 1024**3, "progress": percent / 100, "tool_percent": percent, "tool_file": "setup-1.bin", "level": 9})
+                organize.progress_update(
+                    {"stage": "compressing", "file": "Big.7z",
+                     "source_bytes": 4 * 1024**3, "extracted_bytes": 9 * 1024**3,
+                     "progress": percent / 100, "tool_percent": percent,
+                     "tool_file": "setup-1.bin", "level": 9})
                 readings.append(organize.bar["value"])
             self.assertEqual(readings, sorted(readings), f"the bar went backwards across one stage: {readings}")
             self.assertLess(readings[0], readings[-1], f"the bar never moved during the compress: {readings}")
@@ -866,7 +893,12 @@ class TestUiGeometry(unittest.TestCase):
             scan = window.views["scan"]
             scan.begin_scan()
             root.update_idletasks()
-            for event in ({"stage": "audit_done", "message": "Checked 40 game folder(s) — refreshed 12", "checked": 40, "refreshed": 12}, {"stage": "catalog_done", "message": "Catalog generated — 5 page(s) written", "written": 5}):
+            for event in (
+                {"stage": "audit_done", "message": "Checked 40 game folder(s) — refreshed 12",
+                 "checked": 40, "refreshed": 12},
+                {"stage": "catalog_done", "message": "Catalog generated — 5 page(s) written",
+                 "written": 5},
+            ):
                 window._scan_progress(event)
             root.update_idletasks()
             feed = scan.activity.get("1.0", "end")

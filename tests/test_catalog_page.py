@@ -24,7 +24,9 @@ from services.catalog_service import CatalogService
 from services.installer_detect import NEEDS_INSTALL_DIRNAME
 
 
-def _write_game(game_dir: Path, *, name: str, appid: str = "123", archive: str | None = None, release_date: str = "2024-01-01", genres=None, tags=None, description: str = "desc", archive_members=None):
+def _write_game(game_dir: Path, *, name: str, appid: str = "123", archive: str | None = None,
+                release_date: str = "2024-01-01", genres=None, tags=None,
+                description: str = "desc", archive_members=None):
     game_dir.mkdir(parents=True, exist_ok=True)
     if archive:
         arc = game_dir / archive
@@ -50,14 +52,18 @@ class CatalogPageInteractiveContracts(unittest.TestCase):
         ready_dest.mkdir(parents=True)
         (ready_dest / "game.exe").write_bytes(b"MZ")
         arc = self.lib / "Action" / "Ready - 2024" / "Ready.zip"
-        (ready_dest / ".sgo-extract-info").write_text(json.dumps({"extracted_root": str(ready_dest), "archive_size": arc.stat().st_size, "archive_mtime_ns": arc.stat().st_mtime_ns, "extracted_at": "2026-01-01 00:00", "needs_install": False}), encoding="utf-8")
+        (ready_dest / ".sgo-extract-info").write_text(json.dumps({"extracted_root": str(ready_dest),
+            "archive_size": arc.stat().st_size, "archive_mtime_ns": arc.stat().st_mtime_ns,
+            "extracted_at": "2026-01-01 00:00", "needs_install": False}), encoding="utf-8")
         # Needs-install extracted game
         _write_game(self.lib / "Repacks" / "SetupGame - 2024", name="SetupGame", appid="102", archive="SetupGame.zip", genres=["Simulation"], archive_members={"setup.exe": b"MZ", "setup-1.bin": b"x" * 10})
         inst = self.extract / NEEDS_INSTALL_DIRNAME / "SetupGame"
         inst.mkdir(parents=True)
         (inst / "setup.exe").write_bytes(b"MZ")
         arc2 = self.lib / "Repacks" / "SetupGame - 2024" / "SetupGame.zip"
-        (inst / ".sgo-extract-info").write_text(json.dumps({"extracted_root": str(inst), "archive_size": arc2.stat().st_size, "archive_mtime_ns": arc2.stat().st_mtime_ns, "extracted_at": "2026-01-01 00:00", "needs_install": True}), encoding="utf-8")
+        (inst / ".sgo-extract-info").write_text(json.dumps({"extracted_root": str(inst),
+            "archive_size": arc2.stat().st_size, "archive_mtime_ns": arc2.stat().st_mtime_ns,
+            "extracted_at": "2026-01-01 00:00", "needs_install": True}), encoding="utf-8")
         # Not extracted
         _write_game(self.lib / "Action" / "Fresh - 2024", name="Fresh", appid="103", archive="Fresh.zip")
         self.svc = CatalogService(self.logger, extract_folders=[self.extract])
@@ -85,7 +91,12 @@ class CatalogPageInteractiveContracts(unittest.TestCase):
             self.assertRegex(self.html, rf'id=["\']{re.escape(rid)}["\']', f"missing interactive control #{rid}")
 
     def test_sort_filter_chip_and_path_controls_have_expected_attrs(self):
-        for attr in ('data-sort="name"', 'data-sort="date"', 'data-sort="size"', "data-filter=", "data-batch=", "data-extract=", "data-open-folder=", "data-rel=", "data-extracted-rel=", "data-extracted-path=", 'data-setup="steamgameorganizer://setup"', 'data-refresh="steamgameorganizer://refresh-catalog"', 'aria-label="Search games"'):
+        for attr in ('data-sort="name"', 'data-sort="date"', 'data-sort="size"', "data-filter=",
+                     "data-batch=", "data-extract=", "data-open-folder=", "data-rel=",
+                     "data-extracted-rel=", "data-extracted-path=",
+                     'data-setup="steamgameorganizer://setup"',
+                     'data-refresh="steamgameorganizer://refresh-catalog"',
+                     'aria-label="Search games"'):
             self.assertIn(attr, self.html, f"missing control/data attribute: {attr}")
 
     def test_action_buttons_use_expected_labels_and_protocol_hooks(self):

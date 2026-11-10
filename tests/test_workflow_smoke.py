@@ -108,7 +108,10 @@ class TestRealWorkflow(unittest.TestCase):
         settings_path = ROOT / "config" / "settings.json"
         if settings_path.is_file():
             configured = settings_path.read_text(encoding="utf-8")
-            self.assertNotIn("organizer-workflow-", configured, "settings.json still names a temporary library from an earlier test run; the library has been deleted and the app will not start until this is corrected")
+            self.assertNotIn("organizer-workflow-", configured,
+                             "settings.json still names a temporary library from an earlier "
+                             "test run; the library has been deleted and the app will not "
+                             "start until this is corrected")
 
         self.root = tk.Tk()
         self.addCleanup(close_root, self.root)
@@ -191,7 +194,10 @@ class TestRealWorkflow(unittest.TestCase):
         self._run_scan()
 
         self.assertTrue(sandbox_settings.is_file(), f"the scan saved no settings at all, so this proves nothing: {sandbox_settings} is missing")
-        self.assertEqual(str(self.library), json.loads(sandbox_settings.read_text(encoding="utf-8"))["library_root"], "the scan did not save the library it scanned, so it did not exercise config.save()")
+        self.assertEqual(str(self.library),
+                         json.loads(sandbox_settings.read_text(encoding="utf-8"))["library_root"],
+                         "the scan did not save the library it scanned, so it did not "
+                         "exercise config.save()")
         self.assertNotIn(b"organizer-workflow-", before or b"", "settings.json already named a temporary directory before this test ran")
         self.assertEqual(before, settings.read_bytes() if settings.is_file() else None, f"the scan rewrote the repository settings file {settings.name}")
 
@@ -269,7 +275,11 @@ class TestRealWorkflow(unittest.TestCase):
         archives = self.window.state.get().scan_result.archives
         accepted = [a for a in archives if a.decision.accepted]
         self.assertTrue(accepted, "approve_all accepted nothing, so Organize would have had no work")
-        self.assertEqual([], [a.steam.appid for a in accepted if a.steam.appid not in MOCK_APPIDS], "the Steam fixture handed out an AppID this module seeds no artwork for, so the artwork assertion below would fail for a reason of its own")
+        self.assertEqual([], [a.steam.appid for a in accepted
+                              if a.steam.appid not in MOCK_APPIDS],
+                         "the Steam fixture handed out an AppID this module seeds no "
+                         "artwork for, so the artwork assertion below would fail for a "
+                         "reason of its own")
 
         # Mock discovery hands back paths under /mock/library that were never written, so a move has nothing
         # to move and the run correctly reports nothing organized - which would make every assertion below

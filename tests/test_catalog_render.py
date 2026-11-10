@@ -86,7 +86,10 @@ class CatalogRenderStates(unittest.TestCase):
         self.assertNotRegex(html, r"Ready[\s\S]{0,200}btn-reextract")
 
     def test_extracted_installer_renders_open_installer(self):
-        g, arc = self._game("Repacks", "Setup - 2024", "Setup.zip", {"appid": "3", "name": "Setup", "release_date": "2024", "genres": ["Simulation"], "description": "d"}, members={"setup.exe": b"MZ", "setup-1.bin": b"x"})
+        g, arc = self._game("Repacks", "Setup - 2024", "Setup.zip",
+                            {"appid": "3", "name": "Setup", "release_date": "2024",
+                             "genres": ["Simulation"], "description": "d"},
+                            members={"setup.exe": b"MZ", "setup-1.bin": b"x"})
         self._marker(self.extract / NEEDS_INSTALL_DIRNAME / "Setup", arc, needs_install=True)
         html = self._render()
         self.assertIn("Open installer", html)

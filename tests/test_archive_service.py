@@ -93,7 +93,12 @@ class ZipBranch(unittest.TestCase):
 class SevenZListingBranch(unittest.TestCase):
     def _patched(self, tmp, stdout, returncode=0):
         tool, _reason = ExtractService.find_tool() or ("fake-7z", None)
-        with patch.object(ExtractService, "find_tool", return_value=(tool, None)), patch("services.archive_service.subprocess.run", return_value=subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout)) as mocked:
+        run = patch(
+            "services.archive_service.subprocess.run",
+            return_value=subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout),
+        )
+        find_tool = patch.object(ExtractService, "find_tool", return_value=(tool, None))
+        with find_tool, run as mocked:
             sig = _service(tmp).archive_installer_kind(tmp / "game.7z")
         return sig, mocked
 

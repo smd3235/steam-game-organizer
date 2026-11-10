@@ -255,7 +255,10 @@ class TestShape(unittest.TestCase):
         self.assertEqual(summary.categories_for_genres(["Casual"]), (("Puzzle", 3), ("RPG", 1)))
         self.assertEqual(summary.categories_for_genres(["No Such Genre"]), (), "a genre nobody has is an answer, not an error")
         self.assertEqual(summary.categories_for_genres(["RPG"]), (("RPG", 1), ("Strategy", 1)))
-        self.assertEqual(summary.categories_for_genres(["Casual", "RPG"]), (("Puzzle", 3), ("RPG", 2), ("Strategy", 1)), "RPG scores 2 not 1: its one game carries both genres asked about, which is the documented sum. A display wanting per-genre numbers reads genre_placement.")
+        self.assertEqual(summary.categories_for_genres(["Casual", "RPG"]),
+                         (("Puzzle", 3), ("RPG", 2), ("Strategy", 1)),
+                         "RPG scores 2 not 1: its one game carries both genres asked about, which is the "
+                         "documented sum. A display wanting per-genre numbers reads genre_placement.")
         self.assertEqual(summary.categories_for_genres(None), ())
         self.assertEqual(summary.categories_for_genres(["  rpg  "]), (("RPG", 1), ("Strategy", 1)), "a Steam genre string arrives padded and must still match")
 
@@ -270,7 +273,9 @@ class TestShape(unittest.TestCase):
 
         summary = self._summary(build)
         self.assertEqual(sorted(summary.developer_placement), ["bewolba studios"], "a single-game developer must not appear, and the key must be casefolded")
-        self.assertEqual(summary.precedent_for("Bewolba Studios"), (("Crying Suns", "Strategy"), ("Stoneshard", "RPG"), ("Tower of Babel", "Puzzle")), "listed by game name, not by the order the categories were walked")
+        self.assertEqual(summary.precedent_for("Bewolba Studios"),
+                         (("Crying Suns", "Strategy"), ("Stoneshard", "RPG"), ("Tower of Babel", "Puzzle")),
+                         "listed by game name, not by the order the categories were walked")
         self.assertEqual(summary.precedent_for("  bewolba studios "), summary.precedent_for("BEWOLBA STUDIOS"), "a Steam developer string arrives padded and inconsistently cased")
         for single in ("Allerton Apps", "", "Nobody At All"):
             self.assertEqual(summary.precedent_for(single), (), f"{single!r} produced a precedent")

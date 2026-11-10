@@ -16,7 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 # Each entry says what replaced it, because "this is unused" is the finding that gets deleted along with the
 # comment explaining why it was safe to delete.
 REMOVED = [
-    (jobs.JobContext, "wait_for_cancel", "JobContext.cancelled is what the tool watcher polls. The watcher waits on its own local Event so it can time out and release the thread, which is the opposite of what this method did."),
+    (jobs.JobContext, "wait_for_cancel",
+     "JobContext.cancelled is what the tool watcher polls. The watcher waits on its own local Event so it can "
+     "time out and release the thread, which is the opposite of what this method did."),
     (core.constants, "CATEGORY_GENRES", "canonical_category() plus CATEGORY_ALIASES and the scoring pass in suggest_category() replaced this lookup table."),
     (core.exceptions, "ConfigurationError", "Config.load() reports a bad settings file by returning defaults, not by raising."),
     (core.exceptions, "ServiceError", "No service raises or catches it; each reports its own failure through the event stream."),

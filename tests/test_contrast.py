@@ -6,7 +6,9 @@ colour pair the app actually paints, which is what catches a label that renders 
 Run directly for a report:  python3 tests/test_contrast.py
 """
 
-import os, sys, unittest
+import os
+import sys
+import unittest
 
 import pytest
 

@@ -671,7 +671,11 @@ class TestServices(unittest.TestCase):
             fresh.write_text("new copy")
             logger = AppLogger(Path(d) / "x.log")
             jobs = JobManager()
-            services = type("Services", (), {"organizer": OrganizerService(logger, convert_archives=False), "rollback": RollbackService(Path(d), logger), "catalog": type("Catalog", (), {"generate": lambda *a, **k: None})()})()
+            services = type(
+                "Services", (),
+                {"organizer": OrganizerService(logger, convert_archives=False),
+                 "rollback": RollbackService(Path(d), logger),
+                 "catalog": type("Catalog", (), {"generate": lambda *a, **k: None})()})()
             bus = EventBus()
             controller = AppController(StateStore(), bus, logger, services, jobs)
             failures = []
@@ -1877,7 +1881,13 @@ class TestServices(unittest.TestCase):
         from core.logger import AppLogger
         from services.rollback_service import RollbackService
 
-        unreadable = {"a truncated write": '[{"source": "C:\\\\a\\\\Game.zip", "targ', "an object rather than a list": "{}", "an empty list": "[]", "a bare string": '"hello"', "a number": "42", "rows that are not objects": "[1, 2, 3]", "a row missing its keys": '[{"target": "C:\\\\b\\\\Game.zip"}]'}
+        unreadable = {
+            "a truncated write": '[{"source": "C:\\\\a\\\\Game.zip", "targ',
+            "an object rather than a list": "{}", "an empty list": "[]",
+            "a bare string": '"hello"', "a number": "42",
+            "rows that are not objects": "[1, 2, 3]",
+            "a row missing its keys": '[{"target": "C:\\\\b\\\\Game.zip"}]',
+        }
         for label, text in unreadable.items():
             with TemporaryDirectory() as d:
                 root = Path(d)
@@ -2262,7 +2272,13 @@ class TestServices(unittest.TestCase):
 
     def test_query_variants_resolve_edition_and_release_tag_suffixes_generically(self):
         service = _steam(self, mock=True)
-        cases = [("Delta Realm Incremental", "Delta Realm"), ("Ball XPit20260808", "BALL x PIT"), ("Kingdoms And Castles123r6s", "Kingdoms and Castles"), ("Flotsam101f7", "Flotsam"), ("Epsilon Online Tenoke", "Epsilon Online")]
+        cases = [
+            ("Delta Realm Incremental", "Delta Realm"),
+            ("Ball XPit20260808", "BALL x PIT"),
+            ("Kingdoms And Castles123r6s", "Kingdoms and Castles"),
+            ("Flotsam101f7", "Flotsam"),
+            ("Epsilon Online Tenoke", "Epsilon Online"),
+        ]
         for normalized, official in cases:
             variants = service._query_variants(normalized, normalized, None)
             self.assertIn(identity_key(official), [identity_key(v) for v in variants])
@@ -2745,7 +2761,9 @@ class TestArtworkImageShape(unittest.TestCase):
 
     def _jpeg(self, width, height):
         """A minimal JPEG carrying just enough structure for the frame header to be found."""
-        return b"\xff\xd8" + b"\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00" + b"\xff\xc0\x00\x10\x08" + height.to_bytes(2, "big") + width.to_bytes(2, "big") + b"\x03\x01\x11\x00\x02\x11\x01\x03\x11\x01" + b"\xff\xd9"
+        return (b"\xff\xd8" + b"\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+                + b"\xff\xc0\x00\x10\x08" + height.to_bytes(2, "big") + width.to_bytes(2, "big")
+                + b"\x03\x01\x11\x00\x02\x11\x01\x03\x11\x01" + b"\xff\xd9")
 
     def test_the_shape_is_read_out_of_the_file(self):
         from services.artwork_service import image_shape, shape_name
@@ -2961,7 +2979,13 @@ class TestStoreApiInsteadOfScrapedHtml(unittest.TestCase):
 
         with TemporaryDirectory() as d:
             cache = Path(d) / "steam-matches.json"
-            cache.write_text(json.dumps({"kept": {"found": True, "appid": "123", "name": "Example"}, "unfound": {"found": False, "appid": "123", "name": "Example"}, "notanid": {"found": True, "appid": "abc", "name": "Example"}, "noname": {"found": True, "appid": "123", "name": ""}, "notadict": "Example"}))
+            cache.write_text(
+                json.dumps({
+                    "kept": {"found": True, "appid": "123", "name": "Example"},
+                    "unfound": {"found": False, "appid": "123", "name": "Example"},
+                    "notanid": {"found": True, "appid": "abc", "name": "Example"},
+                    "noname": {"found": True, "appid": "123", "name": ""},
+                    "notadict": "Example"}))
             service = self.service(d, cache_file=cache)
             self.assertEqual(sorted(service.cache), ["kept"])
 
@@ -3062,7 +3086,12 @@ class TestAuditProgress(unittest.TestCase):
             root = self._library(Path(d), ["Alpha - 2020-01-01"])
             library, artwork, organizer = self._services(root)
             seen = []
-            artwork.download_assets = lambda *a, **k: [k["on_progress"]({"asset": "cover", "state": "start", "detail": ""}), k["on_progress"]({"asset": "cover", "state": "downloaded", "detail": "42 KB"}), k["on_progress"]({"asset": "hero", "state": "failed", "detail": "HTTPError"})][-1] or ArtworkResult()
+            artwork.download_assets = (
+                lambda *a, **k:
+                [k["on_progress"]({"asset": "cover", "state": "start", "detail": ""}),
+                 k["on_progress"]({"asset": "cover", "state": "downloaded", "detail": "42 KB"}),
+                 k["on_progress"]({"asset": "hero", "state": "failed", "detail": "HTTPError"})][-1]
+                or ArtworkResult())
             library.audit(root, artwork, organizer, None, on_progress=seen.append)
             messages = [event["message"] for event in seen if event.get("stage") == "audit_item"]
             self.assertTrue(any("downloaded" in message for message in messages), messages)
@@ -3138,7 +3167,11 @@ class TestPartialArchiveSafety(unittest.TestCase):
             finally:
                 OrganizerService._run_tool = original
             self.assertEqual(converted, 1, "the conversion did not run")
-            self.assertEqual(observed, [False], "the final .7z name existed while the build was still running, so an interrupted build would look like a complete archive to anything scanning the folder")
+            self.assertEqual(
+                observed, [False],
+                "the final .7z name existed while the build was still running, so an "
+                "interrupted build would look like a complete archive to anything scanning "
+                "the folder")
 
     def test_the_replacement_is_built_outside_the_game_folder(self):
         # The staging folder exists so a game folder being converted holds only its source. Anything reading
@@ -3380,7 +3413,11 @@ class TestPartialArchiveSafety(unittest.TestCase):
             stub = game / "Stub.Game.v1.7z"
             stub.write_bytes(b"")
             os.utime(stub, (time.time() + 60, time.time() + 60))
-            self.assertEqual(max([source, stub], key=OrganizerService(AppLogger(root / "log.log"))._path_promotion_key), stub, "this test only means something if the stub is the one that wins promotion")
+            self.assertEqual(
+                max([source, stub],
+                    key=OrganizerService(AppLogger(root / "log.log"))._path_promotion_key),
+                stub,
+                "this test only means something if the stub is the one that wins promotion")
             service = LibraryService(AppLogger(root / "log.log"))
             moved = service.enforce_single_archive(root, OrganizerService(AppLogger(root / "log.log")))
             self.assertEqual(moved, 0, "an archive was moved aside on the strength of an empty file")
@@ -3514,7 +3551,10 @@ class TestConversionToggle(unittest.TestCase):
             run_tool.assert_not_called()
             stages = [event.get("stage") for event in events]
             self.assertTrue(stages, "the conversion reported nothing at all")
-            self.assertIn(stages[-1], ("converted", "failed", "skipped"), f"the last stage was {stages[-1]!r}, which the organize view does not treat as finished, so the timeline stays on the stage it had reached")
+            self.assertIn(
+                stages[-1], ("converted", "failed", "skipped"),
+                f"the last stage was {stages[-1]!r}, which the organize view does not treat "
+                f"as finished, so the timeline stays on the stage it had reached")
 
     def test_a_matched_7z_that_needs_no_rename_still_finishes_its_stage(self):
         """The other "nothing to do" branch: Steam matched, but the folder inside is already named right.
@@ -3533,12 +3573,18 @@ class TestConversionToggle(unittest.TestCase):
                 archive.writestr("Named Game/game/main.exe", "binary")
             events = []
             service = OrganizerService(AppLogger(root / "log.log"), convert_archives=lambda: True)
-            with patch.object(service, "_source_is_intact", return_value=True), patch.object(service, "_extraction_is_short", return_value=False), patch.object(service, "_run_tool", return_value=(0, "")), patch.object(service, "_find_generic_content_folder", return_value=None):
+            with patch.object(service, "_source_is_intact", return_value=True), \
+                 patch.object(service, "_extraction_is_short", return_value=False), \
+                 patch.object(service, "_run_tool", return_value=(0, "")), \
+                 patch.object(service, "_find_generic_content_folder", return_value=None):
                 result = service._repack_with_official_name(_RepairArchive(source, "999", "Named Game"), on_progress=events.append, library_root=library)
             stages = [event.get("stage") for event in events]
             self.assertIn("extracting", stages, "the archive should have been extracted before deciding")
             self.assertEqual(result, source)
-            self.assertIn(stages[-1], ("converted", "failed", "skipped"), f"the last stage was {stages[-1]!r}, which the organize view does not treat as finished, so the timeline stays on the stage it had reached")
+            self.assertIn(
+                stages[-1], ("converted", "failed", "skipped"),
+                f"the last stage was {stages[-1]!r}, which the organize view does not treat "
+                f"as finished, so the timeline stays on the stage it had reached")
 
     def test_organizing_still_moves_the_archive_when_conversion_is_off(self):
         # Turning conversion off must never block organizing a game. The archive lands in its game folder

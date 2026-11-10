@@ -111,7 +111,11 @@ class TestReleaseTagTitles(unittest.TestCase):
     # that the two forms collapse to one identity, so the Steam cache is hit and the game is grouped once.
     TAGGED_HYPHENATED = [("Brave-New-Wonders-SteamRip-com", "Brave-New-Wonders"), ("Some-Game-SteamRIP.com", "Some-Game"), ("Rust-RELOADED", "Rust")]
 
-    REAL = ["Stellar Empires", "Time Travelers", "Half-Life 2", "Fear Itself", "Dome Keeper", "Portal 2", "Rust", "Baldurs Gate 3", "Republique", "Perfect Vermin", "The Idle Class", "Multiplayer", "Portable Heirloom"]
+    REAL = [
+        "Stellar Empires", "Time Travelers", "Half-Life 2", "Fear Itself", "Dome Keeper",
+        "Portal 2", "Rust", "Baldurs Gate 3", "Republique", "Perfect Vermin",
+        "The Idle Class", "Multiplayer", "Portable Heirloom",
+    ]
 
     def test_every_tagged_spelling_collapses_to_its_clean_title(self):
         for tagged, clean in self.TAGGED:

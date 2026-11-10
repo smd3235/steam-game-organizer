@@ -28,7 +28,14 @@ TESTS = ROOT / "tests"
 # name what it is looking for, and naming it here is what the exemption below is for. Resolving them through
 # unittest also means a name unittest ever drops is an AttributeError at import, not a guard that quietly stops
 # matching it.
-SKIP_NAMES = frozenset({unittest.SkipTest.__name__, unittest.skip.__name__, unittest.skipIf.__name__, unittest.skipUnless.__name__, unittest.expectedFailure.__name__, unittest.TestCase.skipTest.__name__})
+SKIP_NAMES = frozenset({
+    unittest.SkipTest.__name__,
+    unittest.skip.__name__,
+    unittest.skipIf.__name__,
+    unittest.skipUnless.__name__,
+    unittest.expectedFailure.__name__,
+    unittest.TestCase.skipTest.__name__,
+})
 
 # THE EXEMPTION, stated in full: this file may hold a bare reference to the names in SKIP_NAMES - the table
 # above is made of them - and no other file under tests/ may, anywhere. It is scoped to references rather than to

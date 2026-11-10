@@ -1,4 +1,5 @@
-import unittest, time
+import unittest
+import time
 from app.jobs import JobManager
 from core.exceptions import CancellationError
 

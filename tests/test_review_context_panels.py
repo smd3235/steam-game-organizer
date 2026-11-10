@@ -159,7 +159,10 @@ class CategoryEvidencePanelTests(unittest.TestCase):
         self.assertIn("No category reasoning", text)
 
     def test_the_panel_never_leaves_a_visible_label_with_no_text(self):
-        for decision in (self._decision(basis="genre", score=50, terms=(), considered=0), self._decision(category="Indie", suggested="Horror", basis="description", score=9, terms=("x",), runners_up=(), considered=0), self._decision(category="", suggested="", basis="fallback")):
+        for decision in (self._decision(basis="genre", score=50, terms=(), considered=0),
+                         self._decision(category="Indie", suggested="Horror", basis="description",
+                                        score=9, terms=("x",), runners_up=(), considered=0),
+                         self._decision(category="", suggested="", basis="fallback")):
             self.panel.show(decision, ())
             self.root.update()
             for text in shown(self.panel):
@@ -230,7 +233,11 @@ class ThePopulatedReviewScreenTests(unittest.TestCase):
         self.app.window.show("review")
         archive = GameArchive(Path("Alpha Quest.7z"), "Alpha Quest", "Alpha Quest", "alpha quest", ".7z")
         archive.steam = SteamMatch(found=True, appid="1", name="Alpha Quest", confidence="High", genres=("Horror", "Indie"), description="A long description.", developer="Bewolba Studio", tags=[])
-        archive.decision = OrganizationDecision(category="Indie", suggested_category="Horror", evidence=CategoryEvidence(chosen="Horror", score=93, basis="description", terms=("horror",), runners_up=(("Indie", 85),), considered=3))
+        archive.decision = OrganizationDecision(
+            category="Indie", suggested_category="Horror",
+            evidence=CategoryEvidence(chosen="Horror", score=93, basis="description",
+                                      terms=("horror",), runners_up=(("Indie", 85),),
+                                      considered=3))
         review.archives = [archive]
         review.select(archive)
         self.root.update()
