@@ -25,6 +25,17 @@
 
 ## 9.33
 
+### 2026-11-10 20:30:00 — Removed dated changelog note from README.md; entry lives in CHANGELOG.md
+
+- `README.md`: Removed the inline dated changelog-style note block (lines 3-11) that lived at the top of the file; changelog history belongs only in CHANGELOG.md, not inline in source/docs.
+- `CHANGELOG.md`: added the corresponding dated entry below describing the README overhaul.
+- Changelog entry added in the same change as the doc change.
+
+### 2026-11-10 20:30:00 — README overhaul (entry moved from README.md to CHANGELOG.md)
+
+- `README.md`: comprehensive overhaul — table of contents, overview, version status, public readiness assessment, complete dependency list, test data privacy notes, detailed HH:MM:SS timestamps on all CHANGELOG.md entries.
+- Changelog entry added in the same change as the doc change.
+
 ### 2026-11-10 20:08:00 — Added real-library outlier naming patterns to filename-utils tests
 
 - `tests/test_filename_utils.py`: Extended the `TAGGED` list with bracketed release-group tags found scanning every `.7z` in `E:\Game Installers` (`[FitGirl Repack]` after hyphenated titles) so `normalize_name()` is pinned on real bracketed-tag shapes.
