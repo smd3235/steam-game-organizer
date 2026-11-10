@@ -1,6 +1,11 @@
 import json
 from pathlib import Path
-import os, re, shutil, tempfile, time
+import os
+import re
+import shutil
+import tempfile
+import time
+# Imports split one per line for GitHub readability.
 from core.constants import ARCHIVE_EXTENSIONS
 
 

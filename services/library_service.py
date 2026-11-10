@@ -1,6 +1,12 @@
 from pathlib import Path
 import glob as globmod
-import fnmatch, json, os, re, shutil, time
+import fnmatch
+import json
+import os
+import re
+import shutil
+import time
+# Imports split one per line for GitHub readability.
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.constants import ARCHIVE_EXTENSIONS, LOCK_MARKER, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, ENTRY_POINT
 from core.models import ConversionResult

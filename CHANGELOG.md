@@ -5,6 +5,15 @@
 
 ## 9.33
 
+### 2026-11-10 23:10:00 — services/ formatting and readability improvements
+
+- `services/archive_service.py`: Split `import os, re, subprocess, tempfile, zipfile` into separate import lines. `_remove_zip_password_external` now passes `DEFAULT_ZIP_PASSWORD` to 7z (`-p" + DEFAULT_ZIP_PASSWORD`) instead of hardcoded `-p123`.
+- `services/catalog_service.py`: Split `import sys, threading` and `import json, re, time` into separate import lines.
+- `services/library_service.py`: Split `import fnmatch, json, os, re, shutil, time` into separate import lines.
+- `services/organizer_service.py`: Split `import os, shutil, subprocess, tempfile, threading, time, zipfile` and `import contextlib, json` into separate lines. Broke up the long `from core.constants import ...` line across multiple lines.
+- `services/rollback_service.py`: Split `import os, re, shutil, tempfile, time` into separate import lines.
+- No behavior change.
+
 ### 2026-11-10 23:02:00 — core/ formatting and readability improvements
 
 - `core/logger.py`: Split `import threading, uuid, traceback, sys, json` into separate import lines, one per statement, matching the house style.

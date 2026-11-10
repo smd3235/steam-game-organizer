@@ -4,9 +4,14 @@
 # of one per file. discover() gained a use_cache parameter; batch_extract_service passes False so plan_batch
 # always sees fresh archives. Removed now-unused walk_files import.
 from pathlib import Path
-import os, re, subprocess, tempfile, zipfile
+import os
+import re
+import subprocess
+import tempfile
+import zipfile
 import time
 import json
+# Imports split one per line for GitHub readability; -p123 replaced by DEFAULT_ZIP_PASSWORD below.
 from core.models import GameArchive, ScanResult
 from core.constants import ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW, DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
@@ -423,7 +428,7 @@ class ArchiveService:
             temp_dir = Path(tempfile.mkdtemp(prefix=".organizer-unzip-", dir=str(path.parent)))
             if ctx:
                 ctx.checkpoint()
-            extract = subprocess.run([sevenzip, "x", "-y", "-p123", f"-o{temp_dir}", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
+            extract = subprocess.run([sevenzip, "x", "-y", "-p" + DEFAULT_ZIP_PASSWORD, f"-o{temp_dir}", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
             if extract.returncode != 0:
                 self.logger.warning("ARCHIVE", f"ZIP_PASSWORD_REMOVE_FAILED path=[{path.name}] error=[7z extraction failed exit={extract.returncode}]")
                 return False

@@ -1,11 +1,33 @@
 from pathlib import Path
-import os, shutil, subprocess, tempfile, threading, time, zipfile
-import contextlib, json
+import os
+import shutil
+import subprocess
+import tempfile
+import threading
+import time
+import zipfile
+import contextlib
+import json
+# Imports split one per line for GitHub readability.
 import ctypes
 from html import escape
 from datetime import datetime
 import re
-from core.constants import canonical_category, ARCHIVE_EXTENSIONS, LOCK_MARKER, COMPRESSION_LEVEL, COMPRESSION_THREADS, MIN_COMPRESSION_LEVEL, LEVEL_RAM_BYTES, RAM_HEADROOM_BYTES, PROCESSING_DIRNAME, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW, DEFAULT_ZIP_PASSWORD
+from core.constants import (
+    canonical_category,
+    ARCHIVE_EXTENSIONS,
+    LOCK_MARKER,
+    COMPRESSION_LEVEL,
+    COMPRESSION_THREADS,
+    MIN_COMPRESSION_LEVEL,
+    LEVEL_RAM_BYTES,
+    RAM_HEADROOM_BYTES,
+    PROCESSING_DIRNAME,
+    TEMP_DIR_PREFIX,
+    TEMP_FILE_TAG,
+    NO_WINDOW,
+    DEFAULT_ZIP_PASSWORD,
+)
 from core.exceptions import CancellationError
 from services.extract_service import ExtractService
 from utils.filename_utils import version_key

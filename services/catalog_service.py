@@ -3,7 +3,9 @@ from datetime import datetime
 from html import escape
 from urllib.request import pathname2url
 from urllib.parse import urlencode, quote
-import sys, threading
+import sys
+import threading
+# Imports split one per line for GitHub readability.
 from .banner_art import banner_data_uri
 from core.constants import APP_NAME, ENTRY_POINT, LIBRARY_RESERVED_DIRS
 from core.uri_actions import SCHEME, safe_folder_name
@@ -11,7 +13,9 @@ from services.catalog_status import STATUS_NAME, already_extracted, empty_status
 from services.installer_detect import NEEDS_INSTALL_DIRNAME, has_needs_install_mark
 from utils.formatting import human_size
 from dataclasses import dataclass, field
-import json, re, time
+import json
+import re
+import time
 
 # Module-level cache shared across all CatalogService instances: {resolved_library_root_str: categories_dict}.
 # Instance-level caches are thrown away when the instance is discarded, which made the three separate
