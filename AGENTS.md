@@ -14,28 +14,29 @@
 
 This file is the **operating manual for contributing** to the project. Read it **before** modifying any module.
 
+**If you are making a code change, start at [The Change Workflow](#-the-change-workflow).** It walks you through every required step in order. Every other section is reference material you can jump to as needed.
+
 | If you want to… | Go to section |
 |-----------------|---------------|
-| Build, test, lint, run | [**Prerequisites & Setup**](#-prerequisites--setup) |
+| Set up the dev environment | [**Prerequisites & Setup**](#-prerequisites--setup) |
 | Make a code change | [**The Change Workflow**](#-the-change-workflow) |
-| Rebuild frozen exe after code change | [**Build — Frozen Exe Pipeline**](#-build--frozen-exe-pipeline) |
-| Bundle Python + 7-Zip into runtime/ | [**The Bundled Runtime**](#-the-bundled-runtime) |
-| Understand logging behavior | [**Logging**](#-logging) |
-| Understand test hygiene rules | [**Testing**](#-testing) |
+| Rebuild the frozen exe | [**Build — Frozen Exe Pipeline**](#-build--frozen-exe-pipeline) |
+| Understand the bundled runtime | [**The Bundled Runtime**](#-the-bundled-runtime) |
+| Understand logging | [**Logging**](#-logging) |
+| Understand test hygiene | [**Testing**](#-testing) |
 | Run lint checks | [**Lint**](#-lint) |
-| Capture and delete screenshots | [**Screenshots**](#-screenshots) |
-| Handle long-running commands | [**Long-Running Commands**](#-long-running-commands) |
-| Prove a test can fail | [**Testing**](#-testing) |
+| Capture/delete screenshots | [**Screenshots**](#-screenshots) |
+| Run long-running commands | [**Long-Running Commands**](#-long-running-commands) |
 | Git/GitHub workflow | [**Git / GitHub Workflow**](#-git--github-workflow) |
 | Keep docs accurate | [**Keeping Project Docs Accurate**](#-keeping-project-docs-accurate) |
-| Check if task is complete | [**Definition of Done**](#-definition-of-done-mandatory) |
+| Verify a task is complete | [**Definition of Done**](#-definition-of-done-mandatory) |
 | Write comments | [**Comment Style**](#-comment-style) |
 
 ---
 
 ## ⚠️ Rules at a Glance
 
-These are the non-negotiable rules. Every change to this project must satisfy all of them.
+These are the non-negotiable rules. Every change to this project must satisfy all of them. They are referenced by [The Change Workflow](#-the-change-workflow) and [Definition of Done](#-definition-of-done-mandatory) rather than repeated there.
 
 | Rule | What it means |
 |------|---------------|
@@ -84,11 +85,7 @@ ruff --version     # should print a version
 
 Before modifying any module, read `AGENTS.md`, `ARCHITECTURE.md`, and `project_overview.md` for relevant context. Understand the frozen build, logging, and test hygiene rules first.
 
-**The change flow:**
-
-Read `AGENTS.md`, `ARCHITECTURE.md`, and `project_overview.md` for context, then work through the checklist below in order.
-
-Values that appear in multiple places (e.g. the default ZIP password) belong in `core/constants.py` in one place, not spelled out at each call site.
+Work through this checklist in order:
 
 1. **Comment** — add a comment explaining the change in every modified file.
 2. **Changelog** — add a dated entry under `## 9.33` (newest first).
@@ -260,7 +257,7 @@ These four files are the project's map of itself. If a reader acts on them, they
 | `README.md` | User-facing run, workflow, other-PC, and development-check instructions |
 
 > [!IMPORTANT]
-> **Rule:** when a change alters behavior, architecture, commands, test counts, or the frozen build layout, update the affected doc(s) in the same change — not later.
+> **Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later.
 
 > [!IMPORTANT]
 > **MANDATORY — add a changelog note for every change.** `CHANGELOG.md` is the project's record of what changed and when. Every change to code, config, tools, or docs gets a dated entry under the current development version (right now `## 9.33`), formatted as:
@@ -275,16 +272,16 @@ A bullet list may follow, naming the files touched and the behavior before/after
 
 ## ✅ Definition of Done (Mandatory)
 
-Before considering any task complete, you MUST verify:
+Before considering any task complete, verify every rule in [**Rules at a Glance**](#-rules-at-a-glance) plus:
 
-- [ ] **Comment**: Added a comment explaining the change in every modified file.
-- [ ] **Changelog**: Added a dated entry under `## 9.33` at the top of that section (newest first) in `CHANGELOG.md` describing the change.
-- [ ] **Docs**: Updated `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior, architecture, commands, test counts, or frozen build layout changed.
-- [ ] **Lint**: `ruff check .` passes.
-- [ ] **Tests**: `runtime\python.exe -m unittest discover -q` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs).
-- [ ] **Build**: If any source code changed, rebuilt the exe with `python tools\build_frozen.py`.
-- [ ] **Hygiene**: No `*.png` screenshots left in repo root, no writes to real `config/`, `cache/`, or `logs/` (use `tests/tk_support.py:sandbox_app` in tests).
-- [ ] **GitHub**: Committed and pushed to GitHub so the public repository reflects the change.
+- [ ] All source files changed have a comment explaining what changed and why.
+- [ ] `CHANGELOG.md` has a new dated entry under `## 9.33` (newest first).
+- [ ] `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` updated if behavior, architecture, commands, test counts, or frozen build layout changed.
+- [ ] `ruff check .` passes.
+- [ ] `runtime\python.exe -m unittest discover -q` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs).
+- [ ] If any source code changed, rebuilt the exe with `python tools\build_frozen.py`.
+- [ ] No `*.png` screenshots left in repo root; no writes to real `config/`, `cache/`, or `logs/` (use `tests/tk_support.py:sandbox_app` in tests).
+- [ ] Committed and pushed to GitHub so the public repository reflects the change.
 
 **Quick verification after any change:** `ruff check .` passes, `runtime\python.exe -m unittest discover -q` reports `OK`, each doc still describes what the code actually does, and `CHANGELOG.md` has a new dated entry for the change.
 

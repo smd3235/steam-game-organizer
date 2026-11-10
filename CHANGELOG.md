@@ -5,12 +5,9 @@
 
 ## 9.33
 
-### 2026-11-10 23:59:00 — Reorganized AGENTS.md, removed redundancies
+### 2026-11-10 23:42:00 — Finalized AGENTS.md organization, eliminated rule redundancy
 
-- `AGENTS.md`: Removed duplicate mermaid flowcharts (change workflow and test result) that repeated the text/checklist below them. Merged standalone "Proving a Test Can Fail" section into "A test must be able to fail" under Testing. Moved "Test logs never touch the real logs directory" from Logging to Testing hygiene. Moved "Values that appear in multiple places" note from Bundled Runtime to The Change Workflow. Fixed quick-reference table link. No behavior change — 327 lines (was 615).
-
-
-- `AGENTS.md`: Reorganized sections so rules at a glance come first, followed by setup, change workflow, build pipeline, bundled runtime, logging, platform, testing, lint, screenshots, long-running commands, proving tests fail, Git/GitHub workflow, doc accuracy, Definition of Done, and comment style. Consolidated duplicate rules (comment on every change, push to GitHub on every change, changelog with every change). Improved readability and logical ordering; no behavior change.
+- `AGENTS.md`: Reorganized into a clean linear flow: Rules at a Glance → Prerequisites & Setup → Change Workflow → Build → Bundled Runtime → Logging → Platform → Testing → Lint → Screenshots → Long-Running Commands → Git/GitHub Workflow → Doc Accuracy → Definition of Done → Comment Style. Eliminated duplicated rules — each rule now appears once in Rules at a Glance and is referenced (not repeated) by Change Workflow, Git table, and Definition of Done. Removed duplicate mermaid flowcharts and the standalone "Proving a Test Can Fail" section (merged into Testing hygiene). 298 lines (was 615 originally).
 
 ### 2026-11-10 23:45:00 — Default ZIP password constant; incremental discovery tests
 
