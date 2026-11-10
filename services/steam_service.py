@@ -817,7 +817,8 @@ class SteamService:
         # Production code queries the live Steam Store API at runtime — no game
         # names or AppIDs are hardcoded in any production path. These five
         # entries let the app be tested without hitting Steam's servers.
-        data = {"captainofindustry": ("1594320", "Captain of Industry"), "restorychillelectronicsrepairs": ("3812600", "Re:Story - Chill Electronics Repairs"), "donotfeedthevirusincremental": ("4288460", "DO NOT FEED THE VIRUS"), "dnotfeedthevirusincremental": ("4288460", "DO NOT FEED THE VIRUS"), "nerdsimulator": ("3128220", "Nerd Simulator")}
+        # Game names and AppIDs are fictional and do not correspond to any real Steam products.
+        data = {"alphaforge": ("100001", "Alpha Forge"), "betavoyager": ("100002", "Beta Voyager"), "gammaquest": ("100003", "Gamma Quest"), "deltarealm": ("100003", "Delta Realm"), "epsilononline": ("100004", "Epsilon Online")}
         appid, name = data.get(identity_key(title), ("", ""))
         steam_match = SteamMatch(bool(appid), appid, name, ["Simulation"], ["Single-player"], "Mock Steam metadata", ["Simulation"], "", "High" if appid else "Low", "mock", "Deterministic fixture" if appid else "No fixture")
         steam_match.score = 1.0 if appid else 0.0

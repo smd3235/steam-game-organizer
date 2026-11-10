@@ -316,8 +316,8 @@ class TestServices(unittest.TestCase):
             log = AppLogger(Path(d) / "x.log")
             result = ArchiveService(log, mock=True).discover(Path(d), JobContext("X"))
             self.assertEqual(len(result.archives), 4)
-            s = SteamService(log, mock=True).lookup("Captain of Industry v 0 8.zip")
-            self.assertEqual(s.appid, "1594320")
+            s = SteamService(log, mock=True).lookup("Alpha Forge v 0 8.zip")
+            self.assertEqual(s.appid, "100001")
 
     def test_discovered_archive_keeps_readable_normalized_title(self):
         with TemporaryDirectory() as d:
@@ -2171,7 +2171,7 @@ class TestServices(unittest.TestCase):
         self.assertEqual(suggest_category(["Indie", "Simulation"], "Idle Game", "An incremental clicker game", tags=["Clicker", "Incremental"]), "Idle")
         self.assertEqual(suggest_category(["Indie", "Early Access"]), "Unsorted")
         self.assertEqual(suggest_category(["City Sim"]), "City Builder")
-        self.assertEqual(suggest_category(["Simulation"], "Captain of Industry", "Build and manage a factory with automation"), "Automation")
+        self.assertEqual(suggest_category(["Simulation"], "Alpha Forge", "Build and manage a factory with automation"), "Automation")
         self.assertEqual(suggest_category(["Simulation"], "Timberborn", "A sandbox city-building game"), "City Builder")
         self.assertEqual(suggest_category(["Simulation"], "Cloud Dwellers", "A 2D simulation and city-building game"), "City Builder")
         self.assertEqual(suggest_category(["Simulation"], "Flotsam", "Rescue survivors in a vibrant floating city-builder"), "City Builder")
@@ -2234,10 +2234,10 @@ class TestServices(unittest.TestCase):
 
     def test_steam_candidate_scoring_rejects_unrelated_results(self):
         service = _steam(self)
-        chosen, score = service._choose([{"id": "1", "name": "Captain of Industry"}, {"id": "2", "name": "Industry Giant"}], "Captain of Industry")
+        chosen, score = service._choose([{"id": "1", "name": "Alpha Forge"}, {"id": "2", "name": "Industry Giant"}], "Alpha Forge")
         self.assertEqual(chosen["id"], "1")
         self.assertEqual(score, 1.0)
-        chosen, score = service._choose([{"id": "2", "name": "Industry Giant"}], "Captain of Industry")
+        chosen, score = service._choose([{"id": "2", "name": "Industry Giant"}], "Alpha Forge")
         self.assertIsNone(chosen)
         self.assertEqual(score, 0.0)
 
@@ -2261,7 +2261,7 @@ class TestServices(unittest.TestCase):
 
     def test_query_variants_resolve_edition_and_release_tag_suffixes_generically(self):
         service = _steam(self, mock=True)
-        cases = [("Do Not Feed The Virus Incremental", "DO NOT FEED THE VIRUS"), ("Ball XPit20260808", "BALL x PIT"), ("Kingdoms And Castles123r6s", "Kingdoms and Castles"), ("Flotsam101f7", "Flotsam"), ("Nerd Simulator Tenoke", "Nerd Simulator")]
+        cases = [("Delta Realm Incremental", "Delta Realm"), ("Ball XPit20260808", "BALL x PIT"), ("Kingdoms And Castles123r6s", "Kingdoms and Castles"), ("Flotsam101f7", "Flotsam"), ("Epsilon Online Tenoke", "Epsilon Online")]
         for normalized, official in cases:
             variants = service._query_variants(normalized, normalized, None)
             self.assertIn(identity_key(official), [identity_key(v) for v in variants])
@@ -2355,9 +2355,9 @@ class TestServices(unittest.TestCase):
     def test_direct_steam_service_mock_is_backend_free(self):
         with TemporaryDirectory() as d:
             s = SteamService(AppLogger(Path(d) / "x.log"), mock=True)
-            steam_match = s.lookup("Nerd Simulator")
+            steam_match = s.lookup("Epsilon Online")
             self.assertEqual(steam_match.source, "mock")
-            self.assertEqual(steam_match.name, "Nerd Simulator")
+            self.assertEqual(steam_match.name, "Epsilon Online")
 
     def test_artwork_urls_prefer_header_over_grid(self):
         from services.artwork_service import ArtworkService
@@ -2640,12 +2640,12 @@ class TestArchiveShippedAppID(unittest.TestCase):
     def test_a_punctuation_different_filename_still_matches_its_own_appid(self):
         """The whole point: this title needed a hand-written alias before, because the search could not see it
         through the flattened punctuation."""
-        self._stub_details("3062660", "Re:Story - Chill Electronics Repairs")
+        self._stub_details("3062660", "Gamma Quest")
         archive = self._zip("ReStory-Chill-Electronics-Repairs.zip", {"ReStory/steam_settings/steam_appid.txt": "3062660\n"})
         self.service._lookup_store = lambda title, ctx: SteamMatch(found=False)
         result = self.service.lookup("Re Story Chill Electronics Repairs", archive_path=archive)
         self.assertTrue(result.found)
-        self.assertEqual(result.name, "Re:Story - Chill Electronics Repairs")
+        self.assertEqual(result.name, "Gamma Quest")
 
     def test_a_second_archive_with_the_same_title_is_read_for_its_own_appid(self):
         """The cache is keyed by title, so a title-keyed hit would hand the first archive's AppID to the second.

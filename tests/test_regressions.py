@@ -14,9 +14,9 @@ from ui.main_window import MainWindow
 from utils.filename_utils import identity_key
 
 class TestKnownRegressionCases(unittest.TestCase):
-  def test_known_identities(self):
-      expected={"Captain of Industry v 0 8.zip":"captainofindustry","Re Story Chill Electronics Repairs v 1 0.zip":"restorychillelectronicsrepairs","DO NOT FEED THE VIRUS Incremental.zip":"donotfeedthevirusincremental","Nerd Simulator.zip":"nerdsimulator"}
-      for name,key in expected.items(): self.assertEqual(identity_key(name),key,name)
+def test_known_identities(self):
+       expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealm","Epsilon Online.zip":"epsilononline"}
+       for name,key in expected.items(): self.assertEqual(identity_key(name),key,name)
 
  # The titles here are the real folders from one library, and every one of them failed to find its Steam name.
  # The cause was the tag stripper, not Steam: it only fired on whitespace-delimited tags, so the hyphenated

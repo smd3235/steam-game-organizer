@@ -45,8 +45,8 @@ class LooksLikeAnInstaller(unittest.TestCase):
         self.assertEqual(sig.program, iso, "the .iso to mount was not the one returned for the message")
 
     def test_a_repack_signature_nested_in_a_wrapper_folder_is_still_found(self):
-        self._touch("Airborne Empire/setup.exe")
-        self._touch("Airborne Empire/setup-2.bin")
+        self._touch("Beta Voyager/setup.exe")
+        self._touch("Beta Voyager/setup-2.bin")
         self.assertTrue(looks_like_installer(self.root), "an installer nested inside a wrapper folder was missed")
 
     def test_a_setup_exe_without_a_bin_is_not_an_installer(self):

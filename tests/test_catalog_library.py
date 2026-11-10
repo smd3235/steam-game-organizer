@@ -17,12 +17,12 @@ from core.constants import DEFAULT_CATEGORIES
 
 
 def make_game(root, **metadata):
-    game = root / "Simulation" / "Captain of Industry - 2024-01-01"
+    game = root / "Simulation" / "Alpha Forge - 2024-01-01"
     game.mkdir(parents=True)
-    (game / "Captain of Industry.zip").write_text("x")
+    (game / "Alpha Forge.zip").write_text("x")
     for name in ("header_image", "library_hero"):
-        (game / f"Captain of Industry_{name}.jpg").write_bytes(b"\xff\xd8\xff\xdb" + b"0" * 2000)
-    payload = {"appid": "1594320", "name": "Captain of Industry", "description": "desc", "release_date": "1 Jan, 2024", "genres": ["Simulation"]}
+        (game / f"Alpha Forge_{name}.jpg").write_bytes(b"\xff\xd8\xff\xdb" + b"0" * 2000)
+    payload = {"appid": "100001", "name": "Alpha Forge", "description": "desc", "release_date": "1 Jan, 2024", "genres": ["Simulation"]}
     payload.update(metadata)
     (game / ".game-info.json").write_text(json.dumps(payload))
     return game
@@ -39,9 +39,9 @@ class TestCatalogService(unittest.TestCase):
             root = Path(d)
             self._make_game(root)
             service = CatalogService(AppLogger(root / "x.log"))
-            prefix = service._asset_prefix(root / "Simulation" / "Captain of Industry - 2024-01-01", {"name": "Captain of Industry"})
-            banner = service._find_banner(root / "Simulation" / "Captain of Industry - 2024-01-01", prefix)
-            self.assertEqual(banner.name, "Captain of Industry_header_image.jpg")
+            prefix = service._asset_prefix(root / "Simulation" / "Alpha Forge - 2024-01-01", {"name": "Alpha Forge"})
+            banner = service._find_banner(root / "Simulation" / "Alpha Forge - 2024-01-01", prefix)
+            self.assertEqual(banner.name, "Alpha Forge_header_image.jpg")
 
     def test_card_markup_has_no_nested_anchor_tags(self):
         with TemporaryDirectory() as d:
@@ -62,13 +62,13 @@ class TestCatalogService(unittest.TestCase):
         # need for 7z on the machine - the zipfile branch of archive_installer_kind is used.
         with TemporaryDirectory() as d:
             root = Path(d)
-            game = root / "Repacks" / "Airborne Empire [FitGirl Repack]"
+            game = root / "Repacks" / "Beta Voyager [FitGirl Repack]"
             game.mkdir(parents=True)
-            archive = game / "Airborne Empire [FitGirl Repack].zip"
+            archive = game / "Beta Voyager [FitGirl Repack].zip"
             with zipfile.ZipFile(archive, "w") as handle:
                 handle.writestr("setup.exe", b"")
                 handle.writestr("setup-1.bin", b"")
-            (game / ".game-info.json").write_text(json.dumps({"appid": "123456", "name": "Airborne Empire", "description": "d", "release_date": "2020", "genres": ["Simulation"]}))
+            (game / ".game-info.json").write_text(json.dumps({"appid": "100002", "name": "Beta Voyager", "description": "d", "release_date": "2020", "genres": ["Simulation"]}))
             paths = CatalogService(AppLogger(root / "x.log")).generate(root)
             html = " ".join(p.read_text(encoding="utf-8") for p in paths)
             self.assertIn("badge badge-install", html)
@@ -111,8 +111,8 @@ class TestCatalogService(unittest.TestCase):
             paths = CatalogService(AppLogger(root / "x.log")).generate(root)
             self.assertEqual([p.name for p in paths], ["Game Library.html"])
             text = paths[0].read_text()
-            self.assertIn("https://store.steampowered.com/app/1594320/", text)
-            self.assertIn("steam://store/1594320", text)
+            self.assertIn("https://store.steampowered.com/app/100001/", text)
+            self.assertIn("steam://store/100001", text)
             self.assertNotIn("Steam Deck Edition", text)
             self.assertNotIn("Windows Edition", text)
 
@@ -175,7 +175,7 @@ class TestCatalogService(unittest.TestCase):
             for reference in re.findall(r'(?:src="([^"]*)|url\(\'([^\']*))', text):
                 value = next((v for v in reference if v), "")
                 self.assertNotIn(str(root), value)
-            self.assertIn('data-rel="Simulation/Captain of Industry - 2024-01-01"', text)
+            self.assertIn('data-rel="Simulation/Alpha Forge - 2024-01-01"', text)
 
     def test_catalog_offers_a_copy_path_action(self):
         with TemporaryDirectory() as d:
@@ -197,14 +197,14 @@ class TestCatalogService(unittest.TestCase):
             cards = re.findall(r'<article class="card"[^>]*>', text)
             self.assertTrue(cards)
             self.assertTrue(all("data-search=" in card for card in cards))
-            self.assertIn("captain of industry", text)
+            self.assertIn("Alpha Forge", text)
 
     def test_catalog_shows_the_archive_filename_present_in_the_folder(self):
         with TemporaryDirectory() as d:
             root = Path(d)
             self._make_game(root)
             text = CatalogService(AppLogger(root / "x.log")).generate(root)[0].read_text()
-            self.assertIn("Captain of Industry.zip", text)
+            self.assertIn("Alpha Forge.zip", text)
 
 
 class TestCatalogBanners(unittest.TestCase):
@@ -688,8 +688,8 @@ class TestGameFolderBox(unittest.TestCase):
         self.assertTrue(copies, "the page produced no copy-path buttons")
         self.assertTrue(links, "the page produced no extract links")
         for button in copies + links:
-            self.assertIn('data-rel="Simulation/Captain of Industry - 2024-01-01"', button)
-            self.assertIn('data-archive="Captain of Industry.zip"', button)
+            self.assertIn('data-rel="Simulation/Alpha Forge - 2024-01-01"', button)
+            self.assertIn('data-archive="Alpha Forge.zip"', button)
 
     def test_the_typed_folder_is_what_the_copy_and_the_link_are_built_from(self):
         """The script is the only thing that can join a root onto a relative folder, so the wiring is the test.
@@ -762,11 +762,11 @@ class TestCatalogFiltering(unittest.TestCase):
         self.root.mkdir()
         # Two games in two categories, one with artwork and one without, so the art filter has both a hit and
         # a miss to sort out and the rail has more than one count to keep honest.
-        for index, (name, category, genres, art) in enumerate([("Captain of Industry", "Simulation", ["Simulation", "Strategy"], True), ("Hollow Signal", "Adventure", ["Horror", "Indie"], False)], 1):
+        for index, (name, category, genres, art) in enumerate([("Alpha Forge", "Simulation", ["Simulation", "Strategy"], True), ("Hollow Signal", "Adventure", ["Horror", "Indie"], False)], 1):
             game = self.root / category / f"{name} - 2024-01-01"
             game.mkdir(parents=True)
             (game / f"{name}.zip").write_text("x")
-            (game / ".game-info.json").write_text(json.dumps({"appid": str(1594320 + index), "name": name, "description": f"A quiet roguelike about {name}.", "release_date": "1 Jan, 2024", "genres": genres}))
+            (game / ".game-info.json").write_text(json.dumps({"appid": str(100001 + index), "name": name, "description": f"A quiet roguelike about {name}.", "release_date": "1 Jan, 2024", "genres": genres}))
             if art:
                 (game / f"{name}_grid.jpg").write_bytes(b"\xff\xd8\xff\xd9")
         self.page = CatalogService(AppLogger(self.root / "x.log")).generate(self.root)[0]
@@ -865,7 +865,7 @@ class TestGamesWithoutASteamMatch(unittest.TestCase):
         self.addCleanup(parent.cleanup)
         self.root = Path(parent.name) / "Games"
         fixtures = [
-            ("Matched", "Simulation", {"appid": "1594320", "name": "Captain of Industry"}, True),
+            ("Matched", "Simulation", {"appid": "100001", "name": "Alpha Forge"}, True),
             ("No Appid", "Simulation", {"appid": "", "name": "Hollow Signal"}, True),
             ("Absent Key", "Adventure", {"name": "Quiet Harbor"}, False),
             ("No Metadata", "Adventure", None, False),
@@ -901,8 +901,8 @@ class TestGamesWithoutASteamMatch(unittest.TestCase):
 
     def test_the_matched_game_keeps_both_steam_actions(self):
         # Dropping the AppID everywhere would "fix" the count by breaking the one card that can be opened.
-        self.assertIn("https://store.steampowered.com/app/1594320/", self.text)
-        self.assertIn("steam://store/1594320", self.text)
+        self.assertIn("https://store.steampowered.com/app/100001/", self.text)
+        self.assertIn("steam://store/100001", self.text)
 
     def test_a_whitespace_only_title_falls_back_to_the_folder_name(self):
         # `"   "` is truthy, so `metadata.get('name') or <folder name>` kept it and rendered a card whose heading

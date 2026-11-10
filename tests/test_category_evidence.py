@@ -41,7 +41,7 @@ CASES = [
     ((["Indie", "Simulation"], "Idle Game", "An incremental clicker game", ["Clicker", "Incremental"]), "Idle"),
     ((["Indie", "Early Access"],), "Unsorted"),
     ((["City Sim"],), "City Builder"),
-    ((["Simulation"], "Captain of Industry", "Build and manage a factory with automation"), "Automation"),
+    ((["Simulation"], "Alpha Forge", "Build and manage a factory with automation"), "Automation"),
     ((["Simulation"], "Timberborn", "A sandbox city-building game"), "City Builder"),
     ((["Simulation"], "Cloud Dwellers", "A 2D simulation and city-building game"), "City Builder"),
     ((["Simulation"], "Flotsam", "Rescue survivors in a vibrant floating city-builder"), "City Builder"),
@@ -113,7 +113,7 @@ class TestTheTwoPathsAgree(unittest.TestCase):
 
 class TestEvidenceShape(unittest.TestCase):
     def test_a_description_win_names_the_rule_and_its_keywords(self):
-        category, evidence = suggest_category_with_evidence(["Simulation"], "Captain of Industry", "Build and manage a factory with automation")
+        category, evidence = suggest_category_with_evidence(["Simulation"], "Alpha Forge", "Build and manage a factory with automation")
         self.assertEqual(category, "Automation")
         self.assertEqual(evidence, CategoryEvidence(chosen="Automation", score=104, basis="description", terms=("automation", "factory", "build and manage a factory"), runners_up=(("Simulation", 54),), considered=2))
 
@@ -168,7 +168,7 @@ class TestEvidenceShape(unittest.TestCase):
 
 class TestEvidenceIsSafeToCarry(unittest.TestCase):
     def _evidence(self):
-        return suggest_category_with_evidence(["Simulation"], "Captain of Industry", "Build and manage a factory with automation")[1]
+        return suggest_category_with_evidence(["Simulation"], "Alpha Forge", "Build and manage a factory with automation")[1]
 
     def test_the_value_survives_deepcopy(self):
         evidence = self._evidence()

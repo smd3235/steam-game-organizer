@@ -42,7 +42,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # Every AppID services/steam_service.py:_mock can hand out. A fixture that seeds artwork for a fixed list has
 # to be able to say that list is still complete, which is what the organize test asserts with it.
-MOCK_APPIDS = ("1594320", "3812600", "4288460", "3128220")
+MOCK_APPIDS = ("100001", "100002", "100003", "100004")
 
 
 def wait_until(predicate, seconds=90.0, what="condition"):

@@ -37,15 +37,15 @@ class InstallerBadgeSurvivesTheExtractLifecycle(unittest.TestCase):
         self.addCleanup(self.dir.cleanup)
         self.root = Path(self.dir.name)
         self.library = self.root / "Games"
-        self.game = self.library / "Repacks" / "Airborne Empire - 2024-01-01"
+        self.game = self.library / "Repacks" / "Beta Voyager - 2024-01-01"
         self.game.mkdir(parents=True)
-        self.archive_name = "Airborne Empire.zip"
+        self.archive_name = "Beta Voyager.zip"
         self.archive = self.game / self.archive_name
         with zipfile.ZipFile(self.archive, "w") as handle:
             handle.writestr("setup.exe", b"MZ" * 16)
             handle.writestr("setup-1.bin", b"a" * 2048)
             handle.writestr("readme.txt", b"unpack me")
-        (self.game / ".game-info.json").write_text(json.dumps({"appid": "123456", "name": "Airborne Empire", "description": "d", "release_date": "2020", "genres": ["Action"]}), encoding="utf-8")
+        (self.game / ".game-info.json").write_text(json.dumps({"appid": "123456", "name": "Beta Voyager", "description": "d", "release_date": "2020", "genres": ["Action"]}), encoding="utf-8")
         # The extract destination the catalog checks must match the one extract writes into, which
         # is the catalog's own destination stem rule: <dest>/<safe_folder_name(archive-stem)>.
         self.dest = self.root / "Extracted"

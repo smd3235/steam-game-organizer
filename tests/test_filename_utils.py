@@ -8,7 +8,7 @@ from utils.filename_utils import normalize_name, identity_key, version_key
 @pytest.mark.notkinter
 class TestFilename(unittest.TestCase):
     def test_archive_and_version(self):
-        self.assertEqual(normalize_name("Captain of Industry v 0 8.zip"), "Captain of Industry")
+        self.assertEqual(normalize_name("Alpha Forge v 0 8.zip"), "Alpha Forge")
 
     def test_camel_case_splits_without_a_hand_written_alias(self):
         # These three each needed an entry in a 52-row lookup table that spelled the official title out by hand. The
@@ -19,11 +19,11 @@ class TestFilename(unittest.TestCase):
         self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
 
     def test_a_tagged_name_needs_no_alias_either(self):
-        self.assertEqual(normalize_name("AirborneEmpireFitGirl.zip"), "Airborne Empire")
+        self.assertEqual(normalize_name("AirborneEmpireFitGirl.zip"), "Beta Voyager")
         self.assertEqual(normalize_name("FarmToTable10122.zip"), "Farm To Table")
 
     def test_identity(self):
-        self.assertEqual(identity_key("Nerd Simulator"), "nerdsimulator")
+        self.assertEqual(identity_key("Epsilon Online"), "epsilononline")
 
     def test_version(self):
         self.assertGreater(version_key("Game 1-10-0.zip"), version_key("Game 1-9-9.zip"))
@@ -114,7 +114,7 @@ class TestReleaseTagTitles(unittest.TestCase):
 
     def test_a_real_version_suffix_still_goes(self):
         # The tag rule cuts from the tag onwards, so it must not swallow a version that belongs to the title.
-        self.assertEqual(normalize_name("Captain of Industry v 0 8.zip"), "Captain of Industry")
+        self.assertEqual(normalize_name("Alpha Forge v 0 8.zip"), "Alpha Forge")
         self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
         self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
 

@@ -68,7 +68,7 @@ class TestRetention(unittest.TestCase):
         """
         with TemporaryDirectory() as d:
             root = Path(d)
-            folder = game(root, "Simulation", "Captain of Industry")
+            folder = game(root, "Simulation", "Alpha Forge")
             archive(folder, "c.zip", 2048)
             catalog = service(root)
             catalog.generate(root)
@@ -284,7 +284,7 @@ class TestShape(unittest.TestCase):
         """
         with TemporaryDirectory() as d:
             root = Path(d)
-            archive(game(root, "Simulation", "Captain of Industry"), "a.zip", 100)
+            archive(game(root, "Simulation", "Alpha Forge"), "a.zip", 100)
             loose = root / "Larage Games"
             loose.mkdir()
             (loose / "Some Pack v1.rar").write_bytes(b"Rar!" + b"0" * 50)
