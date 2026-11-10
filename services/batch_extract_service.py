@@ -4,6 +4,9 @@ A single Extract is a link, a 7z call and an exit. A category is twenty games an
 and seventy-six, which is hours - so this is a queue rather than a loop inline in the entry point: it has to be
 able to report which game it is on, how many are left, and to stop between games.
 
+2026-11-10: plan_batch passes use_cache=False to ArchiveService.discover() so it always gets a fresh archive
+list - incremental discovery would skip unchanged directories and miss externally-created destination folders.
+
 Two decisions worth stating, because both were the alternative and both were worse:
 
   - The library is enumerated here, through ArchiveService.discover, rather than from a list in the link. The
@@ -86,7 +89,7 @@ def plan_batch(library_root, destination, category="", logger=None, skip_existin
     """
     service = service or ArchiveService(logger)
     root = Path(library_root)
-    result = service.discover(root / category) if category else service.discover(root)
+    result = service.discover(root / category, use_cache=False) if category else service.discover(root, use_cache=False)
 
     # Sort by size, smallest first: a batch is hours of 7z, and a user watching it
     # wants the small games to land first so they can start playing while the big ones

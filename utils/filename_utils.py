@@ -6,6 +6,9 @@ collapse to the same title. identity_key() folds that to lowercase alphanumerics
 two archives with different packaging still match as one game. version_key() pulls
 the version number (or date stamp) out of the filename so organizer can pick the
 newest copy of a game when several share a folder.
+
+2026-11-10: Added incremental, complete, final to the trailing-word stripping regex - these are release states
+and packaging, not part of a game's title. "Delta Realm Incremental.zip" now folds to "Delta Realm".
 """
 
 import re
@@ -52,7 +55,8 @@ def normalize_name(value: str) -> str:
     value = RELEASE_TAG.sub("", value)
     # These four plus incremental are ordinary English as well as tags, so they only count as a tag when they are the last word.
     # "incremental" is packaging, not title: "Delta Realm Incremental.zip" must collapse to "Delta Realm".
-    value = re.sub(r"\s+(?:multi|proper|portable|iso|incremental)\s*$", " ", value, flags=re.I)
+    # "complete" and "final" are release states, not part of a game's name: "Game Complete.zip" -> "Game".
+    value = re.sub(r"\s+(?:multi|proper|portable|iso|incremental|complete|final)\s*$", " ", value, flags=re.I)
     # Remove trailing indicators like (2), [Copy], (v2), etc. that should not affect identity
     # Remove all such trailing indicators (there may be more than one)
     while True:

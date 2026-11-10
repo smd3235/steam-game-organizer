@@ -5,6 +5,13 @@
 
 ## 9.33
 
+### 2026-11-10 23:00:00 — Incremental discovery, filename_utils trailing words, batch extract cache bypass
+
+- `services/archive_service.py`: added `_walk_changed_files()` for incremental discovery — directories whose max file mtime matches the persisted scan-state.json cache are skipped entirely, so a re-scan of an unchanged library costs one stat per directory instead of one per file. `discover()` gained a `use_cache` parameter; removed unused `walk_files` import.
+- `services/batch_extract_service.py`: `plan_batch` passes `use_cache=False` to `discover()` so it always sees fresh archives and doesn't miss externally-created destination folders.
+- `utils/filename_utils.py`: added `complete` and `final` to the trailing-word stripping regex alongside `incremental` — release states and packaging, not title words.
+- All 805 tests pass (`OK`), `ruff check .` clean (excluding tests/test_regressions.py per AGENTS.md).
+
 ### 2026-11-10 22:30:00 — Fixed test_regressions.py indentation, filename_utils incremental stripping, extract_service caching
 
 - `tests/test_regressions.py`: fixed widespread 2-space indentation errors (docstrings, if/with/for/try bodies, nested classes, module-level helpers) so the module parses via ast.parse() and is collected by unittest. ruff F841/F821 remain pre-existing and excluded per AGENTS.md.

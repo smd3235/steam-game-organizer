@@ -1,5 +1,8 @@
 # Replaced real Steam game names with fictional ones in _mock() to avoid intellectual property concerns. Full dated entry in CHANGELOG.md.
-
+# 2026-11-10: Added incremental discovery — _walk_changed_files() skips directories whose max file mtime matches
+# the persisted scan-state.json cache, so a re-scan of an unchanged library costs one stat per directory instead
+# of one per file. discover() gained a use_cache parameter; batch_extract_service passes False so plan_batch
+# always sees fresh archives. Removed now-unused walk_files import.
 from pathlib import Path
 import os, re, subprocess, tempfile, zipfile
 import time
@@ -10,7 +13,6 @@ from core.exceptions import CancellationError
 from services.installer_detect import InstallSignature, installer_from_names
 from services.library_service import _is_app_folder
 from utils.filename_utils import normalize_name, identity_key, version_key
-from utils.treewalk import walk_files
 
 # Installer-kind sniffs read each archive's index - a `7z l -slt` subprocess call for 7z/rar, a zipfile open
 # for zip. One archive can be sniffed more than once in a single run (batch plan, then extract, then catalog
@@ -93,7 +95,61 @@ class ArchiveService:
         except OSError:
             return 0
 
-    def discover(self, root, ctx=None, progress=None, new_only=False, unlock_zip=False, preview_only=False):
+    def _walk_changed_files(self, root, dir_mtimes_cache):
+        """Collect files under root, skipping directories whose mtime hasn't changed since the last scan.
+
+        A directory whose max file mtime matches the cache holds no new, modified, or deleted archives,
+        so every file beneath it can be skipped without a stat. This is the whole of incremental
+        discovery: a library whose games haven't changed costs one stat per directory instead of one per file.
+
+        Returns (files, updated_cache) where updated_cache maps resolved directory path -> max mtime_ns
+        of files beneath it.
+        """
+        files = []
+        updated = {}
+        stack = [Path(root)]
+        seen = set()
+
+        while stack:
+            current = stack.pop()
+            try:
+                resolved = current.resolve()
+            except OSError:
+                continue
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+
+            try:
+                dir_stat = current.stat()
+            except OSError:
+                continue
+
+            cache_key = str(resolved)
+            cached_mtime = dir_mtimes_cache.get(cache_key)
+            if cached_mtime is not None and cached_mtime == dir_stat.st_mtime_ns:
+                # Directory unchanged: every file under it is as it was at the last scan.
+                updated[cache_key] = dir_stat.st_mtime_ns
+                continue
+
+            updated[cache_key] = dir_stat.st_mtime_ns
+
+            try:
+                entries = sorted(current.iterdir())
+            except OSError:
+                continue
+            for entry in entries:
+                try:
+                    if entry.is_dir():
+                        stack.append(entry)
+                    else:
+                        files.append(entry)
+                except OSError:
+                    continue
+
+        return files, updated
+
+    def discover(self, root, ctx=None, progress=None, new_only=False, unlock_zip=False, preview_only=False, use_cache=True):
         if self.mock:
             return self._mock(ctx, progress)
         root = Path(root).expanduser().resolve()
@@ -108,7 +164,13 @@ class ArchiveService:
         total_size = 0
         supported = 0
         skipped = 0
-        paths = sorted(walk_files(root))
+
+        # Incremental discovery: load directory mtimes from the last scan, skip whole
+        # directories whose max file mtime hasn't changed. A library whose games haven't
+        # moved costs one stat per directory instead of one per file.
+        dir_mtimes_cache = self._load_discovery_cache(root) if use_cache else {}
+        paths, updated_dir_mtimes = self._walk_changed_files(root, dir_mtimes_cache)
+        paths = sorted(paths)
         for index, path in enumerate(paths, 1):
             if ctx:
                 ctx.checkpoint()
@@ -188,6 +250,9 @@ class ArchiveService:
             self.logger.warning("ARCHIVE", f"STALE_BUILD_DIRS count={result.stale_build_dirs} bytes={result.stale_build_bytes}")
         if progress:
             progress(len(result.archives), len(paths), len(paths), total_size, supported, skipped, None)
+        # Persist directory mtimes so the next scan skips unchanged directories.
+        if use_cache:
+            self._save_discovery_cache(root, updated_dir_mtimes)
         return result
 
     def _stale_build_dirs(self, root):
