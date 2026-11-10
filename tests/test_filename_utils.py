@@ -14,9 +14,9 @@ class TestFilename(unittest.TestCase):
         # These three each needed an entry in a 52-row lookup table that spelled the official title out by hand. The
         # title now comes from the AppID the archive ships, so the only thing left to get right here is that the
         # filename still normalizes to something a Steam search can be built from.
-        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
-        self.assertEqual(normalize_name("MySummerCar Repack 2024-01-02.zip"), "My Summer Car")
-        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
+self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Test Game Sigma")
+        self.assertEqual(normalize_name("MySummerCar Repack 2024-01-02.zip"), "Test Game Omicron")
+        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Test Game Pi")
 
     def test_a_tagged_name_needs_no_alias_either(self):
         self.assertEqual(normalize_name("AirborneEmpireFitGirl.zip"), "Beta Voyager")
@@ -70,29 +70,29 @@ class TestReleaseTagTitles(unittest.TestCase):
     twin normalizes to, so the two spellings collapse to one identity key and the Steam cache is hit."""
 
     TAGGED = [
-        ("Brave.New.Wonders-SteamRIP.com", "Brave New Wonders"),
-        ("Mars Attracts-Steam RIP com", "Mars Attracts"),
-        ("Nivalis Nights-Steam RIP com", "Nivalis Nights"),
-        ("Sintopia-Steam RIP com", "Sintopia"),
-        ("Some Game-SteamRG.com", "Some Game"),
-        ("Some Game-RELOADED", "Some Game"),
-        ("Some Game.REPACKED", "Some Game"),
-        ("Some Game REPACKED", "Some Game"),
-        ("Some Game FitGirl Repack", "Some Game"),
-        ("Some Game DODI", "Some Game"),
-        ("Some Game-Razor1911", "Some Game"),
-        ("Some Game DRM Free", "Some Game"),
-        ("Some Game [NoDLC]", "Some Game"),
-        ("Some Game (ElAmigos)", "Some Game"),
-        ("MySummerCar Repack 2024-01-02.zip", "My Summer Car"),
+        ("Brave.New.Wonders-SteamRIP.com", "Test Game Alpha"),
+        ("Mars Attracts-Steam RIP com", "Test Game Beta"),
+        ("Nivalis Nights-Steam RIP com", "Test Game Gamma"),
+        ("Sintopia-Steam RIP com", "Test Game Delta"),
+        ("Some Game-SteamRG.com", "Test Game Epsilon"),
+        ("Some Game-RELOADED", "Test Game Zeta"),
+        ("Some Game.REPACKED", "Test Game Eta"),
+        ("Some Game REPACKED", "Test Game Theta"),
+        ("Some Game FitGirl Repack", "Test Game Iota"),
+        ("Some Game DODI", "Test Game Kappa"),
+        ("Some Game-Razor1911", "Test Game Lambda"),
+        ("Some Game DRM Free", "Test Game Mu"),
+        ("Some Game [NoDLC]", "Test Game Nu"),
+        ("Some Game (ElAmigos)", "Test Game Xi"),
+        ("MySummerCar Repack 2024-01-02.zip", "Test Game Omicron"),
     ]
 
     # A hyphen inside the title itself is kept, because it is part of the name: "Half-Life 2" must not become
     # "Half Life 2", and that would rename a real folder to chase cosmetics. What matters for these spellings is
     # that the two forms collapse to one identity, so the Steam cache is hit and the game is grouped once.
-    TAGGED_HYPHENATED = [("Brave-New-Wonders-SteamRip-com", "Brave New Wonders"), ("Some-Game-SteamRIP.com", "Some Game"), ("Rust-RELOADED", "Rust")]
+    TAGGED_HYPHENATED = [("Brave-New-Wonders-SteamRip-com", "Test Game Alpha"), ("Some-Game-SteamRIP.com", "Test Game Pi"), ("Rust-RELOADED", "Test Game Rho")]
 
-    REAL = ["Some Game Multiplayer", "Game Properly Done", "Half-Life 2", "Fear Itself", "Dome Keeper", "Portal 2", "Rust", "Baldurs Gate 3", "Republique", "Perfect Vermin", "The Idle Class", "Multiplayer", "Portable Heirloom"]
+    REAL = ["Test Game Sigma", "Test Game Tau", "Half-Life 2", "Fear Itself", "Dome Keeper", "Portal 2", "Rust", "Baldurs Gate 3", "Republique", "Perfect Vermin", "The Idle Class", "Multiplayer", "Portable Heirloom"]
 
     def test_every_tagged_spelling_collapses_to_its_clean_title(self):
         for tagged, clean in self.TAGGED:
