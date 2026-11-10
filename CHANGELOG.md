@@ -25,6 +25,15 @@
 
 ## 9.33
 
+### 2026-11-10 21:25:00 — Expanded README.md summary tables and project status with detailed descriptions
+
+- `README.md`: expanded 🔍 **Scan**, 📦 **Convert**, 🗂️ **Organize**, 🖼️ **Artwork**, 📖 **Catalog**, ↩️ **Undo** table rows with paragraph-length descriptions covering class/function names, key behaviors, file paths, and safety invariants.
+- Expanded 🚀 **Key capabilities** table rows (Self-contained runtime, Extract to Needs Install, Launcher discovery, Protocol handler, Batch extract, Library service, Setup service) with detailed descriptions.
+- Expanded 🎯 **App workflow** phase table rows (Scan, Verify, Review, Organize, Artwork, Done, Undo) with detailed descriptions.
+- Expanded 📊 **Project status** section bullets (Code quality, Build pipeline, Documentation, Security & privacy) with detailed descriptions including the frozen build pipeline mechanics, test discovery guards, and path safety invariants.
+- No source code changed — docs-only change, no frozen exe rebuild required.
+- Changelog entry added in the same change as the doc change.
+
 ### 2026-11-10 21:15:00 — Expanded README.md Quick links table with detailed code-section descriptions
 
 - `README.md`: replaced one-line "What it does" descriptions in the 🔗 Quick links table with multi-sentence, paragraph-length descriptions for all 35 code sections (entry point, config, constants, models, URI actions, logger, application, controller, all 13 services, 9 UI modules, 6 utils, diagnostics, 3 build tools). Each entry now covers the class/function names, key behaviors, file paths it touches, and safety invariants.
