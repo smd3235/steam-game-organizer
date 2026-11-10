@@ -9,20 +9,21 @@
 
 ## 9.33 — development (unreleased)
 
-### 2026-11-10 — Overhauled AGENTS.md, ARCHITECTURE.md, project_overview.md with extensive Mermaid diagrams
+### 2026-11-10 — Docs overhaul: all markdown files rewritten with Mermaid diagrams, internal code links, and per-file change rule
 
-- `AGENTS.md`: Rewrote with Mermaid diagrams for how-to-use flow, change-before-you-change flow, prerequisites & setup, development toolchain, frozen build pipeline, bundled runtime, logging rotation, test logs, platform, test result, test hygiene/sandbox flow, long-running commands, proving a test can fail, Git/GitHub workflow, commit-after-build checklist, keeping docs accurate, definition of done.
-- `ARCHITECTURE.md`: Rewrote with Mermaid diagrams for module map, entry point, frozen build pipeline, bundled runtime, wiring, core module dependencies, service layer wiring, UI module layout, tools, test guard layer, performance optimization cache invalidation flow.
-- `project_overview.md`: Rewrote with Mermaid diagrams for data flow phases, URI/protocol handler routing + validation layer, launcher discovery, key decisions flow, commands flow, testing conventions guard/checks/runtime layers.
-- `README.md` and `CHANGELOG.md` already had Mermaid diagrams from earlier overhauls; all four docs now use GFM badges, alert blocks, tables, and Mermaid diagrams consistently.
+- `README.md`: Rewritten with extensive Mermaid diagrams for app workflow, key capabilities, install & run, setup wizard, protocol handler, frozen build pipeline, development workflow, performance optimizations, repository layout, running on your machine, license, bundled runtime, and quick links to every key code section. Removed all references to sharing with other users' machines — the app is for organizing your own game library. Added rule: every file change requires a comment explaining what changed and why, and the project must be updated on GitHub.
+- `AGENTS.md`: Rewritten with Mermaid diagrams for how-to-use flow, change-before-you-change flow, prerequisites & setup, development toolchain, frozen build pipeline, bundled runtime, logging rotation, test logs, platform, test result, test hygiene/sandbox flow, long-running commands, proving a test can fail, Git/GitHub workflow, commit-after-build checklist, keeping docs accurate, definition of done. Removed all references to sharing with other users' machines.
+- `ARCHITECTURE.md`: Rewritten with Mermaid diagrams for module map, entry point, frozen build pipeline, bundled runtime, wiring, core module dependencies, service layer wiring, UI module layout, tools, test guard layer, performance optimization cache invalidation flow. Every module and service links to its source file.
+- `project_overview.md`: Rewritten with Mermaid diagrams for data flow phases, URI/protocol handler routing + validation layer, launcher discovery, key decisions flow, commands flow, testing conventions guard/checks/runtime layers. Every convention and code section links to its source file.
+- Added comment rule to every doc: whenever any file is changed, a comment explaining what changed and why must be added, and the project must be pushed to GitHub.
 - Changelog entry added in the same change as the doc change.
 
 ---
 
 ### 2026-11-10 — Corrected "frozen exe needs nothing installed" note (GitHub doesn't ship runtime/)
 
-- `README.md`: Corrected the setup tip — GitHub only has source code (`runtime/`, `dist/`, `build/` are gitignored). Users must build the frozen exe once with `python tools\build_frozen.py` (needs Python 3.13, PyInstaller, 7-Zip) before copying `dist\steam_game_organizer\` to a friend's PC.
-- `AGENTS.md`: Same correction in the Prerequisites tip — clarified that GitHub doesn't ship `runtime/` or `dist/`, and the build step is required before copying to another PC.
+- `README.md`: Corrected the setup tip — GitHub only has source code (`runtime/`, `dist/`, `build/` are gitignored). Users must build the frozen exe once with `python tools\build_frozen.py` (needs Python 3.13, PyInstaller, 7-Zip) before running the built `dist\steam_game_organizer\` folder on their own machine.
+- `AGENTS.md`: Same correction in the Prerequisites tip — clarified that GitHub doesn't ship `runtime/` or `dist/`, and the build step is required before running the built app on your own machine.
 - Changelog entry added in the same change as the doc change.
 
 ---
@@ -439,7 +440,7 @@ Removed 124 `# vX.Y change log:` note blocks from 47 source files. History now l
 
 ## 9.30 — 2026-10-30
 
-Preview Only now keeps its promise in every phase; a friend opening the catalog on a PC that has never seen this app can now set it up from the page itself.
+Preview Only now keeps its promise in every phase; a user opening the catalog on a PC that has never run this app can now set it up from the page itself.
 
 - **Preview Only writes nothing, in any phase.** Discovery password-unlock no longer rewrites protected zip in place; duplicate sweep guarded by `if not preview_only`; catalog reports "Catalog not generated — Preview Only writes nothing"; audit still runs with `refreshed: 0` and separate `would_refresh` count.
 - **PC that never ran the app cannot use Extract button; page now says so and fixes it.** New **Set up on this PC** button opens three-folder wizard (game library, app folder, extract folder) with preflight checks.
@@ -815,7 +816,7 @@ Windows primary platform; three things that quietly only worked on Linux now wor
 ## 8.2 — 2026-10-20
 
 - Restored polished v6.7 visual direction across Scan, Review, Organize, Done.
-- Rebuilt main frame with dark Steam Deck-friendly visual system.
+- Rebuilt main frame with dark polished visual system.
 - Reworked Review into two-pane queue/workspace.
 - Reworked game cards with selected/matched/review/hover states.
 - Replaced placeholder Scan/Organize/Done pages with cohesive product UI.

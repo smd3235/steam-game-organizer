@@ -7,12 +7,21 @@
 
 ---
 
+## 🏷️ Comment rule (applies to every change)
+
+> [!IMPORTANT]
+> **Whenever any file is changed in this project:**
+> 1. **A comment is added** — every changed file must include a comment explaining what changed and why. Inline comments (`#`) state *why* a specific line does something. Docstrings (`"""`) state *what* a module/class/function does.
+> 2. **The project is updated on GitHub** — after the change is committed locally and verified (lint + tests + build), push to GitHub so the public repository always reflects the current state. See [`AGENTS.md`](AGENTS.md) for the full commit-after-build checklist.
+
+---
+
 ## What it does
 
 Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized into category folders), matches each archive against Steam's store API, files the archive into the right category alongside Steam links, metadata, and artwork, generates a clickable HTML catalog, and offers Undo for the whole run.
 
 > [!IMPORTANT]
-> The app runs full-screen on Windows only, from a frozen PyInstaller exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`, `debug/`. Version is declared in `VERSION.txt` and mirrored into `core/constants.py` (`VERSION`) and `USER_AGENT`.
+> The app runs full-screen on Windows only, from a frozen PyInstaller exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`, `debug/`. Version is declared in [`VERSION.txt`](VERSION.txt) and mirrored into [`core/constants.py`](core/constants.py) (`VERSION`) and `USER_AGENT`.
 
 ---
 
@@ -81,12 +90,14 @@ flowchart TD
     style B1 fill:#e1f5fe,stroke:#01579b
 ```
 
-1. **Discover** (`CatalogService._collect`) — walks category folders under the library root, skips anything without an archive, skips the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game.
-2. **Organize** (`AppController.organize` / `OrganizerService.move`) — groups archives by identity key, promotes the newest version, archives older copies and re-categorized leftovers to `Archive/`, repacks `.zip/.rar` → `.7z` (adaptive compression level against real memory headroom), writes metadata + Steam shortcut + artwork into each game folder.
-3. **Catalog** (`CatalogService.generate`) — writes `Game Library.html` plus `Game Library.status.js` beside the library root; retains a `LibrarySummary` index (categories, genres, developers, archive sizes) so screens can ask placement questions without re-walking.
-4. **Done screen** — reports what a run moved/failed/skipped; buttons open library folder or game folder.
-5. **Undo** (`RollbackService`) — reads `config/last-organization.json`, restores each archived file to its source, prunes emptied folders this run created into `Archive/` (never deletes a folder it didn't make).
-6. **Batch extract** (`services/batch_extract_service.py`) — unpacks archives to user-chosen folders outside the library, relocates installer layouts to `Needs Install`, writes per-result status next to the catalog.
+| Phase | What happens | Code |
+|-------|--------------|------|
+| **1. Discover** | [`CatalogService._collect`](services/catalog_service.py) — walks category folders under the library root, skips anything without an archive, skips the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game. | [`services/catalog_service.py`](services/catalog_service.py) |
+| **2. Organize** | [`AppController.organize`](/app/controller.py) / [`OrganizerService.move`](services/organizer_service.py) — groups archives by identity key, promotes the newest version, archives older copies and re-categorized leftovers to `Archive/`, repacks `.zip/.rar` → `.7z` (adaptive compression level against real memory headroom), writes metadata + Steam shortcut + artwork into each game folder. | [`services/organizer_service.py`](services/organizer_service.py) — [`app/controller.py`](app/controller.py) |
+| **3. Catalog** | [`CatalogService.generate`](services/catalog_service.py) — writes `Game Library.html` plus `Game Library.status.js` beside the library root; retains a `LibrarySummary` index (categories, genres, developers, archive sizes) so screens can ask placement questions without re-walking. | [`services/catalog_service.py`](services/catalog_service.py) — [`services/catalog_status.py`](services/catalog_status.py) |
+| **4. Done screen** | Reports what a run moved/failed/skipped; buttons open library folder or game folder. | [`ui/done_view.py`](ui/done_view.py) |
+| **5. Undo** | [`RollbackService`](services/rollback_service.py) — reads `config/last-organization.json`, restores each archived file to its source, prunes emptied folders this run created into `Archive/` (never deletes a folder it didn't make). | [`services/rollback_service.py`](services/rollback_service.py) |
+| **6. Batch extract** | [`services/batch_extract_service.py`](services/batch_extract_service.py) — unpacks archives to user-chosen folders outside the library, relocates installer layouts to `Needs Install`, writes per-result status next to the catalog. | [`services/batch_extract_service.py`](services/batch_extract_service.py) — [`ui/batch_extract_window.py`](ui/batch_extract_window.py) |
 
 ---
 
@@ -127,17 +138,17 @@ flowchart TD
 
 The app registers `steamgameorganizer://` under `HKCU\Software\Classes` (per user, no elevation). Supported actions:
 
-| Action | Behavior |
-|--------|----------|
-| `extract` | Parse into an `ExtractRequest` via `core/uri_actions.py` (owns `SCHEME` and `SYSTEM_PATHS`, the folders a typed destination may not sit inside) |
-| `extract-all` / `extract-multi` | Category or whole library / hand-picked selection → opens `BatchExtractWindow` (hours of 7z needs a visible queue) |
-| `setup` | Prefill the three-folder setup wizard text boxes |
-| `open-extracted` | `steamgameorganizer://open-extracted?path=<folder>` — opens an extracted/installer folder; path must resolve under a configured extract folder (validated/normalized by the handler) |
-| `play` | `steamgameorganizer://play?exe=<file>&path=<marker-folder>` or `?path=<marker-folder>` — launches a validated `.exe` under configured extract folders; when `exe` is omitted, the handler uses the marker's persisted `launch_target` |
-| `pick-launcher` | `steamgameorganizer://pick-launcher?path=<marker-folder>` — opens a file picker constrained to the resolved extracted root, validates the chosen `.exe`, persists `launch_target` in `.sgo-extract-info`, then regenerates/opens the catalog |
-| `mark-installed` | `steamgameorganizer://mark-installed?path=<marker-folder>` — persists setup completion (`setup_done`, `installed_at`, `needs_install=false`) and regenerates/opens the catalog |
-| `refresh-catalog` | Regenerate `Game Library.html` against the live library and re-open it (the page's Unpacked badges are decided at generation time; a `file://` page cannot re-scan the folder itself) |
-| `open-folder` | `steamgameorganizer://open-folder?path=<folder>` — opens the game/library source folder in Explorer; path validated against the library root |
+| Action | Behavior | Code |
+|--------|----------|------|
+| `extract` | Parse into an `ExtractRequest` via `core/uri_actions.py` (owns `SCHEME` and `SYSTEM_PATHS`, the folders a typed destination may not sit inside) | [`core/uri_actions.py`](core/uri_actions.py) |
+| `extract-all` / `extract-multi` | Category or whole library / hand-picked selection → opens `BatchExtractWindow` (hours of 7z needs a visible queue) | [`services/batch_extract_service.py`](services/batch_extract_service.py) — [`ui/batch_extract_window.py`](ui/batch_extract_window.py) |
+| `setup` | Prefill the three-folder setup wizard text boxes | [`services/setup_service.py`](services/setup_service.py) — [`ui/setup_window.py`](ui/setup_window.py) |
+| `open-extracted` | `steamgameorganizer://open-extracted?path=<folder>` — opens an extracted/installer folder; path must resolve under a configured extract folder (validated/normalized by the handler) | [`core/uri_actions.py`](core/uri_actions.py) |
+| `play` | `steamgameorganizer://play?exe=<file>&path=<marker-folder>` or `?path=<marker-folder>` — launches a validated `.exe` under configured extract folders; when `exe` is omitted, the handler uses the marker's persisted `launch_target` | [`core/uri_actions.py`](core/uri_actions.py) — [`services/catalog_status.py`](services/catalog_status.py) |
+| `pick-launcher` | `steamgameorganizer://pick-launcher?path=<marker-folder>` — opens a file picker constrained to the resolved extracted root, validates the chosen `.exe`, persists `launch_target` in `.sgo-extract-info`, then regenerates/opens the catalog | [`services/catalog_status.py`](services/catalog_status.py) |
+| `mark-installed` | `steamgameorganizer://mark-installed?path=<marker-folder>` — persists setup completion (`setup_done`, `installed_at`, `needs_install=false`) and regenerates/opens the catalog | [`services/catalog_status.py`](services/catalog_status.py) |
+| `refresh-catalog` | Regenerate `Game Library.html` against the live library and re-open it (the page's Unpacked badges are decided at generation time; a `file://` page cannot re-scan the folder itself) | [`services/catalog_service.py`](services/catalog_service.py) |
+| `open-folder` | `steamgameorganizer://open-folder?path=<folder>` — opens the game/library source folder in Explorer; path validated against the library root | [`core/uri_actions.py`](core/uri_actions.py) — [`utils/desktop.py`](utils/desktop.py) |
 
 On a first run with no settings, `_needs_setup` detects a missing `settings.json` / nonexistent library root and opens `setup_window.py` before the GUI — the catalog's own setup button cannot install the protocol handler, so the wizard is the first-run fallback.
 
@@ -160,7 +171,7 @@ flowchart TD
     style PL fill:#bfb,stroke:#333
 ```
 
-`services/catalog_status.py:discover_game_launchers` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size; returns a ranked list for user choice via Pick launcher. The chosen `launch_target` persists to `.sgo-extract-info` and subsequent Play actions use it.
+[`services/catalog_status.py`](services/catalog_status.py)`:discover_game_launchers` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size; returns a ranked list for user choice via Pick launcher. The chosen `launch_target` persists to `.sgo-extract-info` and subsequent Play actions use it.
 
 ---
 
@@ -238,16 +249,16 @@ flowchart TD
     style D6 fill:#bbf,stroke:#333
 ```
 
-| Decision | Rationale |
-|----------|-----------|
-| **Move to `Archive/`, never delete.** | Empty game folders, empty categories, re-categorized source folders, and rollback-emptied folders are moved into `Archive/` (with `(n)` collision suffixes) so the user can review before deleting. `rmtree` is only a fallback when `library_root` is unknown. |
-| **Two folder rules.** | `_folder_is_disposable` (download folder, any image OK) and `_folder_is_prunable` (organized game folder, app-shaped artwork only) are deliberately different. Never merge them. |
-| **Ownership gating.** | Undo only prunes folders `created_game_dir` says this run made. A folder already there belongs to the user whatever it holds. |
-| **Reserved dirs.** | `Archive` and `Processing` under the library root are never treated as categories. The app's own project folder is never swept. |
-| **Windows-only.** | `os.startfile`, `CREATE_NO_WINDOW`, `7z.exe` bundled in `runtime/`. Anything branching on platform should raise/refuse rather than keep a second implementation. |
-| **Frozen exe rebuild required.** | After any code change: `python tools/build_frozen.py`. The user runs only the frozen exe. |
-| **Atomic writes.** | `settings.json`, `scan-state.json`, and the rollback journal all use temp-file + `os.replace` with retry on `PermissionError` (OneDrive locks). |
-| **`runtime/` ships with the exe** | and is excluded from lint/version scans; it is not this project's code. |
+| Decision | Rationale | Code |
+|----------|-----------|------|
+| **Move to `Archive/`, never delete.** | Empty game folders, empty categories, re-categorized source folders, and rollback-emptied folders are moved into `Archive/` (with `(n)` collision suffixes) so the user can review before deleting. `rmtree` is only a fallback when `library_root` is unknown. | [`services/organizer_service.py`](services/organizer_service.py) — [`services/rollback_service.py`](services/rollback_service.py) |
+| **Two folder rules.** | `_folder_is_disposable` (download folder, any image OK) and `_folder_is_prunable` (organized game folder, app-shaped artwork only) are deliberately different. Never merge them. | [`services/organizer_service.py`](services/organizer_service.py) |
+| **Ownership gating.** | Undo only prunes folders `created_game_dir` says this run made. A folder already there belongs to the user whatever it holds. | [`services/rollback_service.py`](services/rollback_service.py) |
+| **Reserved dirs.** | `Archive` and `Processing` under the library root are never treated as categories. The app's own project folder is never swept. | [`services/catalog_service.py`](services/catalog_service.py) |
+| **Windows-only.** | `os.startfile`, `CREATE_NO_WINDOW`, `7z.exe` bundled in `runtime/`. Anything branching on platform should raise/refuse rather than keep a second implementation. | [`utils/desktop.py`](utils/desktop.py) — [`runtime/`](runtime/) |
+| **Frozen exe rebuild required.** | After any code change: `python tools\build_frozen.py`. The user runs only the frozen exe. | [`tools/build_frozen.py`](tools/build_frozen.py) |
+| **Atomic writes.** | `settings.json`, `scan-state.json`, and the rollback journal all use temp-file + `os.replace` with retry on `PermissionError` (OneDrive locks). | [`core/config.py`](core/config.py) |
+| **`runtime/` ships with the exe** | and is excluded from lint/version scans; it is not this project's code. | [`tools/bundle_runtime.py`](tools/bundle_runtime.py) |
 
 ---
 
@@ -257,7 +268,7 @@ flowchart TD
 flowchart TD
     C1[Tests] -->|runtime\python.exe -m unittest discover -q| OK[OK, no skips expected]
     C2[Lint] -->|ruff check .| CLEAN[Clean]
-    C3[Build] -->|python tools/build_frozen.py| EXE[dist\steam_game_organizer\steam_game_organizer.exe]
+    C3[Build] -->|python tools\build_frozen.py| EXE[dist\steam_game_organizer\steam_game_organizer.exe]
     C4[Layout audit] -->|runtime\python.exe tools\layout_audit.py| CLIP[Clipping, off-window widgets, sibling overlap]
     C5[Contrast audit] -->|runtime\python.exe tools\analyze_screenshot.py <shot.png>| WCAG[WCAG contrast ratios]
     
@@ -266,13 +277,13 @@ flowchart TD
     style EXE fill:#bbf,stroke:#333
 ```
 
-| Command | Purpose |
-|---------|---------|
-| `runtime\python.exe -m unittest discover -q` | Tests — expect `OK` with no skips — PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug |
-| `ruff check .` | Lint |
-| `python tools/build_frozen.py` | Rebuild frozen exe |
-| `runtime\python.exe tools\layout_audit.py` | Layout audit (clipping, off-window widgets, sibling overlap) |
-| `runtime\python.exe tools\analyze_screenshot.py <shot.png>` | Contrast audit (after theme changes) |
+| Command | Purpose | Code |
+|---------|---------|------|
+| `runtime\python.exe -m unittest discover -q` | Tests — expect `OK` with no skips — PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug | [`tests/`](tests/) |
+| `ruff check .` | Lint | [`ruff.toml`](ruff.toml) |
+| `python tools/build_frozen.py` | Rebuild frozen exe | [`tools/build_frozen.py`](tools/build_frozen.py) |
+| `runtime\python.exe tools\layout_audit.py` | Layout audit (clipping, off-window widgets, sibling overlap) | [`tools/layout_audit.py`](tools/layout_audit.py) |
+| `runtime\python.exe tools\analyze_screenshot.py <shot.png>` | Contrast audit (after theme changes) | [`tools/analyze_screenshot.py`](tools/analyze_screenshot.py) |
 
 ---
 
@@ -312,20 +323,20 @@ flowchart TD
 ```
 
 > [!IMPORTANT]
-> Use `tests/tk_support.py:sandbox_app` to root `AppConfig` in a temp tree — never construct the real app against the real `config/` in tests (tests race on `settings.json`; `test_project_state_guard.py` enforces this). `sandbox_app` patches `app.application.AppConfig` to point at a temporary tree; `close_root` cancels pending Tk `after` callbacks before `destroy()` so geometry tests don't leave `invalid command name _tick` noise on stderr.
+> Use [`tests/tk_support.py:sandbox_app`](tests/tk_support.py) to root `AppConfig` in a temp tree — never construct the real app against the real `config/` in tests (tests race on `settings.json`; `test_project_state_guard.py` enforces this). `sandbox_app` patches `app.application.AppConfig` to point at a temporary tree; `close_root` cancels pending Tk `after` callbacks before `destroy()` so geometry tests don't leave `invalid command name _tick` noise on stderr.
 
-| Convention | Rule |
-|------------|------|
-| **No test may skip.** | `tests/test_zero_skips.py` parses every test file with `ast` and fails on any `unittest.skip`, `skipIf`, `skipUnless`, `expectedFailure`, `SkipTest`, or `self.skipTest`. The only exemption is `tests/test_frozen_build.py`'s `@unittest.skipUnless(HAS_PYINSTALLER)` build test — PyInstaller is installed in the bundled runtime so it runs rather than skips. Expected result: `OK`. A skip that is not that one is a bug. |
-| **Tests must not write this project's own state.** | `tests/test_project_state_guard.py` snapshots every file under `config/`, exercises `AppConfig.save()`, `remember_category()`, the scan summary, the undo journal, and a real window, and fails if any byte or mtime moved under the real `config/`. `PROJECT_UNDER_TEST = None` aims writes at a temp tree; point it at `ROOT` to watch both tests fail and prove the guard works. |
-| **Every check must actually run.** | `Ran 0 tests` from a collected module is a bug — `tests/test_contrast.py` was once a script with a `main()` that discovery ran zero tests from. |
-| **Archiver stubs are cross-platform.** | `tests/test_services.py:_write_stub` writes each fake 7-Zip/unrar stub in whatever form the platform can execute (a shebang script with no extension is invisible to `shutil.which()` on Windows). The conversion pipeline is exercised against a tar-backed fake rather than real 7-Zip, so tests behave identically with or without 7-Zip installed, and a stub can be made to fail in one specific place. |
-| **No POSIX absolute paths aimed at writing constructors.** | `tests/test_platform.py` scans code strings (not comments/docstrings) for `AppConfig(Path('/tmp/...'))`, `AppLogger(Path('/tmp')/...)`, `ArtworkService(...)`, `RollbackService(...)` — on Windows a leading slash resolves against the current drive, so each writes outside the repository. Test code is scanned too. |
-| **Windows-only platform.** | `tests/test_platform.py` bans `xdg-open`, `xdg-mime`/`mimeapps.list`, `flatpak`, `/proc/meminfo`, `/home/`, `/root/`, `/usr/bin`, and Linux browser package names from production code strings. Legacy cleanup lists (`.desktop` links, old catalog launchers) are deliberately not banned — they are the names this app deletes. |
-| **Version structure is scanned.** | `tests/test_release_structure.py` walks the tree (excluding `cache/`, `logs/`, `config/`, `runtime/`, `build/`, `dist/`, `__pycache__`, `.git`, `Processing`) and fails if production code declares a version number anywhere except `VERSION.txt`, `USER_AGENT`, or `CHANGELOG.md`. `# vX.Y change log:` comments and `## X.Y` markdown headings are prose (exempt via `code_before_comment` / fenced-block handling), not version declarations. |
-| **No dead code.** | `tests/test_dead_code.py` asserts superseded names (`wait_for_cancel`, `CATEGORY_GENRES`, `ConfigurationError`, `ServiceError`, `_steam_link`, `STAGE_COST`, `_activity_wheel`) are gone — each entry documents what replaced it. |
-| **No zero-skips evasion.** | `tests/test_zero_skips.py` uses AST (not grep) so comments and docstrings naming skip constructs don't trigger it — this repository documents its own removals at length. |
-| **The frozen build is tested.** | `tests/test_frozen_build.py` runs `build_frozen.main()` against a scratch tree and asserts the exe lands inside the bundle with `core/`, `services/`, `runtime/`, `VERSION.txt`, and `runtime/7z.exe` present — because the app resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings. |
+| Convention | Rule | Code |
+|------------|------|------|
+| **No test may skip.** | `tests/test_zero_skips.py` parses every test file with `ast` and fails on any `unittest.skip`, `skipIf`, `skipUnless`, `expectedFailure`, `SkipTest`, or `self.skipTest`. The only exemption is `tests/test_frozen_build.py`'s `@unittest.skipUnless(HAS_PYINSTALLER)` build test — PyInstaller is installed in the bundled runtime so it runs rather than skips. Expected result: `OK`. A skip that is not that one is a bug. | [`tests/test_zero_skips.py`](tests/test_zero_skips.py) |
+| **Tests must not write this project's own state.** | `tests/test_project_state_guard.py` snapshots every file under `config/`, exercises `AppConfig.save()`, `remember_category()`, the scan summary, the undo journal, and a real window, and fails if any byte or mtime moved under the real `config/`. `PROJECT_UNDER_TEST = None` aims writes at a temp tree; point it at `ROOT` to watch both tests fail and prove the guard works. | [`tests/test_project_state_guard.py`](tests/test_project_state_guard.py) |
+| **Every check must actually run.** | `Ran 0 tests` from a collected module is a bug — `tests/test_contrast.py` was once a script with a `main()` that discovery ran zero tests from. | [`tests/test_contrast.py`](tests/test_contrast.py) |
+| **Archiver stubs are cross-platform.** | `tests/test_services.py:_write_stub` writes each fake 7-Zip/unrar stub in whatever form the platform can execute (a shebang script with no extension is invisible to `shutil.which()` on Windows). The conversion pipeline is exercised against a tar-backed fake rather than real 7-Zip, so tests behave identically with or without 7-Zip installed, and a stub can be made to fail in one specific place. | [`tests/test_services.py`](tests/test_services.py) |
+| **No POSIX absolute paths aimed at writing constructors.** | `tests/test_platform.py` scans code strings (not comments/docstrings) for `AppConfig(Path('/tmp/...'))`, `AppLogger(Path('/tmp')/...)`, `ArtworkService(...)`, `RollbackService(...)` — on Windows a leading slash resolves against the current drive, so each writes outside the repository. Test code is scanned too. | [`tests/test_platform.py`](tests/test_platform.py) |
+| **Windows-only platform.** | `tests/test_platform.py` bans `xdg-open`, `xdg-mime`/`mimeapps.list`, `flatpak`, `/proc/meminfo`, `/home/`, `/root/`, `/usr/bin`, and Linux browser package names from production code strings. Legacy cleanup lists (`.desktop` links, old catalog launchers) are deliberately not banned — they are the names this app deletes. | [`tests/test_platform.py`](tests/test_platform.py) |
+| **Version structure is scanned.** | `tests/test_release_structure.py` walks the tree (excluding `cache/`, `logs/`, `config/`, `runtime/`, `build/`, `dist/`, `__pycache__`, `.git`, `Processing`) and fails if production code declares a version number anywhere except `VERSION.txt`, `USER_AGENT`, or `CHANGELOG.md`. `# vX.Y change log:` comments and `## X.Y` markdown headings are prose (exempt via `code_before_comment` / fenced-block handling), not version declarations. | [`tests/test_release_structure.py`](tests/test_release_structure.py) |
+| **No dead code.** | `tests/test_dead_code.py` asserts superseded names (`wait_for_cancel`, `CATEGORY_GENRES`, `ConfigurationError`, `ServiceError`, `_steam_link`, `STAGE_COST`, `_activity_wheel`) are gone — each entry documents what replaced it. | [`tests/test_dead_code.py`](tests/test_dead_code.py) |
+| **No zero-skips evasion.** | `tests/test_zero_skips.py` uses AST (not grep) so comments and docstrings naming skip constructs don't trigger it — this repository documents its own removals at length. | [`tests/test_zero_skips.py`](tests/test_zero_skips.py) |
+| **The frozen build is tested.** | `tests/test_frozen_build.py` runs `build_frozen.main()` against a scratch tree and asserts the exe lands inside the bundle with `core/`, `services/`, `runtime/`, `VERSION.txt`, and `runtime/7z.exe` present — because the app resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings. | [`tests/test_frozen_build.py`](tests/test_frozen_build.py) |
 
 ---
 
@@ -334,3 +345,4 @@ flowchart TD
 - Docstrings (`"""`) state *what* a module/class/function does and its contract.
 - `#` comments state *why* a specific line does something (bug, edge case, platform quirk) — inline with implementation.
 - Do not convert `#` comments into docstrings; they are not interchangeable.
+- Every changed file must include at least one comment explaining what changed and why.
