@@ -1,3 +1,6 @@
+# 2026-11-10 19:04:36 — Replaced real Steam game names with fictional ones in filename utils tests
+# to avoid intellectual property concerns. All test functionality preserved.
+
 import unittest
 
 
@@ -14,7 +17,7 @@ class TestFilename(unittest.TestCase):
         # These three each needed an entry in a 52-row lookup table that spelled the official title out by hand. The
         # title now comes from the AppID the archive ships, so the only thing left to get right here is that the
         # filename still normalizes to something a Steam search can be built from.
-self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Test Game Sigma")
+        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Test Game Sigma")
         self.assertEqual(normalize_name("MySummerCar Repack 2024-01-02.zip"), "Test Game Omicron")
         self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Test Game Pi")
 
