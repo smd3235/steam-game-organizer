@@ -24,7 +24,25 @@ flowchart TD
     style C fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
-This file is the operating manual for contributing to the project. Read it **before** modifying any module.
+This file is the **operating manual for contributing** to the project. Read it **before** modifying any module.
+
+### Quick reference
+
+| If you want to… | Go to section |
+|-----------------|---------------|
+| Build, test, lint, run | [**Prerequisites & Setup**](#-prerequisites--setup) |
+| Rebuild frozen exe after code change | [**Build — frozen exe pipeline**](#-build--frozen-exe-pipeline) |
+| Bundle Python + 7-Zip into runtime/ | [**The bundled runtime**](#-the-bundled-runtime) |
+| Understand logging behavior | [**Logging**](#-logging) |
+| Understand test hygiene rules | [**Test hygiene**](#-test-hygiene) |
+| Run lint checks | [**Lint**](#-lint) |
+| Capture and delete screenshots | [**Screenshots**](#-screenshots-capture-analyze-delete) |
+| Handle long-running commands | [**Long-running commands**](#-long-running-commands) |
+| Prove a test can fail | [**Proving a test can fail**](#-proving-a-test-can-fail) |
+| Git/GitHub workflow | [**Git / GitHub workflow**](#-git--github-workflow) |
+| Keep docs accurate | [**Keeping project docs accurate**](#-keeping-the-project-docs-accurate) |
+| Check if task is complete | [**Definition of Done**](#-definition-of-done-mandatory) |
+| Write comments | [**Comment style**](#-comment-style) |
 
 ---
 
@@ -53,8 +71,10 @@ flowchart TD
 
 > [!IMPORTANT]
 > **New rule — comment on every change, update GitHub on every change.** Whenever any file is changed in this project:
-> 1. **A comment is added** — every changed file must include a comment explaining what changed and why. Inline comments (`#`) state *why* a specific line does something (bug, edge case, platform quirk). Docstrings (`"""`) state *what* a module/class/function does and its contract. See [**Comment style**](#comment-style) below.
-> 2. **The project is updated on GitHub** — after the change is reviewed, committed locally, and verified (lint + tests + build), push to GitHub so the public repository always reflects the current state. Never leave work committed locally only. See [**Git / GitHub workflow**](#git--github-workflow).
+> 1. **A comment is added** — every changed file must include a comment explaining what changed and why. Inline comments (`#`) state *why* a specific line does something (bug, edge case, platform quirk). Docstrings (`"""`) state *what* a module/class/function does and its contract. See [**Comment style**](#-comment-style) below.
+> 2. **The project is updated on GitHub** — after the change is reviewed, committed locally, and verified (lint + tests + build), push to GitHub so the public repository always reflects the current state. Never leave work committed locally only. See [**Git / GitHub workflow**](#-git--github-workflow).
+
+### Rules at a glance
 
 | Rule | What it means |
 |------|---------------|
@@ -319,7 +339,7 @@ There is no second environment to keep green. The Flatpak/SteamOS target is gone
 
 ```mermaid
 flowchart TD
-    A[Run test suite] -->     B[739 tests collected]
+    A[Run test suite] --> B[739 tests collected]
     B --> C{4 pre-existing test_regressions.py errors?}
     C -->|Yes| D[Ignore - unrelated indentation bugs]
     D --> E[0 failures from changes = PASS]
@@ -578,7 +598,7 @@ Before considering any task complete, you MUST verify:
 - [ ] **Changelog**: Added a dated entry under `## 9.33` at the top of that section (newest first) in [`CHANGELOG.md`](CHANGELOG.md) describing the change.
 - [ ] **Docs**: Updated [`AGENTS.md`](AGENTS.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`project_overview.md`](project_overview.md), or [`README.md`](README.md) if behavior, architecture, commands, test counts, or frozen build layout changed.
 - [ ] **Lint**: `ruff check .` passes.
-- [ ] **Tests**: `runtime\python.exe -m unittest discover -q` reports `OK` with no new skips (PyInstaller test may run).
+- [ ] **Tests**: `runtime\python.exe -m unittest discover -q` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs).
 - [ ] **Build**: If any source code changed, rebuilt the exe with `python tools\build_frozen.py`.
 - [ ] **Hygiene**: No `*.png` screenshots left in repo root, no writes to real `config/`, `cache/`, or `logs/` (use [`tests/tk_support.py:sandbox_app`](tests/tk_support.py) in tests).
 - [ ] **GitHub**: Committed and pushed to GitHub so the public repository reflects the change.

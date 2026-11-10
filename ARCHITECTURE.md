@@ -19,7 +19,7 @@
 
 ---
 
-## Module map
+## 🗺️ Module map
 
 ```mermaid
 flowchart TD
@@ -93,6 +93,14 @@ flowchart TD
         T6[layout_audit.py]
         T7[dead_space_audit.py]
         T8[verify_archives.py]
+        T9[build_icon.py]
+        T10[tk_probe.py]
+        T11[auto_backup.py]
+        T12[compare_backups.py]
+        T13[create_shortcut.py]
+        T14[restore_backup.py]
+        T15[review_backups.py]
+        T16[run_tests_parallel.py]
     end
 
     E1 -->|owns| A1
@@ -120,9 +128,22 @@ flowchart TD
     style BUNDLE fill:#bbf,stroke:#333
 ```
 
+### Directory quick reference
+
+| Directory | Files | Purpose |
+|-----------|-------|---------|
+| **app/** | 5 | GUI application layer — composition root, controller, jobs, events |
+| **core/** | 7 | Config, constants, models, URI actions, logger, state, exceptions |
+| **services/** | 13 | Business services — archive, batch extract, catalog, catalog status, extract, installer detect, library, organizer, rollback, setup, Steam, artwork, banner art |
+| **ui/** | 10 | Tkinter windows, widgets, theme, palette — main window + 5 views + batch/setup windows |
+| **utils/** | 4 | Filename utils, formatting, desktop, treewalk |
+| **debug/** | 1 | Diagnostics and health report output |
+| **tools/** | 16 | Build, bundle runtime, protocol handler, audits, repair, backups, shortcuts, compare, review, parallel test runner |
+| **tests/** | 30+ | Test suite — 739 tests across guard, static, and runtime checks |
+
 ---
 
-## Entry point
+## 🚪 Entry point
 
 ```mermaid
 flowchart TD
@@ -146,7 +167,7 @@ flowchart TD
 
 ---
 
-## Frozen build
+## 🏗️ Frozen build
 
 ```mermaid
 flowchart TD
@@ -173,7 +194,7 @@ flowchart TD
 
 ---
 
-## Bundled runtime
+## 📦 Bundled runtime
 
 ```mermaid
 flowchart TD
@@ -234,7 +255,7 @@ flowchart TD
 
 ---
 
-## Wiring
+## 🔌 Wiring
 
 ```mermaid
 flowchart TD
@@ -298,7 +319,7 @@ flowchart TD
 
 ---
 
-## core
+## 🔧 core
 
 ```mermaid
 flowchart TD
@@ -335,7 +356,7 @@ flowchart TD
 
 ---
 
-## services
+## 🛠️ services
 
 ```mermaid
 flowchart TD
@@ -399,7 +420,7 @@ flowchart TD
 
 ---
 
-## ui
+## 🖼️ ui
 
 ```mermaid
 flowchart TD
@@ -444,7 +465,7 @@ Theme colours reach a view only through an explicit import. They were star-impor
 
 ---
 
-## utils
+## 🔧 utils
 
 | Module | Role | Link |
 |--------|------|------|
@@ -455,7 +476,7 @@ Theme colours reach a view only through an explicit import. They were star-impor
 
 ---
 
-## debug
+## 🐞 debug
 
 | Module | Role | Link |
 |--------|------|------|
@@ -463,7 +484,7 @@ Theme colours reach a view only through an explicit import. They were star-impor
 
 ---
 
-## tools
+## 🛠️ tools
 
 ```mermaid
 flowchart TD
@@ -509,7 +530,7 @@ Development and installation scripts, not part of the application:
 
 ---
 
-## tests
+## 🧪 tests
 
 ```mermaid
 flowchart TD
@@ -530,7 +551,7 @@ flowchart TD
     ZERO -->|AST scan| NO_SKIPS[no unittest.skip]
     PLAT -->|string scan| NO_POSIX[no xdg-open, /home/, flatpak...]
     DEAD -->|asserts| NO_DEAD[superseded names gone]
-    REL -->|walks tree| NO_EXTRA_VERSION[version only in VERSION.txt, USER_AGENT, CHANGELOG.md]
+    REL -->|walks tree| NO_VER[version only in VERSION.txt, USER_AGENT, CHANGELOG.md]
     FROZEN -->|builds scratch tree| BUNDLE_OK[runtime/7z.exe present]
     
     style TK fill:#bfb,stroke:#333
@@ -538,7 +559,7 @@ flowchart TD
     style STATE fill:#fdd,stroke:#c00
 ```
 
-`runtime\python.exe -m unittest discover -q` — 781 tests, `OK` with no skips expected. The frozen-build test runs because PyInstaller is installed in the bundled runtime; any skip that is not that one is a bug.
+`runtime\python.exe -m unittest discover -q` — 739 tests, `OK` with no skips expected. The frozen-build test runs because PyInstaller is installed in the bundled runtime; any skip that is not that one is a bug.
 
 | Test | Role | Link |
 |------|------|------|
@@ -547,7 +568,7 @@ flowchart TD
 | `tests/test_zero_skips.py` | Parses every test file with `ast` and fails on any `unittest.skip`, `skipIf`, `skipUnless`, `expectedFailure`, `SkipTest`, or `self.skipTest`. The only exemption is `tests/test_frozen_build.py`'s `@unittest.skipUnless(HAS_PYINSTALLER)` build test — PyInstaller is installed in the bundled runtime so it runs rather than skips. Uses AST rather than grep so comments and docstrings naming skip constructs don't trigger it — this repository documents its own removals at length. | [`tests/test_zero_skips.py`](tests/test_zero_skips.py) |
 | `tests/test_platform.py` | Windows is the only platform. Parses each source module and fails on a string literal naming `xdg-open`, `xdg-mime`, `mimeapps.list`, `flatpak`, `/proc/meminfo`, a POSIX home path, or a Linux browser package name. Skips comments and docstrings. Legacy `.desktop` filenames the app still deletes are exempt by design. | [`tests/test_platform.py`](tests/test_platform.py) |
 | `tests/test_dead_code.py` | Asserts superseded names (`wait_for_cancel`, `CATEGORY_GENRES`, `ConfigurationError`, `ServiceError`, `_steam_link`, `STAGE_COST`, `_activity_wheel`) are gone; each entry documents what replaced it. | [`tests/test_dead_code.py`](tests/test_dead_code.py) |
-| `tests/test_release_structure.py` | Walks every shipped file (excluding `cache/`, `logs/`, `config/`, `runtime/`, `build/`, `dist/`, `__pycache__`, `.git`, `Processing`) for versions declared in production code; fails if production code declares a version outside `VERSION.txt`, `USER_AGENT`, or `CHANGELOG.md`. Prose and `# vX.Y change log:` notes are exempt via `code_before_comment` / fenced-block handling. | [`tests/test_release_structure.py`](tests/test_release_structure.py) |
+| `tests/test_release_structure.py` | Walks every shipped file (excluding `cache/`, `logs/`, `config/`, `runtime/`, `build/`, `dist/`, `__pycache__`, `.git`, `Processing`) for versions declared in production code; fails if production code declares a version number anywhere except `VERSION.txt`, `USER_AGENT`, or `CHANGELOG.md`. Prose and `# vX.Y change log:` notes are exempt via `code_before_comment` / fenced-block handling. | [`tests/test_release_structure.py`](tests/test_release_structure.py) |
 | `tests/test_render_integrity.py` | Asks what a widget was told to paint rather than how big it is, which is what catches a panel that laid out correctly and rendered blank. | [`tests/test_render_integrity.py`](tests/test_render_integrity.py) |
 | `tests/test_contrast.py` | A `TestCase`, not a script, so the audit cannot quietly stop running. | [`tests/test_contrast.py`](tests/test_contrast.py) |
 
@@ -557,7 +578,7 @@ There is one composition path and no shell backend compatibility layer.
 
 ---
 
-## Performance Optimizations (v9.33)
+## ⚡ Performance Optimizations (v9.33)
 
 All optimizations below are in the current development version and are cumulative across work done earlier this cycle. Each one eliminates redundant work — repeated filesystem walks, repeated `7z` subprocess calls, or repeated log-file stats — rather than changing what the app produces.
 
@@ -568,7 +589,7 @@ All optimizations below are in the current development version and are cumulativ
 | O1 | `services/catalog_service.py` | Module-level `_COLLECT_CACHE` with `threading.Lock`, shared across all `CatalogService` instances | Full library walk re-done for every new `CatalogService()` instance | **High** — one walk per process instead of one per instance | [`services/catalog_service.py`](services/catalog_service.py) |
 | O2 | `steam_game_organizer.py` | `build_name_map(logger, library_root)` helper; replaces 3 duplicated inline `_collect()` blocks in `_handle_uri`, `_handle_multi_uri`, `_handle_batch_uri` | 3 separate library walks per URI session (single / multi / batch extract paths) | **High** — 3× fewer full-library traversals | [`steam_game_organizer.py`](steam_game_organizer.py) |
 | O3 | `services/organizer_service.py` | `_manifest_cache` keyed by `(path, size, mtime_ns)` in `_archive_manifest()` | Redundant `7z l -slt` calls per archive conversion | **Medium-High** — one manifest read per archive identity instead of N | [`services/organizer_service.py`](services/organizer_service.py) |
-| O4 | `services/steam_service.py` | `_appid_in_archive_cache` keyed by `(path, size, mtime_ns) → appid` | Redundant `7z` subprocess calls per Steam AppID lookup | **High** — subprocess spawn avoided on cache hit | [`services/steam_service.py`](services/steam_service.py) |
+| O4 | `services/steam_service.py` | `_appid_in_archive_cache` dict keyed by `(path, size, mtime_ns) → appid` | Redundant `7z` subprocess calls per Steam AppID lookup | **High** — subprocess spawn avoided on cache hit | [`services/steam_service.py`](services/steam_service.py) |
 | O5 | `services/archive_service.py` | `_installer_kind_cache` keyed by `(path, size, mtime_ns)` | Redundant `7z l -slt` / zipfile index reads across batch-extract + extract + catalog | **Medium-High** — installer sniff cached per archive identity | [`services/archive_service.py`](services/archive_service.py) |
 | O6 | `services/organizer_service.py` | `_game_files()` cached per conversion; `_extraction_is_short(game_files=...)` accepts pre-computed result | Redundant `rglob('*')` walks during repack verification | **Medium** — one rglob instead of multiple per conversion | [`services/organizer_service.py`](services/organizer_service.py) |
 | O7 | `services/organizer_service.py` | `_content_folder_cache` for `_content_folder_name()` | Redundant folder-name lookups | **Low** — small string op cached | [`services/organizer_service.py`](services/organizer_service.py) |
@@ -607,6 +628,6 @@ flowchart TD
 ### Verification
 
 - `ruff check .` — clean (no new errors; pre-existing `tests/test_regressions.py` indentation bugs are unrelated).
-- `runtime\python.exe -m unittest discover -q` — 738 tests ran, 0 failures from changes (4 pre-existing `test_regressions.py` collection errors unrelated).
+- `runtime\python.exe -m unittest discover -q` — 739 tests ran, 0 failures from changes (4 pre-existing `test_regressions.py` collection errors unrelated).
 - `python tools\build_frozen.py` — frozen exe rebuilt; `dist/steam_game_organizer/runtime/7z.exe` verified present.
 - Dated changelog entries added under `## 9.33` for each batch of changes.

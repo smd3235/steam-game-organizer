@@ -1,4 +1,4 @@
-# Steam Game Organizer — project overview
+# project_overview.md — v9.33
 
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
@@ -7,7 +7,42 @@
 
 ---
 
-## What it does
+## 📖 How to use this document
+
+```mermaid
+flowchart TD
+    A[New reader?] --> B[What it does — one-line summary of the app]
+    B --> C[Data flow — six phases: Discover → Organize → Catalog → Done → Undo → Batch extract]
+    C --> D[Key decisions — do not re-litigate without cause]
+    D --> E[Commands — test, lint, build, layout audit, contrast audit]
+    E --> F[Testing conventions — sandbox_app, zero-skips, platform, dead code]
+    style A fill:#f9f,stroke:#333
+    style D fill:#bbf,stroke:#333
+```
+
+---
+
+## 🗺️ Quick reference
+
+| If you want to… | Go to section |
+|-----------------|---------------|
+| Understand what the app does | [**What it does**](#-what-it-does) |
+| Trace a run through six phases | [**Data flow**](#-data-flow) |
+| See which decisions are locked | [**Key decisions already made**](#-key-decisions-already-made) |
+| Run tests / lint / build | [**Commands**](#-commands) |
+| Read the testing rules | [**Testing conventions**](#-testing-conventions) |
+| Learn comment style | [**Comment style**](#-comment-style) |
+
+---
+
+## ⚠️ Platform rule
+
+> [!IMPORTANT]
+> Windows is the only platform. `os.startfile`, `CREATE_NO_WINDOW`, `7z.exe` bundled in `runtime/`. Anything branching on platform should raise/refuse rather than keep a second implementation. There is no Flatpak/SteamOS target anymore — anything that branches on POSIX (`xdg-open`, `/home/`, `/proc/meminfo`, flatpak) should not be added.
+
+---
+
+## 🎯 What it does
 
 Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized into category folders), matches each archive against Steam's store API, files the archive into the right category alongside Steam links, metadata, and artwork, generates a clickable HTML catalog, and offers Undo for the whole run.
 
@@ -16,7 +51,7 @@ Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized
 
 ---
 
-## Data flow
+## 🔄 Data flow
 
 ```mermaid
 flowchart TD
@@ -84,7 +119,7 @@ flowchart TD
 | Phase | What happens | Code |
 |-------|--------------|------|
 | **1. Discover** | [`CatalogService._collect`](services/catalog_service.py) — walks category folders under the library root, skips anything without an archive, skips the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game. | [`services/catalog_service.py`](services/catalog_service.py) |
-| **2. Organize** | [`AppController.organize`](/app/controller.py) / [`OrganizerService.move`](services/organizer_service.py) — groups archives by identity key, promotes the newest version, archives older copies and re-categorized leftovers to `Archive/`, repacks `.zip/.rar` → `.7z` (adaptive compression level against real memory headroom), writes metadata + Steam shortcut + artwork into each game folder. | [`services/organizer_service.py`](services/organizer_service.py) — [`app/controller.py`](app/controller.py) |
+| **2. Organize** | [`AppController.organize`](app/controller.py) / [`OrganizerService.move`](services/organizer_service.py) — groups archives by identity key, promotes the newest version, archives older copies and re-categorized leftovers to `Archive/`, repacks `.zip/.rar` → `.7z` (adaptive compression level against real memory headroom), writes metadata + Steam shortcut + artwork into each game folder. | [`services/organizer_service.py`](services/organizer_service.py) — [`app/controller.py`](app/controller.py) |
 | **3. Catalog** | [`CatalogService.generate`](services/catalog_service.py) — writes `Game Library.html` plus `Game Library.status.js` beside the library root; retains a `LibrarySummary` index (categories, genres, developers, archive sizes) so screens can ask placement questions without re-walking. | [`services/catalog_service.py`](services/catalog_service.py) — [`services/catalog_status.py`](services/catalog_status.py) |
 | **4. Done screen** | Reports what a run moved/failed/skipped; buttons open library folder or game folder. | [`ui/done_view.py`](ui/done_view.py) |
 | **5. Undo** | [`RollbackService`](services/rollback_service.py) — reads `config/last-organization.json`, restores each archived file to its source, prunes emptied folders this run created into `Archive/` (never deletes a folder it didn't make). | [`services/rollback_service.py`](services/rollback_service.py) |
@@ -92,7 +127,7 @@ flowchart TD
 
 ---
 
-## URI / protocol handler
+## 🔌 URI / protocol handler
 
 ```mermaid
 flowchart TD
@@ -166,7 +201,7 @@ flowchart TD
 
 ---
 
-## Game Library.html — what the generated page does
+## 🖼️ Game Library.html — what the generated page does
 
 `CatalogService.generate` writes `Game Library.html` plus `Game Library.status.js` beside the library root. The page is a single self-contained HTML file (embedded CSS + vanilla JS, no build step, no external requests) that a reader opens in a browser.
 
@@ -222,7 +257,7 @@ flowchart TD
 
 ---
 
-## Key decisions already made (do not re-litigate without cause)
+## 🔒 Key decisions already made (do not re-litigate without cause)
 
 ```mermaid
 flowchart TD
@@ -232,7 +267,7 @@ flowchart TD
     D4[Reserved dirs] -->|rationale| R4[Archive and Processing under library root never treated as categories; app's own project folder never swept]
     D5[Windows-only] -->|rationale| R5[os.startfile, CREATE_NO_WINDOW, 7z.exe bundled in runtime/; platform branching raises/refuses]
     D6[Frozen exe rebuild required] -->|rationale| R6[After any code change: python tools/build_frozen.py; user runs only frozen exe]
-    D7[Atomic writes] -->|rationale| R7["temp-file + os.replace with retry on PermissionError (OneDrive locks)"]
+    D7[Atomic writes] -->|rationale| R7[temp-file + os.replace with retry on PermissionError (OneDrive locks)]
     D8[runtime/ ships with exe] -->|rationale| R8[Excluded from lint/version scans; not this project's code]
     
     style D1 fill:#bfb,stroke:#333
@@ -253,7 +288,7 @@ flowchart TD
 
 ---
 
-## Commands
+## 🖥️ Commands
 
 ```mermaid
 flowchart TD
@@ -278,7 +313,7 @@ flowchart TD
 
 ---
 
-## Testing conventions
+## 🧪 Testing conventions
 
 ```mermaid
 flowchart TD
@@ -331,7 +366,7 @@ flowchart TD
 
 ---
 
-## Comment style
+## 📝 Comment style
 
 - Docstrings (`"""`) state *what* a module/class/function does and its contract.
 - `#` comments state *why* a specific line does something (bug, edge case, platform quirk) — inline with implementation.
