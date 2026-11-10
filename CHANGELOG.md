@@ -5,6 +5,11 @@
 
 ## 9.33
 
+### 2026-11-10 22:56:00 — app/ formatting and readability improvements
+
+- `app/controller.py`: Reorganized imports (stdlib grouped first, then local, merged duplicate `core.constants` import). Broke up long lines (>200 chars) across `scan()`, `scan_new_artwork()`, `verify_all()`, `verify_one()`, and `organize()` — `convert_pending_archives` calls, `library.audit()`, `suggest_category_with_evidence()` ternaries, `logger.debug()` calls, nested `download_assets`/`lookup` ternary, `relay` lambda, and `on_progress` dispatch lambda. No behavior change.
+- `app/application.py`: Broke up the `ArtworkService(...)` constructor call across multiple lines for readability. No behavior change.
+
 ### 2026-11-10 22:53:00 — Docs dedup: cross-link project_overview.md ↔ ARCHITECTURE.md
 
 - `project_overview.md`: Commands `python tools\build_frozen.py` row now points to [**ARCHITECTURE.md → Frozen build**](ARCHITECTURE.md#-frozen-build); key-decision row for `runtime/` now points to [**ARCHITECTURE.md → Bundled runtime**](ARCHITECTURE.md#-bundled-runtime). Build pipeline and bundled-runtime detail live once in ARCHITECTURE.md; project_overview.md keeps the command reference.

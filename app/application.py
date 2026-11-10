@@ -44,7 +44,12 @@ class Application:
         services = type("Services", (), {})()
         services.archive = ArchiveService(self.logger, mock=mock)
         services.steam = SteamService(self.logger, mock=mock, cache_file=self.config.config_dir / "steam-matches.json")
-        services.artwork = ArtworkService(self.config.artwork_dir, self.logger, self.config.settings.get("steamgriddb_api_key", ""), self.config.settings.get("artwork_cache_days", 10))
+        services.artwork = ArtworkService(
+            self.config.artwork_dir,
+            self.logger,
+            self.config.settings.get("steamgriddb_api_key", ""),
+            self.config.settings.get("artwork_cache_days", 10),
+        )
         services.organizer = OrganizerService(self.logger, convert_archives=lambda: self.config.convert_archives)
         services.rollback = RollbackService(self.config.project_root, self.logger, organizer=services.organizer)
         services.library = LibraryService(self.logger)

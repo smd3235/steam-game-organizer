@@ -1,17 +1,17 @@
-from core.models import ScanResult
-from app.events import Event
-from core.constants import UNSORTED_EVIDENCE, canonical_category, suggest_category_with_evidence, LIBRARY_RESERVED_DIRS, DEFAULT_ZIP_PASSWORD
-from core.exceptions import CancellationError
-import shutil
 import json
 import os
+import shutil
 import tempfile
-from pathlib import Path
-from core.constants import ARCHIVE_EXTENSIONS
-from utils.filename_utils import identity_key, normalize_name
-from utils.treewalk import walk_files
-from utils.formatting import human_size
 import time
+from pathlib import Path
+
+from app.events import Event
+from core.constants import ARCHIVE_EXTENSIONS, DEFAULT_ZIP_PASSWORD, LIBRARY_RESERVED_DIRS, canonical_category, suggest_category_with_evidence, UNSORTED_EVIDENCE
+from core.exceptions import CancellationError
+from core.models import ScanResult
+from utils.filename_utils import identity_key, normalize_name
+from utils.formatting import human_size
+from utils.treewalk import walk_files
 
 
 class AppController:
@@ -244,7 +244,17 @@ class AppController:
                     candidates = self.services.library.pending_candidates(root)
                     work = [(game_dir, pending, appid, name) for game_dir, pending, _size, appid, name in candidates]
                     # The hardcoded "123" zip password now comes from DEFAULT_ZIP_PASSWORD in core.constants.
-                    converted = self.services.library.convert_pending_archives(root, self.services.organizer, ctx, dedupe_journal, self._repair_progress, unlocker=(self.services.archive._remove_zip_password if unlock_zip else None), outcomes=repair_outcomes, zip_password=(DEFAULT_ZIP_PASSWORD if unlock_zip else ""), work=work)
+                    converted = self.services.library.convert_pending_archives(
+                        root,
+                        self.services.organizer,
+                        ctx,
+                        dedupe_journal,
+                        self._repair_progress,
+                        unlocker=(self.services.archive._remove_zip_password if unlock_zip else None),
+                        outcomes=repair_outcomes,
+                        zip_password=(DEFAULT_ZIP_PASSWORD if unlock_zip else ""),
+                        work=work,
+                    )
                     if dedupe_journal:
                         self.services.rollback.record(dedupe_journal)
                     # No owned_dirs here, and deliberately: these rows land in the library's Archive/, which
@@ -283,7 +293,18 @@ class AppController:
                 phase("audit", message, index=event.get("index", 0), total=event.get("total", 0))
 
             try:
-                stats = self.services.library.audit(root, self.services.artwork, self.services.organizer, ctx, on_progress=audit_progress, preview_only=preview_only, download_artwork=download_artwork) or {}
+                stats = (
+                    self.services.library.audit(
+                        root,
+                        self.services.artwork,
+                        self.services.organizer,
+                        ctx,
+                        on_progress=audit_progress,
+                        preview_only=preview_only,
+                        download_artwork=download_artwork,
+                    )
+                    or {}
+                )
                 checked = stats.get("checked", 0)
                 refreshed = stats.get("refreshed", 0)
                 no_art = stats.get("no_artwork", 0)
@@ -291,7 +312,12 @@ class AppController:
                 # no-artwork figure on its audit_done event, but audit_progress() above relabels that event
                 # as an ordinary 'audit' line and this one then overwrites the phase, so without this the
                 # number was computed, logged, and lost on the way to the screen.
-                phase("audit_done", f"Checked {checked} game folder(s) — refreshed {refreshed}" + (f", {no_art} with no artwork" if no_art else "") + (" — Preview Only: nothing written" if preview_only else ""))
+                message = f"Checked {checked} game folder(s) — refreshed {refreshed}"
+                if no_art:
+                    message += f", {no_art} with no artwork"
+                if preview_only:
+                    message += " — Preview Only: nothing written"
+                phase("audit_done", message)
             except CancellationError:
                 raise
             except Exception as exc:
@@ -372,7 +398,16 @@ class AppController:
             phase("repair", "Checking organized folders for leftover ZIP/RAR archives")
             repair_outcomes = []
             try:
-                converted = self.services.library.convert_pending_archives(root, self.services.organizer, ctx, dedupe_journal, self._repair_progress, unlocker=None, outcomes=repair_outcomes, zip_password="")
+                converted = self.services.library.convert_pending_archives(
+                    root,
+                    self.services.organizer,
+                    ctx,
+                    dedupe_journal,
+                    self._repair_progress,
+                    unlocker=None,
+                    outcomes=repair_outcomes,
+                    zip_password="",
+                )
                 if dedupe_journal:
                     self.services.rollback.record(dedupe_journal)
                 self._pending_repair_outcomes = repair_outcomes
@@ -507,11 +542,24 @@ class AppController:
                 ctx.checkpoint()
                 steam_match = self.services.steam.lookup(a.normalized_title, ctx, archive_path=a.path)
                 a.steam = steam_match
-                a.decision.category, a.decision.evidence = suggest_category_with_evidence(steam_match.genres, steam_match.name, steam_match.description, steam_match.tags, steam_match.categories) if steam_match.found else ("Unsorted", UNSORTED_EVIDENCE)
+                a.decision.category, a.decision.evidence = (
+                    suggest_category_with_evidence(
+                        steam_match.genres,
+                        steam_match.name,
+                        steam_match.description,
+                        steam_match.tags,
+                        steam_match.categories,
+                    )
+                    if steam_match.found
+                    else ("Unsorted", UNSORTED_EVIDENCE)
+                )
                 if steam_match.found:
                     evidence = a.decision.evidence
                     runners = ",".join(f"{name}:{score}" for name, score in evidence.runners_up)
-                    self.logger.debug("CATEGORY", f"SUGGEST title=[{steam_match.name}] category=[{a.decision.category}] basis=[{evidence.basis}] score=[{evidence.score}] terms=[{'|'.join(evidence.terms)}] runners_up=[{runners}]")
+                    self.logger.debug(
+                        "CATEGORY",
+                        f"SUGGEST title=[{steam_match.name}] category=[{a.decision.category}] basis=[{evidence.basis}] score=[{evidence.score}] terms=[{'|'.join(evidence.terms)}] runners_up=[{runners}]",
+                    )
                 a.decision.suggested_category = a.decision.category
                 # The evidence above describes the computed suggestion. The remembered category below
                 # can replace decision.category while suggested_category, and the evidence, still
@@ -527,7 +575,19 @@ class AppController:
                 def asset_progress(event, name=None, idx=i, arch=a):
                     self.dispatch(lambda ev=event: on_progress(idx, total, arch, arch.steam, None, ev))
 
-                a.artwork = self.services.artwork.download_assets(steam_match.appid, steam_match.asset_urls, ctx, steam_match.artwork_url, steam_match.name, on_progress=asset_progress) if steam_match.found and download_artwork else self.services.artwork.lookup(steam_match.appid, a.path.parent) if steam_match.found else self.services.artwork.lookup("")
+                if steam_match.found and download_artwork:
+                    a.artwork = self.services.artwork.download_assets(
+                        steam_match.appid,
+                        steam_match.asset_urls,
+                        ctx,
+                        steam_match.artwork_url,
+                        steam_match.name,
+                        on_progress=asset_progress,
+                    )
+                elif steam_match.found:
+                    a.artwork = self.services.artwork.lookup(steam_match.appid, a.path.parent)
+                else:
+                    a.artwork = self.services.artwork.lookup("")
                 self.dispatch(lambda i=i, a=a, m=steam_match, art=a.artwork: on_progress(i, total, a, m, art))
                 results.append(a)
             return results
@@ -539,11 +599,24 @@ class AppController:
             steam_match = self.services.steam.lookup(title, ctx, refresh=True)
             archive.steam = steam_match
             self.services.steam.remember(archive.normalized_title, steam_match)
-            archive.decision.category, archive.decision.evidence = suggest_category_with_evidence(steam_match.genres, steam_match.name, steam_match.description, steam_match.tags, steam_match.categories) if steam_match.found else ("Unsorted", UNSORTED_EVIDENCE)
+            archive.decision.category, archive.decision.evidence = (
+                suggest_category_with_evidence(
+                    steam_match.genres,
+                    steam_match.name,
+                    steam_match.description,
+                    steam_match.tags,
+                    steam_match.categories,
+                )
+                if steam_match.found
+                else ("Unsorted", UNSORTED_EVIDENCE)
+            )
             if steam_match.found:
                 evidence = archive.decision.evidence
                 runners = ",".join(f"{name}:{score}" for name, score in evidence.runners_up)
-                self.logger.debug("CATEGORY", f"MANUAL_REEVALUATE title=[{steam_match.name}] category=[{archive.decision.category}] basis=[{evidence.basis}] score=[{evidence.score}] terms=[{'|'.join(evidence.terms)}] runners_up=[{runners}]")
+                self.logger.debug(
+                    "CATEGORY",
+                    f"MANUAL_REEVALUATE title=[{steam_match.name}] category=[{archive.decision.category}] basis=[{evidence.basis}] score=[{evidence.score}] terms=[{'|'.join(evidence.terms)}] runners_up=[{runners}]",
+                )
             archive.decision.suggested_category = archive.decision.category
             # The evidence above describes the computed suggestion. The remembered category below
             # can replace decision.category while suggested_category, and the evidence, still
@@ -557,7 +630,16 @@ class AppController:
             archive.decision.accepted = False
             archive.decision.skipped = False
             archive.decision.changed_from_suggestion = False
-            archive.artwork = self.services.artwork.download_assets(steam_match.appid, steam_match.asset_urls, ctx, steam_match.artwork_url, steam_match.name) if steam_match.found else self.services.artwork.lookup("")
+            if steam_match.found:
+                archive.artwork = self.services.artwork.download_assets(
+                    steam_match.appid,
+                    steam_match.asset_urls,
+                    ctx,
+                    steam_match.artwork_url,
+                    steam_match.name,
+                )
+            else:
+                archive.artwork = self.services.artwork.lookup("")
             return archive
 
         return self._submit("verifying", work, lambda result: (self.state.update(phase="review", job_id=""), done(result)), lambda e: self._failed("verify", e))
@@ -784,15 +866,40 @@ class AppController:
                         conversion_ordinal += 1
                     if on_progress:
                         self.dispatch(
-                            lambda i=game_index, n=len(groups), name=source.name, suffix=source.suffix.lower(), game=primary.steam.name or primary.display_name, category=primary.decision.category, o=conversion_ordinal: on_progress(
-                                {"stage": "organizing", "message": f"Organizing {i} of {n}", "file": name, "source_suffix": suffix, "game": game, "category": category, "index": i, "total": n, "conversions": convert_total, "conversion": o}
+                            lambda i=game_index,
+                                   n=len(groups),
+                                   name=source.name,
+                                   suffix=source.suffix.lower(),
+                                   game=primary.steam.name or primary.display_name,
+                                   category=primary.decision.category,
+                                   o=conversion_ordinal: on_progress(
+                                {
+                                    "stage": "organizing",
+                                    "message": f"Organizing {i} of {n}",
+                                    "file": name,
+                                    "source_suffix": suffix,
+                                    "game": game,
+                                    "category": category,
+                                    "index": i,
+                                    "total": n,
+                                    "conversions": convert_total,
+                                    "conversion": o,
+                                }
                             )
                         )
                     # A password-protected zip cannot be extracted, so it is unlocked inside the conversion
                     # pass below, after the source has passed its integrity test. Unlocking it here - before
                     # that test - meant a corrupt or missing file was being decrypted and rewritten for
                     # nothing, and the rewrite was what the integrity test was then failing on.
-                    relay = (lambda event, o=conversion_ordinal: self.dispatch(lambda event=event, c=convert_total, o=o: on_progress(dict(event, conversions=c, conversion=o)) if isinstance(event, dict) else on_progress(event))) if on_progress else None
+                    relay = (
+                        lambda event, o=conversion_ordinal: self.dispatch(
+                            lambda event=event, c=convert_total, o=o: on_progress(
+                                dict(event, conversions=c, conversion=o)
+                            )
+                            if isinstance(event, dict)
+                            else on_progress(event)
+                        )
+                    ) if on_progress else None
                     try:
                         target = self.services.organizer.move(primary, target_root, on_progress=relay)
                     except CancellationError:
