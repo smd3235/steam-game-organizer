@@ -7,21 +7,12 @@
 
 ---
 
-## 🏷️ Comment rule (applies to every change)
-
-> [!IMPORTANT]
-> **Whenever any file is changed in this project:**
-> 1. **A comment is added** — every changed file must include a comment explaining what changed and why. Inline comments (`#`) state *why* a specific line does something. Docstrings (`"""`) state *what* a module/class/function does.
-> 2. **The project is updated on GitHub** — after the change is committed locally and verified (lint + tests + build), push to GitHub so the public repository always reflects the current state. See [`AGENTS.md`](AGENTS.md) for the full commit-after-build checklist.
-
----
-
 ## What it does
 
 Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized into category folders), matches each archive against Steam's store API, files the archive into the right category alongside Steam links, metadata, and artwork, generates a clickable HTML catalog, and offers Undo for the whole run.
 
 > [!IMPORTANT]
-> The app runs full-screen on Windows only, from a frozen PyInstaller exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`, `debug/`. Version is declared in [`VERSION.txt`](VERSION.txt) and mirrored into [`core/constants.py`](core/constants.py) (`VERSION`) and `USER_AGENT`.
+> The app runs full-screen on Windows only, from a frozen PyInstaller exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`. Version is declared in [`VERSION.txt`](VERSION.txt) and mirrored into [`core/constants.py`](core/constants.py) (`VERSION`) and `USER_AGENT`.
 
 ---
 

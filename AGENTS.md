@@ -319,7 +319,7 @@ There is no second environment to keep green. The Flatpak/SteamOS target is gone
 
 ```mermaid
 flowchart TD
-    A[Run test suite] --> B[738 tests collected]
+    A[Run test suite] -->     B[739 tests collected]
     B --> C{4 pre-existing test_regressions.py errors?}
     C -->|Yes| D[Ignore - unrelated indentation bugs]
     D --> E[0 failures from changes = PASS]

@@ -25,6 +25,14 @@
 
 ## 9.33
 
+### 2026-11-10 20:55:00 — Removed redundant/outdated content across markdown docs
+
+- `project_overview.md`: removed the duplicate "Comment rule" section — it already exists verbatim in AGENTS.md, which is the operating manual for contributing. Removed `debug/` from the state-directory list (`config/`, `cache/`, `logs/`); `debug/` holds diagnostics code, not user state.
+- `ARCHITECTURE.md`: updated the tools module-map subgraph and tool table to include all 16 tools files (added `auto_backup.py`, `compare_backups.py`, `create_shortcut.py`, `restore_backup.py`, `review_backups.py`, `run_tests_parallel.py`).
+- `AGENTS.md`: updated test count from 738 to 739 (a new `test_real_world_outlier_patterns_are_normalized_correctly` test method was added).
+- No source code changed — docs-only change, no frozen exe rebuild required.
+- Changelog entry added in the same change as the doc change.
+
 ### 2026-11-10 20:45:00 — Reorganized README.md to be user-focused; moved developer/ops content to AGENTS.md
 
 - `README.md`: trimmed to user-facing content only — overview, workflow, key capabilities, install & run, first-launch setup wizard, repository layout, public readiness, license. Removed the development checklist, test/lint commands, build pipeline details, and full service code map (those live in AGENTS.md and ARCHITECTURE.md).

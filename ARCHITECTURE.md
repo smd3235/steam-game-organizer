@@ -478,6 +478,12 @@ flowchart TD
     ICON[build_icon.py]
     VERIFY[verify_archives.py]
     PROBE[tk_probe.py]
+    BACKUP[auto_backup.py]
+    COMPARE[compare_backups.py]
+    SHORTCUT[create_shortcut.py]
+    RESTORE[restore_backup.py]
+    REVIEW[review_backups.py]
+    PARALLEL[run_tests_parallel.py]
     end
 
     BUILD -->|runs spec + lifts| BUNDLE[dist\steam_game_organizer\]
@@ -499,6 +505,7 @@ Development and installation scripts, not part of the application:
 | `tools/overnight_repair.py` | Space-checked, one-at-a-time archive repair. | [`tools/overnight_repair.py`](tools/overnight_repair.py) |
 | `tools/analyze_screenshot.py`, `tools/layout_audit.py`, `tools/dead_space_audit.py` | The visual checks behind the window geometry tests — palette/off-palette sampling, clipping and overlap, and unused space. | [`tools/`](tools/) |
 | `tools/build_icon.py`, `verify_archives.py`, `tk_probe.py` | Miscellaneous development tools. | [`tools/`](tools/) |
+| `tools/auto_backup.py`, `tools/compare_backups.py`, `tools/create_shortcut.py`, `tools/restore_backup.py`, `tools/review_backups.py`, `tools/run_tests_parallel.py` | Backup management, shortcut creation, and parallel test runner. | [`tools/`](tools/) |
 
 ---
 
