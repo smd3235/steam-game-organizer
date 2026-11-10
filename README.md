@@ -1,7 +1,7 @@
 # Steam Game Organizer
 
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
-[![Windows only](https://img.shields.io/badge/platform-Windows-green.svg)](AGENTS.md)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](AGENTS.md)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
 [![Tests: unittest](https://img.shields.io/badge/tests-unittest-success.svg)](tests/)
 
@@ -9,7 +9,48 @@ Organize your Steam game library on Windows. Scan archives, verify them against 
 
 ---
 
-## What it does
+## 📚 Project documentation
+
+| Doc | What it's for | Best when you're... |
+|-----|---------------|---------------------|
+| [README.md](./README.md) | User-facing run, workflow, other-PC, and development-check instructions | Getting started or contributing |
+| [AGENTS.md](./AGENTS.md) | Operating instructions: build, test, lint, run on Windows | Changing code (mandatory reading first) |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | What each module does and how they wire together (service inventory) | Understanding the codebase |
+| [project_overview.md](./project_overview.md) | App purpose, data flow, URI handler, catalog mechanics, key decisions | Learning how it all fits together |
+| [CHANGELOG.md](./CHANGELOG.md) | Dated change log, v9.33 development section | Reviewing what changed and when |
+
+> [!TIP]
+> Start with **README.md**, then read **AGENTS.md** before changing anything. **ARCHITECTURE.md** and **project_overview.md** explain the "how" and "why".
+
+---
+
+## Design flow
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│  Your library   │─────▶│      Scan        │─────▶│     Review      │
+│  (.zip/.rar/.7z)│      │  Discover archives│     │  Accept/override│
+└─────────────────┘      └──────────────────┘      └────────┬────────┘
+                                                             │
+                                                             ▼
+                                                      ┌─────────────────┐
+                                                      │    Organize     │
+                                                      │  Move → Archive │
+                                                      │  zip/rar → 7z   │
+                                                      └────────┬────────┘
+                                                               │
+                                                               ▼
+                                                      ┌─────────────────┐
+                                                      │      Done       │
+                                                      │  Undo journal   │
+                                                      └────────┬────────┘
+                                                               │
+                                                               ▼
+                                                      ┌─────────────────┐
+                                                      │   Catalog       │
+                                                      │ Game Library.html│
+                                                      └─────────────────┘
+```
 
 | Phase | What happens |
 |-------|--------------|
@@ -20,7 +61,9 @@ Organize your Steam game library on Windows. Scan archives, verify them against 
 | **Artwork** | Downloads Steam capsule/header/grid images and SteamGridDB portraits, keyed per AppID with a 10-day expiry cache. |
 | **Done** | Generates `Game Library.html` — a browsable catalog with per-game Extract / Play / Open links, category filters, genre chips, and "already unpacked" badges. |
 
-### Key capabilities
+---
+
+## Key capabilities
 
 - **Self-contained runtime** — ships with Python 3.13, Tcl/Tk, and 7-Zip inside `runtime/`. A friend's PC with no Python installed runs it just by double-clicking the exe.
 - **Extract to `Needs Install`** — archives that unpack to an installer (`setup.exe` + `.bin`, or an `.iso`) are routed to a `Needs Install` subfolder with an amber badge, so you know they need to be run before playing.
