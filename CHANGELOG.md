@@ -25,6 +25,14 @@
 
 ## 9.33
 
+### 2026-11-10 20:45:00 — Reorganized README.md to be user-focused; moved developer/ops content to AGENTS.md
+
+- `README.md`: trimmed to user-facing content only — overview, workflow, key capabilities, install & run, first-launch setup wizard, repository layout, public readiness, license. Removed the development checklist, test/lint commands, build pipeline details, and full service code map (those live in AGENTS.md and ARCHITECTURE.md).
+- Added detailed per-phase tables, a capability breakdown table, a repository layout diagram with directory file counts, and more detailed notes on each section.
+- `AGENTS.md` already contains the mandatory change checklist, build pipeline, and test/lint commands — no duplication needed.
+- `ARCHITECTURE.md` already contains the full service code map, module map, and wiring diagrams — no duplication needed.
+- Changelog entry added in the same change as the doc change.
+
 ### 2026-11-10 20:30:00 — Removed dated changelog note from README.md; entry lives in CHANGELOG.md
 
 - `README.md`: Removed the inline dated changelog-style note block (lines 3-11) that lived at the top of the file; changelog history belongs only in CHANGELOG.md, not inline in source/docs.
