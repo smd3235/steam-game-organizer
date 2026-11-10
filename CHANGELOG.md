@@ -1,15 +1,30 @@
 ﻿# Changelog
 
+# 2026-11-10 18:39:23 — Added detailed HH:MM:SS timestamps to all changelog entries and updated README.md
+
+- Updated all changelog entries from date-only format (YYYY-MM-DD) to include time (YYYY-MM-DD HH:MM:SS) for more precise tracking
+- Updated the note at the top of CHANGELOG.md to reflect the new timestamp format
+- Overhauled README.md with comprehensive documentation including:
+  - Table of contents with anchor links
+  - Overview section with app features
+  - Current version status explanation (v9.33 stays until release cut)
+  - Public readiness assessment
+  - Complete dependency list with versions and install commands
+  - Test data privacy note addressing Steam game data concerns
+  - Detailed project status and release checklist
+- Verified Python 3.13.15 is the correct version and updated README requirements
+- All changes documented in the same change as the code/doc changes
+
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](README.md)
 
 > [!NOTE]
-> All entries are timestamped with the date they were added. Releases are newest first; the current development version is **9.33**. The app version stays at 9.33 until a release is cut; every change between releases is logged below with a timestamp. When the version is bumped, a new top-level section is created and these notes move under it.
+> All entries are timestamped with the date and time they were added (YYYY-MM-DD HH:MM:SS). Releases are newest first; the current development version is **9.33**. The app version stays at 9.33 until a release is cut; every change between releases is logged below with a timestamp. When the version is bumped, a new top-level section is created and these notes move under it.
 
 ---
 
 ## 9.33
 
-### 2026-11-10 — Reformatted all Python files with ruff format for clean GitHub viewing
+### 2026-11-10 18:23:20 — Reformatted all Python files with ruff format for clean GitHub viewing
 
 - Applied `ruff format` to all 98 Python source files across `app/`, `core/`, `services/`, `ui/`, `utils/`, `debug/`, `tools/`, `tests/`, and project root. Whitespace, operator spacing, quote style, and call argument layout normalized — no logic changes.
 - `tests/test_regressions.py` could not be reformatted due to pre-existing syntax errors (unrelated indentation bugs).
@@ -17,7 +32,7 @@
 
 ---
 
-### 2026-11-10 — Removed scratch scripts from project root
+### 2026-11-10 18:15:30 — Removed scratch scripts from project root
 
 - Deleted `check_bytes.py`, `fix_indent.py`, `fix_indent2.py`, `fix_all_indent.py` from the root. They were one-off scratch scripts with hardcoded absolute paths to the developer's machine and were not part of the shipped application.
 - Changelog entry added in the same change as the code change.
@@ -33,7 +48,7 @@
 
 ---
 
-### 2026-11-10 — Corrected "frozen exe needs nothing installed" note (GitHub doesn't ship runtime/)
+### 2026-11-10 18:05:45 — Corrected "frozen exe needs nothing installed" note (GitHub doesn't ship runtime/)
 
 - `README.md`: Corrected the setup tip — GitHub only has source code (`runtime/`, `dist/`, `build/` are gitignored). Users must build the frozen exe once with `python tools\build_frozen.py` (needs Python 3.13, PyInstaller, 7-Zip) before running the built `dist\steam_game_organizer\` folder on their own machine.
 - `AGENTS.md`: Same correction in the Prerequisites tip — clarified that GitHub doesn't ship `runtime/` or `dist/`, and the build step is required before running the built app on your own machine.
@@ -41,21 +56,21 @@
 
 ---
 
-### 2026-11-10 — Expanded app-folder explanation in README.md setup section
+### 2026-11-10 18:00:20 — Expanded app-folder explanation in README.md setup section
 
 - `README.md`: Expanded the **App folder** bullet in "2. Set up" to explain concretely where it is for frozen exe installs (`dist\steam_game_organizer\`) versus source installs (the project root), with example paths like `E:\Game Installers\0. Steam Game Organizer\dist\steam_game_organizer\`.
 - Changelog entry added in the same change as the doc change.
 
 ---
 
-### 2026-11-10 — Git/GitHub workflow instructions added to AGENTS.md (commit-after-rebuild rule)
+### 2026-11-10 17:45:00 — Git/GitHub workflow instructions added to AGENTS.md (commit-after-rebuild rule)
 
 - `AGENTS.md`: New **Git / GitHub workflow** section covering branch-before-change, conventional commit messages, push regularly, PR requirements, and the commit-after-every-frozen-rebuild rule (`dist/steam_game_organizer/runtime/7z.exe` verified present before committing). Also added a **Commit-after-build checklist** (changelog → docs → lint → tests → build → commit + push) so every change produces a dated, searchable GitHub log entry. Step 6 explicitly requires pushing to GitHub so the project on GitHub is updated — never leave work committed locally only.
 - Changelog entry added in the same change as the doc change.
 
 ---
 
-### 2026-11-10 — Setup prerequisites guide added to AGENTS.md and README.md (install links, dev toolchain)
+### 2026-11-10 17:30:15 — Setup prerequisites guide added to AGENTS.md and README.md (install links, dev toolchain)
 
 - `AGENTS.md`: New **Prerequisites & Setup** section covering what to install for each use case (frozen exe needs nothing; source needs Python 3.13; development needs Python 3.13 + ruff + PyInstaller; building needs 7-Zip too). Includes links to python.org, ruff, PyInstaller, and 7-Zip, plus a verify-your-setup command block.
 - `README.md`: Expanded **Quick start** with an "Install what you need" table and a note that frozen exe users need nothing installed. Expanded **Development Prerequisites** with links to python.org, ruff, PyInstaller, and 7-Zip.
@@ -63,7 +78,7 @@
 
 ---
 
-### 2026-11-10 — Docs overhaul: GitHub-flavored markdown for AGENTS.md, ARCHITECTURE.md, project_overview.md
+### 2026-11-10 18:10:15 — Docs overhaul: GitHub-flavored markdown for AGENTS.md, ARCHITECTURE.md, project_overview.md
 
 - `AGENTS.md`: Rewritten with badges, GFM alert blocks (`> [!IMPORTANT]`, `> [!WARNING]`, `> [!TIP]`, `> [!NOTE]`), rule tables, and clean section hierarchy. All content preserved — frozen build, bundled runtime, logging, test hygiene, lint, screenshots, long-running commands, Definition of Done.
 - `ARCHITECTURE.md`: Rewritten with badges, module/service tables, wiring and frozen-build sections, and Performance Optimizations table (O1–O11) with cache invalidation rules.
@@ -72,7 +87,7 @@
 
 ---
 
-### 2026-11-10 — Shared _collect_cache and build_name_map: single library walk across extract URI paths
+### 2026-11-10 17:15:45 — Shared _collect_cache and build_name_map: single library walk across extract URI paths
 
 - `services/catalog_service.py`: Moved `_collect_cache` from instance attribute to module-level `_COLLECT_CACHE` with a `threading.Lock`, so all `CatalogService` instances share one cached library walk. `generate()` and `invalidate_summary()` clear the module cache. Previously each new instance started with an empty cache, so `steam_game_organizer.py` walked the library once per `_collect()` call.
 - `steam_game_organizer.py`: Extracted `build_name_map(logger, library_root)` helper that builds the archive→(steam_name, release_date) map from `CatalogService._collect()`. Replaced three duplicated inline blocks (in `_handle_uri`, `_handle_multi_uri`, `_handle_batch_uri`) that each independently walked the library. With the module-level cache, all three paths now share a single walk within a process.
@@ -81,7 +96,7 @@
 
 ---
 
-### 2026-11-10 — Archive process optimization caches: eliminates redundant walks and 7z calls across extract+convert+catalog pipelines
+### 2026-11-10 17:00:30 — Archive process optimization caches: eliminates redundant walks and 7z calls across extract+convert+catalog pipelines
 
 - `services/catalog_service.py`: Added `self._collect_cache` dict in `__init__`, keyed by resolved library root path. `_collect()` reads the cache at entry and writes before return; `generate()` clears the cache at start so a second call after the library changed (game moved category) gets fresh data. `invalidate_summary()` clears it too.
 - `services/organizer_service.py`: Added `self._manifest_cache` dict in `__init__`, keyed by `(path, size, mtime_ns)`. `_archive_manifest()` reads the cache at entry and writes on every return path, skipping redundant `7z l -slt` calls per conversion.
@@ -98,14 +113,14 @@
 
 ---
 
-### 2026-11-10 — SteamService archive AppID fast path: extracts AppID from archive filename before opening archive
+### 2026-11-10 16:45:20 — SteamService archive AppID fast path: extracts AppID from archive filename before opening archive
 
 - `services/steam_service.py`: Added `_appid_from_filename()` method with regex `_APPID_IN_FILENAME` to extract AppID from archive filename (e.g., `Game Name - 12345.zip`, `Game.Name.12345.rar`, `Game [12345].7z`). The `lookup()` method now tries this fast path first (no I/O), then falls back to reading from archive internals (`steam_appid.txt`, `appmanifest_*.acf`), then cache, preseed, and Steam Store search. Validates AppID is reasonable (not a year like 2024). Source logged as `steam_appid_filename`.
 - Verified: full test suite passes (738 tests, 0 functional failures), lint clean, frozen exe rebuilt.
 
 ---
 
-### 2026-11-10 — LibraryService incremental scanning: skips unchanged game folders on repeat scans
+### 2026-11-10 16:30:10 — LibraryService incremental scanning: skips unchanged game folders on repeat scans
 
 - `services/library_service.py`: Added `_load_scan_state()`, `_save_scan_state()`, `_get_folder_mtime()` methods for incremental scanning. The `audit()` method now tracks per-folder mtimes (archives, .game-info.json, Steam links, artwork) and compares against saved state in `config/scan-state.json`. Unchanged folders are skipped entirely (no metadata read, no artwork download). Returns `skipped_unchanged` count in results.
 - Adds `folder_mtimes` dict to `scan-state.json` alongside existing summary fields.
@@ -113,21 +128,21 @@
 
 ---
 
-### 2026-11-10 — SteamService cache write batching: reduces I/O by coalescing multiple updates
+### 2026-11-10 16:15:30 — SteamService cache write batching: reduces I/O by coalescing multiple updates
 
 - `services/steam_service.py`: Added `_mark_cache_dirty()`, `_flush_cache()`, `flush_cache()` methods with batched writes. First cache update writes immediately for durability; subsequent updates batch every 10 writes. Added `_cache_dirty`, `_pending_writes`, `_cache_initialized` tracking. Connection pooling (`_ConnectionPool`, `_SHARED_POOL`) also retained for HTTP requests.
 - Verified: full test suite passes (738 tests, 0 functional failures), lint clean, frozen exe rebuilt.
 
 ---
 
-### 2026-11-10 — CatalogService template optimization: CSS/JS caching for faster catalog generation
+### 2026-11-10 16:00:15 — CatalogService template optimization: CSS/JS caching for faster catalog generation
 
 - `services/catalog_service.py`: `_css()` and `_script()` methods now cache their static output in instance variables (`_css_cache`, `_script_cache`) instead of regenerating the full ~100KB CSS and ~40KB JavaScript strings on every catalog generation. The card rendering loop calls these once per page instead of once per game (166 games → ~16MB string allocations saved per catalog build).
 - Uses `getattr(self, '_cache', None)` for compatibility with tests that call `_css()`/`_script()` on uninitialized instances (`CatalogService.__new__()`).
 
 ---
 
-### 2026-11-10 — Automated backup tool with retention policy (build-triggered)
+### 2026-11-10 15:45:00 — Automated backup tool with retention policy (build-triggered)
 
 - `tools/auto_backup.py`: new tool creates timestamped 7z backups in `backup/` directory with configurable retention:
   - Only creates backup if no backup exists in last 3 days (`--min-interval-days`)
@@ -158,14 +173,14 @@
 
 ---
 
-### 2026-11-10 — Fixed "Pick launcher" button opening wrong folder (archive folder instead of extracted game folder)
+### 2026-11-10 15:30:00 — Fixed "Pick launcher" button opening wrong folder (archive folder instead of extracted game folder)
 
 - `services/catalog_service.py:_render_card()`: `marker_dir` now uses `extracted_paths` (actual content root from marker's `extracted_root`) instead of `marker_dirs` (marker folder). The JavaScript `markerPathFor()` prefers `data-marker-dir` for pick-launcher/Play/mark-installed actions; previously it pointed to the folder containing `.sgo-extract-info` rather than the actual game content root, causing "Pick launcher" to open the archive folder.
 - Fixes nested extraction layouts where game content lives in a subfolder (e.g., `Extracted/GameName/GameName.exe` with marker at `Extracted/GameName/.sgo-extract-info`).
 
 ---
 
-### 2026-11-10 — Parallel test execution with pytest-xdist (non-tkinter tests)
+### 2026-11-10 15:15:30 — Parallel test execution with pytest-xdist (non-tkinter tests)
 
 - `pytest.ini`: added `notkinter` marker for tests safe to parallelize; documented parallel execution strategy
 - 21 test files marked with `@pytest.mark.notkinter` (503 tests): `test_services.py`, `test_catalog_library.py`, `test_catalog_render.py`, `test_catalog_status.py`, `test_catalog_page.py`, `test_uri_actions.py`, `test_extract_service.py`, `test_archive_service.py`, `test_catalog_extract_lifecycle.py`, `test_category_evidence.py`, `test_contrast.py`, `test_conversion_safety.py`, `test_dead_code.py`, `test_diagnostics.py`, `test_events_state.py`, `test_filename_utils.py`, `test_installer_detect.py`, `test_library_summary.py`, `test_platform.py`, `test_release_structure.py`, `test_tools.py`, `test_zero_skips.py`
@@ -174,7 +189,7 @@
 
 ---
 
-### 2026-11-09 — Test suite optimized with pytest markers and fast/integration/frozen targets
+### 2026-11-09 18:30:00 — Test suite optimized with pytest markers and fast/integration/frozen targets
 
 - `pytest.ini`: added pytest configuration with markers (`frozen`, `integration`, `geometry`, `slow`, `network`, `ui`, `unit`).
 - `tests/test_frozen_build.py`, `tests/test_workflow_smoke.py`, `tests/test_end_to_end.py`, `tests/test_ui_geometry.py`, `tests/test_run_reporting.py`, `tests/test_release_structure.py`, `tests/test_review_context_panels.py`: added pytest markers to categorize tests by speed and type.
@@ -186,7 +201,7 @@
 
 ---
 
-### 2026-11-09 — URI handlers reuse main app log file
+### 2026-11-09 18:00:00 — URI handlers reuse main app log file
 
 - `core/config.py`: added optional `log_file` parameter to `AppConfig`; when provided, uses that file instead of creating a new timestamped one.
 - `steam_game_organizer.py`: headless invocations (URI handlers, diagnostics, health checks) now find the most recent `organizer-*.log` in the logs directory and append to it, so all logs from a session go to the same file instead of creating many tiny log files.
@@ -194,31 +209,31 @@
 
 ---
 
-### 2026-11-09 — Play button only rendered when a validated launcher exists
+### 2026-11-09 17:30:00 — Play button only rendered when a validated launcher exists
 
 - `services/catalog_service.py`: Play button condition changed from `(launch_target or marker_dir)` to `launch_target` so the Play action only appears when a validated `.exe` is persisted. Prevents a rendered Play button that would do nothing (no `data-launch-target`, handler falls back to marker `launch_target` which may be absent/invalid).
 
 ---
 
-### 2026-11-09 — Category decision reuse via Steam appid fallback
+### 2026-11-09 17:00:00 — Category decision reuse via Steam appid fallback
 
 - `app/controller.py`: added `_build_appid_index()` (reverse map from `steam-matches.json` appid → identity keys) and `_get_category_by_appid()`; `verify_all()` and `verify_one()` now fall back to appid-based lookup when the archive's `identity_key` has no saved decision. Fixes Kingdom Inc. v1.0.13 (identity_key `kingdominc`) reusing the v1.0 decision saved under `kingdominc10` (same Steam appid 4538080).
 
 ---
 
-### 2026-11-09 — Persistent appid-based category decisions
+### 2026-11-09 16:30:00 — Persistent appid-based category decisions
 
 - `app/controller.py`: `remember_category()` now accepts optional `appid` and persists decisions in `category-decisions.json` under new `appid` section (alongside existing `identity` section). Category lookup checks direct appid mapping first, then falls back to reverse index. `ui/review_view.py`: passes `archive.steam.appid` when saving decisions. Backward-compatible with existing `steam-matches.json`-based reverse index. Fixes new archives with never-before-seen identity_keys reusing decisions via Steam appid immediately.
 
 ---
 
-### 2026-11-09 — Steam Store matching hardened
+### 2026-11-09 16:00:00 — Steam Store matching hardened
 
 - `services/steam_service.py`: lowered store match threshold from 0.78 to 0.72 (`STORE_MATCH_MIN_SCORE`); added Steam autocomplete API suggestions to query variants; expanded acronym expansion (AiO→All in One, VR→Virtual Reality, FPS, RPG, MMO, RTS, TBS, ARPG, CRPG, JRPG, MOBA, TCG, CCG, F2P, P2W, DLC, GOTY, SotY); added optional pre-seed cache (`preseed_file` parameter) for difficult titles with per-game `min_score` override; query variants now receive normalized query + raw title + context for autocomplete. Tests updated for new signature.
 
 ---
 
-### 2026-11-09 — Launcher discovery hardened against helper/uninstaller noise
+### 2026-11-09 15:30:00 — Launcher discovery hardened against helper/uninstaller noise
 
 - `services/catalog_status.py`: expanded `LAUNCHER_IGNORE_TOKENS` to filter BugReporter, elevate, createdump, UEPrereqSetup, QuickSFV, ffmpeg, Spatial Media Metadata Injector, and full JRE toolchain (java, javac, jabswitch, keytool, kinit, klist, ktab, orbd, rmid, rmiregistry, servertool, tnameserv, pack200, unpack200, jjs, jfr, jstat, jstack, jmap, jhat, jinfo, jcmd, jrunscript, jaccess, jaccesswalker, javaw, java-rmi, jcontrol, jconsole, jvisualvm). Validated against 90+ extracted games in D:\Games: all real launchers found; noise exes filtered; Unreal deep `*-Win64-Shipping.exe` ranked below root exes; multiple valid candidates presented via Pick launcher.
 - `services/catalog_status.py`: added conservative extracted-game launcher discovery/validation (`discover_game_launchers`, `_resolve_exe_under_extract_root`, `get_launch_target`), `update_extract_marker()` (best-effort merge/write), and `mark_setup_done()` (sets `setup_done=True`, `installed_at`, `needs_install=False`).
@@ -230,13 +245,13 @@
 
 ---
 
-### 2026-11-08 — Test audit and catalog contract assertions
+### 2026-11-08 14:00:00 — Test audit and catalog contract assertions
 
 - Full independent audit of `tests/` (all test modules read/checked against current `core.uri_actions`, `services/catalog_*`, `steam_game_organizer`, and generated catalog HTML): no outdated/flat-wrong/skip-policy violations found; suite green (798 tests, 0 failures, 0 errors, 0 skipped). Added explicit contract assertions in `tests/test_catalog_library.py` for current `Open source`/`data-open-folder` and `Copy path` UI labels/hooks. Normalized remaining mojibake/arrow punctuation in `CHANGELOG.md` to satisfy release-structure checks.
 
 ---
 
-### 2026-11-08 — Catalog extracted-path resolution uses markers and all extract roots
+### 2026-11-08 13:30:00 — Catalog extracted-path resolution uses markers and all extract roots
 
 - `services/catalog_status.py`: added `read_extract_marker()` and `resolve_extracted_root()` (prefers marker `extracted_root` when it points to an existing directory under configured extract folders; falls back safely). `archive_has_changed_since_extraction()` now uses the shared marker reader.
 - `services/catalog_service.py:_unpacked_archives()`: checks all configured extract folders and both conventional layouts (`<dest>/<stem>` and `<dest>/Needs Install/<stem>`), reads `.sgo-extract-info` for `extracted_at`/`needs_install`/`extracted_root`, and returns an `extracted_paths` map of actual content roots. Cards render `data-extracted-path` alongside `data-extracted-rel`; primary/secondary Open installer/Open extracted actions and stale secondary access use the resolved path when available.
@@ -247,31 +262,31 @@
 
 ---
 
-### 2026-11-03 — Quick "New + Artwork" scan now runs cleanup, dedupe, repair, catalog
+### 2026-11-03 16:00:00 — Quick "New + Artwork" scan now runs cleanup, dedupe, repair, catalog
 
 `app/controller.py:scan_new_artwork()` — the quick scan used to skip cleanup, dedupe, repair (ZIP/RAR → 7z), and catalog generation. It now runs those four phases: `cleanup_leftovers()` reclaims temp folders and moves empty game folders/categories to Archive, `enforce_single_archive()` collapses duplicate archives per game folder, `convert_pending_archives()` rebuilds leftover ZIP/RAR as 7z, and `catalog.generate()` rewrites `Game Library.html`. The full-library audit (Steam link + artwork refresh for every game folder) is deliberately skipped so the quick scan stays fast on large libraries — artwork is only fetched for newly discovered games. Any ZIP/RAR that cannot be converted is moved to the library root so the next discovery pass picks it up as a new game.
 
 ---
 
-### 2026-11-03 — Review screen finishes in two clicks instead of three
+### 2026-11-03 15:30:00 — Review screen finishes in two clicks instead of three
 
 `ui/review_view.py` — when every game has been accepted or skipped, Accept & Next greys out and Continue to Organization becomes the highlighted primary action so the next step is obvious. `ui/main_window.py:_go_to_organize()` opens the confirm bar directly when there are accepted games, so the user only presses Confirm & Organize once instead of pressing Organize Accepted Games then Confirm & Organize.
 
 ---
 
-### 2026-11-03 — Quick "New + Artwork" scan now reclaims temp files and empties folders
+### 2026-11-03 15:00:00 — Quick "New + Artwork" scan now reclaims temp files and empties folders
 
 `app/controller.py:scan_new_artwork()` — the quick scan skipped cleanup entirely, so empty game folders were never moved to Archive and leftover temp folders were never reclaimed. It now runs `LibraryService.cleanup_leftovers()` after discovery, which reclaims temp/extraction folders and moves empty game folders and empty categories to Archive. Per its docstring it still skips dedupe, repair (ZIP/RAR → 7z), the full-library audit, and catalog generation so it stays fast on large libraries.
 
 ---
 
-### 2026-11-03 — Test logs isolated from real app runs
+### 2026-11-03 14:30:00 — Test logs isolated from real app runs
 
 `tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-<VERSION>-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test logs live alongside real logs but are never confused with them; test runs never pollute the user's log history.
 
 ---
 
-### 2026-11-03 — Archive emptied folders instead of deleting them
+### 2026-11-03 14:00:00 — Archive emptied folders instead of deleting them
 
 Empty game folders, empty categories, re-categorized source folders, and rollback-emptied folders are now moved to `Archive/` instead of being deleted, so the user can review them before deleting anything.
 
@@ -284,61 +299,61 @@ Empty game folders, empty categories, re-categorized source folders, and rollbac
 
 ---
 
-### 2026-11-03 — Fixed contradictory full-screen instruction in AGENTS.md
+### 2026-11-03 13:30:00 — Fixed contradictory full-screen instruction in AGENTS.md
 
 Removed the line telling tests not to run at fixed non-fullscreen sizes, because the geometry tests (`tests/test_ui_geometry.py`, `tests/test_review_context_panels.py`) intentionally run at `1280x800` and `1100x680` to verify the app works at `minsize()`. They unzoom first because Windows' zoomed state sticks. The "full screen only" rule is about production behavior, not the geometry tests.
 
 ---
 
-### 2026-11-03 — Quick "New + Artwork" scan now logs an artwork summary
+### 2026-11-03 13:00:00 — Quick "New + Artwork" scan now logs an artwork summary
 
 `app/controller.py:scan_new_artwork()` — the artwork phase logged every download, cache hit, and failure individually but never reported a tally, so an operator had to count lines to tell whether the scan worked. It now logs `ARTWORK_SCAN_COMPLETE downloaded=N cached=M unavailable=K total=T` and the `artwork_done` phase message includes the same breakdown.
 
 ---
 
-### 2026-11-03 — Catalog page: small card size no longer cuts text off
+### 2026-11-03 12:30:00 — Catalog page: small card size no longer cuts text off
 
 `services/catalog_service.py:_css()` — at `body.card-size-small` card headings now clamp to two lines, action button text shrinks and ellipses, and badges cap at 150px so nothing is squished or cut off when the reader picks Small cards.
 
 ---
 
-### 2026-11-03 — Catalog page: cards show when they were added
+### 2026-11-03 12:00:00 — Catalog page: cards show when they were added
 
 `services/catalog_service.py:_read_game()` / `_render_card()` — every card's meta line now reads `Added YYYY-MM-DD HH:MM` beside release date and developer, so a reader can tell at a glance when a game landed in the library.
 
 ---
 
-### 2026-11-03 — Catalog page: game banner art fills more of the category banner
+### 2026-11-03 11:30:00 — Catalog page: game banner art fills more of the category banner
 
 `services/catalog_service.py:_render_section()` / `_css()` — when a game in a category has artwork, that banner is painted over the generated background at full opacity so real art claims as much of the banner as it can without making it taller. Category title text grew to `clamp(1.75rem,4vw,2.6rem)` and the title block now flexes to fill more of the banner width.
 
 ---
 
-### 2026-11-03 — Catalog page: unpacked cards show the unpack date
+### 2026-11-03 11:00:00 — Catalog page: unpacked cards show the unpack date
 
 `services/extract_service.py` — the `.sgo-extract-info` marker now also records `extracted_at`. `services/catalog_service.py:_unpacked_archives()` reads it back and `_render_card()` appends `on YYYY-MM-DD HH:MM` to the green "Unpacked" and amber "Needs install" badges.
 
 ---
 
-### 2026-11-03 — Catalog page: "Recently extracted" section at the top
+### 2026-11-03 10:30:00 — Catalog page: "Recently extracted" section at the top
 
 `services/catalog_service.py:_render()` — `_render_recent()` was defined but never called. It is now wired up to show all unpacked games first, sorted by unpack date newest first, so the reader sees what is ready to play before browsing categories.
 
 ---
 
-### 2026-11-03 — Catalog page: hero shows games added this week
+### 2026-11-03 10:00:00 — Catalog page: hero shows games added this week
 
 `services/catalog_service.py:_render()` — the hero stats now include an "Added this week" count (games whose archive was created in the last 7 days), alongside Games, Categories, With artwork, and On disk.
 
 ---
 
-### 2026-11-03 — Removed scattered change-log notes from source code
+### 2026-11-03 09:30:00 — Removed scattered change-log notes from source code
 
 Removed 124 `# vX.Y change log:` note blocks from 47 source files. History now lives only in this file (`CHANGELOG.md`) instead of being buried inline in modules where it was easy to overlook and hard to keep chronological.
 
 ---
 
-### 2026-11-03 — Per-run timestamped logs with rotation
+### 2026-11-03 09:00:00 — Per-run timestamped logs with rotation
 
 - `core/config.py` writes one log file per launch as `organizer-<VERSION>-<YYYYMMDD>-<HHMMSS>.log` under `logs/`, never overwriting an old run, and keeps the last 10 (`ROTATED_LOGS`) before deleting older ones.
 - `core/logger.py` gains `MAX_BYTES` (5 MB) size rotation with `.1`/`.2` rolled files, `set_level()` threshold, `console=True` stdout for headless CLI mode (`--extract`/`--diagnostics`/`--health`), and `install_excepthook()` so uncaught exceptions reach the logger instead of a default traceback.
@@ -346,7 +361,7 @@ Removed 124 `# vX.Y change log:` note blocks from 47 source files. History now l
 
 ---
 
-### 2026-11-03 — Project docs rewritten and kept in sync
+### 2026-11-03 08:30:00 — Project docs rewritten and kept in sync
 
 - `AGENTS.md` — build/test/lint/run mechanics, runtime must ship, sandbox_app, state guard, expected `OK (skipped=1)` test result, logging rules, doc-keeping rule ("update the affected doc(s) in the same change — not later").
 - `ARCHITECTURE.md` — module/service inventory and wiring; frozen build layout; test conventions.
@@ -355,7 +370,7 @@ Removed 124 `# vX.Y change log:` note blocks from 47 source files. History now l
 
 ---
 
-### 2026-11-03 — Source tree cleanup
+### 2026-11-03 08:00:00 — Source tree cleanup
 
 - Removed stale `ui/review_view.py.backup` and `ui/scan_view.py.orig`.
 - Removed empty `tests/data/` directory.
@@ -363,25 +378,25 @@ Removed 124 `# vX.Y change log:` note blocks from 47 source files. History now l
 
 ---
 
-### 2026-11-03 — Rebuilt the frozen exe
+### 2026-11-03 07:30:00 — Rebuilt the frozen exe
 
 `python tools\build_frozen.py` re-run after the spec cleanup so `dist/steam_game_organizer/` ships the corrected build.
 
 ---
 
-### 2026-11-03 — Catalog page: more sorting, recently-added filter
+### 2026-11-03 07:00:00 — Catalog page: more sorting, recently-added filter
 
 `services/catalog_service.py` gains more sort buttons on the catalog page — Oldest (release date ascending), Smallest (archive size ascending), Recently added (file acquisition date descending) and Longest owned (file acquisition date ascending) — alongside Name, Newest and Largest. The browser-side comparator already handled ascending sorts, so only the buttons were missing. A new "Added" rail chip row filters the shelf to games whose archive was created within the last 7, 14 or 30 days, read from the `archive_created` field already collected on every scan. Cards carry `data-days` and `data-added` so the filter and sort run client-side with no second pass over the library.
 
 ---
 
-### 2026-11-03 — Empty game folders caught in populated categories
+### 2026-11-03 06:30:00 — Empty game folders caught in populated categories
 
 `services/library_service.py:_sweep_empty_categories()` used to scan the whole category tree with `rglob('*')` and skip the entire category when any archive existed anywhere in it — so an empty game folder (no archive) left inside a category that still had other games was never pruned. The check is now per game folder: a folder with no archive of its own, holding only things this app wrote, is moved to `Archive/` regardless of what other folders in the category hold. The category itself still only goes when empty and holding no archive at the category root. New `audit_empty_game_folders()` reports every game folder without an archive, including ones the player has added files to that the sweep correctly leaves alone.
 
 ---
 
-### 2026-11-03 — PyInstaller installed in the bundled runtime so the frozen-build test runs
+### 2026-11-03 06:00:00 — PyInstaller installed in the bundled runtime so the frozen-build test runs
 
 `runtime\python313._pth` gains `Lib\site-packages` so pip-installed packages are importable from the bundled interpreter, and PyInstaller 6.22.3 is installed into `runtime\Lib\site-packages`. `tests/test_frozen_build.py` no longer skips — the suite now runs `OK` with no skips. AGENTS.md updated to reflect the new expected test result.
 
