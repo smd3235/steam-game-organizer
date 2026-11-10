@@ -152,6 +152,9 @@ flowchart LR
 | **Controller** | Asynchronous workflow orchestration — scan phases, duplicate sweep, catalog, undo journaling. | [`app/controller.py`](app/controller.py) |
 | **UI layer** | Five views (scan, review, organize, artwork, done) plus batch and setup windows. | [`ui/main_window.py`](ui/main_window.py) |
 
+> [!NOTE]
+> **Steam data handling:** No Steam game names, titles, or AppIDs are hardcoded in any production code path. The app queries the live Steam Store API at runtime to match your archives against Steam metadata. A small deterministic fixture (five entries) exists only inside [`services/steam_service.py`](services/steam_service.py)`:_mock()` and is used **only** by the `--mock` offline test mode — it is never shipped to users and never queried during normal operation. Your game data stays on your machine; the app only reads your local library folders and writes its own state under `config/`, `cache/`, `logs/`, and `backup/`.
+
 ---
 
 ## 📦 Install & run from GitHub
@@ -374,62 +377,6 @@ Per [`AGENTS.md`](AGENTS.md), every change requires:
 6. **Build** — `python tools\build_frozen.py` rebuilds the frozen exe
 7. **Hygiene** — no screenshots left in repo root; tests never write to real `config/`, `cache/`, or `logs/`
 8. **Commit + push** — `git add`, commit with a descriptive message, `git push origin <branch>` so GitHub is updated
-
----
-
-## ⚡ Performance optimizations (v9.33)
-
-```mermaid
-flowchart LR
-    subgraph "Caching"
-    O1[_COLLECT_CACHE - catalog_service.py]
-    O2[build_name_map() - steam_game_organizer.py]
-    O3[_manifest_cache - organizer_service.py]
-    O4[_appid_in_archive_cache - steam_service.py]
-    O5[_installer_kind_cache - archive_service.py]
-    O6[_game_files() cached - organizer_service.py]
-    O7[_content_folder_cache - organizer_service.py]
-    end
-    
-    subgraph "Single-walk sharing"
-    O8[Single rglob() - extract_service.py]
-    O9[find_installer(entries=) - installer_detect.py]
-    O10[convert_pending_archives(work=) - library_service.py]
-    end
-    
-    subgraph "I/O reduction"
-    O11[Logger rotate batched - core/logger.py]
-    end
-    
-    O1 --> O8
-    O2 --> O9
-    O3 --> O10
-    O4 --> O8
-    O5 --> O9
-    O6 --> O10
-    O7 --> O11
-    
-    style O1 fill:#e1f5fe,stroke:#01579b
-    style O2 fill:#e1f5fe,stroke:#01579b
-    style O4 fill:#e1f5fe,stroke:#01579b
-    style O11 fill:#fff3e0,stroke:#e65100
-```
-
-Recent work eliminated redundant work — repeated filesystem walks, repeated `7z` subprocess calls, and repeated log-file stats — without changing what the app produces:
-
-| # | Optimization | File | Impact |
-|---|--------------|------|--------|
-| O1 | Module-level `_COLLECT_CACHE` shared across all `CatalogService` instances | [`services/catalog_service.py`](services/catalog_service.py) | High — one library walk per process instead of one per instance |
-| O2 | `build_name_map()` dedupes 3× inline `_collect()` blocks across extract URI paths | [`steam_game_organizer.py`](steam_game_organizer.py) | High — 3× fewer full-library traversals per URI session |
-| O3 | `_manifest_cache` keyed by `(path, size, mtime_ns)` | [`services/organizer_service.py`](services/organizer_service.py) | Medium-High — one `7z l -slt` per archive identity instead of N |
-| O4 | `_appid_in_archive_cache` keyed by `(path, size, mtime_ns) → appid` | [`services/steam_service.py`](services/steam_service.py) | High — `7z` subprocess spawn avoided on cache hit |
-| O5 | `_installer_kind_cache` keyed by `(path, size, mtime_ns)` | [`services/archive_service.py`](services/archive_service.py) | Medium-High — installer sniff cached per archive identity |
-| O6 | `_game_files()` cached per conversion | [`services/organizer_service.py`](services/organizer_service.py) | Medium — one `rglob('*')` instead of multiple per conversion |
-| O7 | Single `rglob` shared across count / zip-slip / installer / flatten | [`services/extract_service.py`](services/extract_service.py) | Low-Medium — one walk instead of several |
-| O8 | `convert_pending_archives(work=...)` reuses `pending_candidates()` | [`services/library_service.py`](services/library_service.py) + [`app/controller.py`](app/controller.py) | Low-Medium — one library walk per repair pass instead of two |
-| O9 | Logger rotate batched every ~500KB instead of every write | [`core/logger.py`](core/logger.py) | Low — less `stat()` overhead during high-frequency logging |
-
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full table with cache invalidation rules.
 
 ---
 

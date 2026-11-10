@@ -241,7 +241,7 @@ flowchart TD
     D4[Reserved dirs] -->|rationale| R4[Archive and Processing under library root never treated as categories; app's own project folder never swept]
     D5[Windows-only] -->|rationale| R5[os.startfile, CREATE_NO_WINDOW, 7z.exe bundled in runtime/; platform branching raises/refuses]
     D6[Frozen exe rebuild required] -->|rationale| R6[After any code change: python tools/build_frozen.py; user runs only frozen exe]
-    D7[Atomic writes] -->|rationale| R7[temp-file + os.replace with retry on PermissionError (OneDrive locks)]
+    D7[Atomic writes] -->|rationale| R7["temp-file + os.replace with retry on PermissionError (OneDrive locks)"]
     D8[runtime/ ships with exe] -->|rationale| R8[Excluded from lint/version scans; not this project's code]
     
     style D1 fill:#bfb,stroke:#333

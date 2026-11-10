@@ -180,7 +180,7 @@ flowchart TD
     subgraph "Your machine (source of runtime)"
     M1[Python 3.13 install]
     M2[7-Zip install]
-    M3[Tcl/Tk (bundled with Python)]
+    M3["Tcl/Tk (bundled with Python)"]
     end
     
     subgraph "tools\bundle_runtime.py"
@@ -584,9 +584,9 @@ All optimizations below are in the current development version and are cumulativ
 
 ```mermaid
 flowchart TD
-    GEN[CatalogService.generate()] -->|clears| CC[_COLLECT_CACHE]
-    INV[CatalogService.invalidate_summary()] -->|clears| CC
-    ST[stat-based caches O3-O5] -->|keyed on| KEY[(path, size, mtime_ns)]
+    GEN["CatalogService.generate()"] -->|clears| CC[_COLLECT_CACHE]
+    INV["CatalogService.invalidate_summary()"] -->|clears| CC
+    ST[stat-based caches O3-O5] -->|keyed on| KEY["(path, size, mtime_ns)"]
     KEY -->|self-invalidate when file changes| FRESH[fresh data]
     
     style CC fill:#fdd,stroke:#c00

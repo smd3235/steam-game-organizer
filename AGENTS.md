@@ -178,7 +178,7 @@ flowchart TD
     subgraph "Your machine (source of runtime)"
     M1[Python 3.13 install]
     M2[7-Zip install]
-    M3[Tcl/Tk (bundled with Python)]
+    M3["Tcl/Tk (bundled with Python)"]
     end
     
     subgraph "tools\bundle_runtime.py"
@@ -241,8 +241,8 @@ flowchart TD
     C --> D[Write log line]
     D --> E{~500KB accumulated?}
     E -->|No| D
-    E -->|Yes| F[_rotate(): stats log file]
-    F --> G[Keep last ROTATED_LOGS (10)]
+    E -->|Yes| F["_rotate(): stats log file"]
+    F --> G["Keep last ROTATED_LOGS (10)"]
     G --> H[Delete older logs]
     
     style A fill:#f9f,stroke:#333

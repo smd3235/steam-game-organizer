@@ -753,6 +753,10 @@ class SteamService:
         )
 
     def _mock(self, title):
+        # Deterministic offline fixture used ONLY by --mock mode (no network).
+        # Production code queries the live Steam Store API at runtime — no game
+        # names or AppIDs are hardcoded in any production path. These five
+        # entries let the app be tested without hitting Steam's servers.
         data={"captainofindustry":("1594320","Captain of Industry"),"restorychillelectronicsrepairs":("3812600","Re:Story - Chill Electronics Repairs"),"donotfeedthevirusincremental":("4288460","DO NOT FEED THE VIRUS"),"dnotfeedthevirusincremental":("4288460","DO NOT FEED THE VIRUS"),"nerdsimulator":("3128220","Nerd Simulator")}
         appid,name=data.get(identity_key(title),("",""))
         steam_match=SteamMatch(bool(appid),appid,name,["Simulation"],["Single-player"],"Mock Steam metadata",["Simulation"],"","High" if appid else "Low","mock","Deterministic fixture" if appid else "No fixture")
