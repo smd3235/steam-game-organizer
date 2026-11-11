@@ -7,19 +7,43 @@
 
 ---
 
-## 📖 How to use this document
-
-This file describes what the app does, how a run flows through its six phases, how the catalog page works, which design decisions are locked, and what commands/testing conventions apply. It is reference material — jump to a section by intent.
+## 📖 Table of contents
 
 | If you want to… | Go to section |
 |-----------------|---------------|
-| Understand what the app does | [**What it does**](#-what-it-does) |
-| Trace a run through six phases | [**Data flow**](#-data-flow) |
-| See which decisions are locked | [**Key decisions already made**](#-key-decisions-already-made) |
-| Run tests / lint / build | [**Commands**](#-commands) |
-| Read the testing rules | [**Testing conventions**](#-testing-conventions) |
-| Module inventory + service wiring | [**ARCHITECTURE.md**](ARCHITECTURE.md) |
-| Platform and comment rules | [**AGENTS.md**](../AGENTS.md) (Windows only, comment style, frozen-exe rebuild) |
+| Read this doc first (start here) | [📖 How to use this document](#-how-to-use-this-document) |
+| Understand what the app does | [🎯 What it does](#-what-it-does) |
+| Trace a run through six phases | [🔄 Data flow](#-data-flow) |
+| See which decisions are locked | [🔒 Key decisions already made](#-key-decisions-already-made) |
+| Understand the catalog page mechanics | [🖼️ Game Library.html — catalog page mechanics](#-game-libraryhtml---catalog-page-mechanics) |
+| Understand URI / protocol handler | [🔌 URI / protocol handler](#-uri-protocol-handler) |
+| Run tests / lint / build | [🖥️ Commands](#-commands) |
+| Read the testing rules | [🧪 Testing conventions](#-testing-conventions) |
+| Module inventory + service wiring | [🏗️ ARCHITECTURE.md](ARCHITECTURE.md) |
+| Platform and comment rules | [📋 AGENTS.md](AGENTS.md) (Windows only, comment style, frozen-exe rebuild) |
+| User-facing install / run / workflow | [📘 README.md](README.md) |
+
+---
+
+## 🗂️ Documentation map
+
+This file is one of four project docs. If a reader acts on any of them, they must match the code — update all four together when behavior changes.
+
+| File | Purpose | Link |
+|------|---------|------|
+| **AGENTS.md** | Operating manual: how to build, test, lint, run, commit, and push on Windows | [`AGENTS.md`](AGENTS.md) |
+| **ARCHITECTURE.md** | Module map and service inventory: what each module does and how they wire together | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| **project_overview.md** | What the app does, data flow, key decisions, catalog page mechanics | [`project_overview.md`](project_overview.md) |
+| **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
+| **CHANGELOG.md** | Dated change log under `## 9.33` (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
+
+**Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) in [`AGENTS.md`](AGENTS.md).
+
+---
+
+## 📖 How to use this document
+
+This file describes what the app does, how a run flows through its six phases, how the catalog page works, which design decisions are locked, and what commands/testing conventions apply. It is reference material — jump to a section by intent.
 
 ---
 
@@ -29,6 +53,12 @@ Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized
 
 > [!IMPORTANT]
 > The app runs full-screen on Windows only, from a frozen PyInstaller exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`. Version is declared in [`VERSION.txt`](VERSION.txt) and mirrored into [`core/constants.py`](core/constants.py) (`VERSION`) and `USER_AGENT`.
+
+### What it does not do
+
+- **Does not support piracy.** The app does not support or condone piracy. Use it only for games you own and have the right to organize. It does not provide — and does not explain — how to obtain games you do not own.
+- **Does not need Steam installed.** It queries the Steam Store API at runtime for metadata — no Steam client required.
+- **Does not delete games.** The app never deletes anything it didn't create. Empty categories and re-categorized leftovers are moved to `Archive/` for review.
 
 ---
 
@@ -46,6 +76,9 @@ A run walks the library through six phases:
 | **6. Batch extract** | [`services/batch_extract_service.py`](services/batch_extract_service.py) unpacks archives to user-chosen folders outside the library, relocates installer layouts to `Needs Install`, writes per-result status next to the catalog. | [`services/batch_extract_service.py`](services/batch_extract_service.py) — [`ui/batch_extract_window.py`](ui/batch_extract_window.py) |
 
 Phases run in order: Discover → Organize → Catalog → Done. Undo and Batch extract are independent entry points (Undo reads `last-organization.json`; Batch extract is triggered from the catalog page via `steamgameorganizer://` URI).
+
+> [!IMPORTANT]
+> See the [mermaid workflow diagram](README.md#-app-workflow-end-to-end) in [`README.md`](README.md) for a visual representation of this flow.
 
 ---
 
@@ -76,53 +109,53 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 ---
 
-## 🖼️ Game Library.html — what the generated page does
+## 🖼️ Game Library.html — catalog page mechanics
 
 `CatalogService.generate` writes `Game Library.html` plus `Game Library.status.js` beside the library root. The page is a single self-contained HTML file (embedded CSS + vanilla JS, no build step, no external requests) that a reader opens in a browser.
 
 ### Browse and filter the library
 
-- Category rail on the left, with category → release year → recently added (7/14/30 day) → genre → tag chips. Counts beside each chip are counted from what is actually on disk, not from a fixed vocabulary, so a rail never shows filters that match nothing.
-- Search box filters against a per-card `data-search` haystack (name, category, developer, publisher, archive, release date, archive created, description, genres, tags). Cards hide/show inline; category counts recount themselves as filters narrow (`data-toc-count`), and empty sections grey out instead of vanishing so the library shape stays visible.
-- Sort by Name / Newest / Oldest / Largest / Smallest / Recently added / Longest owned, reordering each category's own grid. "Newest" and "Oldest" use the Steam release date; "Recently added" and "Longest owned" use when the archive file landed on disk. Tie-breaks fall back to name so the order never reshuffles arbitrarily.
-- Card-size preset (small/medium/large), theme toggle (dark/light), both saved to `localStorage` so they survive a reload.
-- Keyboard: `/` focuses search, `Escape` clears all filters and multi-select, `Home` goes to top, `Enter` commits a typed path box.
+- **Category rail on the left**, with category → release year → recently added (7/14/30 day) → genre → tag chips. Counts beside each chip are counted from what is actually on disk, not from a fixed vocabulary, so a rail never shows filters that match nothing.
+- **Search box** filters against a per-card `data-search` haystack (name, category, developer, publisher, archive, release date, archive created, description, genres, tags). Cards hide/show inline; category counts recount themselves as filters narrow (`data-toc-count`), and empty sections grey out instead of vanishing so the library shape stays visible.
+- **Sort by Name / Newest / Oldest / Largest / Smallest / Recently added / Longest owned**, reordering each category's own grid. "Newest" and "Oldest" use the Steam release date; "Recently added" and "Longest owned" use when the archive file landed on disk. Tie-breaks fall back to name so the order never reshuffles arbitrarily.
+- **Card-size preset** (small/medium/large) and **theme toggle** (dark/light), both saved to `localStorage` so they survive a reload.
+- **Keyboard**: `/` focuses search, `Escape` clears all filters and multi-select, `Home` goes to top, `Enter` commits a typed path box.
 
 ### Know the state of each game
 
-- Hero stats: total games, categories, with artwork, on-disk bytes, plus "Missing art", "To extract", "New version", "Hide extracted" — the last three are real toggle buttons when there is something to filter, plain tiles when there is nothing to act on.
-- Each card shows: artwork (Steam banner, or a generated name-keyed banner so no card is a flat grey block), release date, developer, archive created, archive file name + size, genre + tag chips (tags capped at four, overflow shown as `+N`), description truncated at 220 chars.
-- Status badges drawn from the same predicate the batch planner skips on, so a badge never claims a game is done that Extract all would unpack again:
-  - green `Unpacked` — archive unpacked into the configured destination folder
-  - amber `Needs install` — unpacked but still an installer repack (payload relocated to a `Needs Install` folder)
-  - `New version` — unpacked but the archive on disk has changed size/mtime since extraction
-  - `Installer` — archive is an installer repack not yet unpacked
-  - `No Steam match` — no AppID found (card still shows artwork/archive/size/path buttons; only the two Steam actions are missing)
+- **Hero stats**: total games, categories, with artwork, on-disk bytes, plus "Missing art", "To extract", "New version", "Hide extracted" — the last three are real toggle buttons when there is something to filter, plain tiles when there is nothing to act on.
+- **Each card shows**: artwork (Steam banner, or a generated name-keyed banner so no card is a flat grey block), release date, developer, archive created, archive file name + size, genre + tag chips (tags capped at four, overflow shown as `+N`), description truncated at 220 chars.
+- **Status badges** drawn from the same predicate the batch planner skips on, so a badge never claims a game is done that Extract all would unpack again:
+  - 🟢 **Unpacked** — archive unpacked into the configured destination folder
+  - 🟡 **Needs install** — unpacked but still an installer repack (payload relocated to a `Needs Install` folder)
+  - 🔵 **New version** — unpacked but the archive on disk has changed size/mtime since extraction
+  - 🔴 **Installer** — archive is an installer repack not yet unpacked
+  - ⚪ **No Steam match** — no AppID found (card still shows artwork/archive/size/path buttons; only the two Steam actions are missing)
 
 > [!NOTE]
 > Because `file://` pages cannot stat any folder, these badges are decided against the default destination folder at generation time. Typing a different destination retracts them immediately (`syncUnpackedBadges`) — a claim about a folder the reader just changed is taken back rather than left standing.
 
 ### Open games, folders, and Steam
 
-- Card art link → Steam store page (`store.steampowered.com/app/<appid>`), or opens nothing with a clear reason when there is no Steam match.
-- `Open in Steam` → `steam://run/<appid>` Steam client link.
-- `Open` → `steamgameorganizer://open-folder?path=<folder>` opens the game's folder in Explorer, path rebuilt from the typed game-folder root so it follows a moved library.
-- `Copy path` → copies the full archive path to the clipboard (`execCommand` fallback, since `file://` pages are not a secure context and `navigator.clipboard` is unavailable).
+- **Card art link** → Steam store page (`store.steampowered.com/app/<appid>`), or opens nothing with a clear reason when there is no Steam match.
+- **Open in Steam** → `steam://run/<appid>` Steam client link.
+- **Open** → `steamgameorganizer://open-folder?path=<folder>` opens the game's folder in Explorer, path rebuilt from the typed game-folder root so it follows a moved library.
+- **Copy path** → copies the full archive path to the clipboard (`execCommand` fallback, since `file://` pages are not a secure context and `navigator.clipboard` is unavailable).
 
 ### Extract games through the app (the page cannot unpack anything itself)
 
 `file://` pages cannot open folders or run programs — that boundary is the whole point of the sandbox. Every extract goes through a `steamgameorganizer://extract` link, which the browser hands to the desktop after a confirmation.
 
-- Single `Extract` per card: source percent-encoded (library names are full of spaces/ampersands/quotes), destination taken from the typed box at click time (falls back to the first configured folder). No confirmation prompt — one archive is small and reversible.
-- `Extract all` / `Extract remaining` per category or whole library: confirmed on evidence (count, archive size, destination) before the run starts — `Extract all` on a 176-game library is one click from filling a drive. Skip logic skips games already unpacked there.
-- Multi-select mode: reveal checkboxes, pick two or more games, extract them together as one `extract-multi://` batch.
-- The destination box offers configured folders as datalist suggestions but starts on the first; paths are rebuilt from the typed root at click time so they follow a moved library rather than being frozen to the machine that ran the scan.
+- **Single `Extract` per card**: source percent-encoded (library names are full of spaces/ampersands/quotes), destination taken from the typed box at click time (falls back to the first configured folder). No confirmation prompt — one archive is small and reversible.
+- **`Extract all` / `Extract remaining`** per category or whole library: confirmed on evidence (count, archive size, destination) before the run starts — `Extract all` on a 176-game library is one click from filling a drive. Skip logic skips games already unpacked there.
+- **Multi-select mode**: reveal checkboxes, pick two or more games, extract them together as one `extract-multi://` batch.
+- **The destination box** offers configured folders as datalist suggestions but starts on the first; paths are rebuilt from the typed root at click time so they follow a moved library rather than being frozen to the machine that ran the scan.
 
 ### Setup and refresh
 
-- `Set up on this PC` → `steamgameorganizer://setup`, carrying the typed game folder and extract destination so the wizard starts on them. A command-line fallback shows if the protocol never opened.
-- `Refresh catalog` → `steamgameorganizer://refresh-catalog`: re-walks the library and rewrites the page so Unpacked badges match what is actually on disk now. Needed because an extraction done outside the app leaves stale badges until regenerated.
-- `run-status` banner shows the last batch run result (`Game Library.status.js`, rewritten by the app after every batch run), summarised as a one-line chip in the rail so it stays visible when scrolled past.
+- **Set up on this PC** → `steamgameorganizer://setup`, carrying the typed game folder and extract destination so the wizard starts on them. A command-line fallback shows if the protocol never opened.
+- **Refresh catalog** → `steamgameorganizer://refresh-catalog`: re-walks the library and rewrites the page so Unpacked badges match what is actually on disk now. Needed because an extraction done outside the app leaves stale badges until regenerated.
+- **run-status banner** shows the last batch run result (`Game Library.status.js`, rewritten by the app after every batch run), summarised as a one-line chip in the rail so it stays visible when scrolled past.
 
 ### Why this is one HTML file with embedded JS
 
@@ -174,3 +207,5 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 | **The frozen build is tested.** | `tests/test_frozen_build.py` runs `build_frozen.main()` against a scratch tree and asserts the exe lands inside the bundle with `core/`, `services/`, `runtime/`, `VERSION.txt`, and `runtime/7z.exe` present — because the app resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings. | [`tests/test_frozen_build.py`](tests/test_frozen_build.py) |
 
 Use [`tests/tk_support.py:sandbox_app`](tests/tk_support.py) to root `AppConfig` in a temp tree — never construct the real app against the real `config/` in tests (tests race on `settings.json`; `test_project_state_guard.py` enforces this). `sandbox_app` patches `app.application.AppConfig` to point at a temporary tree; `close_root` cancels pending Tk `after` callbacks before `destroy()` so geometry tests don't leave `invalid command name _tick` noise on stderr.
+
+---

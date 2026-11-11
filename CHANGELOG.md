@@ -5,6 +5,14 @@
 
 ## 9.33
 
+### 2026-11-11 07:23:00 — docs: enhance all four markdown files with better formatting, flow, cross-references, and details
+
+- `AGENTS.md`: Added table of contents and documentation map sections; reordered sections so the Change Workflow follows Rules at a Glance; added cross-references to ARCHITECTURE.md, project_overview.md, and README.md throughout; improved formatting consistency and flow.
+- `ARCHITECTURE.md`: Added table of contents and documentation map sections; added service interaction table with safety invariants; enhanced core/services/ui/utils/debug/tools/tests tables with key invariants column; improved cross-linking between docs.
+- `project_overview.md`: Added table of contents and documentation map sections; clarified phase ordering (Discover → Organize → Catalog → Done); added "What it does not do" section (piracy, Steam client, deletion); improved cross-references to other docs.
+- `README.md`: Added comprehensive table of contents; reordered sections (install & run earlier, contributor docs at end); added "What it does not do" FAQ-style notes; added contributor documentation quick-links table; improved cross-references between sections and to other docs.
+- No behavior change.
+
 ### 2026-11-10 23:55:00 — fix: mock steam data missing Delta Realm Incremental entry
 
 - `services/steam_service.py`: Added `"deltarealmincremental": ("100003", "Delta Realm")` to the `_mock()` fixture data. The archive `Delta Realm Incremental.zip` normalizes to identity key `deltarealmincremental`, which did not match any mock entry, so `steam.found` was `False` and `approve_all()` skipped it. This left `2.zip` in Incoming after organize, failing `test_review_to_organize_to_done_moves_real_files` and `test_undo_puts_a_real_organized_run_back_where_it_started`. Broke up the long single-line `data = {...}` dict across multiple lines for readability while making the fix.

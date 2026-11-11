@@ -11,6 +11,32 @@
 
 ---
 
+## 📖 Table of contents
+
+| If you want to… | Go to section |
+|-----------------|---------------|
+| Get a quick summary | [🎯 Overview](#-overview) |
+| Download, build, and run | [📦 Install & run from GitHub](#-install--run-from-github) |
+| First launch — setup wizard | [🧭 First launch — setup wizard](#-first-launch--setup-wizard) |
+| Register protocol handler | [🔗 Register the protocol handler (one time)](#-register-the-protocol-handler-one-time) |
+| Command-line flags | [⌨️ Command-line flags](#-command-line-flags) |
+| Run on your own machine | [🖥️ Running on your own machine](#-running-on-your-own-machine) |
+| End-to-end workflow | [🎯 App workflow — end to end](#-app-workflow--end-to-end) |
+| Catalog page details | [📄 Game Library.html — what the catalog page does](#-game-libraryhtml--what-the-catalog-page-does) |
+| Extraction markers | [🔍 Extraction markers (.sgo-extract-info)](#-extraction-markers--sgo-extract-info-) |
+| Undo journal | [↩️ Undo journal](#-undo-journal) |
+| Drive letter resolution | [🔁 Drive letter resolution](#-drive-letter-resolution) |
+| Repository layout | [🏗️ Repository layout](#-repository-layout) |
+| Troubleshooting | [🔧 Troubleshooting](#-troubleshooting) |
+| FAQ | [❓ FAQ](#-faq) |
+| Project status | [📊 Project status & public readiness](#-project-status--public-readiness) |
+| Licensing | [⚖️ License](#-license) |
+| Bundled runtime | [📦 Bundled runtime components (`runtime/`)](#-bundled-runtime-components-runtime-) |
+| Quick links to code | [🔗 Quick links to key code sections](#-quick-links-to-key-code-sections) |
+| Contributor docs | [📚 Contributor documentation](#-contributor-documentation) |
+
+---
+
 ## 🎯 Overview
 
 Steam Game Organizer is a comprehensive Windows application for games you have downloaded from outside of Steam. It walks your library folder, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork), converts archives to **7z** for better compression, sorts them into category folders, downloads artwork, and generates a beautiful, clickable HTML catalog you can open in your browser — packed with detail on every game.
@@ -30,20 +56,6 @@ The result is a self-contained, browsable game library that works on any Windows
 
 > [!IMPORTANT]
 > **This app does not support or condone piracy.** Use it only for games you own and have the right to organize. It does not provide — and does not explain — how to obtain games you do not own.
-
----
-
-## 🚀 Key capabilities
-
-| Capability | Description |
-|------------|-------------|
-| 🖥️ **Self-contained runtime** | `runtime/` at the project root is a vendored product built by [`tools/bundle_runtime.py`](tools/bundle_runtime.py) — it copies Python 3.13 (with Tcl/Tk so the setup wizard opens) and 7-Zip from the machine's own installs, writes `python313._pth` so `sys.path` is exactly what the file says, and writes `THIRD-PARTY-NOTICES.txt` and `LICENSE.txt`. The same tree ships inside the frozen bundle as `dist/steam_game_organizer/runtime/`. It must ship: `build_frozen.py` verifies `runtime/7z.exe` exists before reporting success, because without it extraction tools report no archiver. `runtime/` is excluded from lint and version scans; its files declare Python's and 7-Zip's versions, not this app's. |
-| 📦 **Extract to `Needs Install`** | `services/installer_detect.py` recognizes archives that unpack to a Windows installer (`setup.exe` + `.bin`, or a mountable `.iso`) and routes them to a `Needs Install` subfolder with an amber badge so the user knows extraction isn't finished. `services/extract_service.py` finds the archive tool via `find_tool()` / `find_unrar()` — checking `PATH` then real install folders (`C:\Program Files\7-Zip`, `%ProgramFiles%\WinRAR`) because 7-Zip isn't on `PATH` on a normal PC — performs extraction, writes `.sgo-extract-info` markers (archive size/mtime, extracted root, `needs_install` flag), and preserves compatible user-state fields (`launch_target`, `setup_done`, `installed_at`) from prior marker candidates across re-extract while recomputing extraction facts. |
-| 🎮 **Launcher discovery** | `services/catalog_status.py:discover_game_launchers()` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size. Returns a ranked list for user choice via Pick launcher. The chosen `launch_target` persists to `.sgo-extract-info` and subsequent Play actions use it. |
-| 🔗 **Protocol handler** | `services/setup_service.py` registers `steamgameorganizer://` under `HKCU\Software\Classes` (per user, no elevation needed). `core/uri_actions.py` owns `SCHEME` and `SYSTEM_PATHS` (the folders a typed destination may not sit inside) and parses all actions: `extract`, `extract-all`, `extract-multi`, `setup`, `open-extracted`, `play`, `pick-launcher`, `mark-installed`, `refresh-catalog`, `open-folder`. Every field is treated as hostile input — source must resolve inside the configured library root, must exist with an archive extension, destination must not sit inside a system folder or the library itself. The registry write is injectable so tests can watch registration without touching `HKCU`. |
-| 📦 **Batch extract** | `services/batch_extract_service.py` plans and runs batch extractions outside the library with smallest-first sort, `(n)` collision handling, installer archives routed to `Needs Install`, and skip-if-already-extracted checks. `ui/batch_extract_window.py` provides a visible progress window — hours of 7z work needs a visible queue. Skip logic skips games already unpacked to the destination. Per-result status is written beside the catalog (`Game Library.status.js`). |
-| 📚 **Library service** | `services/library_service.py` performs the whole-library audit — Steam link normalization plus artwork refresh, reporting per folder as it goes. Runs `_sweep_empty_categories()` after scans: empty game folders and empty categories are moved to `Archive/` rather than deleted, so the user can review them before deleting. |
-| ⚙️ **Setup service** | `services/setup_service.py` validates the three folders (a library that holds no games, an app folder with no entry point, an extract folder inside the library are all refused), saves the library root and extract folder, and registers the protocol handler against the chosen app folder. The registry write is injectable so a test watches a registration without touching `HKCU`. |
 
 ---
 
@@ -260,7 +272,7 @@ flowchart TD
 `file://` pages cannot open folders or run programs — that boundary is the whole point of the sandbox. Every extract goes through a `steamgameorganizer://extract` link, which the browser hands to the desktop after a confirmation.
 
 - **Single `Extract` per card**: source percent-encoded (library names are full of spaces/ampersands/quotes), destination taken from the typed box at click time (falls back to the first configured folder). No confirmation prompt — one archive is small and reversible.
-- **`Extract all` / `Extract remaining`** per category or whole library: confirmed on evidence (count, archive size, destination) before the run starts — `Extract all` on a 176-game library is one click from filling a drive. Skip logic skips games already unpacked there.
+- **`Extract all` / `Extract remaining`** per category or whole library: confirmed on evidence (count, archive size, destination) before the run starts — `Extract all` on a 176-game library is one click from filling a drive. Skip logic skips games already unpacked to the destination.
 - **Multi-select mode**: reveal checkboxes, pick two or more games, extract them together as one `extract-multi://` batch.
 - **The destination box** offers configured folders as datalist suggestions but starts on the first; paths are rebuilt from the typed root at click time so they follow a moved library rather than being frozen to the machine that ran the scan.
 
@@ -517,6 +529,19 @@ Add a license here if you want others to reuse or modify the code. Without one, 
 | **Build frozen** | [`tools/build_frozen.py`](tools/build_frozen.py) | PyInstaller pipeline (onedir build, `console=False`, `exclude_binaries=True`). Lift step moves `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, `runtime/` out of `_internal/` into the bundle root. Backs up `config/`, `cache/`, `logs/` to temp before wiping the old bundle and restores after. Retries `rmtree` up to 5 times (Windows Defender/indexer locks). Verifies `runtime/7z.exe` exists before reporting success. |
 | **Bundle runtime** | [`tools/bundle_runtime.py`](tools/bundle_runtime.py) | Copies Python 3.13 + Tcl/Tk and 7-Zip from the machine's installs into `runtime/`. Writes `python313._pth`, `THIRD-PARTY-NOTICES.txt`, `LICENSE.txt`. `runtime/` is vendored, not this project's code — excluded from lint/version scans. |
 | **Protocol handler** | [`tools/install_protocol_handler.py`](tools/install_protocol_handler.py) | Registers `steamgameorganizer://` under `HKCU\Software\Classes` (per user, no elevation needed). Reads the value back afterwards to confirm the write succeeded. No `.desktop`/`xdg-mime` path — Windows only. |
+
+---
+
+## 📚 Contributor documentation
+
+If you plan to modify code, read [`AGENTS.md`](AGENTS.md) first — it is the operating manual for contributing and contains the mandatory Change Workflow, Definition of Done, and rules every change must satisfy.
+
+| Doc | What it covers | Link |
+|-----|----------------|------|
+| **AGENTS.md** | Build, test, lint, run, commit, push — Windows only | [`AGENTS.md`](AGENTS.md) |
+| **ARCHITECTURE.md** | Module map, service inventory, wiring diagrams | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| **project_overview.md** | What the app does, data flow, key decisions, catalog mechanics | [`project_overview.md`](project_overview.md) |
+| **CHANGELOG.md** | Dated change log under `## 9.33` | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
 

@@ -10,27 +10,41 @@
 
 ---
 
-## 📖 How to use this document
-
-This file is the **operating manual for contributing** to the project. Read it **before** modifying any module.
-
-**If you are making a code change, start at [The Change Workflow](#-the-change-workflow).** It walks you through every required step in order. Every other section is reference material you can jump to as needed.
+## 📖 Table of contents
 
 | If you want to… | Go to section |
 |-----------------|---------------|
-| Set up the dev environment | [**Prerequisites & Setup**](#-prerequisites--setup) |
-| Make a code change | [**The Change Workflow**](#-the-change-workflow) |
-| Rebuild the frozen exe | [**Build — Frozen Exe Pipeline**](#-build--frozen-exe-pipeline) |
-| Understand the bundled runtime | [**The Bundled Runtime**](#-the-bundled-runtime) |
-| Understand logging | [**Logging**](#-logging) |
-| Understand test hygiene | [**Testing**](#-testing) |
-| Run lint checks | [**Lint**](#-lint) |
-| Capture/delete screenshots | [**Screenshots**](#-screenshots) |
-| Run long-running commands | [**Long-Running Commands**](#-long-running-commands) |
-| Git/GitHub workflow | [**Git / GitHub Workflow**](#-git--github-workflow) |
-| Keep docs accurate | [**Keeping Project Docs Accurate**](#-keeping-project-docs-accurate) |
-| Verify a task is complete | [**Definition of Done**](#-definition-of-done-mandatory) |
-| Write comments | [**Comment Style**](#-comment-style) |
+| Read this doc first (start here) | [⚠️ Rules at a Glance](#-rules-at-a-glance) |
+| Set up the dev environment | [🛠️ Prerequisites & Setup](#-prerequisites--setup) |
+| Make a code change (step-by-step) | [🔄 The Change Workflow](#-the-change-workflow) |
+| Rebuild the frozen exe | [🏗️ Build — Frozen Exe Pipeline](#-build--frozen-exe-pipeline) |
+| Understand the bundled runtime | [📦 The Bundled Runtime](#-the-bundled-runtime) |
+| Understand logging | [📝 Logging](#-logging) |
+| Understand test hygiene | [🧪 Testing](#-testing) |
+| Run lint checks | [🧹 Lint](#-lint) |
+| Capture/delete screenshots | [📸 Screenshots: capture, analyse, delete](#-screenshots-capture-analyse-delete) |
+| Run long-running commands | [⏱️ Long-Running Commands](#-long-running-commands) |
+| Git/GitHub workflow | [🔀 Git / GitHub Workflow](#-git--github-workflow) |
+| Keep docs accurate | [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) |
+| Verify a task is complete | [✅ Definition of Done (Mandatory)](#-definition-of-done-mandatory) |
+| Write comments | [🏷️ Comment Style](#-comment-style) |
+| See how docs relate to each other | [🗂️ Documentation Map](#-documentation-map) |
+
+---
+
+## 🗂️ Documentation map
+
+This file is one of four project docs. If a reader acts on any of them, they must match the code — update all four together when behavior changes.
+
+| File | Purpose | Link |
+|------|---------|------|
+| **AGENTS.md** | Operating manual: how to build, test, lint, run, commit, and push on Windows | [`AGENTS.md`](AGENTS.md) |
+| **ARCHITECTURE.md** | Module map and service inventory: what each module does and how they wire together | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| **project_overview.md** | What the app does, data flow, key decisions, catalog page mechanics | [`project_overview.md`](project_overview.md) |
+| **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
+| **CHANGELOG.md** | Dated change log under `## 9.33` (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
+
+**Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate).
 
 ---
 
@@ -62,7 +76,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 | **Run the frozen exe** (`dist\steam_game_organizer\steam_game_organizer.exe`) | **Nothing.** Ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. | Download latest release from GitHub, or build it yourself. |
 | **Run from source** (`runtime\python.exe steam_game_organizer.py`) | Python 3.13 (the bundled runtime works if already built). | [python.org](https://www.python.org/downloads/windows/) — install for all users, check "Add Python to PATH". |
 | **Develop / change code** | Python 3.13 + `ruff` + `PyInstaller`. | See Development toolchain below. |
-| **Build frozen exe / bundle runtime** | Python 3.13 + 7-Zip + PyInstaller. | See **Build** and **Bundled Runtime** below. |
+| **Build frozen exe / bundle runtime** | Python 3.13 + 7-Zip + PyInstaller. | See [🏗️ Build](#-build--frozen-exe-pipeline) and [📦 Bundled Runtime](#-the-bundled-runtime). |
 
 ### Development toolchain
 
@@ -87,13 +101,15 @@ Before modifying any module, read `AGENTS.md`, `ARCHITECTURE.md`, and `project_o
 
 Work through this checklist in order:
 
-1. **Comment** — add a comment explaining the change in every modified file.
-2. **Changelog** — add a dated entry under `## 9.33` (newest first).
-3. **Docs** — update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed.
-4. **Lint** — `ruff check .` — must pass.
-5. **Tests** — `runtime\python.exe -m unittest discover -q` — must report `OK` with no new skips.
-6. **Build** — `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists.
-7. **Commit + push** — `git add` the changed source, docs, and changelog; commit with a descriptive message; push to GitHub.
+| Step | Action | Details |
+|------|--------|---------|
+| 1 | **Comment** | Add a comment explaining the change in every modified file. See [🏷️ Comment Style](#-comment-style). |
+| 2 | **Changelog** | Add a dated entry under `## 9.33` (newest first). |
+| 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
+| 4 | **Lint** | `ruff check .` — must pass. See [🧹 Lint](#-lint). |
+| 5 | **Tests** | `runtime\python.exe -m unittest discover -q` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
+| 6 | **Build** | `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists. See [🏗️ Build](#-build--frozen-exe-pipeline). |
+| 7 | **Commit + push** | `git add` the changed source, docs, and changelog; commit with a descriptive message; push to GitHub. See [🔀 Git / GitHub Workflow](#-git--github-workflow). |
 
 ---
 
@@ -118,7 +134,7 @@ python tools\build_frozen.py
 
 ## 📦 The Bundled Runtime
 
-`runtime/` at the project root is a **vendored product, not this project's code**: `tools\bundle_runtime.py` copies a Python (with Tcl/Tk) and a 7-Zip into it from the machine's own installs. The same tree ships inside the frozen bundle as `dist/steam_game_organizer/runtime/`.
+`runtime/` at the project root is a **vendored product, not this project's code**: `tools\bundle_runtime.py` copies Python 3.13 (with Tcl/Tk) and a 7-Zip into it from the machine's own installs. The same tree ships inside the frozen bundle as `dist/steam_game_organizer/runtime/`.
 
 > [!TIP]
 > **It must ship.** Nothing a user's PC needs is installed, so a `.gitignore` entry or a build step that drops `runtime/` breaks every copied folder. `.gitignore` deliberately has no entry for it.
@@ -245,7 +261,7 @@ This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer
 
 ---
 
-## 📐 Keeping the Project Docs Accurate
+## 📐 Keeping Project Docs Accurate
 
 These four files are the project's map of itself. If a reader acts on them, they must match the code:
 
@@ -293,3 +309,5 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 - **`#` comments** state *why* a specific line does something (bug, edge case, platform quirk) — inline with implementation.
 - Do not convert `#` comments into docstrings; they are not interchangeable.
 - Every changed file must include at least one comment explaining what changed and why.
+
+---
