@@ -7,9 +7,14 @@ two archives with different packaging still match as one game. version_key() pul
 the version number (or date stamp) out of the filename so organizer can pick the
 newest copy of a game when several share a folder.
 
-2026-11-10: Reverted the `incremental`, `complete`, and `final` additions to the trailing-word regex -
-`incremental` is a legitimate game genre (idle/incremental games), so stripping it would rename a game
-folder to something the player didn't name it. Kept the original `multi|proper|portable|iso` list.
+2026-11-11: Added region/language tag stripping (MULTI5-13, USA, EUR, JAP, PAL, NTSC),
+crack-by tags (CRACKED BY, CRACK:, CRACKED-BY), content tags (UNCUT, UNCENSORED, GORE,
+NODVD, NO-DVD, FIX), and standalone/only removal so archives whose filenames carry
+scene packaging still normalize to the Steam title. Reverted the `incremental`,
+`complete`, and `final` additions to the trailing-word regex -
+`incremental` is a legitimate game genre (idle/incremental games), so stripping it
+would rename a game folder to something the player didn't name it. Kept the original
+`multi|proper|portable|iso` list.
 """
 
 import re
@@ -27,11 +32,30 @@ RELEASE_TAG = re.compile(
     re.I,
 )
 
+# Region / language tags that scene releases append to the title. These are always packaging,
+# never part of the game's Steam title, so they are safe to strip from the end.
+REGION_TAG = re.compile(r"\s+(?:multi\d{1,2}|usa|eur|jap|jpn|pal|ntsc)\s*$", re.I)
+
+# Cracked-by / release-group credit tags that appear at the end of a filename and have nothing
+# to do with the game title.
+CRACK_TAG = re.compile(
+    r"\s*(?:cracked?[-.\s]*(?:by|:|-)|crack:)\s+\S.*$|\s+cracked?\s*$",
+    re.I,
+)
+
+# Content / packaging words that can appear at the end of a filename but are not part of the
+# game's title on Steam.
+CONTENT_TAG = re.compile(
+    r"\s+(?:uncut|uncensored|gore|nodvd|no-dvd|fix|standalone|only)\s*$",
+    re.I,
+)
 
 def normalize_name(value: str) -> str:
     """Strip packaging words from an archive or folder name to leave the game's title.
 
-    Removes release-group tags (FitGirl, DODI, TENOKE…), trailing indicators
+    Removes release-group tags (FitGirl, DODI, TENOKE…), region/language tags
+    (MULTI5, USA, EUR, JAP…), crack-by credits (CRACKED BY GROUP), content tags
+    (UNCUT, UNCENSORED, GORE, NODVD…), standalone/only markers, trailing indicators
     ((2), [Copy], v2…), multi/proper/portable/ISO suffixes, dates glued to the
     last word, and build stamps. What remains should match what Steam's store
     calls the game.
@@ -44,6 +68,10 @@ def normalize_name(value: str) -> str:
     # value=re.sub(r"\s*\[[^\]]*\]\s*"," ",value)
     # value=value.replace("[", " ").replace("]", " ").replace("{", " ").replace("}", " ")
     value = re.sub(r"\s*\([^)]*(?:repack|portable|crack|gog|steam|linux|windows|fitgirl|dodi|codex|tenoke)[^)]*\)", " ", value, flags=re.I)
+    # Crack-by credits: "Cracked by GROUP", "CRACK: GROUP", "CRACKED-BY GROUP", bare "CRACKED" - release
+    # group attribution that has nothing to do with the game title. Runs before RELEASE_TAG so that
+    # "CRACK: TENOKE" is stripped as a whole rather than RELEASE_TAG eating "TENOKE" and leaving "CRACK:" behind.
+    value = CRACK_TAG.sub(" ", value)
     # A release-group tag is a separator-delimited word, and everything from it on is packaging rather than the
     # game: "Brave.New.Wonders-SteamRIP.com" is Brave New Wonders, and so is anything tagged -RELOADED or
     # .REPACKED. Cutting at the first one is what makes the title matchable - the Steam query used to build its
@@ -59,6 +87,15 @@ def normalize_name(value: str) -> str:
     # Do not add genre words here - "incremental" is a real genre (idle/incremental games), and
     # stripping it would rename a game folder to something the player didn't name it.
     value = re.sub(r"\s+(?:multi|proper|portable|iso)\s*$", " ", value, flags=re.I)
+    # Region / language tags appended by scene releases - MULTI5 through MULTI13, USA, EUR,
+    # JAP, JPN, PAL, NTSC. Always packaging, never part of the Steam title.
+    value = REGION_TAG.sub(" ", value)
+    # Content / packaging words at the end: UNCUT, UNCENSORED, GORE, NODVD, NO-DVD, FIX,
+    # STANDALONE, ONLY - describe the release, not the game.
+    value = CONTENT_TAG.sub(" ", value)
+    # Content / packaging words at the end: UNCUT, UNCENSORED, GORE, NODVD, NO-DVD, FIX,
+    # STANDALONE, ONLY - describe the release, not the game.
+    value = CONTENT_TAG.sub(" ", value)
     # Remove trailing indicators like (2), [Copy], (v2), etc. that should not affect identity
     # Remove all such trailing indicators (there may be more than one)
     while True:

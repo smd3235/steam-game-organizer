@@ -5,6 +5,14 @@
 
 ## 9.33
 
+### 2026-11-11 07:40:00 — naming: strengthen archive-to-Steam matching for cluttered filenames
+
+- `utils/filename_utils.py`: Added region/language tag stripping (MULTI5–13, USA, EUR, JAP, JPN, PAL, NTSC), crack-by credits (CRACKED BY, CRACK:, CRACKED-BY, bare CRACKED), and content tags (UNCUT, UNCENSORED, GORE, NODVD, NO-DVD, FIX, STANDALONE, ONLY) to `normalize_name()` so scene-packaged archive names collapse to the Steam title. CRACK_TAG now runs before RELEASE_TAG so "CRACK: TENOKE" is stripped as a whole rather than leaving a stray "CRACK:". Crack-tag variant generation added to `_query_variants()` in `services/steam_service.py`.
+- `services/steam_service.py`: Added region-tag-stripped variants and "X, The" → "The X" reordering variants to `_query_variants()` so `MULTI5 USA EUR JAP PAL NTSC` tags and trailing-", The" spellings both query under the bare Steam title.
+- `tests/test_filename_utils.py`: Added `TestRegionLanguageTags`, `TestCrackTags`, `TestContentTags` (10 new test methods).
+- `tests/test_steam_service.py`: New file with `TestSteamQueryVariants` (6 new test methods) guarding region-stripped, crack-stripped, and "The X, The" variant generation.
+- No behavior change for clean filenames — only cluttered scene-packaged names are affected.
+
 ### 2026-11-11 07:23:00 — docs: enhance all four markdown files with better formatting, flow, cross-references, and details
 
 - `AGENTS.md`: Added table of contents and documentation map sections; reordered sections so the Change Workflow follows Rules at a Glance; added cross-references to ARCHITECTURE.md, project_overview.md, and README.md throughout; improved formatting consistency and flow.

@@ -569,6 +569,8 @@ class SteamService:
         stripped = re.sub(r"\s+(?:v?\d+(?:[.\-_ ]+\d+)+|v?\d{5,}|build\s*\d+)\s*$", "", title, flags=re.I)
         add(stripped)
         add(re.sub(r"(?:fitgirl|tenoke|dodi|repack|portable)$", "", title, flags=re.I))
+        # Crack-by credits: "CRACKED BY GROUP", "CRACK: GROUP", "CRACKED-BY GROUP", bare "CRACKED".
+        add(re.sub(r"\s*(?:cracked?[-.\s]*(?:by|:|-)|crack:)\s+\S.*$|\s+cracked?\s*$", "", title, flags=re.I))
         add(re.sub(r"\d+[a-z]\d*[a-z]*$", "", title, flags=re.I))
         add(re.sub(r"\d{2,}$", "", title))
         if re.search(r"[A-Z][a-z]", title):
@@ -598,6 +600,15 @@ class SteamService:
             add(" ".join(words))
         # Acronym/abbreviation expansion: "AiO" -> "All in One", "VR" -> "Virtual Reality", etc.
         add(self._expand_acronyms(stripped))
+        # Region / language tags appended by scene releases (MULTI5, USA, EUR, JAP, PAL, NTSC…) — strip them
+        # so the bare title is queried instead of a tagged name Steam's index won't recognise.
+        region_stripped = re.sub(r"\s+(?:multi\d{1,2}|usa|eur|jap|jpn|pal|ntsc)\s*$", "", stripped, flags=re.I)
+        if region_stripped != stripped:
+            add(region_stripped)
+        # "X, The" -> "The X": scene releases often append ", The" at the end while Steam indexes under "The X".
+        the_reorder = re.match(r"^(?P<rest>.+?),\s*the\s*$", stripped, flags=re.I)
+        if the_reorder:
+            add("The " + the_reorder.group("rest").strip())
         # Try Steam autocomplete API for better suggestions
         autocomplete_variants = self._autocomplete_suggestions(query, ctx)
         for v in autocomplete_variants:

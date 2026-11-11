@@ -161,6 +161,125 @@ class TestReleaseTagTitles(unittest.TestCase):
         self.assertEqual(normalize_name("Deep Vault 7-Gold"), "Deep Vault 7-Gold")
 
 
+class TestRegionLanguageTags(unittest.TestCase):
+    """Region and language tags appended by scene releases are packaging, not the game title.
+
+    These always sit at the end of a filename and describe which language pack or region the
+    release targets. Steam's store indexes under the bare title, so the tag has to go before the
+    lookup, or every region-tagged archive gets a separate Steam query that returns nothing.
+    """
+
+    TAGGED = [
+        ("Some Game MULTI5", "Some Game"),
+        ("Some Game MULTI6", "Some Game"),
+        ("Some Game MULTI7", "Some Game"),
+        ("Some Game MULTI8", "Some Game"),
+        ("Some Game MULTI9", "Some Game"),
+        ("Some Game MULTI10", "Some Game"),
+        ("Some Game MULTI11", "Some Game"),
+        ("Some Game MULTI12", "Some Game"),
+        ("Some Game MULTI13", "Some Game"),
+        ("Some Game USA", "Some Game"),
+        ("Some Game EUR", "Some Game"),
+        ("Some Game JAP", "Some Game"),
+        ("Some Game JPN", "Some Game"),
+        ("Some Game PAL", "Some Game"),
+        ("Some Game NTSC", "Some Game"),
+        ("Deep Vault MULTI5.zip", "Deep Vault"),
+        ("Quantum Drift EUR.7z", "Quantum Drift"),
+        ("Void Runners JAP.rar", "Void Runners"),
+        # Combined with other packaging: region tag comes after release-group, both stripped.
+        ("Some Game-TENOKE MULTI5", "Some Game"),
+        ("Some Game FitGirl Repack USA", "Some Game"),
+        # Region tags are only stripped from the end, never mid-string:
+        ("USA Games Collection", "USA Games Collection"),
+        ("Europa Universalis IV", "Europa Universalis IV"),
+    ]
+
+    REAL = [
+        # Titles that contain a region-like word as ordinary English and must survive untouched.
+        "Multiplayer Madness", "Portable Heirloom", "Universal Soldier",
+        "Multi Theft Auto", "United States History", "Eurydice",
+    ]
+
+    def test_region_tag_is_stripped(self):
+        for tagged, clean in self.TAGGED:
+            self.assertEqual(normalize_name(tagged), clean, tagged)
+
+    def test_english_words_are_not_region_tags(self):
+        for title in self.REAL:
+            self.assertEqual(normalize_name(title), title, title)
+
+    def test_region_tag_and_clean_twin_share_one_identity(self):
+        for tagged, clean in self.TAGGED:
+            self.assertEqual(identity_key(tagged), identity_key(clean), tagged)
+
+
+class TestCrackTags(unittest.TestCase):
+    """Crack-by credits at the end of a filename describe the release group, not the game.
+
+    "Cracked by GROUP", "CRACK: GROUP", "CRACKED-BY GROUP" are all stripped from the end
+    so the Steam lookup is built from the bare title.
+    """
+
+    TAGGED = [
+        ("Some Game CRACKED BY GROUP", "Some Game"),
+        ("Some Game CRACK: GROUP", "Some Game"),
+        ("Some Game CRACKED-BY GROUP", "Some Game"),
+        ("Some Game CRACKED", "Some Game"),
+        ("Deep Vault CRACKED BY CODEX", "Deep Vault"),
+        ("Void Runners CRACK: TENOKE", "Void Runners"),
+        ("Neon Overdrive CRACKED-BY RELOADED", "Neon Overdrive"),
+        # Combined with region tag: both stripped.
+        ("Some Game CRACKED BY GROUP MULTI5", "Some Game"),
+    ]
+
+    def test_crack_tag_is_stripped(self):
+        for tagged, clean in self.TAGGED:
+            self.assertEqual(normalize_name(tagged), clean, tagged)
+
+    def test_crack_tag_and_clean_twin_share_one_identity(self):
+        for tagged, clean in self.TAGGED:
+            self.assertEqual(identity_key(tagged), identity_key(clean), tagged)
+
+
+class TestContentTags(unittest.TestCase):
+    """Content / packaging words at the end of a filename describe the release, not the game.
+
+    UNCUT, UNCENSORED, GORE, NODVD, NO-DVD, FIX, STANDALONE, ONLY are all stripped from the
+    end so the Steam lookup is built from the bare title.
+    """
+
+    TAGGED = [
+        ("Some Game UNCUT", "Some Game"),
+        ("Some Game UNCENSORED", "Some Game"),
+        ("Some Game GORE", "Some Game"),
+        ("Some Game NODVD", "Some Game"),
+        ("Some Game NO-DVD", "Some Game"),
+        ("Some Game FIX", "Some Game"),
+        ("Some Game STANDALONE", "Some Game"),
+        ("Some Game ONLY", "Some Game"),
+        ("Deep Vault UNCUT.zip", "Deep Vault"),
+        ("Quantum Drift NODVD.7z", "Quantum Drift"),
+        # Combined with region tag: both stripped.
+        ("Some Game UNCUT MULTI5", "Some Game"),
+        ("Some Game FIX USA", "Some Game"),
+    ]
+
+    REAL = [
+        # Titles that contain a content-tag-like word as ordinary English and must survive untouched.
+        "Fix It Felix", "Only Connect", "Standalone Stories",
+    ]
+
+    def test_content_tag_is_stripped(self):
+        for tagged, clean in self.TAGGED:
+            self.assertEqual(normalize_name(tagged), clean, tagged)
+
+    def test_english_words_are_not_content_tags(self):
+        for title in self.REAL:
+            self.assertEqual(normalize_name(title), title, title)
+
+
 class TestVersionSuffixStripping(unittest.TestCase):
     """A version suffix glued to the title with a separator other than whitespace - the form packagings such
     as '-v1-5-4' actually use - must still be stripped, or the Steam query stays versioned and returns nothing."""
