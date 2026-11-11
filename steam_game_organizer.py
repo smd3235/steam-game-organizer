@@ -654,17 +654,21 @@ def main():
         print(VERSION)
         return 0
     # Resolve the project root so logs, config and cache always land in the same
-    # place whether running from source or the frozen exe. On a borrowed HD the
-    # drive letter changes but the directory layout does not: steam_game_organizer.py
-    # is always at the project root, so walk up from the exe until we find it.
+    # place whether running from source or the frozen exe. Always search upward
+    # from the entry point's directory for steam_game_organizer.py itself: that
+    # directory is the project root, and every path the app writes (config/,
+    # cache/, logs/, debug/) goes beneath it. On a borrowed HD the drive letter
+    # changes but the directory layout does not.
     exe_dir = Path(__file__).resolve().parent
-    if getattr(sys, "frozen", False):
-        root_path = exe_dir
-        for candidate in [exe_dir] + list(exe_dir.parents):
-            if (candidate / "steam_game_organizer.py").is_file():
-                root_path = candidate
-                break
+    root_path = exe_dir
+    for candidate in [exe_dir] + list(exe_dir.parents):
+        if (candidate / "steam_game_organizer.py").is_file():
+            root_path = candidate
+            break
     else:
+        # steam_game_organizer.py was not found anywhere up the tree — fall back
+        # to the entry point's own directory rather than silently writing state
+        # to an unrelated drive root.
         root_path = exe_dir
     headless = args.version or args.diagnostics or args.health or args.uri is not None or args.extract
     # For headless invocations (URI handlers, diagnostics, etc.), reuse the most recent log file

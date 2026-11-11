@@ -5,6 +5,11 @@
 
 ## 9.33
 
+### 2026-11-11 22:08:00 — fix: project root resolution always lands config under the project
+
+- `steam_game_organizer.py`: `root_path` now always searches upward from the entry point for `steam_game_organizer.py` to find the true project root, regardless of frozen or source mode. Previously the upward search only ran when frozen, so a source launch with an unusual `__file__` resolution could set `project_root` to an unrelated drive root (e.g. `E:\`) and write `config/`, `cache/`, `logs/` there instead of beside the app. Removed the misplaced `E:\config` that was created under the wrong root.
+- No behavior change for normal launches; the project root is still the directory containing `steam_game_organizer.py`.
+
 ### 2026-11-11 07:40:00 — naming: strengthen archive-to-Steam matching for cluttered filenames
 
 - `utils/filename_utils.py`: Added region/language tag stripping (MULTI5–13, USA, EUR, JAP, JPN, PAL, NTSC), crack-by credits (CRACKED BY, CRACK:, CRACKED-BY, bare CRACKED), and content tags (UNCUT, UNCENSORED, GORE, NODVD, NO-DVD, FIX, STANDALONE, ONLY) to `normalize_name()` so scene-packaged archive names collapse to the Steam title. CRACK_TAG now runs before RELEASE_TAG so "CRACK: TENOKE" is stripped as a whole rather than leaving a stray "CRACK:". Crack-tag variant generation added to `_query_variants()` in `services/steam_service.py`.
