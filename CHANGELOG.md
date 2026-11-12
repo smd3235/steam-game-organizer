@@ -5,6 +5,15 @@
 
 ## 9.33
 
+### 2026-11-12 20:40:00 — security: replaced all real game names in source and tests with fakes
+- `tests/test_filename_utils.py`: Replaced DOOM, The Witcher 3, Prison Architect, Fell & Sell, Incremedieval, Elder Scrolls, Baldur's Gate 3, Portal 2, GTA5, Half-Life 2, Rust, Brave New Wonders, My Summer Car, Sintopia, Nivalis Nights, Mars Attracts, Star Trek, Kingdoms and Castles, Lawn Mowing Simulator, Crystal Realms, Nova Launcher with fictional names (Sir Beats Alot, Dancing Pickle, Trampoline Tornado, Mystery Archive, Glow Stick Samurai, Stellar Squirrel, Nebula Noodle, MegaMartTycoon, Realm Castles, Pixel & Chase, Steam & Solder, Time Scrolls, Mega Launcher, Void Realms 7x9b, etc.).
+- `tests/test_services.py`: Replaced Sintopia → SunTopia, Kingdoms And Castles → Realm Castles, Epsilon Online → Nebula Online, Divinity Original Sin 2 → Astral Original Sin 2, Cities Skylines II → Town Skylines II, Kingdoms & Castles → Realm & Castles, Dark Souls III → Dark Blades III, Resident Evil 4 → Evil Resident 4, Star Trek Voyager → Star Horizon Voyager.
+- `tests/test_regressions.py`: Replaced Mars Attracts → Nebula Attracts, Nivalis Nights → Nebula Nights, Sintopia → SunTopia throughout.
+- `tests/test_ui_geometry.py`: Replaced Sintopia → SunTopia.
+- `tests/test_steam_service.py`: Replaced Elder Scrolls → Ancient Tomes.
+- `utils/filename_utils.py`: Removed real game name references from comments (Mars Attracts → Neon Overdrive, Portal2/GTA5 → Tunnel Runner2/Grand Crime City5).
+- `core/constants.py`: Removed real game name references from comments and genre keywords (Minecraft → block crafting, Vampire Survivors → horde auto-shooter).
+
 ### 2026-11-12 20:10:00 — perf: normalize real archive filenames to Steam names
 - `utils/filename_utils.py`: `normalize_name()` now strips build stamps glued to archive filenames — alphanumeric mixes like `2v10112645585273` or `123r6s`, and short pure digits like `10` or `171` — so `LawnMowingSimulator2v10112645585273.7z` normalizes to `Lawn Mowing Simulator` and `Kingdoms and Castles 123r6s.7z` to `Kingdoms and Castles`. Consecutive capitals are split before the lowercase-to-uppercase split (`XMLParser` → `XML Parser`, `AGame` → `A Game`). Short codes like `7x9b` and single-digit stamps like `Portal2`/`GTA5` are kept as part of the title. Spaced dates/numbers (`Series 20260916`) are untouched — AppIDs in that form are handled by `_appid_from_filename()` in `services/steam_service.py`.
 - `tests/test_filename_utils.py`: Updated expectations for the corrected behavior (`NovaLauncher2v10112645585273` → `Nova Launcher`, `Iron&Steel171` → `Iron&Steel`, `TidyuptheCity10` → `Tidyupthe City`, `ZetaQuestAdventure10` → `Zeta Quest Adventure`). Added TAGGED entries for `LawnMowingSimulator2v10112645585273`, `Kingdoms and Castles 123r6s`, `Fell&Sell171`, `Iron&Steel171` and a REAL entry for `Crystal Realms 7x9b`.

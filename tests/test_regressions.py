@@ -24,17 +24,17 @@ class TestKnownRegressionCases(unittest.TestCase):
         expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealmincremental","Epsilon Online.zip":"epsilononline"}
         for name,key in expected.items(): self.assertEqual(identity_key(name),key,name)
 
- # The titles here are the real folders from one library, and every one of them failed to find its Steam name.
- # The cause was the tag stripper, not Steam: it only fired on whitespace-delimited tags, so the hyphenated
- # and dotted spellings these folders actually use survived into the search query, which then asked the store
- # for "Mars Attracts-Steam" and never for "Mars Attracts". The stripper is fixed and covered in
- # tests/test_filename_utils.py; this pins the outcome, so a change to the tag rules that brings any of these
- # back fails here by name.
+  # The titles here are the real folders from one library, and every one of them failed to find its Steam name.
+  # The cause was the tag stripper, not Steam: it only fired on whitespace-delimited tags, so the hyphenated
+  # and dotted spellings these folders actually use survived into the search query, which then asked the store
+  # for "Nebula Attracts-Steam" and never for "Nebula Attracts". The stripper is fixed and covered in
+  # tests/test_filename_utils.py; this pins the outcome, so a change to the tag rules that brings any of these
+  # back fails here by name.
   def test_tagged_library_folders_still_find_their_real_game(self):
       expected={"Stellar.Squirrel-SteamRIP.com":"Stellar Squirrel",
-            "Mars Attracts-Steam RIP com":"Mars Attracts",
-            "Nivalis Nights-Steam RIP com":"Nivalis Nights",
-            "Sintopia-Steam RIP com":"Sintopia"}
+            "Nebula Attracts-Steam RIP com":"Nebula Attracts",
+            "Nebula Nights-Steam RIP com":"Nebula Nights",
+            "Sun Topia-Steam RIP com":"Sun Topia"}
       from utils.filename_utils import normalize_name
       for tagged,clean in expected.items():
         self.assertEqual(normalize_name(tagged),clean,tagged)
@@ -1168,12 +1168,12 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
   def _audit_library(self,root):
       """One organized game folder carrying an AppID and no artwork: the shape of every folder in a real library,
       and the case the audit used to call 'refreshed' whatever else was true."""
-      library=Path(root)/'Games'; game=library/'Puzzle'/'Sintopia - 1 Jan, 2026'
+      library=Path(root)/'Games'; game=library/'Puzzle'/'SunTopia - 1 Jan, 2026'
       game.mkdir(parents=True)
-      (game/'.game-info.json').write_text(json.dumps({'appid':'1234','name':'Sintopia'}),encoding='utf-8')
+      (game/'.game-info.json').write_text(json.dumps({'appid':'1234','name':'SunTopia'}),encoding='utf-8')
       # The folder carries its archive, so the empty-folder sweep does not prune it. A game folder with no
       # archive is exactly what the sweep is for, and this fixture is an organized game that is still there.
-      (game/'Sintopia.7z').write_bytes(b'7z\xbc\xaf\x27\x1c')
+      (game/'SunTopia.7z').write_bytes(b'7z\xbc\xaf\x27\x1c')
       organizer=SimpleNamespace(write_steam_links=Mock(),write_metadata=Mock())
       return library,game,organizer
 
@@ -1301,7 +1301,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       online=SimpleNamespace(download_assets=lambda *a,**k:ArtworkResult(status='downloaded',path=cached))
       summary=LibraryService(AppLogger(Path(root)/'audit.log')).audit(library,online,organizer)
       self.assertEqual(summary['refreshed'],1,f'a folder that gained an image was not counted: {summary}')
-      self.assertTrue((game/'Sintopia_grid.jpg').is_file(),f'nothing was copied into the folder: {sorted(p.name for p in game.iterdir())}')
+      self.assertTrue((game/'SunTopia_grid.jpg').is_file(),f'nothing was copied into the folder: {sorted(p.name for p in game.iterdir())}')
 
   def test_the_artwork_screen_names_only_files_that_are_on_disk(self):
       """Reproduced before the fix: four of twelve real Steam names were listed under a filename that did not
@@ -1366,7 +1366,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       import steam_game_organizer
       root=Path(_tmp_dir(self)); extracted=root/'extracted'
       config=SimpleNamespace(extract_folder=extracted,settings={})
-      args=SimpleNamespace(dest=None,extract=str(root/'Sintopia.zip'),zip_password='')
+      args=SimpleNamespace(dest=None,extract=str(root/'SunTopia.zip'),zip_password='')
       with patch.object(steam_game_organizer,'_extract',return_value=SimpleNamespace(message='',ok=True)) as extract:
           steam_game_organizer._extract_to_disk(args,config,Mock())
           self.assertEqual(extract.call_args.args[1],extracted,
@@ -1385,10 +1385,10 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       root=Path(_tmp_dir(self)); project=root/'project'; project.mkdir()
       # Incoming holds no archive: the run moved it out, which is the state undo_last() is called from. A file left
       # there would make `not restore.exists()` false and the undo a no-op - a fixture that proves nothing.
-      source=root/'Incoming'/'Sintopia v1.0.7z'; source.parent.mkdir()
-      library=root/'Games'; game=library/'Puzzle'/'Sintopia - 2026-01-01'; game.mkdir(parents=True)
-      organized=game/'Sintopia.7z'; organized.write_bytes(b'7z\xbc\xaf\x27\x1c')
-      (game/'.game-info.json').write_text(json.dumps({'appid':'1234','name':'Sintopia'}),encoding='utf-8')
+      source=root/'Incoming'/'SunTopia v1.0.7z'; source.parent.mkdir()
+      library=root/'Games'; game=library/'Puzzle'/'SunTopia - 2026-01-01'; game.mkdir(parents=True)
+      organized=game/'SunTopia.7z'; organized.write_bytes(b'7z\xbc\xaf\x27\x1c')
+      (game/'.game-info.json').write_text(json.dumps({'appid':'1234','name':'SunTopia'}),encoding='utf-8')
       for name,body in extra:
           target=game/name
           if body is None: target.write_bytes(b'\xff\xd8\xff\xd9')
@@ -1407,7 +1407,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       user has to delete it by hand. The decision to remove is delegated to OrganizerService._folder_is_prunable
       rather than reimplemented, so the allow-list protecting a player's saves stays in one place.
       """
-      service,source,organized,game,library=self._undo_case(extra=(('Sintopia_grid.jpg',None),))
+      service,source,organized,game,library=self._undo_case(extra=(('SunTopia_grid.jpg',None),))
       result=service.undo_last(library)
       self.assertEqual(result['moved'],1,f'the archive was not restored: {result}')
       self.assertEqual(result['pruned'],1,f'the emptied folder was not pruned: {result}')

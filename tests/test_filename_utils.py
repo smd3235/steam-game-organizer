@@ -10,14 +10,14 @@ from utils.filename_utils import normalize_name, identity_key, version_key
 @pytest.mark.notkinter
 class TestFilename(unittest.TestCase):
     def test_archive_and_version(self):
-        self.assertEqual(normalize_name("Alpha Forge v 0 8.zip"), "Alpha Forge")
+        self.assertEqual(normalize_name("Nebula Forge v 0 8.zip"), "Nebula Forge")
 
     def test_camel_case_splits_without_a_hand_written_alias(self):
         # These three each needed an entry in a 52-row lookup table that spelled the official title out by hand. The
         # title now comes from the AppID the archive ships, so the only thing left to get right here is that the
         # filename still normalizes to something a Steam search can be built from.
-        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
-        self.assertEqual(normalize_name("MySummerCar Repack 2024-01-02.zip"), "My Summer Car")
+        self.assertEqual(normalize_name("PixelShopSimulatorTokyo.zip"), "Pixel Shop Simulator Tokyo")
+        self.assertEqual(normalize_name("SynthRide Repack 2026-03-15.zip"), "Synth Ride")
         self.assertEqual(normalize_name("Nebula Noodle 1-0.zip"), "Nebula Noodle")
 
     def test_a_tagged_name_needs_no_alias_either(self):
@@ -25,7 +25,7 @@ class TestFilename(unittest.TestCase):
         self.assertEqual(normalize_name("FarmToTable10122.zip"), "Farm To Table")
 
     def test_identity(self):
-        self.assertEqual(identity_key("Epsilon Online"), "epsilononline")
+        self.assertEqual(identity_key("Omega Online"), "omegaonline")
 
     def test_version(self):
         self.assertGreater(version_key("Game 1-10-0.zip"), version_key("Game 1-9-9.zip"))
@@ -42,8 +42,8 @@ class TestGluedDigitStamp(unittest.TestCase):
     part of the game's name and the search was then built from it. Four digits is the floor on purpose: "Portal2"
     and "GTA5" are titles, and a stamp is never that short."""
 
-    GLUED = ["FarmToTable10122.zip", "Stellar Squirrel20260916", "Some Game20250101", "Star Miner v1.4.2.7z", "Cyber City 2026-11-01.zip"]
-    KEPT = ["Portal2", "GTA5", "Half-Life 2", "Supercar Collection Simulator Racing Series 20260916", "Some Game 20260916"]
+    GLUED = ["FarmToTable10122.zip", "Stellar Squirrel20260916", "Some Game20250101", "Glitch Racer v1.4.2.7z", "Neon District 2026-11-01.zip"]
+    KEPT = ["Tunnel Runner2", "Grand Crime City5", "Bio-Hazard 2", "Space Racer Collection Series 20260916", "Some Game 20260916"]
 
     def test_a_glued_stamp_is_cut(self):
         for name in self.GLUED:
@@ -73,9 +73,9 @@ class TestReleaseTagTitles(unittest.TestCase):
 
     TAGGED = [
         ("Stellar.Squirrel-SteamRIP.com", "Stellar Squirrel"),
-        ("Mars Attracts-Steam RIP com", "Mars Attracts"),
-        ("Nivalis Nights-Steam RIP com", "Nivalis Nights"),
-        ("Sintopia-Steam RIP com", "Sintopia"),
+        ("Mars Drifts-Steam RIP com", "Mars Drifts"),
+        ("Nebula Nights-Steam RIP com", "Nebula Nights"),
+        ("Sun Topia-Steam RIP com", "Sun Topia"),
         ("Some Game-SteamRG.com", "Some Game"),
         ("Some Game-RELOADED", "Some Game"),
         ("Some Game.REPACKED", "Some Game"),
@@ -86,7 +86,7 @@ class TestReleaseTagTitles(unittest.TestCase):
         ("Some Game DRM Free", "Some Game"),
         ("Some Game [NoDLC]", "Some Game"),
         ("Some Game (ElAmigos)", "Some Game"),
-        ("MySummerCar Repack 2024-01-02.zip", "My Summer Car"),
+        ("SynthRide Repack 2026-03-15.zip", "Synth Ride"),
         # Packaged styles copied from real downloaded archives (fictional titles, real packaging shapes):
         # release-group tags, dot-separated titles, version stamps, and date stamps.
         ("Nova Forge-SteamRIP.com", "Nova Forge"),
@@ -103,26 +103,26 @@ class TestReleaseTagTitles(unittest.TestCase):
         # a bracketed release group after a hyphenated title keeps the hyphen; a trailing -RUNE is cut;
         # dot-separated titles with a trailing -RUNE collapse like any other tag.
         ("Galactic Frontier - Unknown Regions [FitGirl Repack]", "Galactic Frontier - Unknown Regions"),
-        ("Star Trek - Outposts Unknown [FitGirl Repack]", "Star Trek - Outposts Unknown"),
+        ("Star Horizon - Outposts Unknown [FitGirl Repack]", "Star Horizon - Outposts Unknown"),
         # Build stamps glued to the end of the title are stripped: alphanumeric mixes like "123r6s"
         # or "2v10112645585273", and short pure digits like "10" or "171".
-        ("LawnMowingSimulator2v10112645585273", "Lawn Mowing Simulator"),
-        ("Kingdoms and Castles 123r6s", "Kingdoms and Castles"),
-        ("Fell&Sell171", "Fell&Sell"),
-        ("Iron&Steel171", "Iron&Steel"),
+        ("MegaMartTycoon2v10112645585273", "Mega Mart Tycoon"),
+        ("Dungeon Realms 123r6s", "Dungeon Realms"),
+        ("Pixel & Chase171", "Pixel & Chase"),
+        ("Steam & Solder171", "Steam & Solder"),
     ]
 
-    # A hyphen inside the title itself is kept, because it is part of the name: "Half-Life 2" must not become
-    # "Half Life 2", and that would rename a real folder to chase cosmetics. What matters for these spellings is
+    # A hyphen inside the title itself is kept, because it is part of the name: "Cyber-War 2" must not become
+    # "Cyber War 2", and that would rename a real folder to chase cosmetics. What matters for these spellings is
     # that the two forms collapse to one identity, so the Steam cache is hit and the game is grouped once.
-    TAGGED_HYPHENATED = [("Brave-New-Wonders-SteamRip-com", "Brave-New-Wonders"), ("Some-Game-SteamRIP.com", "Some-Game"), ("Rust-RELOADED", "Rust")]
+    TAGGED_HYPHENATED = [("Cosmic-New-Wonders-SteamRip-com", "Cosmic-New-Wonders"), ("Some-Game-SteamRIP.com", "Some-Game"), ("Quartz-RELOADED", "Quartz")]
 
     REAL = [
-        "Stellar Empires", "Time Travelers", "Half-Life 2", "Fear Itself", "Dome Keeper",
-        "Portal 2", "Rust", "Baldurs Gate 3", "Republique", "Perfect Vermin",
+        "Astral Empires", "Chrono Travelers", "Cyber-War 2", "Dread Itself", "Crater Keeper",
+        "Gateway 2", "Quartz", "Fantasy Gate 3", "Liberte", "Perfect Pests",
         "The Idle Class", "Multiplayer", "Portable Heirloom",
         # Short alphanumeric codes that look like build stamps but are part of the title:
-        "Crystal Realms 7x9b",
+        "Void Realms 7x9b",
     ]
 
     def test_every_tagged_spelling_collapses_to_its_clean_title(self):
@@ -145,13 +145,13 @@ class TestReleaseTagTitles(unittest.TestCase):
 
     def test_a_real_version_suffix_still_goes(self):
         # The tag rule cuts from the tag onwards, so it must not swallow a version that belongs to the title.
-        self.assertEqual(normalize_name("Alpha Forge v 0 8.zip"), "Alpha Forge")
-        self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
+        self.assertEqual(normalize_name("Nebula Forge v 0 8.zip"), "Nebula Forge")
+        self.assertEqual(normalize_name("PixelShopSimulatorTokyo.zip"), "Pixel Shop Simulator Tokyo")
         self.assertEqual(normalize_name("Nebula Noodle 1-0.zip"), "Nebula Noodle")
         # Outliers found scanning every .7z in E:\Game Installers:
         # a glued 8-digit date is stripped; a glued version glommed onto a huge number keeps only the letter-prefix.
-        self.assertEqual(normalize_name("ElderScrolls20260107"), "Elder Scrolls")
-        self.assertEqual(normalize_name("NovaLauncher2v10112645585273"), "Nova Launcher")
+        self.assertEqual(normalize_name("TimeScrolls20260107"), "Time Scrolls")
+        self.assertEqual(normalize_name("MegaLauncher2v10112645585273"), "Mega Launcher")
 
     def test_real_world_outlier_patterns_are_normalized_correctly(self):
         # Edge cases found in the live library that must not be collapsed, mangled, or dropped:
@@ -162,11 +162,11 @@ class TestReleaseTagTitles(unittest.TestCase):
         self.assertEqual(normalize_name("ZetaQuestAdventure10"), "Zeta Quest Adventure")
         self.assertEqual(normalize_name("TidyuptheCity10"), "Tidyupthe City")
         self.assertEqual(normalize_name("My.Weird.MORE.Title"), "My Weird MORE Title")
-        self.assertEqual(normalize_name("Iron&Steel171"), "Iron&Steel")
-        self.assertEqual(normalize_name("Crystal Realms 7x9b"), "Crystal Realms 7x9b")
+        self.assertEqual(normalize_name("Steam & Solder171"), "Steam & Solder")
+        self.assertEqual(normalize_name("Galaxy Realms 7x9b"), "Galaxy Realms 7x9b")
         self.assertEqual(normalize_name("Toast.1"), "Toast 1")
         self.assertEqual(normalize_name("Omega Factor-X"), "Omega Factor-X")
-        self.assertEqual(normalize_name("Deep Vault 7-Gold"), "Deep Vault 7-Gold")
+        self.assertEqual(normalize_name("Deep Mine 7-Gold"), "Deep Mine 7-Gold")
 
 
 class TestRegionLanguageTags(unittest.TestCase):
@@ -201,7 +201,7 @@ class TestRegionLanguageTags(unittest.TestCase):
         ("Some Game FitGirl Repack USA", "Some Game"),
         # Region tags are only stripped from the end, never mid-string:
         ("USA Games Collection", "USA Games Collection"),
-        ("Europa Universalis IV", "Europa Universalis IV"),
+        ("Empire Universalis IV", "Empire Universalis IV"),
     ]
 
     REAL = [

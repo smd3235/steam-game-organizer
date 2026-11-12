@@ -39,16 +39,16 @@ class TestSteamQueryVariants(unittest.TestCase):
 
     def test_the_reorder_variant_is_generated(self):
         # "X, The" -> "The X" so Steam indexes the title under "The X".
-        variants = self._variants("Elder Scrolls, The")
-        self.assertIn("The Elder Scrolls", variants, variants)
+        variants = self._variants("Ancient Tomes, The")
+        self.assertIn("The Ancient Tomes", variants, variants)
         variants = self._variants("Ring, The")
         self.assertIn("The Ring", variants, variants)
 
     def test_the_reorder_only_for_trailing_the(self):
         # "The" mid-string is not reordered.
-        variants = self._variants("The Elder Scrolls")
-        self.assertIn("The Elder Scrolls", variants, variants)
-        self.assertNotIn("Elder Scrolls The", variants, variants)
+        variants = self._variants("The Ancient Tomes")
+        self.assertIn("The Ancient Tomes", variants, variants)
+        self.assertNotIn("Ancient Tomes The", variants, variants)
 
     def test_combined_packaging_variants(self):
         # Region tag + crack tag combined should still yield the bare title variant.

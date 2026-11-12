@@ -79,7 +79,7 @@ def normalize_name(value: str) -> str:
     # A release-group tag is a separator-delimited word, and everything from it on is packaging rather than the
     # game: "Stellar.Squirrel-SteamRIP.com" is Stellar Squirrel, and so is anything tagged -RELOADED or
     # .REPACKED. Cutting at the first one is what makes the title matchable - the Steam query used to build its
-    # variants from the tagged string, so it searched for "Mars Attracts-Steam" and never for "Mars Attracts".
+    # variants from the tagged string, so it searched for "Neon Overdrive-Steam" and never for "Neon Overdrive".
     #
     # Both halves of that matter. Requiring a separator before the tag is what catches the hyphen and dot forms,
     # which the old \s+ anchor missed; requiring a word boundary after it is what stops it eating real titles,
@@ -113,7 +113,7 @@ def normalize_name(value: str) -> str:
     value = re.sub(r"\s+\d{4}[-.]\d{2}[-.]\d{2}(?:\s|$)", " ", value)
     # A build stamp glued to the end of the title: alphanumeric mixes like "2v10112645585273" or
     # "123r6s" (preceded by a letter or a space), or short pure digits like "10" or "171" glued to
-    # a letter. Single-digit stamps (Portal2, GTA5) and short codes like "7x9b" are kept because
+    # a letter. Single-digit stamps (Tunnel Runner2, Grand Crime City5) and short codes like "7x9b" are kept because
     # they are part of the title, not a version.
     value = re.sub(r"(?<=[a-zA-Z\s])(?:\d{2,}[a-z]+\d+[a-z]*|\d[a-z]+\d{3,}[a-z]*)\s*$", "", value)
     value = re.sub(r"(?<=[a-zA-Z])\d{2,}\s*$", "", value)

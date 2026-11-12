@@ -71,7 +71,7 @@ class TestUiGeometry(unittest.TestCase):
             self.assertAlmostEqual(float(view.progress["value"]), 17 / 361 * 100, places=1)
             self.assertIn("17 of 361", view.stage_row.cget("text"))
 
-            view.phase_update({"stage": "audit", "message": "361 of 361: Sintopia — no Steam AppID", "index": 361, "total": 361})
+            view.phase_update({"stage": "audit", "message": "361 of 361: SunTopia — no Steam AppID", "index": 361, "total": 361})
             root.update()
             self.assertAlmostEqual(float(view.progress["value"]), 100.0, places=1)
 

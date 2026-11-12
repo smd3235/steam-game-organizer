@@ -84,8 +84,8 @@ CATEGORY_ALIASES = {
     "rogue-like": "Roguelike",
     "rogue-lite": "Roguelike",
     "roguelikes": "Roguelike",
-    # "Survival" is the Minecraft-shaped one - gather, craft, build a base, try not to starve. "Bullet Heaven" is
-    # the Vampire Survivors one - a horde closing in, auto-attacks, dodge everything. They are different genres
+    # "Survival" is the block-crafting one - gather, craft, build a base, try not to starve. "Bullet Heaven" is
+    # the horde auto-shooter one - a horde closing in, auto-attacks, dodge everything. They are different genres
     # and stay apart; only the confusingly named "Survivors" entry is folded into "Survival", because that is
     # the same genre under a second name and two names for one genre is how games end up in two folders.
     "survivors": "Survival",
@@ -252,8 +252,8 @@ def suggest_category_with_evidence(genres, title="", description="", tags=None, 
         "Horror": ("horror", "terrifying", "scary", "survival horror"),
         # Scored below Horror's default on purpose: "survival horror" contains "survival", and a survival-crafting
         # rule given the ordinary priority would outrank a horror game that says so outright.
-        "Survival": ("survival crafting", "craft and survive", "minecraft", "voxel", "try not to starve", "survival sim"),
-        "Bullet Heaven": ("bullet hell", "vampire survivors", "survivors-like", "auto attack", "wave of enemies", "horde", "bullet heaven", "survivors like"),
+        "Survival": ("survival crafting", "craft and survive", "block crafting", "voxel", "try not to starve", "survival sim"),
+        "Bullet Heaven": ("bullet hell", "horde auto-shooter", "survivors-like", "auto attack", "wave of enemies", "horde", "bullet heaven", "survivors like"),
         "Roguelike": ("roguelike", "roguelite", "run-based", "procedural dungeon", "randomly generated dungeon", "roguelite", "permadeath", "procedural generation"),
         "Soulslike": ("soulslike", "souls-like", "punishing combat", "boss-focused combat"),
         "Metroidvania": ("metroidvania", "interconnected map", "backtracking exploration"),

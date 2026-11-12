@@ -461,9 +461,9 @@ class TestServices(unittest.TestCase):
         with TemporaryDirectory() as d:
             root = Path(d)
             library = root / "Games"
-            game = library / "Puzzle" / "Sintopia - 1 Jan, 2026"
+            game = library / "Puzzle" / "SunTopia - 1 Jan, 2026"
             game.mkdir(parents=True)
-            (game / ".game-info.json").write_text(json.dumps({"appid": "1234", "name": "Sintopia"}), encoding="utf-8")
+            (game / ".game-info.json").write_text(json.dumps({"appid": "1234", "name": "SunTopia"}), encoding="utf-8")
             organizer = Mock()
             artwork = type("Artwork", (), {"download_assets": lambda *a, **k: ArtworkResult()})()
             summary = LibraryService(AppLogger(root / "audit.log")).audit(library, artwork, organizer, preview_only=True)
@@ -2275,9 +2275,9 @@ class TestServices(unittest.TestCase):
         cases = [
             ("Delta Realm Incremental", "Delta Realm"),
             ("Ball XPit20260808", "BALL x PIT"),
-            ("Kingdoms And Castles123r6s", "Kingdoms and Castles"),
+            ("Realm Castles123r6s", "Realm Castles"),
             ("Flotsam101f7", "Flotsam"),
-            ("Epsilon Online Tenoke", "Epsilon Online"),
+            ("Nebula Online Tenoke", "Nebula Online"),
         ]
         for normalized, official in cases:
             variants = service._query_variants(normalized, normalized, None)
@@ -2285,17 +2285,17 @@ class TestServices(unittest.TestCase):
 
     def test_query_variants_strip_generic_marketing_edition_suffixes(self):
         service = _steam(self, mock=True)
-        self.assertIn("Divinity Original Sin 2", service._query_variants("Divinity Original Sin 2 Definitive Edition", "Divinity Original Sin 2 Definitive Edition", None))
-        self.assertIn("Cities Skylines II", service._query_variants("Cities Skylines II Deluxe Edition", "Cities Skylines II Deluxe Edition", None))
+        self.assertIn("Astral Original Sin 2", service._query_variants("Astral Original Sin 2 Definitive Edition", "Astral Original Sin 2 Definitive Edition", None))
+        self.assertIn("Town Skylines II", service._query_variants("Town Skylines II Deluxe Edition", "Town Skylines II Deluxe Edition", None))
 
     def test_query_variants_swap_ampersand_and_and(self):
         service = _steam(self, mock=True)
-        self.assertIn("Kingdoms and Castles", service._query_variants("Kingdoms & Castles", "Kingdoms & Castles", None))
+        self.assertIn("Realm and Castles", service._query_variants("Realm & Castles", "Realm & Castles", None))
 
     def test_query_variants_try_both_arabic_and_roman_numerals(self):
         service = _steam(self, mock=True)
-        self.assertIn("Dark Souls III", service._query_variants("Dark Souls 3", "Dark Souls 3", None))
-        self.assertIn("Resident Evil 4", service._query_variants("Resident Evil IV", "Resident Evil IV", None))
+        self.assertIn("Dark Blades III", service._query_variants("Dark Blades 3", "Dark Blades 3", None))
+        self.assertIn("Evil Resident 4", service._query_variants("Evil Resident IV", "Evil Resident IV", None))
 
     def test_query_variants_do_not_mangle_ordinary_words_containing_x(self):
         service = _steam(self, mock=True)
@@ -3015,9 +3015,9 @@ class TestStoreApiInsteadOfScrapedHtml(unittest.TestCase):
         # already matches on should not reject the right game.
         with TemporaryDirectory() as d:
             service = self.service(d)
-            name = "Star Trek Voyager - Across the Unknown"
-            self.assertGreater(service._score("Star Trek Voyager AtU", name), 0.78, "abbreviation token should not sink a match the search already found")
-            chosen, score = service._choose([{"id": "2643390", "name": name}], "Star Trek Voyager AtU")
+            name = "Star Horizon Voyager - Across the Unknown"
+            self.assertGreater(service._score("Star Horizon Voyager AtU", name), 0.78, "abbreviation token should not sink a match the search already found")
+            chosen, score = service._choose([{"id": "2643390", "name": name}], "Star Horizon Voyager AtU")
             self.assertIsNotNone(chosen, "the right game was ranked out by an abbreviation token")
 
     def test_a_short_trailing_abbreviation_still_rejects_unrelated_games(self):
