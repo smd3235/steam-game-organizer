@@ -104,6 +104,12 @@ class TestReleaseTagTitles(unittest.TestCase):
         # dot-separated titles with a trailing -RUNE collapse like any other tag.
         ("Galactic Frontier - Unknown Regions [FitGirl Repack]", "Galactic Frontier - Unknown Regions"),
         ("Star Trek - Outposts Unknown [FitGirl Repack]", "Star Trek - Outposts Unknown"),
+        # Build stamps glued to the end of the title are stripped: alphanumeric mixes like "123r6s"
+        # or "2v10112645585273", and short pure digits like "10" or "171".
+        ("LawnMowingSimulator2v10112645585273", "Lawn Mowing Simulator"),
+        ("Kingdoms and Castles 123r6s", "Kingdoms and Castles"),
+        ("Fell&Sell171", "Fell&Sell"),
+        ("Iron&Steel171", "Iron&Steel"),
     ]
 
     # A hyphen inside the title itself is kept, because it is part of the name: "Half-Life 2" must not become
@@ -115,6 +121,8 @@ class TestReleaseTagTitles(unittest.TestCase):
         "Stellar Empires", "Time Travelers", "Half-Life 2", "Fear Itself", "Dome Keeper",
         "Portal 2", "Rust", "Baldurs Gate 3", "Republique", "Perfect Vermin",
         "The Idle Class", "Multiplayer", "Portable Heirloom",
+        # Short alphanumeric codes that look like build stamps but are part of the title:
+        "Crystal Realms 7x9b",
     ]
 
     def test_every_tagged_spelling_collapses_to_its_clean_title(self):
@@ -143,7 +151,7 @@ class TestReleaseTagTitles(unittest.TestCase):
         # Outliers found scanning every .7z in E:\Game Installers:
         # a glued 8-digit date is stripped; a glued version glommed onto a huge number keeps only the letter-prefix.
         self.assertEqual(normalize_name("ElderScrolls20260107"), "Elder Scrolls")
-        self.assertEqual(normalize_name("NovaLauncher2v10112645585273"), "Nova Launcher2v")
+        self.assertEqual(normalize_name("NovaLauncher2v10112645585273"), "Nova Launcher")
 
     def test_real_world_outlier_patterns_are_normalized_correctly(self):
         # Edge cases found in the live library that must not be collapsed, mangled, or dropped:
@@ -151,10 +159,10 @@ class TestReleaseTagTitles(unittest.TestCase):
         # odd casing splits at every uppercase boundary; an ampersand and trailing digits survive;
         # a mixed alphanumeric suffix survives; a single digit after a dot becomes " <digit>";
         # hyphenated words stay whole; a digit-hyphen-word stays whole.
-        self.assertEqual(normalize_name("ZetaQuestAdventure10"), "Zeta Quest Adventure10")
-        self.assertEqual(normalize_name("TidyuptheCity10"), "Tidyupthe City10")
+        self.assertEqual(normalize_name("ZetaQuestAdventure10"), "Zeta Quest Adventure")
+        self.assertEqual(normalize_name("TidyuptheCity10"), "Tidyupthe City")
         self.assertEqual(normalize_name("My.Weird.MORE.Title"), "My Weird MORE Title")
-        self.assertEqual(normalize_name("Iron&Steel171"), "Iron&Steel171")
+        self.assertEqual(normalize_name("Iron&Steel171"), "Iron&Steel")
         self.assertEqual(normalize_name("Crystal Realms 7x9b"), "Crystal Realms 7x9b")
         self.assertEqual(normalize_name("Toast.1"), "Toast 1")
         self.assertEqual(normalize_name("Omega Factor-X"), "Omega Factor-X")

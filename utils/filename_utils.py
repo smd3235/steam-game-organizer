@@ -63,6 +63,10 @@ def normalize_name(value: str) -> str:
     p = Path(value)
     if p.suffix.lower() in ARCHIVE_EXTENSIONS:
         value = p.stem
+    # Split consecutive capitals before a capital+lowercase word: XMLParser → XML Parser, AGame → A Game.
+    # This runs before the lowercase-to-uppercase split so both halves of "AGameAboutOpeningAChest" are
+    # separated: A Game About Opening A Chest.
+    value = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", value)
     value = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", value)
     value = re.sub(r"[._+]+", " ", value)
     # value=re.sub(r"\s*\[[^\]]*\]\s*"," ",value)
@@ -107,10 +111,12 @@ def normalize_name(value: str) -> str:
     value = re.sub(r"[\s._\-]+v?\s*\d+(?:[.\-_ ]+\d+){1,5}[a-z]?(?:\s|$)", " ", value, flags=re.I)
     value = re.sub(r"(?:^|\s+)(build\s*)\d+(?:[.\-_ ]+\d+)*\s*$", r"\1", value, flags=re.I)
     value = re.sub(r"\s+\d{4}[-.]\d{2}[-.]\d{2}(?:\s|$)", " ", value)
-    # A date or build stamp glued straight onto the last word - "FarmToTable10122" - is packaging, not title.
-    # Four digits is the floor because "Portal2" and "GTA5" are titles, while a stamp is never that short. The
-    # spaced form above is left alone on purpose: "Racing Series 20260916" is kept, and a test says so.
-    value = re.sub(r"(?<=[A-Za-z])\d{4,}$", "", value)
+    # A build stamp glued to the end of the title: alphanumeric mixes like "2v10112645585273" or
+    # "123r6s" (preceded by a letter or a space), or short pure digits like "10" or "171" glued to
+    # a letter. Single-digit stamps (Portal2, GTA5) and short codes like "7x9b" are kept because
+    # they are part of the title, not a version.
+    value = re.sub(r"(?<=[a-zA-Z\s])(?:\d{2,}[a-z]+\d+[a-z]*|\d[a-z]+\d{3,}[a-z]*)\s*$", "", value)
+    value = re.sub(r"(?<=[a-zA-Z])\d{2,}\s*$", "", value)
     return re.sub(r"\s+", " ", value).strip(" -_")
 
 

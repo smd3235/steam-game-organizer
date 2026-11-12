@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-12 20:10:00 — perf: normalize real archive filenames to Steam names
+- `utils/filename_utils.py`: `normalize_name()` now strips build stamps glued to archive filenames — alphanumeric mixes like `2v10112645585273` or `123r6s`, and short pure digits like `10` or `171` — so `LawnMowingSimulator2v10112645585273.7z` normalizes to `Lawn Mowing Simulator` and `Kingdoms and Castles 123r6s.7z` to `Kingdoms and Castles`. Consecutive capitals are split before the lowercase-to-uppercase split (`XMLParser` → `XML Parser`, `AGame` → `A Game`). Short codes like `7x9b` and single-digit stamps like `Portal2`/`GTA5` are kept as part of the title. Spaced dates/numbers (`Series 20260916`) are untouched — AppIDs in that form are handled by `_appid_from_filename()` in `services/steam_service.py`.
+- `tests/test_filename_utils.py`: Updated expectations for the corrected behavior (`NovaLauncher2v10112645585273` → `Nova Launcher`, `Iron&Steel171` → `Iron&Steel`, `TidyuptheCity10` → `Tidyupthe City`, `ZetaQuestAdventure10` → `Zeta Quest Adventure`). Added TAGGED entries for `LawnMowingSimulator2v10112645585273`, `Kingdoms and Castles 123r6s`, `Fell&Sell171`, `Iron&Steel171` and a REAL entry for `Crystal Realms 7x9b`.
+
 ### 2026-11-12 19:45:00 — security: deduplicated fake appids across tests
 - `tests/test_displayed_data.py`: Sir Beats Alot appid 888888 → 55555 (now consistent with test_services.py).
 - `tests/test_run_reporting.py`: Glow Stick Samurai appid 77777 → 999999 (no longer shared with Mystery Archive).
