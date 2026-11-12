@@ -9,8 +9,9 @@ import time
 # Imports split one per line for GitHub readability.
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.constants import ARCHIVE_EXTENSIONS, LOCK_MARKER, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, ENTRY_POINT
-from core.models import ConversionResult
 from core.exceptions import CancellationError
+from core.path_safety import DeletionGuard, is_within
+from core.models import ConversionResult
 from utils.filename_utils import identity_key
 from utils.treewalk import is_link
 
@@ -615,6 +616,9 @@ class LibraryService:
         library_root = Path(library_root).expanduser().resolve()
         if not library_root.is_dir():
             return {}
+        # Every deletion this sweep performs is checked against the library root before it runs: a
+        # junction walker that somehow reaches outside must never delete outside the library.
+        _guard = DeletionGuard([library_root])
         now = time.time()
         removed = 0
         freed = 0
@@ -656,8 +660,13 @@ class LibraryService:
                     continue
                 size = self._size_on_disk(target)
                 try:
+                    # Containment check before anything is removed: a target outside the library root
+                    # is refused outright, never deleted.
+                    if not is_within(target, library_root):
+                        self.logger.warning("LIBRARY", f"LEFTOVER_REFUSED path=[{target}] reason=[outside the library]")
+                        continue
                     if target.is_dir():
-                        shutil.rmtree(target)
+                        shutil.rmtree(str(target))
                     else:
                         target.unlink()
                 except OSError as exc:

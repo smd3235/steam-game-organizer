@@ -5,6 +5,13 @@
 
 ## 9.33
 
+### 2026-11-12 18:35:00 — fix: deletion guards block paths outside the library root
+- `core/path_safety.py`: New `DeletionGuard`, `is_within`, `PathOutsideAllowedRoot`, `safe_rmtree`, `safe_unlink` — every destructive target is resolved and checked against an allowed-root list before anything touches the disk; paths outside every allowed root are refused outright, never deleted.
+- `services/rollback_service.py`: `_prune_emptied` now requires containment in the library root and moves emptied game dirs to `Archive/` instead of falling back to unguarded `shutil.rmtree(game_dir)` when `library_root` is `None`.
+- `app/controller.py`: `_prune_rolled_back_folder` now requires `library_root` + containment and moves rolled-back folders to `Archive/` instead of an unguarded `shutil.rmtree(game_dir, ignore_errors=True)` fallback.
+- `services/library_service.py`: `cleanup_leftovers` now checks each target is inside the library root before `rmtree`/`unlink`.
+- No valid deletion target changed behavior — only paths outside the configured roots are newly refused.
+
 ### 2026-11-12 18:10:00 — docs: expand README install & run instructions with detailed step-by-step GitHub acquisition
 
 - `README.md`: Expanded "Get the app" and "Running the app on your own machine" into detailed, 1-by-1 procedures covering both acquisition paths (download a release and build from source), Python 3.13 / 7-Zip / build-tool installation, cloning, building the frozen exe, the full setup wizard flow (three folders, drive-letter resolution, protocol handler registration), scan → review → organize → catalog → extract workflow, and what happens on a fresh PC. No behavior change — documentation only.

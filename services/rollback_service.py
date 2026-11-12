@@ -7,27 +7,13 @@ import tempfile
 import time
 # Imports split one per line for GitHub readability.
 from core.constants import ARCHIVE_EXTENSIONS
-
-
-def _within(path, root):
-    """Whether `path` is `root` or something under it, after both are resolved.
-
-    Resolving both sides is the point: it settles ..\\ segments and symlinks, so a journal naming
-    library\\..\\Windows\\System32 is not inside the library and says so. Returns False rather than raising
-    on an unresolvable path, because the answer a delete needs is "no".
-    """
-    try:
-        resolved = Path(path).resolve()
-        base = Path(root).resolve()
-    except OSError:
-        return False
-    return resolved == base or base in resolved.parents
+from core.path_safety import DeletionGuard, is_within
 
 
 class RollbackService:
     """Small JSON journal for the last organization transaction."""
 
-    def __init__(self, project_root, logger, organizer=None):
+    def __init__(self, project_root, logger, organizer=None, library_root=None):
         self.journal = Path(project_root) / "config" / "last-organization.json"
         self.logger = logger
         # Held only to answer one question: may this folder be removed? OrganizerService._folder_is_disposable()
@@ -36,6 +22,11 @@ class RollbackService:
         # Optional, because half the test suite builds this service on its own, and without it nothing is
         # pruned rather than something being pruned on a guess.
         self.organizer = organizer
+        self.library_root = Path(library_root).expanduser().resolve() if library_root is not None else None
+        # One guard for every prune this service performs: nothing may be removed outside the library root.
+        # Without a library root the guard has no roots and every deletion is refused - which is the point:
+        # an undo must never delete anything it cannot prove belongs to this app's library.
+        self._guard = DeletionGuard([self.library_root]) if self.library_root is not None else None
         self.journal.parent.mkdir(parents=True, exist_ok=True)
 
     def record(self, moves, owned_dirs=None):
@@ -171,13 +162,21 @@ class RollbackService:
 
         A folder still holding an archive was not emptied by this undo. One holding anything the app did not
         write is never moved.
+
+        This method never deletes a folder outright. An emptied folder the run created is moved into the
+        library's Archive/ so the user can review it before deleting. If there is no library root to prove
+        containment, nothing is removed at all.
         """
         game_dir = Path(game_dir)
         if not owned:
             self.logger.info("ROLLBACK", f"KEPT_EMPTY_GAME_DIR path=[{game_dir}] reason=[this run did not create it]")
             return False
+        root = Path(library_root).expanduser().resolve() if library_root is not None else self.library_root
+        if root is None:
+            self.logger.warning("ROLLBACK", f"KEPT_EMPTY_GAME_DIR path=[{game_dir}] reason=[no library root to prove containment]")
+            return False
         try:
-            if library_root is not None and not _within(game_dir, Path(library_root)):
+            if not is_within(game_dir, root):
                 self.logger.warning("ROLLBACK", f"KEPT_EMPTY_GAME_DIR path=[{game_dir}] reason=[outside the library]")
                 return False
             if not game_dir.is_dir():
@@ -188,18 +187,15 @@ class RollbackService:
                 return False
             if not self.organizer._folder_is_prunable(game_dir):
                 return False
-            archive_dir = Path(library_root).expanduser().resolve() / "Archive" if library_root is not None else None
-            if archive_dir is not None:
-                archive_dir.mkdir(parents=True, exist_ok=True)
-                target = archive_dir / game_dir.name
-                n = 2
-                while target.exists():
-                    target = archive_dir / f"{game_dir.name} ({n})"
-                    n += 1
-                shutil.move(str(game_dir), str(target))
-            else:
-                shutil.rmtree(game_dir)
-            self.logger.info("ROLLBACK", f"PRUNED_EMPTY_GAME_DIR path=[{game_dir}]")
+            archive_dir = root / "Archive"
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            target = archive_dir / game_dir.name
+            n = 2
+            while target.exists():
+                target = archive_dir / f"{game_dir.name} ({n})"
+                n += 1
+            shutil.move(str(game_dir), str(target))
+            self.logger.info("ROLLBACK", f"PRUNED_EMPTY_GAME_DIR path=[{game_dir}] destination=[{target}]")
             return True
         except OSError as prune_error:
             self.logger.warning("ROLLBACK", f"PRUNE_FAILED path=[{game_dir}] error=[{type(prune_error).__name__}]")

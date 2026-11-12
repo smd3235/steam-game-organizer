@@ -9,6 +9,7 @@ from app.events import Event
 from core.constants import ARCHIVE_EXTENSIONS, DEFAULT_ZIP_PASSWORD, LIBRARY_RESERVED_DIRS, canonical_category, suggest_category_with_evidence, UNSORTED_EVIDENCE
 from core.exceptions import CancellationError
 from core.models import ScanResult
+from core.path_safety import DeletionGuard, PathOutsideAllowedRoot
 from utils.filename_utils import identity_key, normalize_name
 from utils.formatting import human_size
 from utils.treewalk import walk_files
@@ -685,25 +686,30 @@ class AppController:
         if not owned:
             return
         game_dir = Path(game_dir)
+        root = Path(library_root).expanduser().resolve() if library_root is not None else None
+        if root is None:
+            self.logger.warning("ORGANIZER", f"ROLLBACK_FOLDER_KEPT path=[{game_dir}] reason=[no library root to prove containment]")
+            return
+        # A DeletionGuard built from the library root alone: nothing may be pruned outside it.
+        guard = DeletionGuard([root])
         try:
+            guard.refuse_outside(game_dir, "prune")
             if not game_dir.is_dir():
                 return
             if any(item.suffix.lower() in ARCHIVE_EXTENSIONS for item in game_dir.iterdir()):
                 self.logger.info("ORGANIZER", f"ROLLBACK_FOLDER_KEPT path=[{game_dir}] reason=[still holds an archive]")
                 return
-            if library_root is not None:
-                archive_dir = Path(library_root).expanduser().resolve() / "Archive"
-                archive_dir.mkdir(parents=True, exist_ok=True)
-                target = archive_dir / game_dir.name
-                n = 2
-                while target.exists():
-                    target = archive_dir / f"{game_dir.name} ({n})"
-                    n += 1
-                shutil.move(str(game_dir), str(target))
-                self.logger.info("ORGANIZER", f"ROLLBACK_PRUNED_EMPTY_GAME_DIR path=[{game_dir}] destination=[{target}]")
-            else:
-                shutil.rmtree(game_dir, ignore_errors=True)
-                self.logger.info("ORGANIZER", f"ROLLBACK_PRUNED_EMPTY_GAME_DIR path=[{game_dir}]")
+            archive_dir = root / "Archive"
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            target = archive_dir / game_dir.name
+            n = 2
+            while target.exists():
+                target = archive_dir / f"{game_dir.name} ({n})"
+                n += 1
+            shutil.move(str(game_dir), str(target))
+            self.logger.info("ORGANIZER", f"ROLLBACK_PRUNED_EMPTY_GAME_DIR path=[{game_dir}] destination=[{target}]")
+        except PathOutsideAllowedRoot as refused:
+            self.logger.warning("ORGANIZER", f"ROLLBACK_FOLDER_KEPT path=[{game_dir}] reason=[{refused}]")
         except OSError as prune_error:
             self.logger.warning("ORGANIZER", f"ROLLBACK_PRUNE_FAILED path=[{game_dir}] error=[{type(prune_error).__name__}]")
 
