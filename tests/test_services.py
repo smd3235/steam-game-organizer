@@ -2214,9 +2214,9 @@ class TestServices(unittest.TestCase):
             self.assertIn(name, offered, f"{name} disappeared from the picker")
 
     def test_the_two_survival_genres_stay_apart(self):
-        # "Survivors" and "Survival" were the same genre under two names - the Minecraft-shaped one, gather and
+        # "Survivors" and "Survival" were the same genre under two names - the block-crafting one, gather and
         # craft and build a base. It is filed under Survival alone. "Bullet Heaven" is a different genre, the
-        # Vampire Survivors one, and stays a separate choice; merging the two would file both under one name.
+        # horde auto-shooter one, and stays a separate choice; merging the two would file both under one name.
         from core.constants import DEFAULT_CATEGORIES, SUPPLEMENTAL_CATEGORIES
 
         offered = DEFAULT_CATEGORIES + SUPPLEMENTAL_CATEGORIES
@@ -2225,7 +2225,7 @@ class TestServices(unittest.TestCase):
         self.assertNotIn("Survivors", offered, "Survivors is the same genre as Survival under a second name")
         self.assertEqual(canonical_category("Survivors"), "Survival")
         self.assertEqual(canonical_category("Survivor"), "Survival")
-        self.assertEqual(canonical_category("Vampire Survivors"), "Bullet Heaven")
+        self.assertEqual(canonical_category("Horde Shooter"), "Bullet Heaven")
         self.assertEqual(canonical_category("Bullet Heaven"), "Bullet Heaven")
 
     def test_survival_and_bullet_heaven_classify_differently(self):
@@ -2265,8 +2265,8 @@ class TestServices(unittest.TestCase):
 
     def test_query_variants_never_drop_a_trailing_sequel_number(self):
         service = _steam(self, mock=True)
-        variants = service._query_variants("Cities Skylines 2", "Cities Skylines 2", None)
-        self.assertNotIn("Cities Skylines", variants)
+        variants = service._query_variants("Town Skylines 2", "Town Skylines 2", None)
+        self.assertNotIn("Town Skylines", variants)
         variants = service._query_variants("Sonic Frontiers II", "Sonic Frontiers II", None)
         self.assertNotIn("Sonic Frontiers", variants)
 
@@ -2851,11 +2851,11 @@ class TestTaggedTitlesReachTheStore(unittest.TestCase):
 
     normalize_name() produced the clean title, but _lookup_store() built its search query from the raw folder
     name, so the clean title was never asked for. The variants it did try were right-truncations of the tagged
-    string - "Mars Attracts-Steam RIP com", "Mars Attracts-Steam RIP", "Mars Attracts-Steam" - and every one of
+    string - "Nebula Attracts-Steam RIP com", "Nebula Attracts-Steam RIP", "Nebula Attracts-Steam" - and every one of
     them is a query the Steam Store has no answer to. These pin the wiring, so a future change that goes back to
     querying the raw name fails here rather than in a library scan."""
 
-    QUERIES = {"Mars Attracts-Steam RIP com": "Mars Attracts", "Nivalis Nights-Steam RIP com": "Nivalis Nights", "Stellar.Squirrel-SteamRIP.com": "Stellar Squirrel"}
+    QUERIES = {"Nebula Attracts-Steam RIP com": "Nebula Attracts", "Nebula Nights-Steam RIP com": "Nebula Nights", "Stellar.Squirrel-SteamRIP.com": "Stellar Squirrel"}
 
     def test_the_query_variants_include_the_clean_title(self):
         with TemporaryDirectory() as d:
@@ -2876,9 +2876,9 @@ class TestTaggedTitlesReachTheStore(unittest.TestCase):
 
             service._request_json = fake
             service._details = lambda appid, ctx=None: {"name": "Unrelated"}
-            service._lookup_store("Mars Attracts-Steam RIP com", None)
+            service._lookup_store("Nebula Attracts-Steam RIP com", None)
             # The first variant is the raw name, which is harmless; the clean one has to be in there too.
-            self.assertTrue(any("Mars+Attracts" in url or "Mars%20Attracts" in url for url in asked), asked[:3])
+            self.assertTrue(any("Nebula+Attracts" in url or "Nebula%20Attracts" in url for url in asked), asked[:3])
 
 
 class TestStoreApiInsteadOfScrapedHtml(unittest.TestCase):

@@ -39,8 +39,8 @@ class TestGluedDigitStamp(unittest.TestCase):
     """A date or build number welded onto the last word is packaging, not part of the name.
 
     It used to be handled by a hand-written alias per title, which meant a stamp nobody had written down became
-    part of the game's name and the search was then built from it. Four digits is the floor on purpose: "Portal2"
-    and "GTA5" are titles, and a stamp is never that short."""
+    part of the game's name and the search was then built from it. Four digits is the floor on purpose: "Tunnel Runner2"
+    and "Grand Crime City5" are titles, and a stamp is never that short."""
 
     GLUED = ["FarmToTable10122.zip", "Stellar Squirrel20260916", "Some Game20250101", "Glitch Racer v1.4.2.7z", "Neon District 2026-11-01.zip"]
     KEPT = ["Tunnel Runner2", "Grand Crime City5", "Bio-Hazard 2", "Space Racer Collection Series 20260916", "Some Game 20260916"]

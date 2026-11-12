@@ -94,8 +94,9 @@ CATEGORY_ALIASES = {
     "survival crafting": "Survival",
     "survival sim": "Survival",
     "voxel": "Survival",
-    "vampire survivors": "Bullet Heaven",
-    "vampire-survivors": "Bullet Heaven",
+    "horde auto-shooter": "Bullet Heaven",
+    "horde-auto-shooter": "Bullet Heaven",
+    "horde shooter": "Bullet Heaven",
     "bullet hell survivor": "Bullet Heaven",
     "bullet-heaven": "Bullet Heaven",
     "bullet heaven survivors": "Bullet Heaven",
@@ -320,7 +321,7 @@ def suggest_category_with_evidence(genres, title="", description="", tags=None, 
             score += 30
         if normalized in {"tower defense", "td"}:
             score += 30
-        if normalized in {"bullet hell", "vampire survivors"}:
+        if normalized in {"bullet hell", "horde auto-shooter"}:
             score += 30
         if normalized in {"deckbuilding", "card game", "trading card"}:
             score += 30
