@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-12 18:45:00 — fix: protected system paths can never be deletion targets
+- `core/path_safety.py`: Added `protected_roots()` and `is_protected()` — the Windows directory, Program Files, Users, and every drive root are always refused, even when they fall within an allowed root. Drive roots protect only themselves (`rmtree("C:\")` is blocked, `C:\Games` is left to the allowed-root check); Windows/Program Files/Users protect their entire subtree. `DeletionGuard.refuse_outside()` checks protected paths before allowed roots, so a misconfigured `library_root` (e.g. `C:\` or `C:\Windows`) can never open the system to deletion.
+- `tests/test_path_safety.py`: New file with 16 tests covering protected-root identification, `is_protected()` behavior, and `DeletionGuard` refusal of protected paths via `refuse_outside()`, `rmtree()`, and `unlink()`.
+
 ### 2026-11-12 18:35:00 — fix: deletion guards block paths outside the library root
 - `core/path_safety.py`: New `DeletionGuard`, `is_within`, `PathOutsideAllowedRoot`, `safe_rmtree`, `safe_unlink` — every destructive target is resolved and checked against an allowed-root list before anything touches the disk; paths outside every allowed root are refused outright, never deleted.
 - `services/rollback_service.py`: `_prune_emptied` now requires containment in the library root and moves emptied game dirs to `Archive/` instead of falling back to unguarded `shutil.rmtree(game_dir)` when `library_root` is `None`.
