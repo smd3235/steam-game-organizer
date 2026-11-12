@@ -2713,10 +2713,10 @@ class TestArchiveShippedAppID(unittest.TestCase):
         """
         archive = self.dir / "Game.7z"
         archive.write_bytes(b"")
-        listing = subprocess.CompletedProcess(args=["7z", "l", "-slt", "--", str(archive)], returncode=0, stdout="Path = Game/steam_settings/appmanifest_1128810.acf\n Size = 100\n\n", stderr="")
+        listing = subprocess.CompletedProcess(args=["7z", "l", "-slt", "--", str(archive)], returncode=0, stdout="Path = Game/steam_settings/appmanifest_444444.acf\n Size = 100\n\n", stderr="")
         with patch.object(subprocess, "run", return_value=listing) as mock_run, patch.object(subprocess, "Popen") as mock_popen:
             result = self.service._appid_in_archive(archive, None)
-            self.assertEqual(result, "1128810", "the AppID from the appmanifest filename was not returned")
+            self.assertEqual(result, "444444", "the AppID from the appmanifest filename was not returned")
             self.assertEqual(mock_run.call_count, 1, "7z was called for extraction in addition to listing; the appmanifest branch should return from the filename without a second 7z call")
             mock_popen.assert_not_called()
 

@@ -5,6 +5,9 @@
 
 ## 9.33
 
+### 2026-11-12 19:25:00 — security: replaced last real Steam appid in test fixture
+- `tests/test_services.py`: appmanifest_1128810.acf (The Witcher 3's real appid) → appmanifest_444444.acf (fake).
+
 ### 2026-11-12 19:20:00 — security: fakes spaced and fun
 - `tests/test_displayed_data.py`: Fake Game/appid 999999 → Sir Beats Alot/appid 888888; APPDETAILS_KEYS_999999 → APPDETAILS_KEYS_888888; APPDETAILS_KEYS_000000 → APPDETAILS_KEYS_777777.
 - `tests/test_services.py`: Fake Game/appid 55555 → Sir Beats Alot/appid 55555; Another Fake Game/appid 66666 → Dancing Pickle/appid 66666; FakeArchive/appid 77777 → Mystery Archive/appid 77777.
