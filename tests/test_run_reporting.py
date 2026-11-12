@@ -415,7 +415,7 @@ class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
             normalized_title="Glow Stick Samurai",
             identity_key="glowsticksamurai",
             extension=".7z",
-            steam=SteamMatch(found=True, appid="77777", name="Glow Stick Samurai"),
+            steam=SteamMatch(found=True, appid="999999", name="Glow Stick Samurai"),
             artwork=ArtworkResult(status="ready", path=primary, assets=assets or {}),
             decision=OrganizationDecision(category="Idle", accepted=True),
             conversion=ConversionResult(status="converted"),

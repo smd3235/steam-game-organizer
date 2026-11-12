@@ -2490,7 +2490,7 @@ class ArtworkWarningsHaveToBeTrue(unittest.TestCase):
     download_assets() calls download() for the primary image and only then fetches the per-asset URLs. Those are
     different URL families on different hosts, so a game whose library capsule 404s can still have working asset
     URLs.     A live run of Mystery Archive.7z did exactly that: five images downloaded into the game folder, and one
-    WARN reading UNAVAILABLE appid=77777 reason=[all_steam_sources_failed]. It was the only artwork warning in
+    WARN reading UNAVAILABLE appid="888888" reason=[all_steam_sources_failed]. It was the only artwork warning in
     the log and it contradicted the run's own result.
 
     A warning that is wrong is worse than no warning, because it is the thing a person opens the log to find.
@@ -2535,7 +2535,7 @@ class ArtworkWarningsHaveToBeTrue(unittest.TestCase):
             raise HTTPError(url, 404, "Not Found", {}, None)
 
         with patch("services.artwork_service.urlopen", side_effect=fake_urlopen):
-            result = ArtworkService(cache, AppLogger(log)).download_assets("77777", dict(self.ASSETS), preferred_url=preferred_url)
+            result = ArtworkService(cache, AppLogger(log)).download_assets("888888", dict(self.ASSETS), preferred_url=preferred_url)
         return result, log.read_text(encoding="utf-8", errors="replace")
 
     def test_assets_downloaded_while_the_primary_404s_logs_no_warning(self):
@@ -2549,7 +2549,7 @@ class ArtworkWarningsHaveToBeTrue(unittest.TestCase):
         with TemporaryDirectory() as d:
             result, text = self._download(Path(d), assets_succeed=False)
             self.assertFalse(result.assets, "the fixture downloaded an asset, so it is not the no-artwork case")
-            self.assertIn("77777", text, "a game with no artwork at all was not recorded in the log")
+            self.assertIn("888888", text, "a game with no artwork at all was not recorded in the log")
 
     def test_a_primary_image_that_downloads_logs_no_warning(self):
         with TemporaryDirectory() as d:

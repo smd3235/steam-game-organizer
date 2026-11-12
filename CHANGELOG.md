@@ -5,6 +5,11 @@
 
 ## 9.33
 
+### 2026-11-12 19:45:00 — security: deduplicated fake appids across tests
+- `tests/test_displayed_data.py`: Sir Beats Alot appid 888888 → 55555 (now consistent with test_services.py).
+- `tests/test_run_reporting.py`: Glow Stick Samurai appid 77777 → 999999 (no longer shared with Mystery Archive).
+- `tests/test_services.py`: Mystery Archive appid 77777 → 888888 (no longer shared with Glow Stick Samurai).
+
 ### 2026-11-12 19:30:00 — security: replaced remaining real game names with fakes
 - `utils/filename_utils.py`: comment naming Brave New Wonders → Stellar Squirrel.
 - `tests/test_regressions.py`: Brave New Wonders → Stellar Squirrel.
