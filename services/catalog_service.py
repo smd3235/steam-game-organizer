@@ -1316,21 +1316,37 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
    var counts=Array.prototype.slice.call(document.querySelectorAll('[data-toc-count]'));
    var tally=document.getElementById('result-count');
    var root;
+   // Protocol handler detection: try to navigate to the scheme; if it fails, show a persistent banner.
+   var handlerChecked=false, handlerWorks=null;
    function store(key,value){
      try{if(value===undefined){return window.localStorage.getItem(key);}window.localStorage.setItem(key,value);}catch(e){return null;}
    }
-   function show(msg){
+   function show(msg, duration){
      toast.textContent=msg; toast.className='toast show';
-     clearTimeout(toast._t); toast._t=setTimeout(function(){toast.className='toast';},1800);
+     clearTimeout(toast._t);
+     toast._t=setTimeout(function(){toast.className='toast';}, duration || 1800);
    }
    function copyText(text){
-     var ta=document.createElement('textarea'); ta.value=text;
-     ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
-     document.body.appendChild(ta); ta.select();
-     try{document.execCommand('copy'); show('Copied: '+text);}
-     catch(e){show('Copy failed — path: '+text);}
-     document.body.removeChild(ta);
-  }
+     var path=text;
+     if(!path) return;
+     // Prefer modern clipboard API (works on https, fails on file:// in Chrome).
+     if(navigator.clipboard && navigator.clipboard.writeText){
+       navigator.clipboard.writeText(path).then(
+         function(){show('Copied: '+path);},
+         function(){fallbackCopy(path);}
+       );
+     }else{
+       fallbackCopy(path);
+     }
+     function fallbackCopy(p){
+       var ta=document.createElement('textarea'); ta.value=p;
+       ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
+       document.body.appendChild(ta); ta.select();
+       try{document.execCommand('copy'); show('Copied: '+p);}
+       catch(e){show('Copy failed — path: '+p);}
+       document.body.removeChild(ta);
+     }
+   }
   function apply(){
     var q=(search.value||'').toLowerCase(), shown=0;
     cards.forEach(function(card){
@@ -1800,27 +1816,29 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
     var el=document.activeElement;
     return !!el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
   }
-  document.addEventListener('keydown',function(event){
-    if(event.key==='/'&&!typing()){event.preventDefault();search.focus();search.select();}
-    else if(event.key==='Escape'){
-      if(document.activeElement===search){search.value='';}
-      if(document.body.classList.contains('multi-mode')){
-        document.body.classList.remove('multi-mode');
-        multiBtn.hidden=false;
-        extractSelected.hidden=true;
-        clearSelection.hidden=true;
-        document.querySelectorAll('.card').forEach(function(card){card.classList.remove('multi-ready','multi-selected');});
-        document.querySelectorAll('.card-check').forEach(function(cb){cb.checked=false;});
-        state.multi=[];
-        updateMultiCount();
-      }
-      state.genre='';state.noart=false;state.year='';state.unextracted=false;state.hide_extracted=false;
-      document.querySelectorAll('.chip-btn.is-active').forEach(function(c){c.classList.remove('is-active');c.setAttribute('aria-pressed','false');});
-      document.querySelectorAll('.stat-filter.is-active').forEach(function(t){t.classList.remove('is-active');t.setAttribute('aria-pressed','false');});
-      apply();
-    }
-    else if(event.key==='Home'&&document.activeElement===document.body){toTop();}
-  });
+document.addEventListener('keydown',function(event){
+     if(event.key==='/'&&!typing()){event.preventDefault();search.focus();search.select();}
+     else if(event.key==='?'&&!typing()){event.preventDefault();showShortcuts();}
+     else if(event.key==='Escape'){
+       if(document.activeElement===search){search.value='';}
+       if(document.body.classList.contains('multi-mode')){
+         document.body.classList.remove('multi-mode');
+         multiBtn.hidden=false;
+         extractSelected.hidden=true;
+         clearSelection.hidden=true;
+         document.querySelectorAll('.card').forEach(function(card){card.classList.remove('multi-ready','multi-selected');});
+         document.querySelectorAll('.card-check').forEach(function(cb){cb.checked=false;});
+         state.multi=[];
+         updateMultiCount();
+       }
+       state.genre='';state.noart=false;state.year='';state.unextracted=false;state.hide_extracted=false;
+       document.querySelectorAll('.chip-btn.is-active').forEach(function(c){c.classList.remove('is-active');c.setAttribute('aria-pressed','false');});
+       document.querySelectorAll('.stat-filter.is-active').forEach(function(t){t.classList.remove('is-active');t.setAttribute('aria-pressed','false');});
+       apply();
+       hideShortcuts();
+     }
+     else if(event.key==='Home'&&document.activeElement===document.body){toTop();}
+   });
 search.addEventListener('input',apply);
    // Card size preset - small / medium / large. Saves the choice so it survives a reload.
    var sizeBtns=document.querySelectorAll('.size-btn');
@@ -1857,31 +1875,163 @@ search.addEventListener('input',apply);
   clearSelection.addEventListener('click',function(){
     state.multi=[];
     updateMultiCount();
-    document.querySelectorAll('.card-check').forEach(function(cb){cb.checked=false;});
-    document.querySelectorAll('.card').forEach(function(card){card.classList.remove('multi-selected');});
-  });
-extractSelected.addEventListener('click',function(){
-     var selected=[];
-     document.querySelectorAll('.card-check:checked').forEach(function(cb){selected.push(cb.getAttribute('data-archive-path'));});
-     if(selected.length<2){alert('Select at least two games to extract them together.');return;}
-     var params=selected.map(function(f){return 'src='+encodeURIComponent(f);}).join('&');
-     window.location.href='steamgameorganizer://extract-multi?'+params;
+document.querySelectorAll('.card-check').forEach(function(cb){cb.checked=false;});
+     document.querySelectorAll('.card').forEach(function(card){card.classList.remove('multi-selected');});
    });
-   function updateMultiCount(){
-     var count=document.querySelectorAll('.card-check:checked').length;
-     multiCount.textContent=String(count);
-     extractSelected.hidden=!count;
+extractSelected.addEventListener('click',function(){
+      var selected=[];
+      document.querySelectorAll('.card-check:checked').forEach(function(cb){selected.push(cb.getAttribute('data-archive-path'));});
+      if(selected.length<2){alert('Select at least two games to extract them together.');return;}
+      var params=selected.map(function(f){return 'src='+encodeURIComponent(f);}).join('&');
+      window.location.href='steamgameorganizer://extract-multi?'+params;
+    });
+    function updateMultiCount(){
+      var count=document.querySelectorAll('.card-check:checked').length;
+      multiCount.textContent=String(count);
+      extractSelected.hidden=!count;
+    }
+    document.addEventListener('change',function(event){
+      if(event.target.classList.contains('card-check')){
+        var card=event.target.closest('.card');
+        if(event.target.checked){state.multi.push(event.target.getAttribute('data-archive-path'));card.classList.add('multi-selected');}
+        else{state.multi=state.multi.filter(function(f){return f!==event.target.getAttribute('data-archive-path');});card.classList.remove('multi-selected');}
+        updateMultiCount();
+      }
+    });
+   // --- New: Protocol handler detection & status polling ---
+   function checkHandler(){
+     if(handlerChecked) return;
+     handlerChecked=true;
+     // Try to navigate to the scheme. If it fails, the browser may show a prompt or do nothing.
+     // We can't reliably detect success synchronously, so we use a timeout heuristic.
+     var testLink=document.createElement('a');
+     testLink.href='steamgameorganizer://ping';
+     testLink.style.display='none';
+     document.body.appendChild(testLink);
+     testLink.click();
+     document.body.removeChild(testLink);
+     // After a short delay, if the page is still here and no navigation occurred,
+     // assume the handler is not registered. This is best-effort.
+     setTimeout(function(){
+       handlerWorks=false;
+       showHandlerBanner();
+     }, 800);
+     // If the handler IS registered, the app will launch and we'll likely navigate away.
+     // If we're still here after 2s, it probably didn't work.
+     setTimeout(function(){
+       if(handlerWorks===null){
+         handlerWorks=false;
+         showHandlerBanner();
+       }
+     }, 2000);
    }
-   document.addEventListener('change',function(event){
-     if(event.target.classList.contains('card-check')){
-       var card=event.target.closest('.card');
-       if(event.target.checked){state.multi.push(event.target.getAttribute('data-archive-path'));card.classList.add('multi-selected');}
-       else{state.multi=state.multi.filter(function(f){return f!==event.target.getAttribute('data-archive-path');});card.classList.remove('multi-selected');}
-       updateMultiCount();
+   function showHandlerBanner(){
+     if(document.getElementById('handler-banner')) return;
+     var banner=document.createElement('div');
+     banner.id='handler-banner';
+     banner.style.cssText='position:fixed;top:0;left:0;right:0;background:var(--warn);color:var(--bg);padding:12px 20px;text-align:center;z-index:80;font-size:.85rem;box-shadow:var(--shadow);';
+     banner.innerHTML='<strong>Protocol handler not registered.</strong> Extract/Open/Play buttons need the <code>steamgameorganizer://</code> scheme. '
+       + '<button id="handler-setup-btn" style="margin-left:12px;padding:4px 12px;background:var(--bg);color:var(--warn);border:none;border-radius:4px;cursor:pointer;">Set up on this PC</button>'
+       + '<button id="handler-dismiss" style="margin-left:8px;background:none;border:none;color:var(--bg);cursor:pointer;font-size:1.2rem;line-height:1;">&times;</button>';
+     document.body.insertBefore(banner, document.body.firstChild);
+     document.getElementById('handler-setup-btn').addEventListener('click',function(){
+       var setupLink=document.getElementById('setup-link');
+       if(setupLink) setupLink.click();
+     });
+     document.getElementById('handler-dismiss').addEventListener('click',function(){
+       banner.remove();
+     });
+   }
+   // Check handler on first Extract/Open/Play button click
+   document.addEventListener('click',function(e){
+     var target=e.target.closest('[href^="steamgameorganizer://"]');
+     if(target && !handlerChecked){
+       checkHandler();
      }
    });
-})();
-"""
+   // Status polling during batch runs: re-fetch Game Library.status.js every 5s while a run is active.
+   var statusPollTimer=null;
+   function startStatusPoll(){
+     if(statusPollTimer) return;
+     statusPollTimer=setInterval(function(){
+       var script=document.querySelector('script[src="Game Library.status.js"]');
+       if(!script) return;
+       var newScript=document.createElement('script');
+       newScript.src='Game Library.status.js?' + Date.now();
+       newScript.onload=function(){
+         // Re-run status display logic
+         var run=window.libraryBatchStatus, banner=document.getElementById('run-status'), railChip=document.getElementById('batch-status');
+         if(run && run.ran_at){
+           var parts=[];
+           if(run.total) parts.push(run.extracted+' of '+run.total+' extracted');
+           if(run.skipped) parts.push(run.skipped+' already unpacked');
+           if(run.needs_install) parts.push(run.needs_install+' need install');
+           if(run.failed) parts.push(run.failed+' failed');
+           if(run.cancelled) parts.push(run.cancelled+' not started');
+           if(banner){
+             banner.className='run-status'+((run.failed||run.cancelled)?' run-status-warn':'');
+             banner.textContent='Last run '+run.ran_at+(run.category?' - '+run.category:'')+': '+
+                               (parts.length?parts.join(', '):'nothing to do')+
+                               (run.elapsed?' in '+run.elapsed:'')+
+                               (run.destination?' - into '+run.destination:'');
+             banner.hidden=false;
+           }
+           if(railChip){
+             var summary=[];
+             if(run.total) summary.push(run.extracted+'/'+run.total);
+             if(run.failed) summary.push(run.failed+' failed');
+             if(run.cancelled) summary.push('cancelled');
+             railChip.textContent=run.ran_at+' - '+(summary.length?summary.join(' '):'ok');
+             railChip.className='batch-status'+(run.failed||run.cancelled?' batch-status-warn':'');
+             railChip.hidden=false;
+           }
+           // If run is complete (has elapsed and not cancelled), stop polling
+           if(run.elapsed && !run.cancelled){
+             stopStatusPoll();
+           }
+         }
+       };
+       document.head.appendChild(newScript);
+       // Clean up old script
+       if(script.parentNode) script.parentNode.removeChild(script);
+     }, 5000);
+   }
+   function stopStatusPoll(){
+     if(statusPollTimer){
+       clearInterval(statusPollTimer);
+       statusPollTimer=null;
+     }
+   }
+   // Start polling if a batch run is in progress (no elapsed time yet but has ran_at)
+   if(window.libraryBatchStatus && window.libraryBatchStatus.ran_at && !window.libraryBatchStatus.elapsed){
+     startStatusPoll();
+   }
+   // Keyboard shortcuts overlay
+   function showShortcuts(){
+     if(document.getElementById('shortcuts-overlay')) return;
+     var overlay=document.createElement('div');
+     overlay.id='shortcuts-overlay';
+     overlay.style.cssText='position:fixed;inset:0;background:rgba(8,11,18,.92);z-index:90;display:flex;align-items:center;justify-content:center;';
+     overlay.innerHTML='<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px;max-width:520px;width:90%;max-height:85vh;overflow:auto;">'
+       + '<h3 style="margin:0 0 16px;">Keyboard Shortcuts</h3>'
+       + '<dl style="display:grid;grid-template-columns:140px 1fr;gap:8px 16px;font-size:.85rem;">'
+       + '<dt><kbd>/</kbd></dt><dd>Focus search</dd>'
+       + '<dt><kbd>?</kbd></dt><dd>Show this help</dd>'
+       + '<dt><kbd>Esc</kbd></dt><dd>Clear search / exit multi-select / close this</dd>'
+       + '<dt><kbd>Home</kbd></dt><dd>Scroll to top</dd>'
+       + '<dt><kbd>Enter</kbd></dt><dd>Save path box (Game folder / Extract to)</dd>'
+       + '</dl>'
+       + '<p style="margin-top:16px;color:var(--muted);font-size:.75rem;">Click outside or press <kbd>Esc</kbd> to close.</p>'
+       + '</div>';
+     overlay.addEventListener('click',function(e){if(e.target===overlay) hideShortcuts();});
+     document.body.appendChild(overlay);
+   }
+   function hideShortcuts(){
+     var overlay=document.getElementById('shortcuts-overlay');
+     if(overlay) overlay.remove();
+   }
+ })();
+ """
         return self._script_cache
 
     def _css(self):
