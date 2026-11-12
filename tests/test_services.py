@@ -658,16 +658,16 @@ class TestServices(unittest.TestCase):
 
         with TemporaryDirectory() as d:
             root = Path(d) / "Games"
-            game = root / "RPG" / "SirBeatsAlot - 2019-11-13"
+            game = root / "RPG" / "Sir Beats Alot - 2019-11-13"
             game.mkdir(parents=True)
-            (game / "SirBeatsAlot.zip").write_text("old copy")
-            (game / ".game-info.json").write_text('{"appid":"55555","name":"SirBeatsAlot"}')
+            (game / "Sir Beats Alot.zip").write_text("old copy")
+            (game / ".game-info.json").write_text('{"appid":"55555","name":"Sir Beats Alot"}')
             (game / "Open Steam Page.html").write_text("<html>link</html>")
-            (game / "SirBeatsAlot_grid.jpg").write_bytes(b"\xff\xd8\xff\xdb" + b"0" * 200)
+            (game / "Sir Beats Alot_grid.jpg").write_bytes(b"\xff\xd8\xff\xdb" + b"0" * 200)
             (game / "user-save.dat").write_text("MY SAVEGAME")
             inbox = root / "Incoming"
             inbox.mkdir()
-            fresh = inbox / "SirBeatsAlot.zip"
+            fresh = inbox / "Sir Beats Alot.zip"
             fresh.write_text("new copy")
             logger = AppLogger(Path(d) / "x.log")
             jobs = JobManager()
@@ -680,18 +680,18 @@ class TestServices(unittest.TestCase):
             controller = AppController(StateStore(), bus, logger, services, jobs)
             failures = []
             bus.subscribe("operation_failed", lambda event: failures.append(event.payload))
-            item = GameArchive(fresh, "SirBeatsAlot", "SirBeatsAlot", "sirbeatsalot", ".zip")
+            item = GameArchive(fresh, "Sir Beats Alot", "Sir Beats Alot", "sirbeatsalot", ".zip")
             item.decision.accepted = True
             item.decision.category = "RPG"
-            item.steam = SteamMatch(found=True, appid="55555", name="SirBeatsAlot", release_date="13 Nov, 2019")
+            item.steam = SteamMatch(found=True, appid="55555", name="Sir Beats Alot", release_date="13 Nov, 2019")
             done = Event()
             controller.organize([item], root, lambda moved: done.set())
             self.assertTrue(done.wait(10), "the organize run never finished")
             jobs.shutdown()
             self.assertEqual(failures, [])
-            for name in ("user-save.dat", "SirBeatsAlot_grid.jpg", ".game-info.json", "Open Steam Page.html"):
+            for name in ("user-save.dat", "Sir Beats Alot_grid.jpg", ".game-info.json", "Open Steam Page.html"):
                 self.assertTrue((game / name).is_file(), f"{name} was deleted from an already-organized game folder")
-            self.assertTrue((root / "Archive" / "SirBeatsAlot.zip").is_file(), "the previous copy was not filed under Archive")
+            self.assertTrue((root / "Archive" / "Sir Beats Alot.zip").is_file(), "the previous copy was not filed under Archive")
 
     def test_the_organize_run_converts_the_smallest_archive_first(self):
         # A conversion is by far the longest thing a run does, and it lands on the primary copy of each game.
@@ -2489,7 +2489,7 @@ class ArtworkWarningsHaveToBeTrue(unittest.TestCase):
 
     download_assets() calls download() for the primary image and only then fetches the per-asset URLs. Those are
     different URL families on different hosts, so a game whose library capsule 404s can still have working asset
-    URLs.     A live run of MysteryArchive.7z did exactly that: five images downloaded into the game folder, and one
+    URLs.     A live run of Mystery Archive.7z did exactly that: five images downloaded into the game folder, and one
     WARN reading UNAVAILABLE appid=77777 reason=[all_steam_sources_failed]. It was the only artwork warning in
     the log and it contradicted the run's own result.
 
@@ -2608,26 +2608,26 @@ class TestArchiveShippedAppID(unittest.TestCase):
         return appid
 
     def test_a_shipped_appid_resolves_the_name_without_a_search(self):
-        self._stub_details("55555", "SirBeatsAlot")
-        archive = self._zip("SirBeatsAlot.zip", {"SirBeatsAlot/steam_settings/steam_appid.txt": "55555\n"})
+        self._stub_details("55555", "Sir Beats Alot")
+        archive = self._zip("Sir Beats Alot.zip", {"Sir Beats Alot/steam_settings/steam_appid.txt": "55555\n"})
         searched = []
         self.service._lookup_store = lambda title, ctx: searched.append(title) or SteamMatch(found=False)
-        result = self.service.lookup("SirBeatsAlot", archive_path=archive)
+        result = self.service.lookup("Sir Beats Alot", archive_path=archive)
         self.assertTrue(result.found)
         self.assertEqual(result.appid, "55555")
-        self.assertEqual(result.name, "SirBeatsAlot")
+        self.assertEqual(result.name, "Sir Beats Alot")
         self.assertEqual(result.source, "steam_appid")
         self.assertEqual(result.confidence, "High")
         self.assertEqual(searched, [], "the AppID the archive shipped was not used, so a search ran anyway")
 
     def test_an_appmanifest_declares_the_appid_in_its_own_name(self):
-        self._stub_details("66666", "DancingPickle")
-        archive = self._zip("DancingPickle.zip", {"DancingPickle/steam_settings/appmanifest_66666.acf": '"AppState"\n{\n\t"appid"\t\t"66666"\n}\n'})
+        self._stub_details("66666", "Dancing Pickle")
+        archive = self._zip("Dancing Pickle.zip", {"Dancing Pickle/steam_settings/appmanifest_66666.acf": '"AppState"\n{\n\t"appid"\t\t"66666"\n}\n'})
         self.service._lookup_store = lambda title, ctx: SteamMatch(found=False)
-        result = self.service.lookup("DancingPickle", archive_path=archive)
+        result = self.service.lookup("Dancing Pickle", archive_path=archive)
         self.assertTrue(result.found)
         self.assertEqual(result.appid, "66666")
-        self.assertEqual(result.name, "DancingPickle")
+        self.assertEqual(result.name, "Dancing Pickle")
 
     def test_an_archive_that_declares_nothing_falls_back_to_searching(self):
         archive = self._zip("Some Game.zip", {"Some Game/readme.txt": "nothing useful here"})
@@ -2969,8 +2969,8 @@ class TestStoreApiInsteadOfScrapedHtml(unittest.TestCase):
             cache.write_text('{"sirbeatsalot": {"found": tru')
             service = self.service(d, cache_file=cache)
             self.assertEqual(service.cache, {})
-            service._lookup_store = lambda title, ctx: SteamMatch(found=True, appid="55555", name="SirBeatsAlot")
-            self.assertTrue(service.lookup("SirBeatsAlot").found, "a corrupt cache file stopped the lookup entirely")
+            service._lookup_store = lambda title, ctx: SteamMatch(found=True, appid="55555", name="Sir Beats Alot")
+            self.assertTrue(service.lookup("Sir Beats Alot").found, "a corrupt cache file stopped the lookup entirely")
 
     def test_cache_rows_that_are_not_a_usable_match_are_discarded(self):
         # A row that cannot be trusted is worse than no row at all: it would then be served from cache indefinitely,
@@ -2994,9 +2994,9 @@ class TestStoreApiInsteadOfScrapedHtml(unittest.TestCase):
         # how such a row ends up winning a ranked list of real games.
         with TemporaryDirectory() as d:
             service = self.service(d)
-            self.assertEqual(service._score("", "SirBeatsAlot"), 0.0)
-            self.assertEqual(service._score("SirBeatsAlot", ""), 0.0)
-            chosen, score = service._choose([{"id": "1", "name": ""}], "SirBeatsAlot")
+            self.assertEqual(service._score("", "Sir Beats Alot"), 0.0)
+            self.assertEqual(service._score("Sir Beats Alot", ""), 0.0)
+            chosen, score = service._choose([{"id": "1", "name": ""}], "Sir Beats Alot")
             self.assertIsNone(chosen, "an unnamed store row was accepted as the match")
 
     def test_a_numeral_beyond_the_conversion_table_is_refused(self):

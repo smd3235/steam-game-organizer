@@ -5,11 +5,12 @@
 
 ## 9.33
 
-### 2026-11-12 19:15:00 — security: replaced boring fakes with fun ones
-- `tests/test_displayed_data.py`: Fake Game/appid 999999 → SirBeatsAlot/appid 888888; APPDETAILS_KEYS_999999 → APPDETAILS_KEYS_888888; APPDETAILS_KEYS_000000 → APPDETAILS_KEYS_777777.
-- `tests/test_services.py`: Fake Game/appid 55555 → SirBeatsAlot/appid 55555; Another Fake Game/appid 66666 → DancingPickle/appid 66666; FakeArchive/appid 77777 → MysteryArchive/appid 77777.
-- `tests/test_library_summary.py`: BouncyCastle → TrampolineTornado.
-- `services/organizer_service.py`: comment naming BouncyCastle → TrampolineTornado.
+### 2026-11-12 19:20:00 — security: fakes spaced and fun
+- `tests/test_displayed_data.py`: Fake Game/appid 999999 → Sir Beats Alot/appid 888888; APPDETAILS_KEYS_999999 → APPDETAILS_KEYS_888888; APPDETAILS_KEYS_000000 → APPDETAILS_KEYS_777777.
+- `tests/test_services.py`: Fake Game/appid 55555 → Sir Beats Alot/appid 55555; Another Fake Game/appid 66666 → Dancing Pickle/appid 66666; FakeArchive/appid 77777 → Mystery Archive/appid 77777.
+- `tests/test_library_summary.py`: TrampolineTornado → Trampoline Tornado.
+- `services/organizer_service.py`: comment naming TrampolineTornado → Trampoline Tornado.
+- `tests/test_run_reporting.py`, `core/models.py`, `services/artwork_service.py`: GlowStickSamurai → Glow Stick Samurai/appid 77777.
 
 ### 2026-11-12 19:05:00 — security: replaced real Steam game names, appids, and paths with fakes
 - `tests/test_displayed_data.py`: DOOM/appid 322330 → Fake Game/appid 999999; APPDETAILS_KEYS_322330 → APPDETAILS_KEYS_999999; APPDETAILS_KEYS_1091500 → APPDETAILS_KEYS_000000.

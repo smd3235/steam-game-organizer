@@ -163,7 +163,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
     def _payload(self, keys=APPDETAILS_KEYS_888888):
         """A payload with the real field set, holding the four fields `_build_match` has to be able to read."""
         details = dict.fromkeys(keys)
-        details.update(name="SirBeatsAlot", steam_appid="888888", type="game", genres=[{"id": 1, "description": "Action"}], categories=[{"id": 1, "description": "Single-player"}], release_date={"coming_soon": False, "date": "Apr 21, 2016"}, short_description="A game.")
+        details.update(name="Sir Beats Alot", steam_appid="888888", type="game", genres=[{"id": 1, "description": "Action"}], categories=[{"id": 1, "description": "Single-player"}], release_date={"coming_soon": False, "date": "Apr 21, 2016"}, short_description="A game.")
         return details
 
     def _logged(self):
@@ -193,7 +193,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         `tags: []` is the correct answer here - Steam sent no tags. What was wrong was that the app produced
         that same value, silently, from every game forever, which is indistinguishable from the bug it was.
         """
-        match = self.service._build_match("888888", {"name": "SirBeatsAlot"}, self._payload())
+        match = self.service._build_match("888888", {"name": "Sir Beats Alot"}, self._payload())
         self.assertEqual([], match.tags, "the recorded payload carries no tags, so there is nothing to return")
         self.assertEqual(["Action"], match.genres, "genres come from the same payload and are unaffected")
         text = self._logged()
@@ -228,7 +228,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         """
         details = self._payload()
         details["tags"] = [{"id": 16689, "name": "Great Soundtrack"}, {"id": 1038, "name": "Immersive Sim"}]
-        match = self.service._build_match("888888", {"name": "SirBeatsAlot"}, details)
+        match = self.service._build_match("888888", {"name": "Sir Beats Alot"}, details)
         self.assertEqual(["Great Soundtrack", "Immersive Sim"], match.tags)
         text = self._logged()
         self.assertNotIn("TAGS_UNAVAILABLE", text, "this payload carried tags and was reported as carrying none")

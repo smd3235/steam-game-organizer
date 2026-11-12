@@ -1242,7 +1242,7 @@ class OrganizerService:
             # The replacement is built in the staging folder, not in the game folder. A .rar -> .7z conversion
             # used to write straight to the final "Name.7z", so a build interrupted part-way left a partial
             # archive wearing the real name; dedupe then preferred that partial file over the intact .rar and
-            # archived the good copy, leaving the folder with an unusable stub - which is how TrampolineTornado lost
+            # archived the good copy, leaving the folder with an unusable stub - which is how Trampoline Tornado lost
             # its game from the shelf. Staging outside the game folder means a folder being converted holds
             # only its source until a verified replacement is ready to be renamed in. The folder already exists
             # by now: the extraction above ran inside it.
