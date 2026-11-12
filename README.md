@@ -88,42 +88,107 @@ The result is a self-contained, browsable game library that works on any Windows
 
 ## 📦 Get the app
 
-GitHub ships only source code. The `runtime/`, `dist/`, and `build/` folders are **gitignored** — they are not in the repository. To get a runnable app you either download a release or build the frozen exe once on your machine.
+GitHub ships only source code. The `runtime/`, `dist/`, and `build/` folders are **gitignored** — they are not in the repository. To get a runnable app on a machine you have two choices: download a pre-built release (recommended) or build the frozen exe yourself from the source code. Either way, the folder you end up with is self-contained — it includes Python 3.13, Tcl/Tk, and 7-Zip inside `runtime/`, so nothing needs to be installed on the machine that runs it.
 
-### Option A: Download a release (recommended)
+---
 
-1. Go to the [releases page](https://github.com/smd3235/steam-game-organizer/releases) on GitHub.
-2. Download the latest `steam-game-organizer-<version>.zip` asset.
-3. Extract it anywhere — for example `E:\Games\Steam Game Organizer\`.
-4. Launch `dist\steam_game_organizer\steam_game_organizer.exe`.
+### Option A: Download a release (recommended — nothing to build)
 
-That folder is fully self-contained: copy it to another Windows 10+ machine, a USB drive, or a borrowed HD and it runs the same way. Nothing needs installing on the target machine.
+Use this if you just want to run the app on your PC or on a friend's PC. No Python, no 7-Zip, and no build tools are needed.
+
+1. **Open the releases page.**  
+   Go to https://github.com/smd3235/steam-game-organizer/releases in your browser.
+
+2. **Find the latest release.**  
+   Releases are listed newest first. Open the top release (the one at the top of the page).
+
+3. **Download the zip asset.**  
+   Under "Assets" on the release page, download the file named `steam-game-organizer-<version>.zip` — for example `steam-game-organizer-9.33.zip`. Save it somewhere easy to find, such as your Downloads folder.
+
+4. **Extract the zip.**  
+   Right-click the downloaded zip and choose **Extract All**, or open it in 7-Zip and extract it. Extract it to wherever you want the app to live — for example `E:\Games\Steam Game Organizer\`.  
+   The extraction creates a folder containing `steam_game_organizer.exe`, `runtime/`, `dist/`, and the other app files.
+
+5. **Launch the app.**  
+   Open the extracted folder, go into `dist\steam_game_organizer\`, and double-click `steam_game_organizer.exe`.  
+   The app launches full screen and opens the setup wizard on first run.
+
+That folder is fully self-contained: Python 3.13, Tcl/Tk, and 7-Zip all live inside its `runtime/` subfolder. You can copy the whole `steam-game-organizer` folder to another Windows 10+ machine, a USB drive, or a borrowed hard drive, and it runs the same way — nothing needs installing on the target machine.
+
+---
 
 ### Option B: Build the frozen exe from source
 
-Use this if you cloned the repo or want to rebuild after a source change.
+Use this if you cloned the repository, want to rebuild after making a source change, or want to verify the build yourself. This requires Python 3.13, `ruff`, PyInstaller, and 7-Zip on the machine doing the build.
+
+#### Step 1 — Install Python 3.13
+
+1. Download Python 3.13 from https://www.python.org/downloads/windows/.
+2. Run the installer.
+3. **Important:** Check both "Add Python to PATH" and "Install for all users" during installation. Without these, the build commands will not be found.
+4. After installation, open a new PowerShell window and confirm it works:
+
+   ```powershell
+   python --version
+   ```
+
+   It should print something like `Python 3.13.x`.
+
+#### Step 2 — Install 7-Zip
+
+1. Download 7-Zip from https://www.7-zip.org/download.html.
+2. Install it to the default location, `C:\Program Files\7-Zip`. The build tool looks there automatically for `7z.exe` when bundling the runtime.
+3. Confirm it is available:
+
+   ```powershell
+   7z
+   ```
+
+   It should print 7-Zip help text.
+
+#### Step 3 — Install the build tools
+
+In PowerShell, run:
 
 ```powershell
-# 1. Clone the repository
-git clone https://github.com/smd3235/steam-game-organizer.git
-cd "steam-game-organizer"
-
-# 2. Install build prerequisites (one time)
-# Python 3.13: https://www.python.org/downloads/windows/
-#   - Check "Add Python to PATH" and "Install for all users"
-# 7-Zip: https://www.7-zip.org/download.html
-#   - Install to C:\Program Files\7-Zip
 pip install ruff
 runtime\python.exe -m pip install pyinstaller
+```
 
-# 3. Build the frozen exe
+`ruff` is the linter; `pyinstaller` (installed into the bundled runtime) builds the frozen exe.
+
+#### Step 4 — Clone the repository
+
+```powershell
+git clone https://github.com/smd3235/steam-game-organizer.git
+cd "steam-game-organizer"
+```
+
+#### Step 5 — Build the frozen exe
+
+```powershell
 python tools\build_frozen.py
+```
 
-# 4. Run it
+This runs PyInstaller, then lifts `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, and `runtime/` out of PyInstaller's `_internal/` folder into the bundle root. That lift is mandatory: `steam_game_organizer.py` resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings — left in `_internal/`, `runtime/7z.exe` is one folder out of reach and every extraction reports no archiver.
+
+Before wiping an old bundle it backs up `config/`, `cache/`, and `logs/` into a temp dir and restores them after, so your settings, artwork cache, and logs survive a rebuild. It retries `rmtree` up to 5 times (Windows Defender or an indexer can hold a DLL open) and verifies `runtime/7z.exe` exists before reporting success. The build is onedir (`console=False`, `exclude_binaries=True`) — do not change to onefile, which repacks the interpreter into a temp folder on every launch.
+
+When it finishes, the runnable app is at:
+
+```
 dist\steam_game_organizer\steam_game_organizer.exe
 ```
 
-`tools\build_frozen.py` runs PyInstaller, then lifts `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, and `runtime/` out of the PyInstaller `_internal/` folder into the bundle root. This lift is mandatory: `steam_game_organizer.py` resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings — left in `_internal/`, `runtime/7z.exe` is one folder out of reach and every extraction reports no archiver. Before wiping the old bundle it backs up `config/`, `cache/`, and `logs/` into a temp dir and restores them after, so your settings, artwork cache, and logs survive a rebuild. It retries `rmtree` up to 5 times (Windows Defender or an indexer can hold a DLL open) and verifies `runtime/7z.exe` exists before reporting success. The build is onedir (`console=False`, `exclude_binaries=True`) — do not change to onefile, which repacks the interpreter into a temp folder on every launch.
+#### Step 6 — Run it
+
+```powershell
+dist\steam_game_organizer\steam_game_organizer.exe
+```
+
+No Python, 7-Zip, or anything else is needed on the machine that runs it.
+
+---
 
 ### Option C: Run from source (development only)
 
@@ -131,9 +196,13 @@ dist\steam_game_organizer\steam_game_organizer.exe
 runtime\python.exe steam_game_organizer.py
 ```
 
-Requires Python 3.13 installed. Not recommended for end users — use the frozen exe.
+Requires Python 3.13 installed. This is for developers iterating on code — end users should use the frozen exe from Option A or Option B.
+
+---
 
 ### Verify your build environment
+
+Before building, confirm your machine has everything:
 
 ```powershell
 python --version            # should be Python 3.13.x
@@ -144,50 +213,76 @@ runtime\python.exe --version  # bundled interpreter version
 
 ---
 
-## 🖥️ Running on your own machine
+## 🖥️ Running the app on your own machine
 
-This is the procedure for getting the frozen exe running on any Windows 10+ machine — yours, a borrowed HD, or a second PC.
+This is the full, step-by-step procedure for getting the app running on any Windows 10+ machine — yours, a second PC, or a borrowed hard drive. Nothing needs to be installed on the machine that runs it; the frozen exe already contains Python 3.13, Tcl/Tk, and 7-Zip.
 
-**Step 1 — Build the frozen exe once on your machine**
+### Step 1 — Get the app folder onto the machine
 
-```powershell
-python tools\build_frozen.py
+Either download a release zip from GitHub and extract it, or copy the `dist\steam_game_organizer\` folder you built on another machine. Place it somewhere permanent, for example `E:\Games\Steam Game Organizer\`.
+
+### Step 2 — Launch the app
+
+Open the folder and double-click:
+
+```
+steam_game_organizer.exe
 ```
 
-This produces `dist\steam_game_organizer\steam_game_organizer.exe` plus the self-contained `runtime/` folder (Python 3.13, Tcl/Tk, 7-Zip) inside it. The build preserves your existing `config/`, `cache/`, and `logs/` if a previous bundle exists.
+The app maximizes to full screen on start. On first launch it opens the setup wizard automatically — there is nothing to configure before this point.
 
-**Step 2 — Launch it**
+### Step 3 — Complete the setup wizard
 
-```powershell
-dist\steam_game_organizer\steam_game_organizer.exe
-```
-
-No Python, 7-Zip, or anything else is needed on the machine that runs it. The app maximizes to full screen on start.
-
-**Step 3 — First launch opens the setup wizard**
-
-Pick three folders:
+The wizard asks for three folders. Fill in each one, then click **Save setup**.
 
 | Folder | What it is | Example |
 |--------|------------|---------|
-| 📁 **Game library** | Where your `.zip`/`.rar`/`.7z` archives live | `E:\Games\Steam Library` |
-| 📁 **App folder** | Where the app itself lives (detected automatically) | Frozen exe: `dist\steam_game_organizer\`<br>Source: project root where `steam_game_organizer.py` sits |
-| 📁 **Extract to** | Where extracted games go (any folder outside your library) | `E:\Games\Extracted` |
+| 📁 **Game library** | The folder your `.zip`/`.rar`/`.7z` game archives live in. Point it at your existing game library folder. | `E:\Games\Steam Library` |
+| 📁 **App folder** | Where this copy of the app lives. The wizard pre-fills this automatically to the folder containing the running exe. | `E:\Games\Steam Game Organizer\dist\steam_game_organizer\` |
+| 📁 **Extract to** | Where games are unpacked to when you click Extract. Must be outside your game library so unpacked loose files are not mistaken for games. | `E:\Games\Extracted` |
 
-**Step 4 — Drive letters auto-resolve**
+The wizard validates each folder before saving:
+- The game library must exist (or be creatable).
+- The app folder must contain `steam_game_organizer.exe` or `steam_game_organizer.py`.
+- The extract folder must be writable and must not sit inside the game library.
+- If no extraction tool (`7z.exe`) is found, a warning appears — Extract will not work until one is available (the frozen bundle already ships `runtime\7z.exe`, so this normally passes).
+- The `steamgameorganizer://` protocol handler is registered under `HKCU\Software\Classes` (per-user, no administrator elevation needed). This is what lets the catalog's Extract buttons launch the desktop app from your browser.
 
-When the stored library path doesn't exist on this machine (a borrowed HD got a different drive letter), `AppConfig.load()` auto-resolves `library_root` to the folder beside the app. The library always lives next to the app whatever drive letter a borrowed HD gets. Extract folders are kept as stored, so you choose where extraction goes through the Setup wizard rather than having a path silently rewritten.
+### Step 4 — Drive letters auto-resolve (borrowed drives)
 
-**Step 5 — Open Game Library.html**
+If you are running from a borrowed hard drive whose drive letter changed, the app detects that the stored library path no longer exists and auto-resolves `library_root` to the folder beside the app. The library always lives next to the app whatever drive letter the drive gets. Extract folders are kept as stored, so you choose where extraction goes through the wizard rather than having a path silently rewritten.
 
-Open `Game Library.html` in your browser; click **Set up on this PC** to re-point folders if needed.
+### Step 5 — Scan your library
 
-**Step 6 — Click Refresh catalog after external changes**
+Back in the main window, click **Scan**. The app walks every category folder under your library root, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork), and builds a list of detected games.
 
-So unpacked badges re-check disk. An extraction done outside the app leaves stale badges until the catalog is regenerated.
+### Step 6 — Review the detected games
+
+Open the **Review** screen. Each detected game shows its suggested category, matched AppID, and confidence. You can:
+- **Accept** a game to file it under the suggested category.
+- **Override** the category or Steam match if the app guessed wrong.
+- **Skip** a game to leave it out of the catalog.
+
+The app never guesses — it only matches an archive to Steam when it is confident. Two archives of the same game never compete: duplicates are swept so the newest version is promoted and older copies move to `Archive/` for your review.
+
+### Step 7 — Organize the library
+
+Click **Organize**. The app files each accepted archive into `Category / Game — release date` folders, rebuilds `.zip`/`.rar` archives as `.7z` for better compression, writes metadata and Steam shortcuts, and downloads artwork. Every move is journaled so it can be undone.
+
+### Step 8 — Open your catalog
+
+Click **Open catalog** (or open `Game Library.html` in your browser directly). This is a single self-contained HTML file with embedded CSS and vanilla JavaScript — no build step, no external requests. Every game card shows artwork, release date, developer, archive size, genre and tag chips, and action buttons: Play, Open in Steam, Open folder, Copy path, and Extract.
+
+### Step 9 — Extract games (optional)
+
+From any game card, click **Extract** to unpack the archive to your chosen extract folder. The browser hands the request to the desktop app through the `steamgameorganizer://` protocol handler you registered in setup. You can also extract whole categories or the entire library with **Extract all** / **Extract remaining** — these confirm on evidence (archive count, total size, destination) before starting, so a large run cannot silently fill a drive.
+
+### Step 10 — Refresh catalog after external changes
+
+If you add, remove, or rearrange archives outside the app, click **Refresh catalog** so the unpacked badges and game list re-check what is actually on disk now.
 
 > [!TIP]
-> The `runtime/` folder makes the copy self-contained — Python, Tcl/Tk, and 7-Zip included. Windows 10 or later required. The only thing a fresh copy needs is a one-time registry step if you want Extract links from the browser: `runtime\python.exe tools\install_protocol_handler.py`.
+> The `runtime/` folder inside the app makes the copy self-contained — Python 3.13, Tcl/Tk, and 7-Zip included. Windows 10 or later is required. The only thing a fresh copy needs is the one-time setup wizard (run automatically on first launch) to point the app at your library and extract folder and to register the `steamgameorganizer://` link so Extract buttons work from your browser.
 
 ---
 

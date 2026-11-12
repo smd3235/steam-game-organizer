@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-12 18:10:00 — docs: expand README install & run instructions with detailed step-by-step GitHub acquisition
+
+- `README.md`: Expanded "Get the app" and "Running the app on your own machine" into detailed, 1-by-1 procedures covering both acquisition paths (download a release and build from source), Python 3.13 / 7-Zip / build-tool installation, cloning, building the frozen exe, the full setup wizard flow (three folders, drive-letter resolution, protocol handler registration), scan → review → organize → catalog → extract workflow, and what happens on a fresh PC. No behavior change — documentation only.
+
 ### 2026-11-12 17:55:00 — docs: overhaul README.md with deeper, more detailed user-facing sections
 
 - `README.md`: Rewrote every user-facing section for depth and scanability. Expanded "Running on your own machine" into a numbered end-to-end procedure; added System requirements, What it does not do, and Drive letter resolution & moving PCs sections; gave Install & run, setup wizard, protocol handler, CLI flags, catalog page mechanics, extraction markers, undo journal, troubleshooting, and FAQ full step-by-step tables and copy-pasteable examples. Kept all existing developer cross-links and the quick-links-to-code index. No behavior change — documentation only.
