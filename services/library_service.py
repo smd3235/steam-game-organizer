@@ -270,8 +270,16 @@ class LibraryService:
         AUDIT_SKIP_ARTWORK: "artwork download skipped",
     }
 
-    def __init__(self, logger):
+    def __init__(self, logger, config_dir=None):
         self.logger = logger
+        self._config_dir = Path(config_dir) if config_dir else None
+
+    def _config_dir_for(self, library_root):
+        """Return the config directory for scan state. Uses the app's project-root config_dir when
+        available, otherwise falls back to library_root.parent/config for backward compatibility."""
+        if self._config_dir is not None:
+            return self._config_dir
+        return Path(library_root).parent / "config"
 
     def _load_scan_state(self, library_root):
         """Load the incremental scan state from config/scan-state.json.
@@ -280,7 +288,7 @@ class LibraryService:
         or None if no state exists.
         """
         try:
-            config_dir = Path(library_root).parent / "config"
+            config_dir = self._config_dir_for(library_root)
             state_file = config_dir / "scan-state.json"
             if not state_file.is_file():
                 return None
@@ -296,7 +304,7 @@ class LibraryService:
         Merges with existing scan state to preserve other summary fields.
         """
         try:
-            config_dir = Path(library_root).parent / "config"
+            config_dir = self._config_dir_for(library_root)
             state_file = config_dir / "scan-state.json"
             existing = {}
             if state_file.is_file():

@@ -29,16 +29,24 @@ _installer_kind_cache: dict[str, tuple[int, int, InstallSignature | None]] = {}
 
 
 class ArchiveService:
-    def __init__(self, logger, mock=False):
+    def __init__(self, logger, mock=False, config_dir=None):
         self.logger = logger
         self.mock = mock
         # Cache for directory mtimes to enable incremental discovery
         self._discovery_cache = {}
+        self._config_dir = Path(config_dir) if config_dir else None
+
+    def _config_dir_for(self, library_root):
+        """Return the config directory for scan state. Uses the app's project-root config_dir when
+        available, otherwise falls back to library_root.parent/config for backward compatibility."""
+        if self._config_dir is not None:
+            return self._config_dir
+        return Path(library_root).parent / "config"
 
     def _load_discovery_cache(self, library_root):
         """Load directory mtimes from config/scan-state.json for incremental discovery."""
         try:
-            config_dir = Path(library_root).parent / "config"
+            config_dir = self._config_dir_for(library_root)
             state_file = config_dir / "scan-state.json"
             if not state_file.is_file():
                 return {}
@@ -50,7 +58,7 @@ class ArchiveService:
     def _save_discovery_cache(self, library_root, dir_mtimes):
         """Save directory mtimes to config/scan-state.json for incremental discovery."""
         try:
-            config_dir = Path(library_root).parent / "config"
+            config_dir = self._config_dir_for(library_root)
             state_file = config_dir / "scan-state.json"
             existing = {}
             if state_file.is_file():

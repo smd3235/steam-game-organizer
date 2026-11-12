@@ -42,7 +42,7 @@ class Application:
         self.bus = EventBus()
         self.jobs = JobManager()
         services = type("Services", (), {})()
-        services.archive = ArchiveService(self.logger, mock=mock)
+        services.archive = ArchiveService(self.logger, mock=mock, config_dir=self.config.config_dir)
         services.steam = SteamService(self.logger, mock=mock, cache_file=self.config.config_dir / "steam-matches.json")
         services.artwork = ArtworkService(
             self.config.artwork_dir,
@@ -52,7 +52,7 @@ class Application:
         )
         services.organizer = OrganizerService(self.logger, convert_archives=lambda: self.config.convert_archives)
         services.rollback = RollbackService(self.config.project_root, self.logger, organizer=services.organizer)
-        services.library = LibraryService(self.logger)
+        services.library = LibraryService(self.logger, config_dir=self.config.config_dir)
         services.catalog = CatalogService(self.logger, extract_folders=self.config.extract_folders)
         self.services = services
         self.controller = AppController(self.state, self.bus, self.logger, services, self.jobs, dispatch=self._dispatch)
