@@ -3,6 +3,10 @@
 # the persisted scan-state.json cache, so a re-scan of an unchanged library costs one stat per directory instead
 # of one per file. discover() gained a use_cache parameter; batch_extract_service passes False so plan_batch
 # always sees fresh archives. Removed now-unused walk_files import.
+# 2026-11-12: _config_dir_for now resolves config inside the project root
+# (Path(__file__).resolve().parents[1] / "config") instead of library_root.parent/config which leaked outside
+# the project to E:\config. application.py still passes config_dir=self.config.config_dir explicitly; this
+# fallback covers every other caller.
 from pathlib import Path
 import os
 import re
@@ -38,10 +42,11 @@ class ArchiveService:
 
     def _config_dir_for(self, library_root):
         """Return the config directory for scan state. Uses the app's project-root config_dir when
-        available, otherwise falls back to library_root.parent/config for backward compatibility."""
+        available, otherwise falls back to project_root/config (inside the project) instead of
+        library_root.parent/config which resolved outside the project root."""
         if self._config_dir is not None:
             return self._config_dir
-        return Path(library_root).parent / "config"
+        return Path(__file__).resolve().parents[1] / "config"
 
     def _load_discovery_cache(self, library_root):
         """Load directory mtimes from config/scan-state.json for incremental discovery."""

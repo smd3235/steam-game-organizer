@@ -19,7 +19,8 @@ import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from core.logger import AppLogger
-from services.catalog_service import CatalogService, LibrarySummary
+from core.library_summary import LibrarySummary
+from services.catalog_service import CatalogService
 
 
 class CountingCatalog(CatalogService):

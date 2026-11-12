@@ -5,8 +5,13 @@
 
 ## 9.33
 
+### 2026-11-12 23:30:00 — refactor: split LibrarySummary out of catalog_service.py into core/library_summary.py
+- `core/library_summary.py`: New module holding the `LibrarySummary` frozen dataclass (categories, genre_placement, developer_placement, total_games, built_at, indexed, categories_for_genres(), precedent_for(), from_categories()) — pure data index built from the catalog walk, no I/O or logging.
+- `services/catalog_service.py`: Removed the `LibrarySummary` class definition and its `dataclass`/`field`/`time` imports; imports `LibrarySummary` from `core.library_summary` instead. All internal references unchanged (`LibrarySummary.from_categories()`, `LibrarySummary()`).
+- `tests/test_library_summary.py`: Imports `LibrarySummary` from `core.library_summary` instead of `services.catalog_service`.
+
 ### 2026-11-12 23:15:00 — fix: config/scan-state.json no longer leaks onto the library volume root
-- `services/archive_service.py`: `ArchiveService` now accepts an explicit `config_dir` parameter (from the app's project root) instead of deriving `library_root.parent / "config"` — which put `scan-state.json` on `E:\config` when the library root was `E:\Game Installers`. Falls back to the old derivation when no `config_dir` is passed.
+- `services/archive_service.py`: `ArchiveService` now accepts an explicit `config_dir` parameter (from the app's project root). Falls back to `project_root / "config"` (inside the project) instead of `library_root.parent / "config"` which put `scan-state.json` on `E:\config` when the library root was `E:\Game Installers`.
 - `services/library_service.py`: Same fix — `LibraryService` accepts `config_dir` and uses it for scan-state reads/writes instead of `library_root.parent / "config"`.
 - `app/application.py`: Passes `self.config.config_dir` to both `ArchiveService` and `LibraryService` so scan state lives inside the project's `config/` folder, not on the drive root.
 
