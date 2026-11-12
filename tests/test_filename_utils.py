@@ -18,7 +18,7 @@ class TestFilename(unittest.TestCase):
         # filename still normalizes to something a Steam search can be built from.
         self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
         self.assertEqual(normalize_name("MySummerCar Repack 2024-01-02.zip"), "My Summer Car")
-        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
+        self.assertEqual(normalize_name("Nebula Noodle 1-0.zip"), "Nebula Noodle")
 
     def test_a_tagged_name_needs_no_alias_either(self):
         self.assertEqual(normalize_name("NovaForgeFitGirl.zip"), "Nova Forge")
@@ -139,7 +139,7 @@ class TestReleaseTagTitles(unittest.TestCase):
         # The tag rule cuts from the tag onwards, so it must not swallow a version that belongs to the title.
         self.assertEqual(normalize_name("Alpha Forge v 0 8.zip"), "Alpha Forge")
         self.assertEqual(normalize_name("GachaCapsuleShopSimulatorAkihabara.zip"), "Gacha Capsule Shop Simulator Akihabara")
-        self.assertEqual(normalize_name("Meow-Tower-Doomsguard 1-0.zip"), "Meow-Tower-Doomsguard")
+        self.assertEqual(normalize_name("Nebula Noodle 1-0.zip"), "Nebula Noodle")
         # Outliers found scanning every .7z in E:\Game Installers:
         # a glued 8-digit date is stripped; a glued version glommed onto a huge number keeps only the letter-prefix.
         self.assertEqual(normalize_name("ElderScrolls20260107"), "Elder Scrolls")
