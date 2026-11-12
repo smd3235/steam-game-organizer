@@ -53,7 +53,7 @@ class ArtworkResult:
     def files(self) -> list[Path]:
         """Every image this result really holds on disk: the primary plus each downloaded asset.
 
-        Steam serves a game's pictures either way. A real run over Incremedieval.7z came back with an empty
+        Steam serves a game's pictures either way. A real run over GlowStickSamurai.7z came back with an empty
         primary and five real assets - header_image, capsule_image, background and the rest - which
         OrganizerService.move() copies into the game folder in full. So a screen that asks only whether
         `path` is set reports that game as having no artwork at all, while its folder holds five of them.

@@ -312,7 +312,7 @@ class ArtworkService:
                 return result
         # Not a warning: only the primary image is missing here. The primary and the asset URLs are different
         # families on different hosts, so a game whose library capsule 404s routinely has working asset URLs
-        # behind it. A live run of Incremedieval.7z downloaded five images and was logged as UNAVAILABLE,
+        # behind it. A live run of GlowStickSamurai.7z downloaded five images and was logged as UNAVAILABLE,
         # because this fired before download_assets() had tried them. download_assets() decides the real
         # severity once the whole attempt is known.
         self.logger.debug("ARTWORK", f"PRIMARY_UNAVAILABLE appid={appid} reason=[all_steam_sources_failed]")

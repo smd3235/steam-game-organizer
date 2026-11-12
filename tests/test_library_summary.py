@@ -107,7 +107,7 @@ class TestRetention(unittest.TestCase):
         """
         with TemporaryDirectory() as d:
             root = Path(d)
-            archive(game(root, "RPG", "Fell & Sell"), "f.zip", 300)
+            archive(game(root, "RPG", "BouncyCastle"), "f.zip", 300)
             catalog = service(root)
             first = catalog.library_summary(root)
             second = catalog.library_summary(root)

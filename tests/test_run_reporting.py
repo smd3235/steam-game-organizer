@@ -384,7 +384,7 @@ class HiddenFoldersAreNotLibraryContent(unittest.TestCase):
 class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
     """A game whose artwork arrived as assets rather than as one primary image has to be reported as having artwork.
 
-    Found by running the real pipeline over a real archive - Incremedieval.7z, the smallest in a 176-archive,
+    Found by running the real pipeline over a real archive - GlowStickSamurai.7z, the smallest in a 176-archive,
     244 GB library. Steam's API serves this game's pictures as asset URLs (`header_image`, `capsule_image`,
     `background`, ...) and the primary image cache came back empty, so `ArtworkResult.path` was None while
     `ArtworkResult.assets` held five real files. OrganizerService.move() copies every one of them into the game
@@ -410,12 +410,12 @@ class ArtworkArrivingAsAssetsIsStillArtwork(unittest.TestCase):
         from core.models import ArtworkResult, OrganizationDecision
 
         return GameArchive(
-            path=Path("Games/Idle/Incremedieval - 2026-09-03/Incremedieval.7z"),
-            display_name="Incremedieval",
-            normalized_title="Incremedieval",
-            identity_key="incremedieval",
+            path=Path("Games/Idle/GlowStickSamurai - 2026-09-03/GlowStickSamurai.7z"),
+            display_name="GlowStickSamurai",
+            normalized_title="GlowStickSamurai",
+            identity_key="glowsticksamurai",
             extension=".7z",
-            steam=SteamMatch(found=True, appid="5076690", name="Incremedieval"),
+            steam=SteamMatch(found=True, appid="77777", name="GlowStickSamurai"),
             artwork=ArtworkResult(status="ready", path=primary, assets=assets or {}),
             decision=OrganizationDecision(category="Idle", accepted=True),
             conversion=ConversionResult(status="converted"),

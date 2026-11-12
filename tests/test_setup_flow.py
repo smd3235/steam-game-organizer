@@ -79,10 +79,10 @@ class TheLinkCarriesTheThreeFolders(unittest.TestCase):
         self.assertEqual((request.library, request.extract, request.app), ("", "", ""))
 
     def test_a_link_carries_the_page_paths(self):
-        request = parse_setup_uri("steamgameorganizer://setup?library=E%3A%2FGames&extract=E%3A%2FOut&app=E%3A%2FApp")
-        self.assertEqual(request.library, "E:/Games")
-        self.assertEqual(request.extract, "E:/Out")
-        self.assertEqual(request.app, "E:/App")
+        request = parse_setup_uri("steamgameorganizer://setup?library=F%3A%2FFunZone&extract=F%3A%2FOut&app=F%3A%2FApp")
+        self.assertEqual(request.library, "F:/FunZone")
+        self.assertEqual(request.extract, "F:/Out")
+        self.assertEqual(request.app, "F:/App")
 
     def test_the_wrong_scheme_is_refused(self):
         with self.assertRaises(UriRefused):
@@ -329,20 +329,20 @@ class TheEntryPointOpensTheWizard(unittest.TestCase):
     def test_a_setup_link_opens_the_wizard_with_the_page_paths(self):
         opened = []
         with unittest.mock.patch.object(steam_game_organizer, "_open_setup", side_effect=lambda *args, **kwargs: opened.append((args, kwargs)) or 0):
-            code = steam_game_organizer._handle_uri("steamgameorganizer://setup?library=E%3A%2FGames&extract=E%3A%2FOut", self.config, self.logger)
+            code = steam_game_organizer._handle_uri("steamgameorganizer://setup?library=F%3A%2FFunZone&extract=F%3A%2FOut", self.config, self.logger)
         self.assertEqual(code, 0)
         self.assertEqual(len(opened), 1)
         args, kwargs = opened[0]
         self.assertEqual(args, (self.config, self.logger))
-        self.assertEqual(kwargs["prefill"].library, "E:/Games")
-        self.assertEqual(kwargs["prefill"].extract, "E:/Out")
+        self.assertEqual(kwargs["prefill"].library, "F:/FunZone")
+        self.assertEqual(kwargs["prefill"].extract, "F:/Out")
 
     def test_an_extract_link_is_not_a_setup_link(self):
         # The setup branch must not swallow the extract action: a link
         # naming an archive outside the configured library is refused,
         # not opened as a setup wizard.
         with unittest.mock.patch.object(steam_game_organizer, "_open_setup") as wizard:
-            code = steam_game_organizer._handle_uri("steamgameorganizer://extract?src=E%3A%2FGames%2Fgame.7z", self.config, self.logger)
+            code = steam_game_organizer._handle_uri("steamgameorganizer://extract?src=F%3A%2FFunZone%2Fgame.7z", self.config, self.logger)
         wizard.assert_not_called()
         self.assertEqual(code, 2)
 

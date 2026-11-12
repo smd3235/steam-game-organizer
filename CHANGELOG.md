@@ -5,6 +5,16 @@
 
 ## 9.33
 
+### 2026-11-12 19:05:00 — security: replaced real Steam game names, appids, and paths with fakes
+- `tests/test_displayed_data.py`: DOOM/appid 322330 → Fake Game/appid 999999; APPDETAILS_KEYS_322330 → APPDETAILS_KEYS_999999; APPDETAILS_KEYS_1091500 → APPDETAILS_KEYS_000000.
+- `tests/test_services.py`: Prison Architect/appid 1614040 → Fake Game/appid 55555; The Witcher 3/appid 1128810 → Another Fake Game/appid 66666; Fell & Sell/appid 261650 → Fake Game/appid 55555; Incremedieval/appid 5076690 → FakeArchive/appid 77777.
+- `tests/test_run_reporting.py`: Incremedieval/appid 5076690 → GlowStickSamurai/appid 77777.
+- `tests/test_library_summary.py`: Fell & Sell → BouncyCastle.
+- `services/organizer_service.py`: comment naming Fell & Sell → BouncyCastle.
+- `core/models.py`: comment naming Incremedieval → GlowStickSamurai.
+- `services/artwork_service.py`: comment naming Incremedieval → GlowStickSamurai.
+- `tests/test_setup_flow.py`: E:/Games library path → F:/FunZone.
+
 ### 2026-11-12 18:45:00 — fix: protected system paths can never be deletion targets
 - `core/path_safety.py`: Added `protected_roots()` and `is_protected()` — the Windows directory, Program Files, Users, and every drive root are always refused, even when they fall within an allowed root. Drive roots protect only themselves (`rmtree("C:\")` is blocked, `C:\Games` is left to the allowed-root check); Windows/Program Files/Users protect their entire subtree. `DeletionGuard.refuse_outside()` checks protected paths before allowed roots, so a misconfigured `library_root` (e.g. `C:\` or `C:\Windows`) can never open the system to deletion.
 - `tests/test_path_safety.py`: New file with 16 tests covering protected-root identification, `is_protected()` behavior, and `DeletionGuard` refusal of protected paths via `refuse_outside()`, `rmtree()`, and `unlink()`.
