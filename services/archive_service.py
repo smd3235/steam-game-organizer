@@ -81,25 +81,6 @@ class ArchiveService:
         except (OSError, TypeError, ValueError):
             pass
 
-    def _get_dir_mtime(self, dir_path):
-        """Get the most recent mtime of files in a directory that matter for discovery."""
-        try:
-            dir_path = Path(dir_path)
-            if not dir_path.is_dir():
-                return 0
-            max_mtime = 0
-            for item in dir_path.rglob("*"):
-                if item.is_file():
-                    try:
-                        mtime = item.stat().st_mtime_ns
-                        if mtime > max_mtime:
-                            max_mtime = mtime
-                    except OSError:
-                        pass
-            return max_mtime
-        except OSError:
-            return 0
-
     def _walk_changed_files(self, root, dir_mtimes_cache):
         """Collect files under root, skipping directories whose mtime hasn't changed since the last scan.
 
@@ -154,7 +135,7 @@ class ArchiveService:
 
         return files, updated
 
-    def discover(self, root, ctx=None, progress=None, new_only=False, unlock_zip=False, preview_only=False, use_cache=True):
+    def discover(self, root: str | Path, ctx=None, progress=None, new_only: bool = False, unlock_zip: bool = False, preview_only: bool = False, use_cache: bool = True) -> ScanResult:
         if self.mock:
             return self._mock(ctx, progress)
         root = Path(root).expanduser().resolve()
@@ -287,7 +268,7 @@ class ArchiveService:
                 pass
         return count, total
 
-    def archive_installer_kind(self, path):
+    def archive_installer_kind(self, path: str | Path):
         """''iso', 'repack', or None: whether the archive at `path` is an installer rather than a ready-to-play game.
 
         Reads only the archive's own index - never its payload. Best-effort: any failure (no extraction tool, a

@@ -97,9 +97,6 @@ def normalize_name(value: str) -> str:
     # Content / packaging words at the end: UNCUT, UNCENSORED, GORE, NODVD, NO-DVD, FIX,
     # STANDALONE, ONLY - describe the release, not the game.
     value = CONTENT_TAG.sub(" ", value)
-    # Content / packaging words at the end: UNCUT, UNCENSORED, GORE, NODVD, NO-DVD, FIX,
-    # STANDALONE, ONLY - describe the release, not the game.
-    value = CONTENT_TAG.sub(" ", value)
     # Remove trailing indicators like (2), [Copy], (v2), etc. that should not affect identity
     # Remove all such trailing indicators (there may be more than one)
     while True:

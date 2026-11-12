@@ -148,6 +148,12 @@ _SHARED_POOL = _ConnectionPool()
 # another subprocess. Self-invalidating: a converted archive changes path or mtime.
 _appid_in_archive_cache: dict[str, tuple[int, int, str]] = {}
 
+# Cache for Steam appdetails API responses: {appid: (fetch_time, details_dict)}.
+# appdetails responses rarely change for a given appid, so caching avoids
+# repeated network calls for the same game during a scan. Self-invalidating by TTL.
+_details_cache: dict[str, tuple[float, dict]] = {}
+_DETAILS_CACHE_TTL_SECONDS = 3600  # 1 hour
+
 
 # How close an AppID read out of an archive has to look to the filename before it is believed. Low enough to
 # accept the punctuation and packaging differences a filename carries, high enough to reject a copy-pasted or
@@ -272,7 +278,7 @@ class SteamService:
             ctx.checkpoint()
         return json.loads(data.decode("utf-8", errors="replace"))
 
-    def lookup(self, title, ctx=None, refresh=False, archive_path=None):
+    def lookup(self, title: str, ctx=None, refresh: bool = False, archive_path: str | Path | None = None):
         key = identity_key(title)
         # Fast path 1: AppID from archive filename (e.g., "Game Name - 12345.zip")
         # This is the fastest - just parses the filename, no I/O at all.
@@ -747,13 +753,22 @@ class SteamService:
             return None, 0.0
         return ranked[0][1], ranked[0][0]
 
-    def _details(self, appid, ctx):
+    def _details(self, appid: str, ctx=None) -> dict:
         if not appid:
             return {}
+        # Cache hit: return cached details if not expired
+        now = time.monotonic()
+        cached = _details_cache.get(appid)
+        if cached and (now - cached[0]) < _DETAILS_CACHE_TTL_SECONDS:
+            self.logger.debug("STEAM", f"DETAILS_CACHE_HIT appid={appid}")
+            return cached[1]
         try:
             url = f"https://store.steampowered.com/api/appdetails?appids={quote(appid)}&cc=us&l=en"
             data = self._request_json(url, ctx)
-            return ((data.get(appid) or {}).get("data") or {}) if isinstance(data, dict) else {}
+            details = ((data.get(appid) or {}).get("data") or {}) if isinstance(data, dict) else {}
+            # Cache the response (even empty) to avoid repeat network calls
+            _details_cache[appid] = (now, details)
+            return details
         except CancellationError:
             raise
         except Exception as exc:

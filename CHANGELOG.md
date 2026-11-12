@@ -5,6 +5,12 @@
 
 ## 9.33
 
+### 2026-11-12 23:10:00 — perf: remove dead code, cache Steam API responses, fix redundant work
+- `utils/filename_utils.py`: Removed duplicate `CONTENT_TAG.sub()` call that ran the same regex twice on every filename normalization.
+- `services/archive_service.py`: Removed dead `_get_dir_mtime()` method that walked every file under each directory via `rglob("*")` but was never called — it was invisible overhead with zero benefit.
+- `services/steam_service.py`: Added `_details_cache` — Steam `appdetails` API responses keyed by AppID with a 1-hour TTL, so repeated lookups of the same game during a scan are dict lookups instead of network round trips.
+- `services/archive_service.py`, `services/steam_service.py`: Added type hints to `discover()`, `archive_installer_kind()`, `lookup()`, `_details()` public method signatures.
+
 ### 2026-11-12 20:40:00 — security: replaced all real game names in source and tests with fakes
 - `tests/test_filename_utils.py`: Replaced DOOM, The Witcher 3, Prison Architect, Fell & Sell, Incremedieval, Elder Scrolls, Baldur's Gate 3, Portal 2, GTA5, Half-Life 2, Rust, Brave New Wonders, My Summer Car, Sintopia, Nivalis Nights, Mars Attracts, Star Trek, Kingdoms and Castles, Lawn Mowing Simulator, Crystal Realms, Nova Launcher with fictional names (Sir Beats Alot, Dancing Pickle, Trampoline Tornado, Mystery Archive, Glow Stick Samurai, Stellar Squirrel, Nebula Noodle, MegaMartTycoon, Realm Castles, Pixel & Chase, Steam & Solder, Time Scrolls, Mega Launcher, Void Realms 7x9b, etc.).
 - `tests/test_services.py`: Replaced Sintopia → SunTopia, Kingdoms And Castles → Realm Castles, Epsilon Online → Nebula Online, Divinity Original Sin 2 → Astral Original Sin 2, Cities Skylines II → Town Skylines II, Kingdoms & Castles → Realm & Castles, Dark Souls III → Dark Blades III, Resident Evil 4 → Evil Resident 4, Star Trek Voyager → Star Horizon Voyager.
