@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-12 17:55:00 — docs: overhaul README.md with deeper, more detailed user-facing sections
+
+- `README.md`: Rewrote every user-facing section for depth and scanability. Expanded "Running on your own machine" into a numbered end-to-end procedure; added System requirements, What it does not do, and Drive letter resolution & moving PCs sections; gave Install & run, setup wizard, protocol handler, CLI flags, catalog page mechanics, extraction markers, undo journal, troubleshooting, and FAQ full step-by-step tables and copy-pasteable examples. Kept all existing developer cross-links and the quick-links-to-code index. No behavior change — documentation only.
+
 ### 2026-11-11 22:08:00 — fix: project root resolution always lands config under the project
 
 - `steam_game_organizer.py`: `root_path` now always searches upward from the entry point for `steam_game_organizer.py` to find the true project root, regardless of frozen or source mode. Previously the upward search only ran when frozen, so a source launch with an unusual `__file__` resolution could set `project_root` to an unrelated drive root (e.g. `E:\`) and write `config/`, `cache/`, `logs/` there instead of beside the app. Removed the misplaced `E:\config` that was created under the wrong root.
