@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-12 23:55:00 — refactor: split naming utilities out of organizer_service.py into core/naming_utils.py
+- `core/naming_utils.py`: New module holding pure naming functions extracted from `OrganizerService` — `safe_name()`, `release_label()`, `game_name()`, `asset_prefix()`, `modified_at()`, `path_promotion_key()`, `promotion_key()`, `unique_dir()`. No I/O except `modified_at()` (stats only) and `unique_dir()` (existence checks only). Called externally via `OrganizerService.__new__(OrganizerService)._method()` before; now importable directly.
+- `services/organizer_service.py`: Removed the 8 naming method definitions and their `datetime`/`re`/`version_key` imports; imports the functions from `core.naming_utils` instead. Kept thin wrapper methods (`_safe_name`, `_release_label`, `_game_name`, `_asset_prefix`, `_modified_at`, `_path_promotion_key`, `_promotion_key`, `_unique_dir`) that delegate to the module functions so existing callers (`ui/artwork_view.py`, `services/library_service.py`, tests) keep working. Internal call sites now use the module functions directly.
+
 ### 2026-11-12 23:30:00 — refactor: split LibrarySummary out of catalog_service.py into core/library_summary.py
 - `core/library_summary.py`: New module holding the `LibrarySummary` frozen dataclass (categories, genre_placement, developer_placement, total_games, built_at, indexed, categories_for_genres(), precedent_for(), from_categories()) — pure data index built from the catalog walk, no I/O or logging.
 - `services/catalog_service.py`: Removed the `LibrarySummary` class definition and its `dataclass`/`field`/`time` imports; imports `LibrarySummary` from `core.library_summary` instead. All internal references unchanged (`LibrarySummary.from_categories()`, `LibrarySummary()`).

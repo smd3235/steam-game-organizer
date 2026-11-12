@@ -11,7 +11,6 @@ import json
 # Imports split one per line for GitHub readability.
 import ctypes
 from html import escape
-from datetime import datetime
 import re
 from core.constants import (
     canonical_category,
@@ -29,8 +28,17 @@ from core.constants import (
     DEFAULT_ZIP_PASSWORD,
 )
 from core.exceptions import CancellationError
+from core.naming_utils import (
+    asset_prefix,
+    game_name,
+    modified_at,
+    path_promotion_key,
+    promotion_key,
+    safe_name,
+    release_label,
+    unique_dir,
+)
 from services.extract_service import ExtractService
-from utils.filename_utils import version_key
 
 # Unmistakable markers so a leftover temp file or extraction folder can never be mistaken for real content,
 # and so LibraryService.cleanup_leftovers() can recognise exactly what this app created.
@@ -68,55 +76,33 @@ class OrganizerService:
         setting = self._convert_setting
         return bool(setting() if callable(setting) else setting)
 
+    # Naming helpers now live in core.naming_utils as module-level functions. These thin wrappers keep
+    # existing callers (artwork_view, library_service, tests) working without importing the module
+    # themselves; new code can import directly from core.naming_utils.
+
     def _safe_name(self, value):
-        value = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", str(value or "")).strip().rstrip(".")
-        return re.sub(r"\s+", " ", value) or "Unnamed Game"
+        return safe_name(value)
 
     def _release_label(self, release_date):
-        value = str(release_date or "Unknown Release Date").strip()
-        for pattern in ("%d %b, %Y", "%b %d, %Y", "%Y-%m-%d", "%d %B, %Y", "%B %d, %Y"):
-            try:
-                return datetime.strptime(value, pattern).strftime("%Y-%m-%d")
-            except ValueError:
-                pass
-        return self._safe_name(value)
+        return release_label(release_date)
 
     def _game_name(self, archive):
-        # The title is sanitised before the date is added, not after. Sanitising the composed string leaves the
-        # date behind, so a title built only from characters Windows forbids produced a folder called
-        # "- 2020-03-04" with the game name gone and _safe_name's "Unnamed Game" fallback unreachable - while
-        # _asset_prefix, which has no date to keep the string alive, did produce "Unnamed Game". The folder and
-        # the files inside it were named after different things.
-        title = self._safe_name(archive.steam.name or archive.user_title or archive.display_name)
-        return self._safe_name(f"{title} - {self._release_label(archive.steam.release_date)}")
+        return game_name(archive)
 
     def _asset_prefix(self, archive):
-        return self._safe_name(archive.steam.name or archive.user_title or archive.display_name)
+        return asset_prefix(archive)
 
     def _modified_at(self, path):
-        try:
-            return Path(path).stat().st_mtime
-        except OSError:
-            return 0
+        return modified_at(path)
 
     def _path_promotion_key(self, path):
-        """Same promotion rule as _promotion_key, but for a bare path. Used by the library audit, which
-        inspects already-organized folders where no GameArchive has been built yet."""
-        return version_key(Path(path).name), self._modified_at(path)
+        return path_promotion_key(path)
 
     def _promotion_key(self, archive):
-        """Promotion key for a GameArchive object - delegates to _path_promotion_key."""
-        return self._path_promotion_key(archive.path)
+        return promotion_key(archive)
 
     def _unique_dir(self, parent, name):
-        target = parent / name
-        if target.is_dir():
-            return target
-        n = 2
-        while target.exists():
-            target = parent / f"{name} ({n})"
-            n += 1
-        return target
+        return unique_dir(parent, name)
 
     def needs_catalog_launcher(self):
         """Whether a launcher file belongs beside the catalog on this machine.
@@ -1122,7 +1108,7 @@ class OrganizerService:
         # library take hours to change no file.
         if suffix == ".7z" and archive.steam.found and archive.steam.name:
             existing = self._content_folder_name(path)
-            if existing and self._safe_name(archive.steam.name) == self._safe_name(existing):
+            if existing and safe_name(archive.steam.name) == safe_name(existing):
                 report(f"{path.name} is already a .7z with the right content folder name; left unchanged", stage="skipped", message_text="this archive is already a .7z and the folder inside it is already named correctly")
                 if note:
                     note.status = "not_needed"
@@ -1217,7 +1203,7 @@ class OrganizerService:
             if not has_iso and archive.steam.found and archive.steam.name:
                 content_folder = self._find_generic_content_folder(temp_dir)
                 if content_folder is not None:
-                    new_folder = content_folder.with_name(self._safe_name(archive.steam.name))
+                    new_folder = content_folder.with_name(safe_name(archive.steam.name))
                     if new_folder != content_folder and not new_folder.exists():
                         content_folder.rename(new_folder)
                         renamed = True
@@ -1363,7 +1349,7 @@ class OrganizerService:
                 note.final_size = final_path.stat().st_size
                 note.source_size = original_stat.st_size
                 if renamed:
-                    note.message = f"Content folder renamed to {self._safe_name(archive.steam.name) or final_path.stem}"
+                    note.message = f"Content folder renamed to {safe_name(archive.steam.name) or final_path.stem}"
             return final_path
         except CancellationError:
             raise
@@ -1416,8 +1402,8 @@ class OrganizerService:
                 groups.setdefault(archive.identity_key, []).append(archive)
         changes = []
         for group in groups.values():
-            primary = max(group, key=self._promotion_key)
-            changes.append((primary.path, Path(destination) / primary.decision.category / self._game_name(primary) / primary.path.name))
+            primary = max(group, key=promotion_key)
+            changes.append((primary.path, Path(destination) / primary.decision.category / game_name(primary) / primary.path.name))
             for old in group:
                 if old is not primary:
                     changes.append((old.path, Path(destination) / "Archive" / old.path.name))
@@ -1425,10 +1411,10 @@ class OrganizerService:
 
     def move(self, archive, destination, on_progress=None):
         destination = Path(destination).expanduser().resolve()
-        category = self._safe_name(canonical_category((archive.decision.category or "Unsorted").strip() or "Unsorted"))
+        category = safe_name(canonical_category((archive.decision.category or "Unsorted").strip() or "Unsorted"))
         category_dir = destination / category
         category_dir.mkdir(parents=True, exist_ok=True)
-        game_dir = self._unique_dir(category_dir, self._game_name(archive))
+        game_dir = unique_dir(category_dir, game_name(archive))
         # Whether this run is the one that made the folder. Only then may a failed move take it away again: a
         # folder that was already there belongs to the user, empty or not.
         created_dir = not game_dir.is_dir()
@@ -1481,14 +1467,14 @@ class OrganizerService:
         archive.path = self._repack_with_official_name(archive, on_progress=on_progress, zip_password=DEFAULT_ZIP_PASSWORD, library_root=destination)
         target = archive.path
         archive.organized_path = target
-        prefix = self._asset_prefix(archive)
+        prefix = asset_prefix(archive)
         if archive.artwork.path and archive.artwork.path.is_file():
             shutil.copy2(str(archive.artwork.path), str(game_dir / f"{prefix}_grid{archive.artwork.path.suffix}"))
         if archive.artwork.assets:
             for name, path in archive.artwork.assets.items():
                 if path.is_file():
                     shutil.copy2(str(path), str(game_dir / f"{prefix}_{name}{path.suffix}"))
-        self.write_steam_links(game_dir, archive.steam.appid, self._asset_prefix(archive))
+        self.write_steam_links(game_dir, archive.steam.appid, asset_prefix(archive))
         self.write_metadata(game_dir, archive)
         self._remove_generated_source_folder(source, destination)
         self.logger.info("ORGANIZER", f"MOVE source=[{source}] destination=[{target}]")
