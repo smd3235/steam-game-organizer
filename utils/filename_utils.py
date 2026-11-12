@@ -73,7 +73,7 @@ def normalize_name(value: str) -> str:
     # "CRACK: TENOKE" is stripped as a whole rather than RELEASE_TAG eating "TENOKE" and leaving "CRACK:" behind.
     value = CRACK_TAG.sub(" ", value)
     # A release-group tag is a separator-delimited word, and everything from it on is packaging rather than the
-    # game: "Brave.New.Wonders-SteamRIP.com" is Brave New Wonders, and so is anything tagged -RELOADED or
+    # game: "Stellar.Squirrel-SteamRIP.com" is Stellar Squirrel, and so is anything tagged -RELOADED or
     # .REPACKED. Cutting at the first one is what makes the title matchable - the Steam query used to build its
     # variants from the tagged string, so it searched for "Mars Attracts-Steam" and never for "Mars Attracts".
     #

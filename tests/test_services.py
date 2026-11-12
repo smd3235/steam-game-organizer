@@ -2306,13 +2306,13 @@ class TestServices(unittest.TestCase):
         service = _steam(self)
 
         def fake_request(url, ctx=None):
-            if "meow" in url.casefold() and "doomsguard" in url.casefold():
-                return {"items": [{"id": "3461730", "name": "Meow Tower: Doomsguard"}]}
+            if "nebula" in url.casefold() and "noodle" in url.casefold():
+                return {"items": [{"id": "3461730", "name": "Nebula Noodle"}]}
             return {"items": []}
 
         service._request_json = fake_request
-        service._details = lambda appid, ctx=None: {"name": "Meow Tower: Doomsguard"}
-        steam_match = service._lookup_store("Meow Tower Doomsguard", None)
+        service._details = lambda appid, ctx=None: {"name": "Nebula Noodle"}
+        steam_match = service._lookup_store("Nebula Noodle", None)
         self.assertEqual(steam_match.appid, "3461730")
         self.assertTrue(steam_match.found)
 
@@ -2855,7 +2855,7 @@ class TestTaggedTitlesReachTheStore(unittest.TestCase):
     them is a query the Steam Store has no answer to. These pin the wiring, so a future change that goes back to
     querying the raw name fails here rather than in a library scan."""
 
-    QUERIES = {"Mars Attracts-Steam RIP com": "Mars Attracts", "Nivalis Nights-Steam RIP com": "Nivalis Nights", "Brave.New.Wonders-SteamRIP.com": "Brave New Wonders"}
+    QUERIES = {"Mars Attracts-Steam RIP com": "Mars Attracts", "Nivalis Nights-Steam RIP com": "Nivalis Nights", "Stellar.Squirrel-SteamRIP.com": "Stellar Squirrel"}
 
     def test_the_query_variants_include_the_clean_title(self):
         with TemporaryDirectory() as d:

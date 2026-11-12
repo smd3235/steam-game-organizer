@@ -5,6 +5,13 @@
 
 ## 9.33
 
+### 2026-11-12 19:30:00 — security: replaced remaining real game names with fakes
+- `utils/filename_utils.py`: comment naming Brave New Wonders → Stellar Squirrel.
+- `tests/test_regressions.py`: Brave New Wonders → Stellar Squirrel.
+- `tests/test_ui_geometry.py`: Brave New Wonders → Stellar Squirrel.
+- `tests/test_filename_utils.py`: Brave New Wonders → Stellar Squirrel.
+- `tests/test_services.py`: Meow Tower Doomsguard → Nebula Noodle; Brave New Wonders → Stellar Squirrel.
+
 ### 2026-11-12 19:25:00 — security: replaced last real Steam appid in test fixture
 - `tests/test_services.py`: appmanifest_1128810.acf (The Witcher 3's real appid) → appmanifest_444444.acf (fake).
 

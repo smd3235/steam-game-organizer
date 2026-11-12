@@ -31,7 +31,7 @@ class TestKnownRegressionCases(unittest.TestCase):
  # tests/test_filename_utils.py; this pins the outcome, so a change to the tag rules that brings any of these
  # back fails here by name.
   def test_tagged_library_folders_still_find_their_real_game(self):
-      expected={"Brave.New.Wonders-SteamRIP.com":"Brave New Wonders",
+      expected={"Stellar.Squirrel-SteamRIP.com":"Stellar Squirrel",
             "Mars Attracts-Steam RIP com":"Mars Attracts",
             "Nivalis Nights-Steam RIP com":"Nivalis Nights",
             "Sintopia-Steam RIP com":"Sintopia"}
@@ -1340,7 +1340,7 @@ class TestTheAppStopsReportingWorkItDidNotDo(unittest.TestCase):
       colon,colon_folder=game('Settlements: Legacy')
       # An ordinary title, which sanitises to itself. This is the game that fails when only the asset name is
       # wrong, so the two halves of the defect are pinned by two different games rather than by one of both.
-      plain,plain_folder=game('Brave New Wonders')
+      plain,plain_folder=game('Stellar Squirrel')
       self.assertEqual(_asset_prefix_for(colon),sanitize(colon.steam.name))
       self.assertNotEqual(_asset_prefix_for(colon),colon.steam.name,
                       'the prefix was not sanitised, so this test cannot fail for the reason it is here for')

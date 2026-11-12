@@ -42,7 +42,7 @@ class TestGluedDigitStamp(unittest.TestCase):
     part of the game's name and the search was then built from it. Four digits is the floor on purpose: "Portal2"
     and "GTA5" are titles, and a stamp is never that short."""
 
-    GLUED = ["FarmToTable10122.zip", "Brave New Wonders20260916", "Some Game20250101", "Star Miner v1.4.2.7z", "Cyber City 2026-11-01.zip"]
+    GLUED = ["FarmToTable10122.zip", "Stellar Squirrel20260916", "Some Game20250101", "Star Miner v1.4.2.7z", "Cyber City 2026-11-01.zip"]
     KEPT = ["Portal2", "GTA5", "Half-Life 2", "Supercar Collection Simulator Racing Series 20260916", "Some Game 20260916"]
 
     def test_a_glued_stamp_is_cut(self):
@@ -72,7 +72,7 @@ class TestReleaseTagTitles(unittest.TestCase):
     twin normalizes to, so the two spellings collapse to one identity key and the Steam cache is hit."""
 
     TAGGED = [
-        ("Brave.New.Wonders-SteamRIP.com", "Brave New Wonders"),
+        ("Stellar.Squirrel-SteamRIP.com", "Stellar Squirrel"),
         ("Mars Attracts-Steam RIP com", "Mars Attracts"),
         ("Nivalis Nights-Steam RIP com", "Nivalis Nights"),
         ("Sintopia-Steam RIP com", "Sintopia"),
