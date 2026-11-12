@@ -322,11 +322,11 @@ class TestServices(unittest.TestCase):
     def test_discovered_archive_keeps_readable_normalized_title(self):
         with TemporaryDirectory() as d:
             root = Path(d)
-            archive = root / "Supercar Collection Simulator Racing Series 20260916.zip"
+            archive = root / "Neon Racer Collection Racing Series 20260916.zip"
             archive.write_text("a")
             result = ArchiveService(AppLogger(root / "x.log")).discover(root)
-            self.assertEqual(result.archives[0].normalized_title, "Supercar Collection Simulator Racing Series 20260916")
-            self.assertEqual(result.archives[0].identity_key, "supercarcollectionsimulatorracingseries20260916")
+            self.assertEqual(result.archives[0].normalized_title, "Neon Racer Collection Racing Series 20260916")
+            self.assertEqual(result.archives[0].identity_key, "neonracercollectionracingseries20260916")
 
     def test_new_only_skips_organized_archives(self):
         with TemporaryDirectory() as d:
@@ -2260,8 +2260,8 @@ class TestServices(unittest.TestCase):
 
     def test_query_variants_try_shorter_prefixes_for_trailing_subtitle_words(self):
         service = _steam(self, mock=True)
-        variants = service._query_variants("Supercar Collection Simulator Racing Series 20260916", "Supercar Collection Simulator Racing Series 20260916", None)
-        self.assertIn("Supercar Collection Simulator", variants)
+        variants = service._query_variants("Neon Racer Collection Racing Series 20260916", "Neon Racer Collection Racing Series 20260916", None)
+        self.assertIn("Neon Racer Collection", variants)
 
     def test_query_variants_never_drop_a_trailing_sequel_number(self):
         service = _steam(self, mock=True)
