@@ -95,7 +95,7 @@ class SteamTagsAreActuallyRead(unittest.TestCase):
 # The key set is the whole of what matters: which fields are absent. Both responses carry genres, categories,
 # content_descriptors, ratings, supported_languages, metacritic, screenshots, movies and package_groups, and
 # neither carries tags - Steam's store tags are community-curated and rendered into the store page's HTML.
-APPDETAILS_KEYS_999999 = frozenset(
+APPDETAILS_KEYS_888888 = frozenset(
     {
         "about_the_game",
         "background",
@@ -135,7 +135,7 @@ APPDETAILS_KEYS_999999 = frozenset(
         "website",
     }
 )
-APPDETAILS_KEYS_000000 = APPDETAILS_KEYS_999999 | {"achievements", "legal_notice"}
+APPDETAILS_KEYS_777777 = APPDETAILS_KEYS_888888 | {"achievements", "legal_notice"}
 
 
 class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
@@ -160,10 +160,10 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         self.logger = AppLogger(self.log)
         self.service = SteamService(self.logger, mock=True, cache_file=self.base / "cache.json")
 
-    def _payload(self, keys=APPDETAILS_KEYS_999999):
+    def _payload(self, keys=APPDETAILS_KEYS_888888):
         """A payload with the real field set, holding the four fields `_build_match` has to be able to read."""
         details = dict.fromkeys(keys)
-        details.update(name="Fake Game", steam_appid="999999", type="game", genres=[{"id": 1, "description": "Action"}], categories=[{"id": 1, "description": "Single-player"}], release_date={"coming_soon": False, "date": "Apr 21, 2016"}, short_description="A game.")
+        details.update(name="SirBeatsAlot", steam_appid="888888", type="game", genres=[{"id": 1, "description": "Action"}], categories=[{"id": 1, "description": "Single-player"}], release_date={"coming_soon": False, "date": "Apr 21, 2016"}, short_description="A game.")
         return details
 
     def _logged(self):
@@ -181,9 +181,9 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         The counts are asserted as well as the absence, because a transcription that quietly dropped three keys
         would still satisfy an `assertNotIn('tags', ...)`. A test that cannot fail is worse than none.
         """
-        self.assertEqual(36, len(APPDETAILS_KEYS_999999), "the recorded key set was transcribed wrongly")
-        self.assertEqual(38, len(APPDETAILS_KEYS_000000), "the recorded key set was transcribed wrongly")
-        for keys in (APPDETAILS_KEYS_999999, APPDETAILS_KEYS_000000):
+        self.assertEqual(36, len(APPDETAILS_KEYS_888888), "the recorded key set was transcribed wrongly")
+        self.assertEqual(38, len(APPDETAILS_KEYS_777777), "the recorded key set was transcribed wrongly")
+        for keys in (APPDETAILS_KEYS_888888, APPDETAILS_KEYS_777777):
             with self.subTest(tags_present="tags" in keys):
                 self.assertNotIn("tags", keys, "appdetails does serve tags, so the source and this fix both change")
 
@@ -193,7 +193,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         `tags: []` is the correct answer here - Steam sent no tags. What was wrong was that the app produced
         that same value, silently, from every game forever, which is indistinguishable from the bug it was.
         """
-        match = self.service._build_match("999999", {"name": "Fake Game"}, self._payload())
+        match = self.service._build_match("888888", {"name": "SirBeatsAlot"}, self._payload())
         self.assertEqual([], match.tags, "the recorded payload carries no tags, so there is nothing to return")
         self.assertEqual(["Action"], match.genres, "genres come from the same payload and are unaffected")
         text = self._logged()
@@ -208,10 +208,10 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         reading of a payload rather than `_build_match` called directly.
         """
         self.service._details = lambda appid, ctx=None: self._payload()
-        match = self.service._lookup_appid("999999", None)
+        match = self.service._lookup_appid("888888", None)
         self.assertTrue(match.found, "the fixture failed to match, so nothing downstream ran")
         self.assertEqual([], match.tags)
-        self.assertIn("appid=999999", self._logged(), "the report does not say which game it was read for")
+        self.assertIn("appid=888888", self._logged(), "the report does not say which game it was read for")
 
     def test_a_run_of_games_reports_it_once_and_not_once_each(self):
         """A warning per game is 165 identical lines, and a log that says the same thing 165 times is a log
@@ -228,7 +228,7 @@ class TheSourceSaysWhenItHasNoTags(unittest.TestCase):
         """
         details = self._payload()
         details["tags"] = [{"id": 16689, "name": "Great Soundtrack"}, {"id": 1038, "name": "Immersive Sim"}]
-        match = self.service._build_match("999999", {"name": "Fake Game"}, details)
+        match = self.service._build_match("888888", {"name": "SirBeatsAlot"}, details)
         self.assertEqual(["Great Soundtrack", "Immersive Sim"], match.tags)
         text = self._logged()
         self.assertNotIn("TAGS_UNAVAILABLE", text, "this payload carried tags and was reported as carrying none")

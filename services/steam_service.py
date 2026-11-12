@@ -764,7 +764,7 @@ class SteamService:
         """Steam's user tags for an app, or [] with a WARNING saying where they should have come from.
 
         Steam does not serve user tags through the store API at all. Measured against the live endpoint on
-        2026-10-04, appdetails returned 36 keys for appid 999999 and 38 for 000000, and `tags` was in neither:
+        2026-10-04, appdetails returned 36 keys for appid 888888 and 38 for 777777, and `tags` was in neither:
         the tags on a store page are community-curated and rendered into that page's HTML, while the payload
         carries genres, categories, content_descriptors, ratings, supported_languages and the rest. Reading them
         from storesearch, which carries no tags either, and then from appdetails both therefore yield [], and
