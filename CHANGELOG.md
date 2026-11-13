@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-13 08:00:00 — refactor: extract pure functions from app/controller.py into core/controller_utils.py
+- `core/controller_utils.py`: New module holding `artwork_present`, `primary`, `needs_conversion`, `primary_size`, `prune_rolled_back_folder`, extracted from `app/controller.py`. All are pure functions with no instance-state dependency.
+- `app/controller.py`: Removed `_artwork_present`, `_primary`, `_needs_conversion`, `_primary_size`, `_prune_rolled_back_folder` method definitions. Added thin wrapper methods that delegate to `core.controller_utils`, keeping existing callers working. Dropped now-unused `DeletionGuard`, `PathOutsideAllowedRoot` imports.
+
 ### 2026-11-13 07:00:00 — refactor: extract pure functions from library_service.py into core/library_utils.py
 - `core/library_utils.py`: New module holding `is_app_folder`, `game_folder_is_prunable`, and their supporting constants (`RECOGNISED_FOLDER_FILES`, `RECOGNISED_IMAGE_SUFFIXES`, `IGNORED_FILES_IN_SWEEP`), extracted from `services/library_service.py`. All are module-level functions with no instance-state dependency.
 - `services/library_service.py`: Removed `_is_app_folder`, `_game_folder_is_prunable`, and the three constants. Imports them from `core.library_utils` instead. Removed now-unused `ENTRY_POINT` from `core.constants` import. Added `SYNC_FILE_PATTERNS`, `SYNC_NEVER_TOUCH`, `APPID_PATTERN` constants back (they were in the removed section).

@@ -9,10 +9,10 @@ from app.events import Event
 from core.constants import ARCHIVE_EXTENSIONS, DEFAULT_ZIP_PASSWORD, LIBRARY_RESERVED_DIRS, canonical_category, suggest_category_with_evidence, UNSORTED_EVIDENCE
 from core.exceptions import CancellationError
 from core.models import ScanResult
-from core.path_safety import DeletionGuard, PathOutsideAllowedRoot
 from utils.filename_utils import identity_key, normalize_name
 from utils.formatting import human_size
 from utils.treewalk import walk_files
+from core.controller_utils import artwork_present, primary, needs_conversion, primary_size, prune_rolled_back_folder
 
 
 class AppController:
@@ -113,6 +113,22 @@ class AppController:
                 pass
         if self.config:
             self.config.sync_to_appdata()
+
+    # Pure functions now live in core.controller_utils; these thin wrappers keep existing callers working.
+    def _artwork_present(self, archive):
+        return artwork_present(archive)
+
+    def _primary(self, group):
+        return primary(group, self.services.organizer._promotion_key)
+
+    def _needs_conversion(self, archive):
+        return needs_conversion(archive, getattr(self.config, "convert_archives", True))
+
+    def _primary_size(self, group):
+        return primary_size(group, self.services.organizer._promotion_key)
+
+    def _prune_rolled_back_folder(self, game_dir, owned, library_root=None):
+        return prune_rolled_back_folder(game_dir, owned, library_root, logger=self.logger)
 
     def _submit(self, phase, work, done, error):
         self.state.update(phase=phase, cancel_requested=False)
@@ -508,7 +524,7 @@ class AppController:
                     "total_bytes": sum(getattr(a, "size", 0) or 0 for a in archives),
                     "matched": sum(1 for a in archives if getattr(a.steam, "found", False)),
                     "unmatched": sum(1 for a in archives if not getattr(a.steam, "found", False)),
-                    "artwork": sum(1 for a in archives if self._artwork_present(a)),
+                    "artwork": sum(1 for a in archives if artwork_present(a)),
                     "errors": len(getattr(result, "errors", ()) or ()),
                     "stale_dirs": len(getattr(result, "stale_build_dirs", ()) or ()),
                     "stale_bytes": int(getattr(result, "stale_build_bytes", 0) or 0),
@@ -519,21 +535,6 @@ class AppController:
             # Named rather than swallowed silently: this is the one place a scan does something strictly
             # optional, and a failure here should be visible in the log without affecting the scan.
             self.logger.debug("SCAN", f"SUMMARY_NOT_RECORDED error={type(exc).__name__}")
-
-    @staticmethod
-    def _artwork_present(archive):
-        """Whether one archive has artwork, counting an unreadable artwork object as having none.
-
-        Counted per archive rather than inline, because a generator inside the dict literal that builds the
-        summary shares an expression with every other number in it: one artwork object that raised took all
-        of them down, so a single bad entry cost the archive count, the byte total and the match count as
-        well. The worst this can now cost is one game counted as having no picture, which is what a game with
-        no picture counts as anyway.
-        """
-        try:
-            return bool(getattr(getattr(archive, "artwork", None), "present", lambda: False)())
-        except Exception:
-            return False
 
     def verify_all(self, archives, on_progress, done, download_artwork=True):
         def work(ctx):
@@ -649,69 +650,6 @@ class AppController:
         self.state.update(phase="review", job_id="")
         self.bus.emit(Event("verification_completed", {"archives": result}))
         done(result)
-
-    def _primary(self, group):
-        """The copy a group will move: its newest version, chosen exactly as the move itself will choose it."""
-        return max(group, key=self.services.organizer._promotion_key)
-
-    def _needs_conversion(self, archive):
-        """True when moving this archive will actually rebuild it into a .7z."""
-        if not getattr(self.config, "convert_archives", True):
-            return False
-        if archive.path.suffix.lower() == ".7z":
-            return False
-        try:
-            return archive.path.is_file()
-        except OSError:
-            return False
-
-    def _primary_size(self, group):
-        """Size of the archive a group would actually move, i.e. its newest copy. Missing files sort last."""
-        primary = self._primary(group)
-        try:
-            return primary.path.stat().st_size
-        except OSError:
-            return 1 << 62
-
-    def _prune_rolled_back_folder(self, game_dir, owned, library_root=None):
-        """Drop a game folder that a rollback has emptied.
-
-        Rolling a game back returns its archive to where it came from but leaves the folder the run created, and
-        what stays in it is what this run wrote there: the metadata, and the Steam link and artwork beside it. A
-        failed or cancelled run therefore littered the library with folders that describe a game they do not
-        hold, which no scan can see and the user has to delete by hand. Only a folder this run created is ever
-        removed - one that was already there belongs to the user whatever it contains.
-        The folder is moved to Archive/ rather than deleted, so the user can review it before deleting.
-        """
-        if not owned:
-            return
-        game_dir = Path(game_dir)
-        root = Path(library_root).expanduser().resolve() if library_root is not None else None
-        if root is None:
-            self.logger.warning("ORGANIZER", f"ROLLBACK_FOLDER_KEPT path=[{game_dir}] reason=[no library root to prove containment]")
-            return
-        # A DeletionGuard built from the library root alone: nothing may be pruned outside it.
-        guard = DeletionGuard([root])
-        try:
-            guard.refuse_outside(game_dir, "prune")
-            if not game_dir.is_dir():
-                return
-            if any(item.suffix.lower() in ARCHIVE_EXTENSIONS for item in game_dir.iterdir()):
-                self.logger.info("ORGANIZER", f"ROLLBACK_FOLDER_KEPT path=[{game_dir}] reason=[still holds an archive]")
-                return
-            archive_dir = root / "Archive"
-            archive_dir.mkdir(parents=True, exist_ok=True)
-            target = archive_dir / game_dir.name
-            n = 2
-            while target.exists():
-                target = archive_dir / f"{game_dir.name} ({n})"
-                n += 1
-            shutil.move(str(game_dir), str(target))
-            self.logger.info("ORGANIZER", f"ROLLBACK_PRUNED_EMPTY_GAME_DIR path=[{game_dir}] destination=[{target}]")
-        except PathOutsideAllowedRoot as refused:
-            self.logger.warning("ORGANIZER", f"ROLLBACK_FOLDER_KEPT path=[{game_dir}] reason=[{refused}]")
-        except OSError as prune_error:
-            self.logger.warning("ORGANIZER", f"ROLLBACK_PRUNE_FAILED path=[{game_dir}] error=[{type(prune_error).__name__}]")
 
     def _restore_moved(self, source, target, owned_dirs, library_root=None):
         """Puts one journalled move back where it came from, and tidies the folder it came out of.
