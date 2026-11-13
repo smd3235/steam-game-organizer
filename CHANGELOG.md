@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-13 05:00:00 — refactor: extract _ConnectionPool from steam_service.py into core/connection_pool.py
+- `core/connection_pool.py`: New module holding the `_ConnectionPool` class and module-level `_SHARED_POOL` instance, extracted from `services/steam_service.py`. Self-contained (stdlib only): manages pooled HTTP/HTTPS keep-alive connections per host.
+- `services/steam_service.py`: Removed the 119-line `_ConnectionPool` class definition; imports `_SHARED_POOL` from `core.connection_pool` instead. Dropped now-unused `http.client` and `urlsplit` imports.
+
 ### 2026-11-13 04:00:00 — tooling: add module-split audit and heal tool
 - `tools/audit_module_splits.py`: New tool that scans project `.py` files for oversized modules (default threshold: 300 lines / 15 KB), parses them with `ast`, and reports top-level classes and functions with line counts and suggested extract targets. `--heal FILE:SYMBOL` extracts a named class or function into its own module, rewrites the original file to import from the new module, and adds change comments to both files. Audit mode exits 1 when oversized files are found, suitable for CI pre-merge checks.
 
