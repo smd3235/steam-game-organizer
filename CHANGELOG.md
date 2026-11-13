@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-13 10:00:00 — refactor: extract pure query functions from services/steam_service.py into core/steam_query_utils.py
+- `core/steam_query_utils.py`: New module holding `expand_acronyms`, `swap_trailing_numeral`, `to_roman`, `from_roman`, `score`, extracted from `services/steam_service.py`. All are pure functions with no instance-state dependency.
+- `services/steam_service.py`: Removed `_expand_acronyms`, `_swap_trailing_numeral`, `_to_roman`, `_from_roman`, `_score` method definitions. Added thin wrapper methods that delegate to `core.steam_query_utils`, keeping existing callers working. Removed now-unused `import difflib`.
+
 ### 2026-11-13 09:00:00 — refactor: extract pure functions from ui/scan_view.py into core/scan_view_utils.py
 - `core/scan_view_utils.py`: New module holding `ago`, `space_delta`, `size`, extracted from `ui/scan_view.py`. All are pure functions with no instance-state dependency.
 - `ui/scan_view.py`: Removed `_ago`, `_space_delta`, `_size` method definitions. Added thin wrapper methods that delegate to `core.scan_view_utils`, keeping existing callers working. Removed now-unused `import time`.

@@ -2,7 +2,6 @@
 
 import contextlib
 import json
-import difflib
 import re
 import subprocess
 import time
@@ -14,6 +13,7 @@ from core.connection_pool import _SHARED_POOL
 from core.constants import ARCHIVE_EXTENSIONS, USER_AGENT, NO_WINDOW
 from core.models import SteamMatch
 from core.exceptions import CancellationError
+from core.steam_query_utils import expand_acronyms, score, swap_trailing_numeral, to_roman, from_roman
 from services.extract_service import ExtractService
 from utils.filename_utils import identity_key, normalize_name
 
@@ -62,6 +62,22 @@ class SteamService:
         self._cache_initialized = False
         self._load_cache()
         self._load_preseed()
+
+    # Pure functions now live in core.steam_query_utils; these thin wrappers keep existing callers working.
+    def _expand_acronyms(self, title):
+        return expand_acronyms(title)
+
+    def _to_roman(self, value):
+        return to_roman(value)
+
+    def _from_roman(self, text):
+        return from_roman(text)
+
+    def _swap_trailing_numeral(self, title):
+        return swap_trailing_numeral(title)
+
+    def _score(self, query, name):
+        return score(query, name)
 
     def _load_cache(self):
         if not self.cache_file or not self.cache_file.is_file():
@@ -498,33 +514,6 @@ class SteamService:
             add(v)
         return variants
 
-    def _expand_acronyms(self, title):
-        """Expand common gaming acronyms that appear in filenames but not Steam titles."""
-        acronyms = {
-            r"\bAiO\b": "All in One",
-            r"\bVR\b": "Virtual Reality",
-            r"\bFPS\b": "First Person Shooter",
-            r"\bRPG\b": "Role Playing Game",
-            r"\bMMO\b": "Massively Multiplayer Online",
-            r"\bRTS\b": "Real Time Strategy",
-            r"\bTBS\b": "Turn Based Strategy",
-            r"\bARPG\b": "Action RPG",
-            r"\bCRPG\b": "Computer RPG",
-            r"\bJRPG\b": "Japanese RPG",
-            r"\bMOBA\b": "Multiplayer Online Battle Arena",
-            r"\bTCG\b": "Trading Card Game",
-            r"\bCCG\b": "Collectible Card Game",
-            r"\bF2P\b": "Free to Play",
-            r"\bP2W\b": "Pay to Win",
-            r"\bDLC\b": "Downloadable Content",
-            r"\bGOTY\b": "Game of the Year",
-            r"\bSotY\b": "Simulation of the Year",
-        }
-        result = title
-        for pattern, expansion in acronyms.items():
-            result = re.sub(pattern, expansion, result, flags=re.I)
-        return result if result != title else ""
-
     def _autocomplete_suggestions(self, query, ctx):
         """Get suggestions from Steam autocomplete API for better matching.
 
@@ -557,72 +546,6 @@ class SteamService:
             # Cache empty result to avoid retry
             self._autocomplete_cache[cache_key] = []
             return []
-
-    def _swap_trailing_numeral(self, title):
-        words = title.split()
-        if not words:
-            return ""
-        last = words[-1]
-        if re.fullmatch(r"\d{1,2}", last):
-            roman = self._to_roman(int(last))
-            return " ".join(words[:-1] + [roman]) if roman else ""
-        if re.fullmatch(r"(?i)[ivxlcdm]+", last):
-            value = self._from_roman(last.upper())
-            return " ".join(words[:-1] + [str(value)]) if value else ""
-        return ""
-
-    def _to_roman(self, value):
-        if not 1 <= value <= 39:
-            return ""
-        table = [(10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]
-        result = ""
-        for amount, symbol in table:
-            while value >= amount:
-                result += symbol
-                value -= amount
-        return result
-
-    def _from_roman(self, text):
-        values = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
-        total = 0
-        previous = 0
-        for char in reversed(text):
-            current = values.get(char, 0)
-            total += current if current >= previous else -current
-            previous = current
-        return total if 1 <= total <= 39 else 0
-
-    def _score(self, query, name):
-        query_key = identity_key(query)
-        name_key = identity_key(name)
-        if not query_key or not name_key:
-            return 0.0
-        if query_key == name_key:
-            return 1.0
-        query_tokens = set(re.findall(r"[a-z0-9]+", query.casefold()))
-        name_tokens = set(re.findall(r"[a-z0-9]+", name.casefold()))
-        if not query_tokens or not name_tokens:
-            return 0.0
-        sequence = difflib.SequenceMatcher(None, query_key, name_key).ratio()
-        token = difflib.SequenceMatcher(None, " ".join(sorted(query_tokens)), " ".join(sorted(name_tokens))).ratio()
-        overlap = len(query_tokens & name_tokens) / max(1, len(query_tokens | name_tokens))
-        score = max(sequence, token * 0.95, overlap * 0.96)
-        if query_key in name_key or name_key in query_key:
-            score = max(score, 0.90)
-        if query_tokens <= name_tokens or name_tokens <= query_tokens:
-            score = max(score, 0.95)
-        # Scene release groups abbreviate the last subtitle word, e.g. "Voyager AtU" for "Voyager Across the
-        # Unknown" or "AiO" for "All in One". The Steam search already finds the title via a prefix variant,
-        # but _score still compares the full query — a lone short trailing token the search found anyway should
-        # not sink the match. If dropping one such token leaves a perfect subset, accept at .90 so abbreviation
-        # tokens don't override the candidate ordering that found the right game.
-        if len(query_tokens) > 1:
-            short_trailing = [t for t in query_tokens if len(t) <= 4]
-            if short_trailing:
-                remainder_tokens = query_tokens - set(short_trailing)
-                if remainder_tokens and remainder_tokens <= name_tokens:
-                    score = max(score, 0.90)
-        return score
 
     def _choose(self, items, title):
         ranked = sorted(((self._score(title, str(item.get("name", ""))), item) for item in items), key=lambda row: row[0], reverse=True)
