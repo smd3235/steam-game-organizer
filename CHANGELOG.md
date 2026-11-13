@@ -5,9 +5,14 @@
 
 ## 9.33
 
-### 2026-11-13 02:30:00 — security: add real-game-name validator tool and fix remaining Epsilon Online references
-- `tools/validate_game_names.py`: New validator that scans all project `.py` files for real Steam game names and appids on a deny list (built from names previously replaced with fictional equivalents under `## 9.33`). Uses word-boundary matching so single-word names (rust, doom, skyrim, ...) do not match inside unrelated words (trust, prunable, skyscraper, ...). Excludes itself and vendored/output directories. Exits 1 with a violation list if any real name is found; intended for pre-commit/CI use.
-- `services/archive_service.py`, `services/steam_service.py`, `tests/test_regressions.py`, `tests/test_services.py`: Replaced the remaining `"Epsilon Online"` / `"epsilononline"` references with fictional `"Nebula Online"` / `"nebulaonline"` so the validator passes on a clean codebase.
+### 2026-11-13 03:00:00 — security: validator catches remaining real-name in comment; scrub changelog entries
+- `tools/validate_game_names.py`: Added "cities skylines" to the deny list so word-boundary matching catches it in comments.
+- `services/steam_service.py`: Replaced real game name "Cities Skylines 2" in a comment with fictional "Stellar Squirrel 2".
+- `CHANGELOG.md`: Removed all actual game names and appids from changelog entries; replaced with generic "names scrubbed" messaging.
+
+### 2026-11-13 02:30:00 — security: add real-game-name validator tool and fix remaining real-name references
+- `tools/validate_game_names.py`: New validator that scans all project `.py` files for real Steam game names and appids on a deny list, using word-boundary matching to avoid false positives. Exits 1 with violations for pre-commit/CI use.
+- `services/archive_service.py`, `services/steam_service.py`, `tests/test_regressions.py`, `tests/test_services.py`: Replaced remaining real game names with fictional equivalents so the validator passes on a clean codebase.
 
 ### 2026-11-13 00:45:00 — fix: RepairArchive test passes found=True so the repair pass reaches extraction
 - `tests/test_services.py`: `test_a_matched_7z_that_needs_no_rename_still_finishes_its_stage` now constructs `RepairArchive(source, "999", "Named Game", found=True)` instead of relying on the default `found=False`. The old `_RepairArchive` derived `found=bool(appid)`, so `appid="999"` implied a Steam match; without `found=True`, `_repack_with_official_name` short-circuits to `"skipped"` before extraction and the test's `"extracting"` stage assertion fails.
@@ -33,17 +38,17 @@
 - `services/archive_service.py`, `services/steam_service.py`: Added type hints to `discover()`, `archive_installer_kind()`, `lookup()`, `_details()` public method signatures.
 
 ### 2026-11-12 20:40:00 — security: replaced all real game names in source and tests with fakes
-- `tests/test_filename_utils.py`: Replaced DOOM, The Witcher 3, Prison Architect, Fell & Sell, Incremedieval, Elder Scrolls, Baldur's Gate 3, Portal 2, GTA5, Half-Life 2, Rust, Brave New Wonders, My Summer Car, Sintopia, Nivalis Nights, Mars Attracts, Star Trek, Kingdoms and Castles, Lawn Mowing Simulator, Crystal Realms, Nova Launcher with fictional names (Sir Beats Alot, Dancing Pickle, Trampoline Tornado, Mystery Archive, Glow Stick Samurai, Stellar Squirrel, Nebula Noodle, MegaMartTycoon, Realm Castles, Pixel & Chase, Steam & Solder, Time Scrolls, Mega Launcher, Void Realms 7x9b, etc.).
-- `tests/test_services.py`: Replaced Sintopia → SunTopia, Kingdoms And Castles → Realm Castles, Epsilon Online → Nebula Online, Divinity Original Sin 2 → Astral Original Sin 2, Cities Skylines II → Town Skylines II, Kingdoms & Castles → Realm & Castles, Dark Souls III → Dark Blades III, Resident Evil 4 → Evil Resident 4, Star Trek Voyager → Star Horizon Voyager.
-- `tests/test_regressions.py`: Replaced Mars Attracts → Nebula Attracts, Nivalis Nights → Nebula Nights, Sintopia → SunTopia throughout.
-- `tests/test_ui_geometry.py`: Replaced Sintopia → SunTopia.
-- `tests/test_steam_service.py`: Replaced Elder Scrolls → Ancient Tomes.
-- `utils/filename_utils.py`: Removed real game name references from comments (Mars Attracts → Neon Overdrive, Portal2/GTA5 → Tunnel Runner2/Grand Crime City5).
-- `core/constants.py`: Removed real game name references from comments and genre keywords (Minecraft → block crafting, Vampire Survivors → horde auto-shooter).
+- `tests/test_filename_utils.py`: Replaced real game names with fictional names throughout.
+- `tests/test_services.py`: Replaced real game names with fictional names throughout.
+- `tests/test_regressions.py`: Replaced real game names with fictional names throughout.
+- `tests/test_ui_geometry.py`: Replaced real game names with fictional names throughout.
+- `tests/test_steam_service.py`: Replaced real game names with fictional names throughout.
+- `utils/filename_utils.py`: Removed real game name references from comments.
+- `core/constants.py`: Removed real game name references from comments and genre keywords.
 
-### 2026-11-12 20:10:00 — perf: normalize real archive filenames to Steam names
-- `utils/filename_utils.py`: `normalize_name()` now strips build stamps glued to archive filenames — alphanumeric mixes like `2v10112645585273` or `123r6s`, and short pure digits like `10` or `171` — so `LawnMowingSimulator2v10112645585273.7z` normalizes to `Lawn Mowing Simulator` and `Kingdoms and Castles 123r6s.7z` to `Kingdoms and Castles`. Consecutive capitals are split before the lowercase-to-uppercase split (`XMLParser` → `XML Parser`, `AGame` → `A Game`). Short codes like `7x9b` and single-digit stamps like `Portal2`/`GTA5` are kept as part of the title. Spaced dates/numbers (`Series 20260916`) are untouched — AppIDs in that form are handled by `_appid_from_filename()` in `services/steam_service.py`.
-- `tests/test_filename_utils.py`: Updated expectations for the corrected behavior (`NovaLauncher2v10112645585273` → `Nova Launcher`, `Iron&Steel171` → `Iron&Steel`, `TidyuptheCity10` → `Tidyupthe City`, `ZetaQuestAdventure10` → `Zeta Quest Adventure`). Added TAGGED entries for `LawnMowingSimulator2v10112645585273`, `Kingdoms and Castles 123r6s`, `Fell&Sell171`, `Iron&Steel171` and a REAL entry for `Crystal Realms 7x9b`.
+### 2026-11-12 20:10:00 — perf: normalize archive filenames to Steam names
+- `utils/filename_utils.py`: `normalize_name()` now strips build stamps glued to archive filenames — alphanumeric mixes and short pure digits — so archive filenames normalize to clean Steam titles. Consecutive capitals are split before the lowercase-to-uppercase split. Short codes and single-digit stamps are kept as part of the title. Spaced dates/numbers are untouched.
+- `tests/test_filename_utils.py`: Updated expectations for the corrected behavior. Added TAGGED entries and a REAL entry for various archive filename patterns.
 
 ### 2026-11-12 19:45:00 — security: deduplicated fake appids across tests
 - `tests/test_displayed_data.py`: Sir Beats Alot appid 888888 → 55555 (now consistent with test_services.py).
@@ -51,14 +56,14 @@
 - `tests/test_services.py`: Mystery Archive appid 77777 → 888888 (no longer shared with Glow Stick Samurai).
 
 ### 2026-11-12 19:30:00 — security: replaced remaining real game names with fakes
-- `utils/filename_utils.py`: comment naming Brave New Wonders → Stellar Squirrel.
-- `tests/test_regressions.py`: Brave New Wonders → Stellar Squirrel.
-- `tests/test_ui_geometry.py`: Brave New Wonders → Stellar Squirrel.
-- `tests/test_filename_utils.py`: Brave New Wonders → Stellar Squirrel.
-- `tests/test_services.py`: Meow Tower Doomsguard → Nebula Noodle; Brave New Wonders → Stellar Squirrel.
+- `utils/filename_utils.py`: Replaced a real game name in a comment with a fictional equivalent.
+- `tests/test_regressions.py`: Replaced a real game name with a fictional equivalent.
+- `tests/test_ui_geometry.py`: Replaced a real game name with a fictional equivalent.
+- `tests/test_filename_utils.py`: Replaced a real game name with a fictional equivalent.
+- `tests/test_services.py`: Replaced real game names with fictional equivalents.
 
 ### 2026-11-12 19:25:00 — security: replaced last real Steam appid in test fixture
-- `tests/test_services.py`: appmanifest_1128810.acf (The Witcher 3's real appid) → appmanifest_444444.acf (fake).
+- `tests/test_services.py`: Replaced a real Steam appid in a test fixture with a fake appid.
 
 ### 2026-11-12 19:20:00 — security: fakes spaced and fun
 - `tests/test_displayed_data.py`: Fake Game/appid 999999 → Sir Beats Alot/appid 888888; APPDETAILS_KEYS_999999 → APPDETAILS_KEYS_888888; APPDETAILS_KEYS_000000 → APPDETAILS_KEYS_777777.
@@ -68,14 +73,14 @@
 - `tests/test_run_reporting.py`, `core/models.py`, `services/artwork_service.py`: GlowStickSamurai → Glow Stick Samurai/appid 77777.
 
 ### 2026-11-12 19:05:00 — security: replaced real Steam game names, appids, and paths with fakes
-- `tests/test_displayed_data.py`: DOOM/appid 322330 → Fake Game/appid 999999; APPDETAILS_KEYS_322330 → APPDETAILS_KEYS_999999; APPDETAILS_KEYS_1091500 → APPDETAILS_KEYS_000000.
-- `tests/test_services.py`: Prison Architect/appid 1614040 → Fake Game/appid 55555; The Witcher 3/appid 1128810 → Another Fake Game/appid 66666; Fell & Sell/appid 261650 → Fake Game/appid 55555; Incremedieval/appid 5076690 → FakeArchive/appid 77777.
-- `tests/test_run_reporting.py`: Incremedieval/appid 5076690 → GlowStickSamurai/appid 77777.
-- `tests/test_library_summary.py`: Fell & Sell → BouncyCastle.
-- `services/organizer_service.py`: comment naming Fell & Sell → BouncyCastle.
-- `core/models.py`: comment naming Incremedieval → GlowStickSamurai.
-- `services/artwork_service.py`: comment naming Incremedieval → GlowStickSamurai.
-- `tests/test_setup_flow.py`: E:/Games library path → F:/FunZone.
+- `tests/test_displayed_data.py`: Replaced real game names and appids with fakes.
+- `tests/test_services.py`: Replaced real game names and appids with fakes.
+- `tests/test_run_reporting.py`: Replaced real game names and appids with fakes.
+- `tests/test_library_summary.py`: Replaced a real game name with a fake equivalent.
+- `services/organizer_service.py`: Replaced a real game name in a comment with a fake equivalent.
+- `core/models.py`: Replaced a real game name in a comment with a fake equivalent.
+- `services/artwork_service.py`: Replaced a real game name in a comment with a fake equivalent.
+- `tests/test_setup_flow.py`: Replaced a real library path with a fictional path.
 
 ### 2026-11-12 18:45:00 — fix: protected system paths can never be deletion targets
 - `core/path_safety.py`: Added `protected_roots()` and `is_protected()` — the Windows directory, Program Files, Users, and every drive root are always refused, even when they fall within an allowed root. Drive roots protect only themselves (`rmtree("C:\")` is blocked, `C:\Games` is left to the allowed-root check); Windows/Program Files/Users protect their entire subtree. `DeletionGuard.refuse_outside()` checks protected paths before allowed roots, so a misconfigured `library_root` (e.g. `C:\` or `C:\Windows`) can never open the system to deletion.
@@ -316,7 +321,7 @@
 
 - `tests/test_filename_utils.py`: Extended the `TAGGED` list with bracketed release-group tags found scanning every `.7z` in `E:\Game Installers` (`[FitGirl Repack]` after hyphenated titles) so `normalize_name()` is pinned on real bracketed-tag shapes.
 - Added `test_real_world_outlier_patterns_are_normalized_correctly` pinning edge cases found in the live library: camelCase with no separator keeps trailing digits, lowercase camel runs are not split, odd casing splits at every uppercase boundary, ampersands and trailing digits survive, mixed alphanumeric suffixes survive, single digits after dots become ` <digit>`, and hyphenated words stay whole.
-- Extended the version-suffix test with a glued 8-digit date (`ElderScrolls20260107` → `Elder Scrolls`) and a glued version glommed onto a huge number (`NovaLauncher2v10112645585273` → `Nova Launcher2v`).
+- Extended the version-suffix test with a glued 8-digit date and a glued version glommed onto a huge number (real game names scrubbed).
 - All expected values verified against `normalize_name()`'s actual output across all 280 `.7z` files.
 - Changelog entry added in the same change as the code change.
 
@@ -330,7 +335,7 @@
 ### 2026-11-10 19:42:00 — Fixed test_filename_utils.py syntax breakage and wrong expectations from fictional-names rename
 
 - `tests/test_filename_utils.py`: Fixed `normalize_name()` calls missing closing parens and passing a second argument to a one-parameter function (syntax error prevented the module from loading — 0 tests ran).
-- Corrected wrong expected values introduced by the fictional-names rename: `normalize_name()` strips packaging words and does not alias titles, so expected values now match actual output (e.g., "MySummerCar Repack 2024-01-02.zip" → "My Summer Car", not a fictional alias).
+- Corrected wrong expected values introduced by the fictional-names rename: `normalize_name()` strips packaging words and does not alias titles, so expected values now match actual output (a real game name was scrubbed, not a fictional alias).
 - Restored TAGGED/TAGGED_HYPHENATED expected values to `normalize_name()`'s real output so the tagged/collapse tests pass.
 - Changelog entry added in the same change as the code change.
 

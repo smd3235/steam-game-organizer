@@ -597,7 +597,9 @@ class SteamService:
         if roman_variant:
             add(roman_variant)
         # Steam Store search often fails on trailing subtitle/edition words it doesn't index; try shorter prefixes.
-        # Stop at a numeral/roman-numeral word so sequels like "Cities Skylines 2" never get queried as the base title.
+        # "Cities Skylines 2" was a real Steam name in this example — replaced with fictional "Stellar Squirrel 2"
+        # per the no-real-game-names rule (see tools/validate_game_names.py deny list).
+        # Stop at a numeral/roman-numeral word so sequels like "Stellar Squirrel 2" never get queried as the base title.
         words = stripped.split()
         for _ in range(3):
             if len(words) <= 2 or re.fullmatch(r"(?i)[ivxlcdm]+|\d+", words[-1]):

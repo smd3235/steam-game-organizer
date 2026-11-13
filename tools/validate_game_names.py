@@ -54,6 +54,7 @@ REAL_NAMES = [
     "nova launcher",
     "epsilon online",
     "divinity original sin 2",
+    "cities skylines",
     "cities skylines ii",
     "dark souls iii",
     "resident evil 4",
