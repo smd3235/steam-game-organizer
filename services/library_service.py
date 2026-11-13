@@ -10,8 +10,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.constants import ARCHIVE_EXTENSIONS, LOCK_MARKER, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, ENTRY_POINT
 from core.exceptions import CancellationError
+from core.models import MinimalArchive, RepairArchive
+from core.naming_utils import safe_name
 from core.path_safety import DeletionGuard, is_within
-from core.models import ConversionResult
 from utils.filename_utils import identity_key
 from utils.treewalk import is_link
 
@@ -431,7 +432,7 @@ class LibraryService:
         for index, (game_dir, pending, appid, name) in enumerate(work, 1):
             if ctx:
                 ctx.checkpoint()
-            archive = _RepairArchive(pending, appid, name)
+            archive = RepairArchive(pending, appid, name)
             if on_progress:
                 try:
                     on_progress({"stage": "repair_start", "index": index, "total": len(work), "game": name, "file": pending.name, "message": f"Converting {index} of {len(work)}: {name}"})
@@ -877,7 +878,7 @@ class LibraryService:
             # Write Steam links and metadata (fast, sequential)
             organizer_service.write_steam_links(game_dir, appid, metadata.get("name") or game_dir.stem.split(" - ")[0])
             if not metadata:
-                organizer_service.write_metadata(game_dir, _MinimalArchive(appid, self._asset_prefix(game_dir), game_dir.parent.name))
+                organizer_service.write_metadata(game_dir, MinimalArchive(appid, self._asset_prefix(game_dir), game_dir.parent.name))
             prefix = self._asset_prefix(game_dir, metadata)
             escaped_prefix = globmod.escape(prefix)
             expected_name = metadata.get("name") or prefix
@@ -1110,7 +1111,7 @@ class LibraryService:
         # reaches the browser tab the user reads.
         organizer_service.write_steam_links(game_dir, appid, metadata.get("name") or game_dir.stem.split(" - ")[0])
         if not metadata:
-            organizer_service.write_metadata(game_dir, _MinimalArchive(appid, self._asset_prefix(game_dir), game_dir.parent.name))
+            organizer_service.write_metadata(game_dir, MinimalArchive(appid, self._asset_prefix(game_dir), game_dir.parent.name))
         prefix = self._asset_prefix(game_dir, metadata)
         escaped_prefix = globmod.escape(prefix)
         expected_name = metadata.get("name") or prefix
@@ -1152,17 +1153,13 @@ class LibraryService:
         except (OSError, ValueError):
             return {}
 
-    def _safe_name(self, value):
-        value = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", str(value or "")).strip().rstrip(".")
-        return re.sub(r"\s+", " ", value) or "Unnamed Game"
-
     def _asset_prefix(self, game_dir, metadata=None):
         # Assets are written on disk using the sanitized Steam name (see OrganizerService._asset_prefix), not
         # the raw folder name, so prefer the metadata name when available for an exact match (this also
         # avoids mismatches on collision-suffixed folders like "Game - 2020-01-02 (2)").
         name = (metadata or {}).get("name")
         if name:
-            return self._safe_name(name)
+            return safe_name(name)
         return re.sub(r"\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$", "", game_dir.name).strip() or game_dir.name
 
     def _find_appid(self, game_dir, metadata):
@@ -1178,35 +1175,6 @@ class LibraryService:
             if found:
                 return found.group(1)
         return ""
-
-
-class _MinimalArchive:
-    """Lightweight stand-in so LibraryService can reuse OrganizerService.write_metadata() for games that
-    predate the .game-info.json sidecar, without needing a full GameArchive/SteamMatch round trip."""
-
-    def __init__(self, appid, name, category):
-        self.steam = type("S", (), {"appid": appid, "name": name, "description": "", "release_date": "", "genres": [], "tags": [], "developer": "", "publisher": ""})()
-        self.user_title = name
-        self.display_name = name
-        self.decision = type("D", (), {"category": category})()
-
-
-class _RepairArchive:
-    """Minimal stand-in for GameArchive so the library repair pass can reuse the organizer's conversion
-    routine on an archive that discovery never built an object for.
-
-    It carries a real ConversionResult, not just the fields the packer reads. Without one the organizer's
-    `note = getattr(archive,'conversion',None)` was always None here, so every repair outcome was thrown away:
-    the Done screen could not name what the repair pass did, and a caller could not tell a successful
-    conversion from an archive that was skipped or that failed to extract."""
-
-    def __init__(self, path, appid, name):
-        self.path = path
-        self.display_name = name
-        self.user_title = name
-        self.steam = type("S", (), {"appid": appid or "", "found": bool(appid), "name": name, "description": "", "release_date": "", "genres": [], "tags": []})()
-        self.decision = type("D", (), {"category": ""})()
-        self.conversion = ConversionResult()
 
 
 # New in this release: library-wide Steam link normalization and artwork refresh that runs every scan.

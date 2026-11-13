@@ -5,6 +5,9 @@
 
 ## 9.33
 
+### 2026-11-13 00:45:00 — fix: RepairArchive test passes found=True so the repair pass reaches extraction
+- `tests/test_services.py`: `test_a_matched_7z_that_needs_no_rename_still_finishes_its_stage` now constructs `RepairArchive(source, "999", "Named Game", found=True)` instead of relying on the default `found=False`. The old `_RepairArchive` derived `found=bool(appid)`, so `appid="999"` implied a Steam match; without `found=True`, `_repack_with_official_name` short-circuits to `"skipped"` before extraction and the test's `"extracting"` stage assertion fails.
+
 ### 2026-11-12 23:55:00 — refactor: split naming utilities out of organizer_service.py into core/naming_utils.py
 - `core/naming_utils.py`: New module holding pure naming functions extracted from `OrganizerService` — `safe_name()`, `release_label()`, `game_name()`, `asset_prefix()`, `modified_at()`, `path_promotion_key()`, `promotion_key()`, `unique_dir()`. No I/O except `modified_at()` (stats only) and `unique_dir()` (existence checks only). Called externally via `OrganizerService.__new__(OrganizerService)._method()` before; now importable directly.
 - `services/organizer_service.py`: Removed the 8 naming method definitions and their `datetime`/`re`/`version_key` imports; imports the functions from `core.naming_utils` instead. Kept thin wrapper methods (`_safe_name`, `_release_label`, `_game_name`, `_asset_prefix`, `_modified_at`, `_path_promotion_key`, `_promotion_key`, `_unique_dir`) that delegate to the module functions so existing callers (`ui/artwork_view.py`, `services/library_service.py`, tests) keep working. Internal call sites now use the module functions directly.

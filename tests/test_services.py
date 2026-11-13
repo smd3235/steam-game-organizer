@@ -22,10 +22,10 @@ from core.config import AppConfig
 from core.constants import COMPRESSION_LEVEL, COMPRESSION_THREADS, canonical_category, suggest_category, DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 from core.logger import AppLogger
-from core.models import ArtworkResult, GameArchive, SteamMatch
+from core.models import ArtworkResult, GameArchive, RepairArchive, SteamMatch
 from services.archive_service import ArchiveService
 from services.extract_service import ExtractService
-from services.library_service import LibraryService, _RepairArchive
+from services.library_service import LibraryService
 from services.organizer_service import OrganizerService
 from services.steam_service import SteamService
 from utils.filename_utils import identity_key
@@ -1067,7 +1067,6 @@ class TestServices(unittest.TestCase):
         # else - an Organize run in the same app, or a second repair pass - before this one reaches it. The
         # source is then gone, and stat() used to raise FileNotFoundError that surfaced as a red failure for a
         # conversion that had in fact already succeeded.
-        from services.library_service import _RepairArchive
 
         with TemporaryDirectory() as d:
             root = Path(d)
@@ -1083,7 +1082,7 @@ class TestServices(unittest.TestCase):
             source.unlink()  # another run converts it first
             _game_dir, path, _size, appid, name = candidates[0]
             events = []
-            result = OrganizerService(AppLogger(root / "log.log"))._repack_with_official_name(_RepairArchive(path, appid, name), on_progress=events.append)
+            result = OrganizerService(AppLogger(root / "log.log"))._repack_with_official_name(RepairArchive(path, appid, name), on_progress=events.append)
             self.assertEqual(result, path, "a resolved archive should be returned untouched")
             self.assertFalse([e for e in events if e.get("stage") == "failed"], f"a resolved archive was reported as failed: {events}")
             self.assertTrue([e for e in events if e.get("stage") == "skipped"], "the archive was not reported as already converted")
@@ -3140,9 +3139,8 @@ class TestPartialArchiveSafety(unittest.TestCase):
         return path
 
     def candidate(self, library, path, name="Atomic Game"):
-        from services.library_service import _RepairArchive
 
-        return _RepairArchive(path, "606", name)
+        return RepairArchive(path, "606", name)
 
     def test_a_partial_build_never_appears_under_the_final_name(self):
         # The whole failure started here: the .rar/.zip -> .7z build wrote straight to "Name.7z", so an
@@ -3518,7 +3516,7 @@ class TestConversionToggle(unittest.TestCase):
             events = []
             # No AppID, which is what "the scan could not match this game" looks like to this routine.
             service = OrganizerService(AppLogger(root / "log.log"), convert_archives=lambda: True)
-            result = service._repack_with_official_name(_RepairArchive(source, "", "Unmatched Game"), on_progress=events.append, library_root=library)
+            result = service._repack_with_official_name(RepairArchive(source, "", "Unmatched Game"), on_progress=events.append, library_root=library)
             stages = [event.get("stage") for event in events]
             self.assertNotIn("extracting", stages, f"an archive that cannot be rebuilt was extracted anyway; stages were {stages}")
             self.assertNotIn("compressing", stages, f"an archive that cannot be rebuilt was rebuilt anyway; stages were {stages}")
@@ -3547,7 +3545,7 @@ class TestConversionToggle(unittest.TestCase):
             events = []
             service = OrganizerService(AppLogger(root / "log.log"), convert_archives=lambda: True)
             with patch.object(service, "_source_is_intact", return_value=True), patch.object(service, "_run_tool", return_value=(0, "")) as run_tool:
-                service._repack_with_official_name(_RepairArchive(source, "", "Settled Game"), on_progress=events.append, library_root=library)
+                service._repack_with_official_name(RepairArchive(source, "", "Settled Game"), on_progress=events.append, library_root=library)
             run_tool.assert_not_called()
             stages = [event.get("stage") for event in events]
             self.assertTrue(stages, "the conversion reported nothing at all")
@@ -3577,7 +3575,9 @@ class TestConversionToggle(unittest.TestCase):
                  patch.object(service, "_extraction_is_short", return_value=False), \
                  patch.object(service, "_run_tool", return_value=(0, "")), \
                  patch.object(service, "_find_generic_content_folder", return_value=None):
-                result = service._repack_with_official_name(_RepairArchive(source, "999", "Named Game"), on_progress=events.append, library_root=library)
+                # found=True mirrors the old _RepairArchive behaviour, which derived found=bool(appid);
+                # without it _repack_with_official_name short-circuits to "skipped" before extracting.
+                result = service._repack_with_official_name(RepairArchive(source, "999", "Named Game", found=True), on_progress=events.append, library_root=library)
             stages = [event.get("stage") for event in events]
             self.assertIn("extracting", stages, "the archive should have been extracted before deciding")
             self.assertEqual(result, source)
@@ -3603,7 +3603,7 @@ class TestConversionToggle(unittest.TestCase):
             _game_dir, path, _size, appid, name = candidates[0]
             events = []
             service = OrganizerService(AppLogger(root / "log.log"), convert_archives=False)
-            result = service._repack_with_official_name(_RepairArchive(path, appid, name), on_progress=events.append)
+            result = service._repack_with_official_name(RepairArchive(path, appid, name), on_progress=events.append)
             # The service-level toggle covers the repair pass; organizing itself is covered below because
             # move() owns a different code path.
             self.assertEqual(result, path)

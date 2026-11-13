@@ -152,3 +152,62 @@ class AppState:
     cancel_requested: bool = False
     developer_mode: bool = False
     last_error: str = ""
+
+
+@dataclass
+class MinimalArchive:
+    """Lightweight stand-in so LibraryService can reuse OrganizerService.write_metadata() for games that
+    predate the .game-info.json sidecar, without needing a full GameArchive/SteamMatch round trip."""
+
+    appid: str = ""
+    name: str = ""
+    category: str = ""
+
+    @property
+    def steam(self):
+        return type("S", (), {"appid": self.appid, "name": self.name, "description": "", "release_date": "", "genres": [], "tags": [], "developer": "", "publisher": ""})()
+
+    @property
+    def user_title(self):
+        return self.name
+
+    @property
+    def display_name(self):
+        return self.name
+
+    @property
+    def decision(self):
+        return type("D", (), {"category": self.category})()
+
+
+@dataclass
+class RepairArchive:
+    """Minimal stand-in for GameArchive so the library repair pass can reuse the organizer's conversion
+    routine on an archive that discovery never built an object for.
+
+    It carries a real ConversionResult, not just the fields the packer reads. Without one the organizer's
+    `note = getattr(archive,'conversion',None)` was always None here, so every repair outcome was thrown away:
+    the Done screen could not name what the repair pass did, and a caller could not tell a successful
+    conversion from an archive that was skipped or that failed to extract."""
+
+    path: Path
+    appid: str = ""
+    name: str = ""
+    found: bool = False
+    conversion: ConversionResult = field(default_factory=ConversionResult)
+
+    @property
+    def display_name(self):
+        return self.name
+
+    @property
+    def user_title(self):
+        return self.name
+
+    @property
+    def steam(self):
+        return type("S", (), {"appid": self.appid, "found": self.found, "name": self.name, "description": "", "release_date": "", "genres": [], "tags": []})()
+
+    @property
+    def decision(self):
+        return type("D", (), {"category": ""})()

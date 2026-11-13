@@ -28,7 +28,8 @@ from core.constants import DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 from core.config import AppConfig
 from core.logger import AppLogger
-from services.library_service import LibraryService, _RepairArchive
+from core.models import RepairArchive
+from services.library_service import LibraryService
 from services.organizer_service import OrganizerService
 from utils.formatting import human_size
 
@@ -178,7 +179,7 @@ def main() -> int:
                 continue
 
             print(f"[{index}/{len(candidates)}] converting {pending.name} ({human_size(size)})…", flush=True)
-            archive = _RepairArchive(pending, appid, name)
+            archive = RepairArchive(pending, appid, name)
             try:
                 # These archives are password protected and use WinZip AES, which only 7z can read. The
                 # password is passed to the extractor directly: rewriting the archive first to strip the
