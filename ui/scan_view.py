@@ -12,10 +12,10 @@ from tkinter import ttk
 from urllib.request import Request, urlopen
 import os
 import shutil
-import time
 from pathlib import Path
 from .theme import ACCENT_HI, ActivityFeed, BG, BORDER, CYAN, GREEN, MUTED, ORANGE, PANEL, PANEL2, PhaseTimeline, RED, TEXT, bind_wheel, human_size, panel, radio, scroll_text
 from core.constants import USER_AGENT
+from core.scan_view_utils import ago, space_delta, size
 
 # Every phase a scan runs through, in order. Shown as a live timeline so the user can always see which step
 # is running, which already finished, and which were skipped (Preview Only).
@@ -261,6 +261,16 @@ class ScanView(tk.Frame):
         self.cancel_btn.configure(state="disabled")
         self._refresh_plan()
 
+    # Pure functions now live in core.scan_view_utils; these thin wrappers keep existing callers working.
+    def _ago(self, stamp):
+        return ago(stamp)
+
+    def _space_delta(self, event):
+        return space_delta(event)
+
+    def _size(self, n):
+        return size(n)
+
     def sync_convert_setting(self):
         """Keep config.convert_archives in step with the checkbox the moment it is toggled.
 
@@ -310,20 +320,6 @@ class ScanView(tk.Frame):
         tk.Label(box, text="Scan Library to refresh these numbers.", bg=PANEL2, fg=MUTED, font=("TkDefaultFont", 7)).pack(anchor="w", padx=12, pady=(8, 10))
         return box
 
-    def _ago(self, stamp):
-        """How long ago a scan ran, in the largest unit worth naming."""
-        try:
-            seconds = max(0, int(time.time() - float(stamp)))
-        except (TypeError, ValueError):
-            return ""
-        if seconds < 60:
-            return f"{seconds}s ago"
-        if seconds < 3600:
-            return f"{seconds // 60}m ago"
-        if seconds < 86400:
-            return f"{seconds // 3600}h ago"
-        return f"{seconds // 86400}d ago"
-
     def _dash_wheel(self, event, canvas):
         """Scrolls the live data panel. The rail has a fixed share of the window height, so at the minimum
         window size the conversion rows below the fold are only reachable with the wheel."""
@@ -351,26 +347,6 @@ class ScanView(tk.Frame):
 
     def _radio(self, parent, text, value):
         return radio(parent, text, value, self.mode_var, padx=8)
-
-    def _space_delta(self, event):
-        """Formats "what it was, what it became, and the difference" for one finished conversion.
-
-        Returns '' unless the event carries both sizes, so a stage that has not got a target yet is left
-        alone rather than shown as a misleading zero.
-        """
-        source = int(event.get("source_bytes") or 0)
-        target = int(event.get("target_bytes") or 0)
-        if not source or not target:
-            return ""
-        delta = target - source
-        sign = "+" if delta > 0 else "-"
-        share = (abs(delta) / source * 100.0) if source else 0.0
-        source_format = str(event.get("source_format") or "").upper()
-        target_format = str(event.get("target_format") or "7Z").upper()
-        lead = f"{source_format} " if source_format else ""
-        # A .7z rebuilt over an already-compressed .7z is not a conversion, and the size line would otherwise
-        # imply a format change that did not happen.
-        return f"{lead}{human_size(source)} → {target_format} {human_size(target)}   ({sign}{human_size(abs(delta))}, {sign}{share:.1f}%)"
 
     def _live_detail(self, event):
         """Formats what is known about an archive while it is still being worked on.
@@ -755,9 +731,6 @@ class ScanView(tk.Frame):
 
     def set_elapsed(self, text):
         self.elapsed_label.configure(text=text)
-
-    def _size(self, n):
-        return human_size(n)
 
     def phase_update(self, event):
         """Renders one scan-pipeline phase record. Phases that used to run silently now mark the timeline,

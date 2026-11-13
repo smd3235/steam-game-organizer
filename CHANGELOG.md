@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-13 09:00:00 — refactor: extract pure functions from ui/scan_view.py into core/scan_view_utils.py
+- `core/scan_view_utils.py`: New module holding `ago`, `space_delta`, `size`, extracted from `ui/scan_view.py`. All are pure functions with no instance-state dependency.
+- `ui/scan_view.py`: Removed `_ago`, `_space_delta`, `_size` method definitions. Added thin wrapper methods that delegate to `core.scan_view_utils`, keeping existing callers working. Removed now-unused `import time`.
+
 ### 2026-11-13 08:00:00 — refactor: extract pure functions from app/controller.py into core/controller_utils.py
 - `core/controller_utils.py`: New module holding `artwork_present`, `primary`, `needs_conversion`, `primary_size`, `prune_rolled_back_folder`, extracted from `app/controller.py`. All are pure functions with no instance-state dependency.
 - `app/controller.py`: Removed `_artwork_present`, `_primary`, `_needs_conversion`, `_primary_size`, `_prune_rolled_back_folder` method definitions. Added thin wrapper methods that delegate to `core.controller_utils`, keeping existing callers working. Dropped now-unused `DeletionGuard`, `PathOutsideAllowedRoot` imports.
