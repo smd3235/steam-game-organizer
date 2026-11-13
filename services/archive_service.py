@@ -486,7 +486,9 @@ class ArchiveService:
         return any((parent / name).is_file() for name in ("Open Steam Page.html", "Open Steam Page.desktop", "Open Steam Page in Chrome.desktop", "Open Steam Page (Steam Deck).desktop", "Open Steam Page (Windows).url"))
 
     def _mock(self, ctx, progress=None):
-        names = ["Alpha Forge v 0 8.zip", "Gamma Quest v 1 0.zip", "Delta Realm Incremental.zip", "Epsilon Online.zip"]
+        # Replaced a real Steam game name with fictional "Nebula Online" per the
+        # no-real-game-names rule (see tools/validate_game_names.py deny list).
+        names = ["Alpha Forge v 0 8.zip", "Gamma Quest v 1 0.zip", "Delta Realm Incremental.zip", "Nebula Online.zip"]
         result = ScanResult()
         total = 0
         for i, n in enumerate(names, 1):

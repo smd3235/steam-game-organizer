@@ -2371,9 +2371,11 @@ class TestServices(unittest.TestCase):
     def test_direct_steam_service_mock_is_backend_free(self):
         with TemporaryDirectory() as d:
             s = SteamService(AppLogger(Path(d) / "x.log"), mock=True)
-            steam_match = s.lookup("Epsilon Online")
+            # Replaced a real Steam game name with fictional "Nebula Online" per the
+            # no-real-game-names rule (see tools/validate_game_names.py deny list).
+            steam_match = s.lookup("Nebula Online")
             self.assertEqual(steam_match.source, "mock")
-            self.assertEqual(steam_match.name, "Epsilon Online")
+            self.assertEqual(steam_match.name, "Nebula Online")
 
     def test_artwork_urls_prefer_header_over_grid(self):
         from services.artwork_service import ArtworkService

@@ -851,7 +851,9 @@ class SteamService:
             "gammaquest": ("100003", "Gamma Quest"),
             "deltarealm": ("100003", "Delta Realm"),
             "deltarealmincremental": ("100003", "Delta Realm"),
-            "epsilononline": ("100004", "Epsilon Online"),
+            # Replaced a real Steam game name with fictional "Nebula Online" per the
+            # no-real-game-names rule (see tools/validate_game_names.py deny list).
+            "nebulaonline": ("100004", "Nebula Online"),
             "cosmiccat": ("100005", "Cosmic Cat Colony"),
             "neonnexus": ("100006", "Neon Nexus"),
             "stellarempires": ("100007", "Stellar Empires"),

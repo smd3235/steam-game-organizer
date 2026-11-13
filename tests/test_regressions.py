@@ -21,7 +21,9 @@ class TestKnownRegressionCases(unittest.TestCase):
   def test_known_identities(self):
         # 2026-11-10: "Incremental" is a legitimate game genre (idle/incremental games), so
         # "Delta Realm Incremental.zip" folds to "deltarealmincremental", not "deltarealm".
-        expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealmincremental","Epsilon Online.zip":"epsilononline"}
+        # Replaced a real Steam game name with fictional "Nebula Online" per the
+        # no-real-game-names rule (see tools/validate_game_names.py deny list).
+        expected={"Alpha Forge v 0 8.zip":"alphaforge","Gamma Quest v 1 0.zip":"gammaquest","Delta Realm Incremental.zip":"deltarealmincremental","Nebula Online.zip":"nebulaonline"}
         for name,key in expected.items(): self.assertEqual(identity_key(name),key,name)
 
   # The titles here are the real folders from one library, and every one of them failed to find its Steam name.

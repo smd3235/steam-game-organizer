@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-13 02:30:00 — security: add real-game-name validator tool and fix remaining Epsilon Online references
+- `tools/validate_game_names.py`: New validator that scans all project `.py` files for real Steam game names and appids on a deny list (built from names previously replaced with fictional equivalents under `## 9.33`). Uses word-boundary matching so single-word names (rust, doom, skyrim, ...) do not match inside unrelated words (trust, prunable, skyscraper, ...). Excludes itself and vendored/output directories. Exits 1 with a violation list if any real name is found; intended for pre-commit/CI use.
+- `services/archive_service.py`, `services/steam_service.py`, `tests/test_regressions.py`, `tests/test_services.py`: Replaced the remaining `"Epsilon Online"` / `"epsilononline"` references with fictional `"Nebula Online"` / `"nebulaonline"` so the validator passes on a clean codebase.
+
 ### 2026-11-13 00:45:00 — fix: RepairArchive test passes found=True so the repair pass reaches extraction
 - `tests/test_services.py`: `test_a_matched_7z_that_needs_no_rename_still_finishes_its_stage` now constructs `RepairArchive(source, "999", "Named Game", found=True)` instead of relying on the default `found=False`. The old `_RepairArchive` derived `found=bool(appid)`, so `appid="999"` implied a Steam match; without `found=True`, `_repack_with_official_name` short-circuits to `"skipped"` before extraction and the test's `"extracting"` stage assertion fails.
 
