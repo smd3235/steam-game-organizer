@@ -5,6 +5,15 @@
 
 ## 9.33
 
+### 2026-11-13 13:00:00 — test: add import-integrity and extracted-module tests, rename orphaned test files for discovery
+- `tests/test_module_imports.py`: New module verifying every module in core/ and services/ imports cleanly, with a self-check that the module lists stay in sync with files on disk.
+- `tests/test_canonical_category.py`: New module testing `canonical_category()` alias mapping and pass-through behavior.
+- `tests/test_safe_folder_name.py`: New module testing `safe_folder_name()` unsafe-char replacement, reserved-name fallback, trimming, and length truncation.
+- `tests/test_typed_destination.py`: New module testing `_typed_destination()` rejection of relative paths, home folder, system folders, library-root paths, and files; acceptance of valid absolute paths.
+- `tests/test_batch_item.py`: New module testing `BatchItem` defaults and `finished` property for all terminal states.
+- `tests/test_extract_result.py`: New module testing `ExtractResult` defaults, explicit values, and `summary` property.
+- Renamed 32 standalone test files from `*_tests.py` / descriptive names to `test_*.py` so `unittest discover` collects them (previously they were dead code, never imported and never discovered).
+
 ### 2026-11-13 12:00:00 — refactor: complete module splits and fix circular imports
 - `core/category_evidence.py`: Changed `@dataclass` to `@dataclass(frozen=True)` so `CategoryEvidence` is immutable as its docstring states.
 - `core/constants.py`: Moved `from core.suggest_category_with_evidence import suggest_category_with_evidence` to after `CATEGORY_ALIASES`, `IGNORED_AUTO_CATEGORIES`, `UNSORTED_EVIDENCE` to avoid circular import at module load time.
