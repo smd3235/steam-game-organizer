@@ -5,6 +5,9 @@
 
 ## 9.33
 
+### 2026-11-13 18:15:00 — fix: point run_tests_parallel.py at relocated pytest.ini
+- `tools/run_tests_parallel.py`: Added `-c tests/pytest.ini` to the pytest command so it still picks up markers and filterwarnings after `pytest.ini` moved into `tests/`.
+
 ### 2026-11-13 18:00:00 — chore: move pytest.ini into tests/ folder
 - `pytest.ini`: Moved from project root to `tests/pytest.ini` — it is test configuration and belongs alongside the tests it configures. pytest must be invoked from within `tests/` or with `-c tests/pytest.ini` since it no longer lives at the root.
 

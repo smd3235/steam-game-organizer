@@ -59,7 +59,7 @@ FROZEN_INTEGRATION = [
 
 
 def run_tests(test_files, parallel=False, description=""):
-    cmd = ["runtime/python.exe", "-m", "pytest"] + test_files
+    cmd = ["runtime/python.exe", "-m", "pytest", "-c", "tests/pytest.ini"] + test_files
     if parallel:
         cmd += ["-n", "auto", "--dist=loadfile"]
     cmd += ["--tb=short"]
