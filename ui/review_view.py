@@ -7,7 +7,8 @@ from .widgets.artwork_panel import ArtworkPanel
 from .widgets.category_evidence_panel import CategoryEvidencePanel
 
 from .theme import ACCENT_HI, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, human_size, panel, radio, scroll_text
-from core.constants import DEFAULT_CATEGORIES, SUPPLEMENTAL_CATEGORIES, canonical_category
+from core.canonical_category import canonical_category
+from core.constants import DEFAULT_CATEGORIES, SUPPLEMENTAL_CATEGORIES
 from services.installer_detect import NEEDS_INSTALL_DIRNAME
 from core.models import ArtworkResult, SteamMatch
 from services.batch_extract_service import BatchPlan, BatchItem
@@ -16,7 +17,7 @@ from ui.batch_extract_window import run_batch_window
 # Additional imports for extract_selected
 from services.archive_service import ArchiveService
 from services.catalog_status import already_extracted
-from core.uri_actions import safe_folder_name
+from core.safe_folder_name import safe_folder_name
 from pathlib import Path
 
 

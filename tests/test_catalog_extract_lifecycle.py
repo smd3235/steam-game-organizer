@@ -23,7 +23,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from core.logger import AppLogger
-from core.uri_actions import safe_folder_name
+from core.safe_folder_name import safe_folder_name
 from services.catalog_service import CatalogService
 from services.extract_service import ExtractService
 from services.installer_detect import NEEDS_INSTALL_DIRNAME

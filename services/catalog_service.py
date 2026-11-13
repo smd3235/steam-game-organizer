@@ -26,13 +26,15 @@ from core.catalog_utils import (
 )
 from .banner_art import banner_data_uri
 from core.constants import APP_NAME, ENTRY_POINT, LIBRARY_RESERVED_DIRS
-from core.uri_actions import safe_folder_name
+from core.safe_folder_name import safe_folder_name
 from services.catalog_status import STATUS_NAME, already_extracted, empty_status, write_status, archive_has_changed_since_extraction
 from services.installer_detect import NEEDS_INSTALL_DIRNAME, has_needs_install_mark
 from utils.formatting import human_size
 import json
 import re
 
+# sort_date extracted to services\sort_date.py — see that module for its definition.
+from services.sort_date import sort_date
 # Module-level cache shared across all CatalogService instances: {resolved_library_root_str: categories_dict}.
 # Instance-level caches are thrown away when the instance is discarded, which made the three separate
 # _collect() calls in steam_game_organizer.py (_handle_uri, _handle_multi_uri, _handle_batch_uri) walk
@@ -62,7 +64,6 @@ _CATEGORY_BANNERS = {
     "survival": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3e2723"/><stop offset="100%" stop-color="#5d4037"/></linearGradient></defs><rect width="1200" height="300" fill="url(#g)"/><path d="M100 280 Q300 100 500 280 Q700 100 900 280 Q1100 100 1200 280" stroke="#8d6e63" stroke-width="8" fill="none"/><circle cx="600" cy="180" r="40" fill="#4e342e"/></svg>',
 }
 
-
 def _category_banner(name: str) -> str:
     """Return a data URI for a custom category banner, or the generated name-based banner if none exists."""
     svg = _CATEGORY_BANNERS.get(name.strip().lower())
@@ -70,29 +71,6 @@ def _category_banner(name: str) -> str:
         return "data:image/svg+xml," + quote(svg, safe="")
     return banner_data_uri(name)
 
-
-MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
-
-
-def sort_date(text) -> str:
-    """A sortable YYYYMMDD key from a Steam release date, or '00000000' when there is no usable date.
-
-    Steam writes these in at least two shapes - "Jun 24, 2026" and "1 Jan, 2024" - and any part can be missing.
-    Stripping the non-digits and taking the first four characters, which is what this did before, survives
-    neither shape: it returned "6242" for "Jun 24, 2026", because the first digits in that string are the day.
-    Sorting on that key was sorting on the day of the month.
-
-    A missing month or day becomes '00', so a date with only a year still lands in the right year and ties with
-    its neighbours instead of sorting to one end of the library.
-    """
-    raw = str(text or "")
-    year = re.search(r"\b((?:19|20)\d{2})\b", raw)
-    if not year:
-        return "00000000"
-    month = re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", raw, re.IGNORECASE)
-    day = re.search(r"\b(\d{1,2})\b", raw)
-    day_value = int(day.group(1)) if day and int(day.group(1)) <= 31 else 0
-    return f"{year.group(1)}{MONTHS[month.group(1).lower()]:02d}{day_value:02d}" if month else (f"{year.group(1)}00{day_value:02d}")
 
 
 class CatalogService:
@@ -2133,6 +2111,5 @@ footer{text-align:center;color:var(--dim);padding:30px;font-size:.79rem;border-t
 }
 """
         return self._css_cache
-
 
 # New in this release: offline HTML game catalog (TOC, category hero art, one portable file for every platform).

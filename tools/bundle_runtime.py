@@ -175,7 +175,7 @@ def check():
     from tools.install_protocol_handler import _registered_command
 
     command = _registered_command()
-    hint = "runtime\\python.exe tools\\install_protocol_handler.py"
+    hint = "runtime/python.exe tools\\install_protocol_handler.py"
     print(f"  handler  : {command if command else 'not registered - run: ' + hint}")
     if command and str(RUNTIME) in command:
         print("  the registered interpreter is the bundled one, so the folder travels as a unit")
@@ -203,7 +203,7 @@ def main():
     files = [p for p in RUNTIME.rglob("*") if p.is_file()]
     print(f"built {RUNTIME}: python {version}, {len(files)} files, {sum(p.stat().st_size for p in files) / 1e6:.1f} MB" + (", 7z.exe bundled" if sevenzip else ", no 7z.exe (none found)"))
     print(f"end-to-end: {end_to_end.stdout.strip()}")
-    print("next step on this machine: runtime\\python.exe tools\\install_protocol_handler.py")
+    print("next step on this machine: runtime/python.exe tools\\install_protocol_handler.py")
     return 0
 
 

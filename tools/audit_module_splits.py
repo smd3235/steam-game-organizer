@@ -25,8 +25,6 @@ import ast
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 # Directories that are never scanned or written: frozen outputs, bundled runtime, git.
 SKIP_DIRS = {".git", "dist", "build", "runtime", "__pycache__", ".pytest_cache", ".agent-cache", ".ruff_cache"}
 
@@ -38,14 +36,12 @@ OVER_SIZE_BYTES = 15000
 # Project root is the parent of the tools/ directory.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-
 def iter_source_files(root: Path):
     """Yield every .py file under root, skipping vendored/output directories."""
     for path in sorted(root.rglob("*.py")):
         if any(part in SKIP_DIRS for part in path.parts):
             continue
         yield path
-
 
 def parse_source(path: Path):
     """Return the AST module for path, or None if it cannot be parsed."""
@@ -58,7 +54,6 @@ def parse_source(path: Path):
     except SyntaxError:
         return None
 
-
 def symbol_line_count(node: ast.AST) -> int:
     """Number of source lines occupied by a node (inclusive of decorators)."""
     start = getattr(node, "lineno", None)
@@ -66,7 +61,6 @@ def symbol_line_count(node: ast.AST) -> int:
     if start is None or end is None:
         return 0
     return end - start + 1
-
 
 def audit_file(path: Path, threshold_lines: int = OVER_SIZE_LINES, threshold_bytes: int = OVER_SIZE_BYTES):
     """Return a dict describing oversized split candidates in one file."""
@@ -112,7 +106,6 @@ def audit_file(path: Path, threshold_lines: int = OVER_SIZE_LINES, threshold_byt
         "functions": functions,
     }
 
-
 def suggest_module_name(file_path: Path, symbol_name: str) -> str:
     """Suggest a module file name for an extracted symbol.
 
@@ -124,7 +117,6 @@ def suggest_module_name(file_path: Path, symbol_name: str) -> str:
     target_dir = parts[0] if parts else "core"
     snake = "".join("_" + c.lower() if c.isupper() else c for c in symbol_name).lstrip("_")
     return f"{target_dir}/{snake}.py"
-
 
 def extract_symbol_names(code_text: str) -> set[str]:
     """Return the set of top-level names defined by code_text (classes/functions)."""
@@ -138,13 +130,15 @@ def extract_symbol_names(code_text: str) -> set[str]:
             names.add(node.name)
     return names
 
-
-def needed_imports_for_symbol(source_text: str, symbol_name: str) -> list[str]:
+def needed_imports_for_symbol(source_text: str, symbol_name: str, source_module: str | None = None) -> list[str]:
     """Guess which module-level imports the extracted symbol needs.
 
     Scans the full source for import statements and returns those whose names are
-    referenced inside the extracted symbol's body. This is a heuristic: it may
-    over- or under-import, so the caller should review.
+    referenced inside the extracted symbol's body. Also finds module-level
+    definitions (classes, functions, variables) referenced by the symbol that
+    are defined in the source file itself, and adds imports for them from the
+    source module. This is a heuristic: it may over- or under-import, so the
+    caller should review.
     """
     try:
         tree = ast.parse(source_text)
@@ -168,10 +162,13 @@ def needed_imports_for_symbol(source_text: str, symbol_name: str) -> list[str]:
         if isinstance(child, ast.Attribute):
             referenced.add(child.attr)
     imports: list[str] = []
+    imported_names: set[str] = set()
+    module_level_names: dict[str, str] = {}  # name -> kind (class/function/var)
     for node in tree.body:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 name = alias.asname or alias.name.split(".")[0]
+                imported_names.add(name)
                 if name in referenced:
                     imports.append(f"import {alias.name}")
         elif isinstance(node, ast.ImportFrom):
@@ -179,9 +176,23 @@ def needed_imports_for_symbol(source_text: str, symbol_name: str) -> list[str]:
                 continue
             for alias in node.names:
                 name = alias.asname or alias.name
+                imported_names.add(name)
                 if name in referenced:
                     imports.append(f"from {node.module} import {alias.name}")
+        elif isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            module_level_names[node.name] = node.__class__.__name__
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    module_level_names[target.id] = "var"
+    # Add imports for module-level definitions referenced by the symbol
+    # but defined in the source file itself (not imported).
+    if source_module:
+        for name in referenced:
+            if name not in imported_names and name in module_level_names:
+                imports.append(f"from {source_module} import {name}")
     return imports
+
 
 
 def heal_file(file_path: Path, symbol_name: str):
@@ -205,24 +216,25 @@ def heal_file(file_path: Path, symbol_name: str):
     # Capture any leading decorators separately (they are part of the node already).
     symbol_lines = text.splitlines(keepends=True)[start:end]
     # Determine imports the symbol needs.
-    imports = needed_imports_for_symbol(text, symbol_name)
+    source_module = file_path.relative_to(PROJECT_ROOT).as_posix().replace("/", ".")[:-3]
+    imports = needed_imports_for_symbol(text, symbol_name, source_module)
     # Build the new module content.
     new_module = PROJECT_ROOT / suggest_module_name(file_path, symbol_name)
     new_module.parent.mkdir(parents=True, exist_ok=True)
     module_lines = [
-        '"""Extracted from ' + str(file_path.relative_to(PROJECT_ROOT)) + '.',
-        "",
-        f"    {symbol_name} was moved here during a module split so the original file",
-        "    stays under the size threshold. Import it from here instead of defining it",
-        "    inline.",
-        '"""',
-        "",
+        '"""Extracted from ' + str(file_path.relative_to(PROJECT_ROOT)).replace('//', '/') + '.\n',
+        "\n",
+        f"    {symbol_name} was moved here during a module split so the original file\n",
+        "    stays under the size threshold. Import it from here instead of defining it\n",
+        "    inline.\n",
+        '"""\n',
+        "\n",
     ]
     for imp in imports:
-        module_lines.append(imp)
+        module_lines.append(imp + "\n")
     if imports:
-        module_lines.append("")
-    module_lines.append("")
+        module_lines.append("\n")
+    module_lines.append("\n")
     module_lines.extend(symbol_lines)
     # Ensure trailing newline.
     if module_lines and not module_lines[-1].endswith("\n"):
@@ -314,7 +326,6 @@ def main() -> int:
         return 1
     print("No oversized files found. Clean.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

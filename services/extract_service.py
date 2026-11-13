@@ -22,6 +22,8 @@ from pathlib import Path
 from core.constants import ARCHIVE_EXTENSIONS, NO_WINDOW
 from services.installer_detect import NEEDS_INSTALL_DIRNAME, find_installer
 
+# ExtractResult extracted to services\extract_result.py — see that module for its definition.
+from services.extract_result import ExtractResult
 # The app's own folder, so the finder can look beside the code that asks. Named once here
 # rather than spelled out inside the function, which is also what lets a test point the same
 # lookup at a scratch folder and prove the order without touching the real installation.
@@ -42,13 +44,6 @@ HEADROOM_FACTOR = 1.15  # floor, not a promise: a dense archive can grow several
 # pointed at a deleted temp stub, or the real bundle shadowed the stub the
 # test meant to exercise. clear_tool_cache() is retained as a no-op so tests
 # that import it keep working.
-def clear_tool_cache():
-    """No-op retained for API compatibility.
-
-    find_tool() re-scans on every call, so there is nothing to invalidate.
-    """
-    pass
-
 
 # Marker file written into each extracted folder so the catalog can tell whether
 # the archive has changed since the last extraction. Content is a JSON object with
@@ -87,24 +82,7 @@ BLOAT_DIR_NAMES = (
     "Samples",
 )
 
-
 @dataclass
-class ExtractResult:
-    archive: object
-    destination: object
-    ok: bool
-    message: str
-    extracted_bytes: int = 0
-    file_count: int = 0
-    code: int = 0
-    # True when the extracted contents were recognised as an installer layout and relocated into a
-    # "Needs Install" folder. Carried separately so the batch view can flag the row without parsing the message.
-    needs_install: bool = False
-
-    @property
-    def summary(self) -> str:
-        return self.message
-
 
 class ExtractService:
     def __init__(self, logger, on_progress=None):

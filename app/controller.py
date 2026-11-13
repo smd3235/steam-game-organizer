@@ -6,7 +6,8 @@ import time
 from pathlib import Path
 
 from app.events import Event
-from core.constants import ARCHIVE_EXTENSIONS, DEFAULT_ZIP_PASSWORD, LIBRARY_RESERVED_DIRS, canonical_category, suggest_category_with_evidence, UNSORTED_EVIDENCE
+from core.canonical_category import canonical_category
+from core.constants import ARCHIVE_EXTENSIONS, DEFAULT_ZIP_PASSWORD, LIBRARY_RESERVED_DIRS, suggest_category_with_evidence, UNSORTED_EVIDENCE
 from core.exceptions import CancellationError
 from core.models import ScanResult
 from utils.filename_utils import identity_key, normalize_name

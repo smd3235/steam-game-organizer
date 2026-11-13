@@ -5,6 +5,31 @@
 
 ## 9.33
 
+### 2026-11-13 12:00:00 — refactor: complete module splits and fix circular imports
+- `core/category_evidence.py`: Changed `@dataclass` to `@dataclass(frozen=True)` so `CategoryEvidence` is immutable as its docstring states.
+- `core/constants.py`: Moved `from core.suggest_category_with_evidence import suggest_category_with_evidence` to after `CATEGORY_ALIASES`, `IGNORED_AUTO_CATEGORIES`, `UNSORTED_EVIDENCE` to avoid circular import at module load time.
+- `core/models.py`: Changed `evidence: CategoryEvidence = UNSORTED_EVIDENCE` to `evidence: CategoryEvidence = field(default_factory=lambda: UNSORTED_EVIDENCE)` to avoid mutable default in dataclass field.
+- `core/suggest_category_with_evidence.py`: Added missing `from core.canonical_category import canonical_category` and `from core.category_evidence import CategoryEvidence` imports.
+- `core/uri_actions.py`: Removed all imports of extracted symbols (`_system_paths`, `safe_folder_name`, `_within`, `_setup_hint`, `_configured_bases`, `_destination_parent`, `_category_folder`, `parse_batch_uri`, `parse_multi_uri`, `parse_setup_uri`, `_prefill`, `_parse_extract_root_action`, `parse_pick_launcher_uri`, `parse_mark_installed_uri`, `parse_play_uri`, `parse_open_extracted_uri`, `parse_uri`, `_typed_destination`, `parse_open_folder_uri`) that no longer exist in this module.
+- `services/batch_extract_service.py`: Removed unused imports of `safe_folder_name`, `ArchiveService`, `already_extracted`, `NEEDS_INSTALL_DIRNAME`, `plan_batch`. Moved `from services.batch_item import BatchItem` to after status constants to avoid circular import.
+- `services/batch_item.py`: Removed unused `from dataclasses import dataclass` import. Now imports status constants from `services.batch_extract_service`.
+- `services/extract_result.py`: Added `@dataclass` decorator so `ExtractResult()` can be constructed with keyword arguments.
+- `services/image_shape.py`: Moved `_SOF_MARKERS` definition here from `services/artwork_service.py` and removed `from services.artwork_service import _SOF_MARKERS` to break circular import.
+- `services/organizer_service.py`: Changed `from core.constants import canonical_category` to `from core.canonical_category import canonical_category`.
+- `services/sort_date.py`: Defined `MONTHS` locally instead of importing from `services.catalog_service` to break circular import.
+- `services/update_extract_marker.py`: No longer imports from `services.catalog_service` at module level (import moved after `extract_marker_path`/`read_extract_marker` definitions).
+- `steam_game_organizer.py`: Removed unused `import argparse`, `import subprocess`, `import threading`, `from core.config import AppConfig`, `from core.logger import AppLogger`, `from core.state import StateStore`, `from debug.diagnostics import Diagnostics`. Moved `from core.main import main` to after `_extract_to_disk`, `_needs_setup` definitions to avoid circular import. Added `from core.config import AppConfig` and `from core.logger import AppLogger` as re-exports (with `# noqa: F401`) so tests can patch them via `patch.object`.
+- `tests/test_uri_actions.py`: Fixed imports of `parse_uri`, `safe_folder_name`, `parse_multi_uri`, `parse_open_folder_uri`, `parse_open_extracted_uri` to point at their extracted modules.
+- `tests/typed_destination_tests.py`: Fixed `parse_uri` import to point at `core.parse_uri`.
+- `tests/fresh_pc_refusals_point_at_the_setup.py`: Fixed `parse_uri` and `parse_batch_uri` imports to point at their extracted modules.
+- `tests/test_setup_flow.py`: Fixed `parse_setup_uri` import to point at `core.parse_setup_uri`. Moved all extracted test class imports to end of file to avoid circular imports.
+- `tests/test_workflow_smoke.py`: Moved `from tests.test_real_workflow import TestRealWorkflow` to after `MOCK_APPIDS` and `ROOT` definitions to avoid circular import.
+- `tests/wait_for_organize.py`: Added `from tests.wait_until import wait_until` import.
+- `tests/test_real_workflow.py`: Added `from tests.wait_for_organize import wait_for_organize` import.
+- Multiple test files: Changed `import tkinter` to `import tkinter as tk` where `tk.` is used. Added missing `from tests.tk_support import ...` imports. Removed local imports that shadowed module-level imports (F811).
+- `ui/phase_timeline.py`: Changed `from palette import BORDER/PANEL` to `from ui.palette import BORDER/PANEL`. Moved `from ui.theme import PhaseTimeline` import to after `pill` definition to avoid circular import.
+- `ui/theme.py`: Moved `from ui.phase_timeline import PhaseTimeline` import to after `pill` definition to avoid circular import.
+
 ### 2026-11-13 11:00:00 — test: extract focused test classes from tests/test_services.py
 - `tests/test_steam_link.py`: New module with `TestSteamLink` (2 tests), extracted from `tests/test_services.py`. Pins the one-HTML-link-per-game scheme and removal of legacy `.desktop`/`.url` files.
 - `tests/test_artwork_image_shape.py`: New module with `TestArtworkImageShape` (5 tests), extracted from `tests/test_services.py`. Pins JPEG shape detection from file bytes and unreadable-file handling.

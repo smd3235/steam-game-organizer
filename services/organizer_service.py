@@ -11,8 +11,8 @@ import json
 import ctypes
 from html import escape
 import re
+from core.canonical_category import canonical_category
 from core.constants import (
-    canonical_category,
     ARCHIVE_EXTENSIONS,
     LOCK_MARKER,
     COMPRESSION_LEVEL,

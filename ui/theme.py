@@ -6,7 +6,7 @@ The ActivityFeed, PhaseTimeline, Sparkline and pill widgets live here because se
 and placing them beside the styles that paint them keeps the color-and-widget pairing visible together.
 """
 
-import time
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -17,6 +17,8 @@ from .palette import (
     ACCENT, ACCENT_HI, ACCENT_HOVER, BG, BORDER, CHART_COLORS, CYAN, DANGER,
     DANGER_HOVER, DANGER_TEXT, ENTRY_BG, GREEN, MUTED, ORANGE, PANEL, PANEL2,
     PANEL3, PILL_KINDS, PINK, RED, SKY, TEXT)
+# PhaseTimeline extracted to ui/phase_timeline.py — see that module for its definition.
+# Imported after pill (below) to avoid a circular import: phase_timeline imports pill from theme.
 
 __all__ = [
     "ACCENT",
@@ -61,7 +63,6 @@ __all__ = [
     "wheel_step",
 ]
 
-
 class Theme:
     def __init__(self, root):
         self.root = root
@@ -104,7 +105,6 @@ class Theme:
         style.configure("TCheckbutton", background=BG, foreground=TEXT, bordercolor=BORDER)
         style.map("TCheckbutton", background=[("active", BG)])
 
-
 def radio(parent, text, value, variable, command=None, padx=8):
     """One radio-button builder. Two private copies had already drifted apart by a pixel and by whether they
     fired a command, so any restyle meant editing both and hoping."""
@@ -114,10 +114,8 @@ def radio(parent, text, value, variable, command=None, padx=8):
         highlightcolor=ACCENT, bd=0, font=("TkDefaultFont", 8, "bold"), padx=padx,
         pady=5, command=command)
 
-
 def panel(parent, **kw):
     return tk.Frame(parent, bg=PANEL, highlightbackground=BORDER, highlightthickness=1, **kw)
-
 
 def wheel_step(event):
     """Turns a mouse-wheel event into a yview_scroll step, handling both X11 delta and Button-4/5."""
@@ -126,16 +124,13 @@ def wheel_step(event):
         return -max(1, abs(delta) // 120) * (1 if delta > 0 else -1)
     return -1 if getattr(event, "num", 0) == 4 else 1
 
-
 def scroll_text(widget, event):
     widget.yview_scroll(wheel_step(event), "units")
     return "break"
 
-
 def bind_wheel(widget, callback):
     for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
         widget.bind(sequence, callback, add="+")
-
 
 def pin_bottom(widget):
     """Keep a scrolling surface parked on its newest content while a run streams into it. Accepts either a
@@ -148,7 +143,6 @@ def pin_bottom(widget):
     except tk.TclError:
         pass
 
-
 def pill(parent, text, kind="accent"):
     bg, fg = PILL_KINDS.get(kind, PILL_KINDS["accent"])
     label = tk.Label(parent, text=text, bg=bg, fg=fg, font=("TkDefaultFont", 8, "bold"), padx=9, pady=4)
@@ -156,75 +150,7 @@ def pill(parent, text, kind="accent"):
     return label
 
 
-class PhaseTimeline(tk.Frame):
-    """A row of stage chips showing every step of a run at once, so the current step is obvious and finished
-    steps stay visible instead of being replaced by the newest line of text.
-    This is what makes a long run legible: 'Converting 4 of 30' is a single overwritable sentence, while the
-    timeline shows which of the six phases are done, which is running, and which were skipped entirely.
-    Each chip also carries how long its stage took. A stage that always takes 30s reads very differently from
-    one that suddenly takes eight minutes, which is usually the first sign of a problem worth stopping for.
-    """
-
-    STATE_KIND = {"pending": "muted", "active": "accent", "done": "good", "skipped": "muted", "failed": "bad", "skipped_soft": "muted"}
-
-    def __init__(self, parent, phases, bg=PANEL, show_timing=True, **kw):
-        super().__init__(parent, bg=bg, **kw)
-        self.states = {}
-        self.chips = {}
-        self.labels = {}
-        self.started = {}
-        self.elapsed = {}
-        self.show_timing = show_timing
-        for column, (key, label) in enumerate(phases):
-            cell = tk.Frame(self, bg=bg)
-            cell.grid(row=0, column=column, sticky="w", padx=(0, 10))
-            if column:
-                tk.Frame(cell, bg=BORDER, width=2, height=20).pack(side="left", fill="y", padx=(0, 8))
-            self.chips[key] = pill(cell, label, "muted")
-            self.chips[key].pack(side="left")
-            self.states[key] = "pending"
-            self.labels[key] = label
-
-    def _render(self, key):
-        state = self.states[key]
-        chip = self.chips[key]
-        chip.restyle(self.STATE_KIND.get(state, "muted"))
-        mark = {"done": "✓ ", "failed": "✗ ", "active": "▸ ", "skipped": "– "}.get(state, "")
-        timing = ""
-        if self.show_timing and key in self.elapsed and state in ("done", "failed"):
-            timing = f"  {human_duration(self.elapsed[key])}"
-        chip.configure(text=f"{mark}{self.labels[key]}{timing}")
-
-    def set_state(self, key, state, now=None):
-        if key not in self.states:
-            return
-        now = time.monotonic() if now is None else now
-        previous = self.states.get(key)
-        if state == "active" and previous != "active":
-            self.started[key] = now
-        if state in ("done", "failed", "skipped") and key in self.started and key not in self.elapsed:
-            self.elapsed[key] = now - self.started[key]
-        self.states[key] = state
-        self._render(key)
-
-    def start(self, key):
-        self.set_state(key, "active")
-
-    def done(self, key):
-        self.set_state(key, "done")
-
-    def fail(self, key):
-        self.set_state(key, "failed")
-
-    def skip(self, key):
-        self.set_state(key, "skipped")
-
-    def reset(self):
-        self.started = {}
-        self.elapsed = {}
-        for key in self.states:
-            self.states[key] = "pending"
-            self._render(key)
+from ui.phase_timeline import PhaseTimeline
 
 
 class Sparkline(tk.Canvas):
@@ -272,7 +198,6 @@ class Sparkline(tk.Canvas):
             self.create_polygon(0, h, *points, w, h, fill=self.fill, stipple="gray25", outline="")
         self.create_line(*points, fill=self.fg, width=2, smooth=True)
         self.create_text(4, 4, anchor="nw", text=f"peak {human_size(peak)}/s", fill=MUTED, font=("TkDefaultFont", 7))
-
 
 class ActivityFeed:
     """An append-only live event feed shared by the Scan and Organize screens.
@@ -338,7 +263,6 @@ class ActivityFeed:
         """Forgets the live-line key so the next update starts a new line rather than overwriting the last."""
         self._last_key = None
 
-
 def reveal_staggered(widgets, root, stagger=80, interval=16):
     """Sequentially reveal a list of widgets with a fade-in, matching the HTML catalog's
     IntersectionObserver .in-view animation.
@@ -373,7 +297,6 @@ def reveal_staggered(widgets, root, stagger=80, interval=16):
 
     for idx in range(len(widgets)):
         root.after(idx * stagger, lambda i=idx: _tick(i))
-
 
 class Tooltip:
     """Hover tooltip matching the HTML catalog's data-tip callout.
@@ -421,7 +344,6 @@ class Tooltip:
         except tk.TclError:
             pass
 
-
 class StatusBar(tk.Frame):
     """A simple status bar at bottom of windows."""
 
@@ -432,7 +354,6 @@ class StatusBar(tk.Frame):
 
     def set(self, text):
         self.label.configure(text=text)
-
 
 def center_window(window, width=None, height=None):
     """Center a window on screen."""
@@ -445,7 +366,6 @@ def center_window(window, width=None, height=None):
     y = (window.winfo_screenheight() // 2) - (height // 2)
     window.geometry(f"{width}x{height}+{x}+{y}")
     return window
-
 
 def tooltip(widget, text):
     """Attach a hover tooltip to a widget."""

@@ -84,7 +84,7 @@ class OrganizationDecision:
     # never `category`: a remembered category decision can replace `category` after
     # the evidence was recorded (app/controller.py), so a screen must read it beside
     # suggested_category, not beside the category that may have replaced it.
-    evidence: CategoryEvidence = UNSORTED_EVIDENCE
+    evidence: CategoryEvidence = field(default_factory=lambda: UNSORTED_EVIDENCE)
     accepted: bool = False
     changed_from_suggestion: bool = False
     skipped: bool = False

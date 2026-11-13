@@ -3,12 +3,12 @@
 
 Extracts specific files/folders from timestamped 7z backups.
 Usage:
-    runtime\python.exe tools\restore_backup.py                    # List backups
-    runtime\python.exe tools\restore_backup.py -l                 # List contents of latest
-    runtime\python.exe tools\restore_backup.py -f path/to/file    # Extract file from latest
-    runtime\python.exe tools\restore_backup.py -f path -b N       # Extract from backup #N (1=latest)
-    runtime\python.exe tools\restore_backup.py -f path -o outdir  # Extract to custom output dir
-    runtime\python.exe tools\restore_backup.py -s pattern         # Search ALL backups for pattern
+    runtime/python.exe tools/restore_backup.py                    # List backups
+    runtime/python.exe tools/restore_backup.py -l                 # List contents of latest
+    runtime/python.exe tools/restore_backup.py -f path/to/file    # Extract file from latest
+    runtime/python.exe tools/restore_backup.py -f path -b N       # Extract from backup #N (1=latest)
+    runtime/python.exe tools/restore_backup.py -f path -o outdir  # Extract to custom output dir
+    runtime/python.exe tools/restore_backup.py -s pattern         # Search ALL backups for pattern
 """
 
 from __future__ import annotations

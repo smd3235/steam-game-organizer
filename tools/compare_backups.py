@@ -2,10 +2,10 @@
 """Compare files across all backups to find regressions and recover good code.
 
 Usage:
-    runtime\python.exe tools\compare_backups.py -f services/steam_service.py
-    runtime\python.exe tools\compare_backups.py -f services/steam_service.py --auto-recover
-    runtime\python.exe tools\compare_backups.py -f services/steam_service.py --diff
-    runtime\python.exe tools\compare_backups.py --list-changed  # Find files that changed across backups
+    runtime/python.exe tools/compare_backups.py -f services/steam_service.py
+    runtime/python.exe tools/compare_backups.py -f services/steam_service.py --auto-recover
+    runtime/python.exe tools/compare_backups.py -f services/steam_service.py --diff
+    runtime/python.exe tools/compare_backups.py --list-changed  # Find files that changed across backups
 """
 
 from __future__ import annotations
@@ -170,7 +170,7 @@ def main():
     parser.add_argument("-f", "--file", help="File path to compare/recover (relative to project root)")
     parser.add_argument("--diff", action="store_true", help="Show diffs between versions")
     parser.add_argument("--auto-recover", action="store_true", help="Auto-recover: test versions until one passes")
-    parser.add_argument("--test-cmd", help="Test command for auto-recover (e.g., 'runtime\\python.exe -m pytest tests/test_steam_service.py -q')")
+    parser.add_argument("--test-cmd", help="Test command for auto-recover (e.g., 'runtime/python.exe -m pytest tests/test_steam_service.py -q')")
     parser.add_argument("--list-changed", action="store_true", help="List files that changed across backups")
     args = parser.parse_args()
 
