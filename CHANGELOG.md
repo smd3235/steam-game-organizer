@@ -5,6 +5,11 @@
 
 ## 9.33
 
+### 2026-11-13 07:00:00 — refactor: extract pure functions from library_service.py into core/library_utils.py
+- `core/library_utils.py`: New module holding `is_app_folder`, `game_folder_is_prunable`, and their supporting constants (`RECOGNISED_FOLDER_FILES`, `RECOGNISED_IMAGE_SUFFIXES`, `IGNORED_FILES_IN_SWEEP`), extracted from `services/library_service.py`. All are module-level functions with no instance-state dependency.
+- `services/library_service.py`: Removed `_is_app_folder`, `_game_folder_is_prunable`, and the three constants. Imports them from `core.library_utils` instead. Removed now-unused `ENTRY_POINT` from `core.constants` import. Added `SYNC_FILE_PATTERNS`, `SYNC_NEVER_TOUCH`, `APPID_PATTERN` constants back (they were in the removed section).
+- `services/archive_service.py`: Imports `is_app_folder` from `core.library_utils` instead of `services.library_service`.
+
 ### 2026-11-13 06:00:00 — refactor: extract pure static methods from organizer_service.py into core/organizer_utils.py
 - `core/organizer_utils.py`: New module holding six pure functions extracted from `OrganizerService`: `zip_is_encrypted`, `looks_like_resource_failure`, `defender_flagged`, `still_running`, `stop_tool`, `pid_is_alive`. All were `@staticmethod` or `self`-less methods that took all inputs as parameters.
 - `services/organizer_service.py`: Removed the original static method definitions. Added thin `@staticmethod` wrapper methods that delegate to `core.organizer_utils`, keeping existing callers working. Dropped now-unused `import zipfile`.

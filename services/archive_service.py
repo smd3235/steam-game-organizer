@@ -20,7 +20,7 @@ from core.models import GameArchive, ScanResult
 from core.constants import ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG, NO_WINDOW, DEFAULT_ZIP_PASSWORD
 from core.exceptions import CancellationError
 from services.installer_detect import InstallSignature, installer_from_names
-from services.library_service import _is_app_folder
+from core.library_utils import is_app_folder
 from utils.filename_utils import normalize_name, identity_key, version_key
 
 # Installer-kind sniffs read each archive's index - a `7z l -slt` subprocess call for 7z/rar, a zipfile open
@@ -197,7 +197,7 @@ class ArchiveService:
             # file under it would then match, discovery would find nothing at all, and the verify screen
             # would show no games with no way to continue. The root is the thing being scanned; only a
             # folder strictly inside it that happens to hold the entry point is the app's project folder.
-            if any(_is_app_folder(parent) for parent in path.parents if parent != root):
+            if any(is_app_folder(parent) for parent in path.parents if parent != root):
                 skipped += 1
                 continue
             # Never offer the app's own in-flight work as a game. An extraction folder sits inside the game
