@@ -5,6 +5,9 @@
 
 ## 9.33
 
+### 2026-11-13 17:45:00 — fix: stop test logs from writing to project root
+- `tests/test_steam_service.py`: Changed `setUp()` to write its log to a `TemporaryDirectory` instead of `Path("test.log")` in the project root, so test logs no longer pollute the repo root. Moved existing `test.log` into `logs/test/`.
+
 ### 2026-11-13 15:45:00 — fix: resolve remaining circular imports between test modules, extract shared fixtures to test_helpers.py
 - `tests/test_helpers.py`: Added shared fixtures `build_game_tree`, `manifest`, `package_zip`, `package_seven_zip`, `run_organize`, `seven_zip`, `_game`, `_RecordingRegister`, `_RecordingService`, `_Jobs`, `_Services`, `APPDETAILS_KEYS_55555`, `APPDETAILS_KEYS_66666`, `make_game`, `_script_encoded_path`, `_rgb`, `_tmp_dir`, `CountingCatalog`, `_mojibake`, `MOJIBAKE_SEQUENCES`, `DOUBLE_ENCODED`, `MAX_SCANNED_BYTES` to break circular imports between test modules.
 - `tests/test_end_to_end.py`: Removed locally defined `build_game_tree`, `manifest`, `package_zip`, `package_seven_zip`, `run_organize`, `seven_zip`; now imported from `test_helpers.py`.

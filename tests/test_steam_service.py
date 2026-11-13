@@ -12,8 +12,11 @@ class TestSteamQueryVariants(unittest.TestCase):
     filenames carry scene packaging against Steam's store index."""
 
     def setUp(self):
+        import tempfile as _tf
         from pathlib import Path
-        self.service = SteamService(AppLogger(Path("test.log")), mock=True)
+        self.td = _tf.TemporaryDirectory()
+        self.addCleanup(self.td.cleanup)
+        self.service = SteamService(AppLogger(Path(self.td.name) / "steam-test.log"), mock=True)
 
     def _variants(self, title):
         """Call _query_variants with a no-op context so no network calls are made."""
