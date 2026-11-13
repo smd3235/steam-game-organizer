@@ -8,7 +8,7 @@
 import time
 import unittest
 from pathlib import Path
-from tests.test_archive_service import _service
+from tests.test_helpers import _service
 from tempfile import TemporaryDirectory
 
 

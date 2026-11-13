@@ -15,9 +15,9 @@ from services.batch_extract_service import DONE
 from services.batch_extract_service import EXTRACTING
 from services.batch_extract_service import FAILED
 from services.batch_extract_service import BatchExtractJob
-from services.batch_extract_service import plan_batch
+from services.plan_batch import plan_batch
 from services.extract_service import ExtractResult
-from tests.test_batch_extract import _game
+from tests.test_helpers import _game
 from services.extract_service import ExtractService
 
 

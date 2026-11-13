@@ -13,7 +13,7 @@ from unittest.mock import patch
 from core.config import AppConfig
 from ui.main_window import MainWindow
 from utils.filename_utils import identity_key
-from tests.test_scan_regressions import _tmp_dir
+from tests.test_helpers import _tmp_dir
 from utils.filename_utils import normalize_name
 
 

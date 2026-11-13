@@ -9,8 +9,8 @@ from pathlib import Path
 from unittest import mock
 from services import batch_extract_service
 from services import catalog_service
-from tests.test_catalog_status import AStatusFileTestCase
-from tests.test_catalog_status import _unpacked_card
+from tests.test_helpers import AStatusFileTestCase
+from tests.test_helpers import _unpacked_card
 from services.catalog_status import already_extracted
 
 

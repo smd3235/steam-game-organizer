@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from core.constants import LIBRARY_RESERVED_DIRS
 from core.uri_actions import UriRefused
-from tests.test_batch_extract import _game
+from tests.test_helpers import _game
 from core.parse_batch_uri import parse_batch_uri
 
 

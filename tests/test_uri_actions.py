@@ -38,13 +38,14 @@ from core.parse_open_extracted_uri import parse_open_extracted_uri
 
 from tests.typed_destination_tests import TypedDestinationTests
 # TypedDestinationTests extracted to tests\typed_destination_tests.py — see that module for its definition.
-from tests.fresh_pc_refusals_point_at_the_setup import FreshPcRefusalsPointAtTheSetup
+from tests.test_fresh_pc_refusals_point_at_the_setup import FreshPcRefusalsPointAtTheSetup
 # FreshPcRefusalsPointAtTheSetup extracted to tests\fresh_pc_refusals_point_at_the_setup.py — see that module for its definition.
 from tests.multi_batch_tests import MultiBatchTests
 # MultiBatchTests extracted to tests\multi_batch_tests.py — see that module for its definition.
-from tests.open_folder_uri_tests import OpenFolderUriTests
+from tests.test_open_folder_uri_tests import OpenFolderUriTests
 # OpenFolderUriTests extracted to tests\open_folder_uri_tests.py — see that module for its definition.
-from tests.open_extracted_uri_tests import OpenExtractedUriTests
+from tests.test_open_extracted_uri_tests import OpenExtractedUriTests
 # OpenExtractedUriTests extracted to tests\open_extracted_uri_tests.py — see that module for its definition.
-from tests.play_and_marker_uri_tests import PlayAndMarkerUriTests
+from tests.test_play_and_marker_uri_tests import PlayAndMarkerUriTests
 # PlayAndMarkerUriTests extracted to tests\play_and_marker_uri_tests.py — see that module for its definition.
+

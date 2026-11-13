@@ -9,8 +9,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from core.logger import AppLogger
-from tests.test_displayed_data import APPDETAILS_KEYS_55555
-from tests.test_displayed_data import APPDETAILS_KEYS_66666
+from tests.test_helpers import APPDETAILS_KEYS_55555
+from tests.test_helpers import APPDETAILS_KEYS_66666
 from services.steam_service import SteamService
 
 

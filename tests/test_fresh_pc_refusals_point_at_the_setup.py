@@ -10,8 +10,8 @@ import unittest
 import pytest
 from pathlib import Path
 from core.uri_actions import UriRefused
-from tests.test_uri_actions import make_archive
-from tests.test_uri_actions import uri_for
+from tests.test_helpers import make_archive
+from tests.test_helpers import uri_for
 from core.parse_uri import parse_uri
 
 

@@ -8,8 +8,7 @@
 from services.catalog_status import STATUS_NAME
 from services.catalog_status import empty_status
 from services.catalog_status import status_from_run
-from tests.test_catalog_status import AStatusFileTestCase
-from tests.test_catalog_status import _payload_of
+from tests.test_helpers import AStatusFileTestCase
 from services.catalog_status import write_status
 
 
@@ -45,7 +44,7 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         self._generate()
         write_status(self.root, dict(empty_status(), ran_at="2026-10-04 05:12", total=3, extracted=2, failed=1, elapsed="1h 4m"), self.logger)
         self._generate()
-        again = _payload_of(self.root / STATUS_NAME)
+        again = self._payload_of(self.root / STATUS_NAME)
         self.assertEqual(again["ran_at"], "2026-10-04 05:12", "regenerating the catalog threw away the record of the run that just finished")
         self.assertEqual(again["failed"], 1, "the failures went with it")
 
@@ -66,7 +65,7 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         job.started_at, job.finished_at = 1000.0, 1000.0 + 3844.0
 
         write_status(self.root, status_from_run(plan, job), self.logger)
-        status = _payload_of(self.root / STATUS_NAME)
+        status = self._payload_of(self.root / STATUS_NAME)
         self.assertEqual(status["total"], 3, "the banner counts different games than the window ran")
         self.assertEqual(status["extracted"], 2)
         self.assertEqual(status["skipped"], 1)
@@ -102,7 +101,7 @@ class TheStatusFileIsWrittenBesideTheCatalog(AStatusFileTestCase):
         """
         hostile = '"; alert(1); "'
         write_status(self.root, dict(empty_status(), ran_at="now", category=hostile), self.logger)
-        self.assertEqual(_payload_of(self.root / STATUS_NAME)["category"], hostile, "the name was mangled or executed on the way through")
+        self.assertEqual(self._payload_of(self.root / STATUS_NAME)["category"], hostile, "the name was mangled or executed on the way through")
 
     def test_a_status_that_cannot_be_written_does_not_take_the_run_down(self):
         """The game folders are already unpacked by the time this runs.

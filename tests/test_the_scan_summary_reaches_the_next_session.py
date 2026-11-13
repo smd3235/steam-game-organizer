@@ -16,8 +16,8 @@ from core.models import ArtworkResult
 from core.models import ScanResult
 from core.models import SteamMatch
 from core.state import StateStore
-from tests.test_displayed_data import _Jobs
-from tests.test_displayed_data import _Services
+from tests.test_helpers import _Jobs
+from tests.test_helpers import _Services
 from core.config import AppConfig
 
 

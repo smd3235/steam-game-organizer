@@ -34,13 +34,13 @@ from ui.widgets.game_card import GameCard
 from utils.filename_utils import identity_key
 
 # TheScanSummaryReachesTheNextSession extracted to tests\the_scan_summary_reaches_the_next_session.py — see that module for its definition.
-from tests.the_scan_summary_reaches_the_next_session import TheScanSummaryReachesTheNextSession
+from tests.test_the_scan_summary_reaches_the_next_session import TheScanSummaryReachesTheNextSession
 # TheCatalogShowsAndSearchesTags extracted to tests\the_catalog_shows_and_searches_tags.py — see that module for its definition.
-from tests.the_catalog_shows_and_searches_tags import TheCatalogShowsAndSearchesTags
+from tests.test_the_catalog_shows_and_searches_tags import TheCatalogShowsAndSearchesTags
 # TheSourceSaysWhenItHasNoTags extracted to tests\the_source_says_when_it_has_no_tags.py — see that module for its definition.
-from tests.the_source_says_when_it_has_no_tags import TheSourceSaysWhenItHasNoTags
+from tests.test_the_source_says_when_it_has_no_tags import TheSourceSaysWhenItHasNoTags
 # SteamTagsAreActuallyRead extracted to tests\steam_tags_are_actually_read.py — see that module for its definition.
-from tests.steam_tags_are_actually_read import SteamTagsAreActuallyRead
+from tests.test_steam_tags_are_actually_read import SteamTagsAreActuallyRead
 
 # The keys appdetails actually returned, recorded rather than re-measured, so the claim at the top of
 # services/steam_service.py can be checked without a network call. One live request each on 2026-10-04:
@@ -49,56 +49,9 @@ from tests.steam_tags_are_actually_read import SteamTagsAreActuallyRead
 # The key set is the whole of what matters: which fields are absent. Both responses carry genres, categories,
 # content_descriptors, ratings, supported_languages, metacritic, screenshots, movies and package_groups, and
 # neither carries tags - Steam's store tags are community-curated and rendered into the store page's HTML.
-APPDETAILS_KEYS_55555 = frozenset(
-    {
-        "about_the_game",
-        "background",
-        "background_raw",
-        "capsule_image",
-        "capsule_imagev5",
-        "categories",
-        "content_descriptors",
-        "controller_support",
-        "detailed_description",
-        "developers",
-        "dlc",
-        "genres",
-        "header_image",
-        "is_free",
-        "linux_requirements",
-        "mac_requirements",
-        "metacritic",
-        "movies",
-        "name",
-        "package_groups",
-        "packages",
-        "pc_requirements",
-        "platforms",
-        "price_overview",
-        "publishers",
-        "ratings",
-        "recommendations",
-        "release_date",
-        "required_age",
-        "screenshots",
-        "short_description",
-        "steam_appid",
-        "support_info",
-        "supported_languages",
-        "type",
-        "website",
-    }
-)
-APPDETAILS_KEYS_66666 = APPDETAILS_KEYS_55555 | {"achievements", "legal_notice"}
 
 
-class _Services:
-    organizer = None
-    rollback = None
 
-class _Jobs:
-    def submit(self, *a, **k):
-        raise AssertionError("the summary path must not submit work")
 
 class MatchConfidenceIsVisibleAsAWarning(unittest.TestCase):
     """A doubtful match has to look doubtful, not merely be described in passing."""
@@ -177,3 +130,4 @@ class _ArchiveForCard:
 
 if __name__ == "__main__":
     unittest.main()
+

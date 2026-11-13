@@ -10,7 +10,7 @@ import time
 import unittest
 from pathlib import Path
 from core.logger import AppLogger
-from tests.test_cleanup_regressions import _tmp_dir
+from tests.test_helpers import _tmp_dir
 from services.library_service import LibraryService
 
 

@@ -20,7 +20,8 @@ def _handle_multi_uri(uri, config, logger):
     the library root. The plan is built directly rather than by scanning a category,
     so the multi-select can span categories or pick individual games.
     """
-    from core.uri_actions import UriRefused, parse_multi_uri
+    from core.uri_actions import UriRefused
+    from core.parse_multi_uri import parse_multi_uri
     from core.safe_folder_name import safe_folder_name
 
     try:

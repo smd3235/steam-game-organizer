@@ -28,7 +28,9 @@ def _handle_uri(uri, config, logger):
     extract shows the progress window. A refusal shows nothing on screen - the message is printed
     to stdout for the brief console the browser opens - because there is nothing to do.
     """
-    from core.uri_actions import UriRefused, parse_uri, parse_setup_uri
+    from core.uri_actions import UriRefused
+    from core.parse_uri import parse_uri
+    from core.parse_setup_uri import parse_setup_uri
     from urllib.parse import urlsplit
 
     parts = urlsplit(str(uri))

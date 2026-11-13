@@ -11,6 +11,7 @@ from services.batch_extract_service import FAILED
 from services.batch_extract_service import QUEUED
 from services.batch_extract_service import SKIPPED
 from pathlib import Path
+from typing import Optional
 
 
 class BatchItem:
@@ -25,6 +26,19 @@ class BatchItem:
     percent: int = 0
     written: int = 0
     files: int = 0
+
+    def __init__(self, archive: Optional[Path] = None, destination: Optional[Path] = None, name: str = "",
+                 size: int = 0, state: str = QUEUED, detail: str = "", percent: int = 0,
+                 written: int = 0, files: int = 0):
+        self.archive = archive
+        self.destination = destination
+        self.name = name
+        self.size = size
+        self.state = state
+        self.detail = detail
+        self.percent = percent
+        self.written = written
+        self.files = files
 
     @property
     def finished(self) -> bool:

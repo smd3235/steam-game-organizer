@@ -73,11 +73,6 @@ CASES = [
     ((["Simulation"], "Plain Title", "An ordinary description"), "Simulation"),
 ]
 
-# TestTheTwoPathsAgree extracted to tests\test_the_two_paths_agree.py — see that module for its definition.
-# Imported after CASES and ROOT are defined because that module imports them from here,
-# which would otherwise be a circular import.
-from tests.test_the_two_paths_agree import TestTheTwoPathsAgree
-
 @pytest.mark.notkinter
 
 class TestEvidenceIsSafeToCarry(unittest.TestCase):

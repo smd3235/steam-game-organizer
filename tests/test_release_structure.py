@@ -7,10 +7,6 @@ import pytest
 from pathlib import Path
 from core.constants import APP_NAME, ENTRY_POINT, USER_AGENT, VERSION
 
-# VersionRuleBehaviour extracted to tests\version_rule_behaviour.py — see that module for its definition.
-from tests.version_rule_behaviour import VersionRuleBehaviour
-# declared_versions extracted to tests\declared_versions.py — see that module for its definition.
-from tests.declared_versions import declared_versions
 ROOT = Path(__file__).resolve().parents[1]
 
 # Directories that hold generated data, a person's library, or someone else's
@@ -130,21 +126,6 @@ def shipped_texts():
 # Derived rather than typed as literals on purpose. The rule below scans every shipped file, this one
 # included, so a guard written out in the characters it forbids would report itself - and a rule that fires on
 # its own source is one that gets deleted rather than fixed.
-def _mojibake(character):
-    """What one character becomes when its UTF-8 bytes are read as cp1252, or None when it cannot.
-
-    cp1252 leaves five byte values undefined (0x81, 0x8D, 0x8F, 0x90 and 0x9D), so not every character has a
-    mojibake spelling to look for: U+201D among them. Those are dropped rather than guessed at, because a
-    pattern built from a byte value the codec does not define raises on import instead of matching.
-    """
-    try:
-        return character.encode("utf-8").decode("cp1252")
-    except UnicodeDecodeError:
-        return None
-
-MOJIBAKE_SEQUENCES = tuple(spelling for spelling in (_mojibake(character) for character in "\u2014\u2013\u2018\u2019\u201c\u201d\u2026\u00a0") if spelling)
-DOUBLE_ENCODED = re.compile("|".join(re.escape(spelling) for spelling in MOJIBAKE_SEQUENCES))
-
 @pytest.mark.notkinter
 class TestReleaseStructure(unittest.TestCase):
     def test_no_legacy_backend(self):
@@ -221,4 +202,10 @@ class TestReleaseStructure(unittest.TestCase):
                 if path.name == "constants.py":
                     continue
                 self.assertIsNone(hardcoded.search(code_before_comment(line)), f"{path.relative_to(ROOT)}:{number} hardcodes a versioned User-Agent: {line.strip()[:120]}")
+
+# VersionRuleBehaviour extracted to tests\test_version_rule_behaviour.py — see that module for its definition.
+from tests.test_version_rule_behaviour import VersionRuleBehaviour
+# declared_versions extracted to tests\declared_versions.py — see that module for its definition.
+from tests.declared_versions import declared_versions
+
 

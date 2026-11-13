@@ -35,16 +35,6 @@ def _archive(folder: Path, name: str, payload: int) -> Path:
         handle.writestr("data.bin", b"a" * payload)
     return target
 
-def _labels(widget) -> list:
-    found = []
-    for child in widget.winfo_children():
-        try:
-            found.append(str(child.cget("text")))
-        except tk.TclError:
-            pass
-        found.extend(_labels(child))
-    return found
-
 # require_tk() and close_root() now live in tests/tk_support.py, next to TK_AVAILABLE. They were defined
 # here and re-derived in two other modules, which is how three copies drifted. Keeping them in one place means
 # the rule - fail loudly rather than skip, and cancel pending timers before destroying a root - has exactly
@@ -52,12 +42,12 @@ def _labels(widget) -> list:
 
 import pytest
 
-# ArtworkArrivingAsAssetsIsStillArtwork extracted to tests\artwork_arriving_as_assets_is_still_artwork.py — see that module for its definition.
-from tests.artwork_arriving_as_assets_is_still_artwork import ArtworkArrivingAsAssetsIsStillArtwork
+from tests.test_helpers import _labels
+from tests.test_artwork_arriving_as_assets_is_still_artwork import ArtworkArrivingAsAssetsIsStillArtwork
 # WorkerUpdatesReachTheUiThread extracted to tests\worker_updates_reach_the_ui_thread.py — see that module for its definition.
-from tests.worker_updates_reach_the_ui_thread import WorkerUpdatesReachTheUiThread
+from tests.test_worker_updates_reach_the_ui_thread import WorkerUpdatesReachTheUiThread
 # ReviewPaneShowsArchiveSize extracted to tests\review_pane_shows_archive_size.py — see that module for its definition.
-from tests.review_pane_shows_archive_size import ReviewPaneShowsArchiveSize
+from tests.test_review_pane_shows_archive_size import ReviewPaneShowsArchiveSize
 @pytest.mark.slow
 class ArchiveSizeIsDiscovered(unittest.TestCase):
     """The size has to exist on the model before any screen can show it."""
@@ -243,3 +233,4 @@ class HiddenFoldersAreNotLibraryContent(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -6,7 +6,6 @@
 """
 
 
-from core.canonical_category import canonical_category
 from core.category_evidence import CategoryEvidence
 from core.constants import IGNORED_AUTO_CATEGORIES
 from core.constants import UNSORTED_EVIDENCE
@@ -15,6 +14,9 @@ def suggest_category_with_evidence(genres, title="", description="", tags=None, 
     and return (category, CategoryEvidence): the folder, the rule that won it, the keywords
     that matched, the winning score, and the next-best candidates. suggest_category() below is
     this function with the evidence discarded, so the two can never disagree."""
+    # Local import to break the circular import: core.suggest_category_with_evidence -> core.canonical_category
+    # -> core.constants -> core.suggest_category_with_evidence.
+    from core.canonical_category import canonical_category
     text_context = " ".join(str(value) for value in (title, description)).casefold()
     tag_context = " ".join(str(value) for value in (tags or [])).casefold()
     category_context = " ".join(str(value) for value in (steam_categories or [])).casefold()

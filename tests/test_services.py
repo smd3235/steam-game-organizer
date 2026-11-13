@@ -30,13 +30,14 @@ from services.library_service import LibraryService
 from services.organizer_service import OrganizerService
 from services.steam_service import SteamService
 from utils.filename_utils import identity_key
+from tests.test_helpers import GB
 
 # _FakeProc extracted to tests\fake_proc.py — see that module for its definition.
 from tests.fake_proc import _FakeProc
 # ToolCallSpy extracted to tests\tool_call_spy.py — see that module for its definition.
 from tests.tool_call_spy import ToolCallSpy
 # ArtworkWarningsHaveToBeTrue extracted to tests\artwork_warnings_have_to_be_true.py — see that module for its definition.
-from tests.artwork_warnings_have_to_be_true import ArtworkWarningsHaveToBeTrue
+from tests.test_artwork_warnings_have_to_be_true import ArtworkWarningsHaveToBeTrue
 # TestTaggedTitlesReachTheStore extracted to tests\test_tagged_titles_reach_the_store.py — see that module for its definition.
 from tests.test_tagged_titles_reach_the_store import TestTaggedTitlesReachTheStore
 # TestAdaptiveCompression extracted to tests\test_adaptive_compression.py — see that module for its definition.
@@ -57,7 +58,6 @@ from tests.test_audit_progress import TestAuditProgress
 from tests.test_partial_archive_safety import TestPartialArchiveSafety
 # TestTheEmptiedSourceFolderIsOnlyRemovedWhenItIsOurs extracted to tests\test_the_emptied_source_folder_is_only_removed_when_it_is_ours.py — see that module for its definition.
 from tests.test_the_emptied_source_folder_is_only_removed_when_it_is_ours import TestTheEmptiedSourceFolderIsOnlyRemovedWhenItIsOurs
-GB = 1024**3
 
 # --------------------------------------------------------------------------------------------------
 # Archive tool stubs.
@@ -2422,4 +2422,5 @@ class TestServices(unittest.TestCase):
 
         result = ArtworkResult(assets={"library_hero": Path("/tmp/hero.jpg")})
         self.assertIn("library_hero", result.assets)
+
 

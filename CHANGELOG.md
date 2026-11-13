@@ -5,6 +5,26 @@
 
 ## 9.33
 
+### 2026-11-13 15:45:00 — fix: resolve remaining circular imports between test modules, extract shared fixtures to test_helpers.py
+- `tests/test_helpers.py`: Added shared fixtures `build_game_tree`, `manifest`, `package_zip`, `package_seven_zip`, `run_organize`, `seven_zip`, `_game`, `_RecordingRegister`, `_RecordingService`, `_Jobs`, `_Services`, `APPDETAILS_KEYS_55555`, `APPDETAILS_KEYS_66666`, `make_game`, `_script_encoded_path`, `_rgb`, `_tmp_dir`, `CountingCatalog`, `_mojibake`, `MOJIBAKE_SEQUENCES`, `DOUBLE_ENCODED`, `MAX_SCANNED_BYTES` to break circular imports between test modules.
+- `tests/test_end_to_end.py`: Removed locally defined `build_game_tree`, `manifest`, `package_zip`, `package_seven_zip`, `run_organize`, `seven_zip`; now imported from `test_helpers.py`.
+- `tests/test_setup_flow.py`: Removed locally defined `_game`, `_RecordingRegister`, `_RecordingService`; now imported from `test_helpers.py`.
+- `tests/test_archive_service.py`: Removed locally defined `_service`; now imported from `test_helpers.py`.
+- `tests/discovery_incremental_cache.py`, `tests/discovery_skips_the_app_project_folder.py`: Import `_service` from `test_helpers.py` instead of `test_archive_service.py`.
+- `tests/test_adaptive_compression.py`: Import `GB` from `test_helpers.py` instead of `test_services.py`.
+- `tests/test_services.py`: Import `GB` from `test_helpers.py` instead of defining locally.
+- `tests/test_catalog_library.py`: Removed `make_game`, `_script_encoded_path`, `_rgb` definitions and `TestCatalogPresentation` import; all now from `test_helpers.py`.
+- `tests/test_catalog_presentation.py`, `tests/test_catalog_service.py`, `tests/test_extract_destination_box.py`, `tests/test_game_folder_box.py`, `tests/test_release_date_sorting.py`, `tests/test_setup_button_and_fallback.py`: Import `make_game`, `_rgb`, `_script_encoded_path` from `test_helpers.py` instead of `test_catalog_library.py`.
+- `tests/test_displayed_data.py`: Removed `_Jobs`, `_Services`, `APPDETAILS_KEYS_55555`, `APPDETAILS_KEYS_66666` definitions; now imported from `test_helpers.py`.
+- `tests/test_the_scan_summary_reaches_the_next_session.py`, `tests/test_the_source_says_when_it_has_no_tags.py`: Import `_Jobs`, `_Services`, `APPDETAILS_KEYS_55555`, `APPDETAILS_KEYS_66666` from `test_helpers.py` instead of `test_displayed_data.py`.
+- `tests/test_cleanup_regressions.py`, `tests/test_scan_regressions.py`, `tests/test_preview_only_does_not_move_anything.py`, `tests/test_known_regression_cases.py`: Import `_tmp_dir` from `test_helpers.py` instead of `test_cleanup_regressions.py` or `test_scan_regressions.py`.
+- `tests/test_cleanup_does_not_leave_the_library_through_a_junction.py`: Import `_tmp_dir` from `test_helpers.py` instead of `test_cleanup_regressions.py`.
+- `tests/test_release_structure.py`: Moved `from tests.test_version_rule_behaviour import VersionRuleBehaviour` and `from tests.declared_versions import declared_versions` to end of file after all definitions; moved `_mojibake`, `MOJIBAKE_SEQUENCES`, `DOUBLE_ENCODED`, `MAX_SCANNED_BYTES` to `test_helpers.py`.
+- `tests/test_version_rule_behaviour.py`: Import `MAX_SCANNED_BYTES`, `_mojibake`, `DOUBLE_ENCODED` from `test_helpers.py` instead of `test_release_structure.py`.
+- `tests/test_release_structure.py`, `tests/declared_versions.py`: Broke circular import by defining all symbols before importing extracted modules at end of file.
+- `services/extract_service.py`: Added module-level `clear_tool_cache()` no-op function retained for test compatibility.
+- `services/batch_extract_service.py`: Added `from services.catalog_status import already_extracted` re-export (with `# noqa: F401`) for test compatibility.
+
 ### 2026-11-13 13:00:00 — test: add import-integrity and extracted-module tests, rename orphaned test files for discovery
 - `tests/test_module_imports.py`: New module verifying every module in core/ and services/ imports cleanly, with a self-check that the module lists stay in sync with files on disk.
 - `tests/test_canonical_category.py`: New module testing `canonical_category()` alias mapping and pass-through behavior.

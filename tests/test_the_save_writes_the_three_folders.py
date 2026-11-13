@@ -14,8 +14,8 @@ from tempfile import TemporaryDirectory
 from core.config import AppConfig
 from core.constants import ENTRY_POINT
 from core.logger import AppLogger
-from tests.test_setup_flow import _RecordingRegister
-from tests.test_setup_flow import _game
+from tests.test_helpers import _RecordingRegister
+from tests.test_helpers import _game
 from services.setup_service import SetupService
 
 

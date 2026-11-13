@@ -11,7 +11,7 @@ from pathlib import Path
 from core.models import GameArchive
 from ui.theme import human_size
 from utils.filename_utils import identity_key
-from tests.test_run_reporting import _labels
+from tests.test_helpers import _labels
 from utils.filename_utils import normalize_name
 from tests.tk_support import require_tk
 from tests.tk_support import close_root

@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from core.logger import AppLogger
-from tests.test_batch_extract import _game
+from tests.test_helpers import _game
 from services.catalog_service import CatalogService
 
 

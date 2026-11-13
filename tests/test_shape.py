@@ -8,9 +8,9 @@
 import unittest
 import pytest
 from pathlib import Path
-from tests.test_library_summary import archive
-from tests.test_library_summary import game
-from tests.test_library_summary import service
+from tests.test_helpers import archive
+from tests.test_helpers import game
+from tests.test_helpers import service
 from tempfile import TemporaryDirectory
 
 

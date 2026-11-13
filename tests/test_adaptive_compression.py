@@ -8,7 +8,7 @@
 import unittest
 from core.constants import COMPRESSION_LEVEL
 from core.constants import COMPRESSION_THREADS
-from tests.test_services import GB
+from tests.test_helpers import GB
 from services.organizer_service import OrganizerService
 
 

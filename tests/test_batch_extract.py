@@ -24,30 +24,15 @@ from core.logger import AppLogger
 from core.uri_actions import UriRefused
 from core.parse_batch_uri import parse_batch_uri
 from services import batch_extract_service
-from services.batch_extract_service import CANCELLED, DONE, EXTRACTING, FAILED, BatchExtractJob, plan_batch
+from services.batch_extract_service import CANCELLED, DONE, EXTRACTING, FAILED, BatchExtractJob
+from services.plan_batch import plan_batch
 from services.catalog_service import CatalogService
 from services.extract_service import ExtractResult, ExtractService
 from tests.test_services import _write_stub
+from tests.test_helpers import _game
 
 # RunningABatchReportsEveryGame extracted to tests\running_a_batch_reports_every_game.py — see that module for its definition.
-from tests.running_a_batch_reports_every_game import RunningABatchReportsEveryGame
-# TheWindowShowsEveryGame extracted to tests\the_window_shows_every_game.py — see that module for its definition.
-from tests.the_window_shows_every_game import TheWindowShowsEveryGame
-# BatchLinkNamesACategoryAndNothingElse extracted to tests\batch_link_names_a_category_and_nothing_else.py — see that module for its definition.
-from tests.batch_link_names_a_category_and_nothing_else import BatchLinkNamesACategoryAndNothingElse
-# PlanningABatchKnowsWhatItWouldDo extracted to tests\planning_a_batch_knows_what_it_would_do.py — see that module for its definition.
-from tests.planning_a_batch_knows_what_it_would_do import PlanningABatchKnowsWhatItWouldDo
-# TheCatalogOffersTheBatchButtons extracted to tests\the_catalog_offers_the_batch_buttons.py — see that module for its definition.
-from tests.the_catalog_offers_the_batch_buttons import TheCatalogOffersTheBatchButtons
-def _game(root: Path, category: str, name: str, payload: int = 2048) -> Path:
-    """A real zip on disk, with the metadata sidecar the catalog reads."""
-    folder = root / category / f"{name} - 2024-01-01"
-    folder.mkdir(parents=True, exist_ok=True)
-    archive = folder / f"{name}.zip"
-    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as handle:
-        handle.writestr(f"{name}/game.bin", b"a" * payload)
-    (folder / ".game-info.json").write_text(f'{{"appid":"1","name":"{name}","genres":["Idle"]}}', encoding="utf-8")
-    return archive
+from tests.test_running_a_batch_reports_every_game import RunningABatchReportsEveryGame
 
 # A stub archiver that ignores the real 7z argument list and just prints progress lines, so extract() can be
 # driven end to end - real Popen, real pipe, real cancel check - without a real 7-Zip. Written through the
@@ -104,3 +89,4 @@ class CancelReachesTheArchiveTool(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

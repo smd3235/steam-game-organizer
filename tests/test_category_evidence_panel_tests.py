@@ -11,7 +11,7 @@ from core.constants import CategoryEvidence
 from core.models import OrganizationDecision
 from ui.widgets.category_evidence_panel import CategoryEvidencePanel
 from tests.tk_support import close_root
-from tests.test_review_context_panels import shown
+from tests.test_helpers import shown
 from tests.tk_support import require_tk
 
 

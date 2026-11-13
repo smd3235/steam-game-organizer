@@ -12,7 +12,7 @@ import threading
 import unittest
 import zipfile
 from pathlib import Path
-from tests.test_scan_regressions import _tmp_dir
+from tests.test_helpers import _tmp_dir
 from core.models import ArtworkResult
 
 

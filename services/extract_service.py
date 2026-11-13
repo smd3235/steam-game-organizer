@@ -44,6 +44,13 @@ HEADROOM_FACTOR = 1.15  # floor, not a promise: a dense archive can grow several
 # pointed at a deleted temp stub, or the real bundle shadowed the stub the
 # test meant to exercise. clear_tool_cache() is retained as a no-op so tests
 # that import it keep working.
+def clear_tool_cache():
+    """No-op retained so tests that import it keep working.
+
+    find_tool() no longer caches its result, so there is nothing to clear.
+    """
+    return
+
 
 # Marker file written into each extracted folder so the catalog can tell whether
 # the archive has changed since the last extraction. Content is a JSON object with
@@ -127,6 +134,10 @@ class ExtractService:
         bundled = ExtractService._bundled_tool()
         if bundled:
             return bundled, None
+        for name in ("7z", "7za"):
+            found = shutil.which(name)
+            if found:
+                return found, None
         for name in ("7z", "7za"):
             found = shutil.which(name)
             if found:

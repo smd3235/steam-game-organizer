@@ -11,8 +11,8 @@ import shutil
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from core.logger import AppLogger
-from tests.test_catalog_library import _script_encoded_path
-from tests.test_catalog_library import make_game
+from tests.test_helpers import _script_encoded_path
+from tests.test_helpers import make_game
 from services.catalog_service import CatalogService
 
 
@@ -82,7 +82,8 @@ class TestGameFolderBox(unittest.TestCase):
         rather than something else in the page.
         """
         from urllib.parse import urlsplit
-        from core.uri_actions import UriRefused, parse_uri
+        from core.uri_actions import UriRefused
+        from core.parse_uri import parse_uri
 
         parent = TemporaryDirectory()
         self.addCleanup(parent.cleanup)

@@ -11,7 +11,8 @@ from core.constants import APP_NAME
 
 def _handle_pick_launcher_uri(uri, config, logger):
     from pathlib import Path
-    from core.uri_actions import UriRefused, parse_pick_launcher_uri
+    from core.uri_actions import UriRefused
+    from core.parse_pick_launcher_uri import parse_pick_launcher_uri
 
     try:
         marker_dir = parse_pick_launcher_uri(uri, config.extract_folders)

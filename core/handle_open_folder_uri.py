@@ -16,7 +16,8 @@ def _handle_open_folder_uri(uri, config, logger):
     against the library root by parse_open_folder_uri, so a malicious page
     can only ask for a folder the user already owns.
     """
-    from core.uri_actions import UriRefused, parse_open_folder_uri
+    from core.uri_actions import UriRefused
+    from core.parse_open_folder_uri import parse_open_folder_uri
 
     try:
         folder = parse_open_folder_uri(uri, config.library_root)

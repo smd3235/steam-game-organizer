@@ -10,10 +10,10 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from tests.test_end_to_end import build_game_tree
-from tests.test_end_to_end import package_seven_zip
-from tests.test_end_to_end import run_organize
-from tests.test_end_to_end import seven_zip
+from tests.test_helpers import build_game_tree
+from tests.test_helpers import package_seven_zip
+from tests.test_helpers import run_organize
+from tests.test_helpers import seven_zip
 from core.constants import ARCHIVE_EXTENSIONS
 
 

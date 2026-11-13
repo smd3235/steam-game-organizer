@@ -10,10 +10,10 @@ import sys
 import unittest
 from pathlib import Path
 from core.constants import APP_NAME
-from tests.test_release_structure import DOUBLE_ENCODED
-from tests.test_release_structure import MAX_SCANNED_BYTES
+from tests.test_helpers import DOUBLE_ENCODED
+from tests.test_helpers import MAX_SCANNED_BYTES
+from tests.test_helpers import _mojibake
 from tests.test_release_structure import ROOT
-from tests.test_release_structure import _mojibake
 from tests.test_release_structure import app_name_pattern
 from tests.test_release_structure import change_log_versions
 from tests.test_release_structure import read_shipped

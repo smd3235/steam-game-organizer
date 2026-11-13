@@ -22,7 +22,8 @@ def _handle_batch_uri(uri, config, logger):
     tkinter is imported here rather than at module scope for the same reason the single path avoids it: a
     console invocation of --uri must not pay for Tk it will not use.
     """
-    from core.uri_actions import UriRefused, parse_batch_uri
+    from core.uri_actions import UriRefused
+    from core.parse_batch_uri import parse_batch_uri
 
     try:
         request = parse_batch_uri(uri, config.library_root, config.extract_folders)
@@ -31,7 +32,7 @@ def _handle_batch_uri(uri, config, logger):
         print(f"{APP_NAME}: {refused}")
         return 2
 
-    from services.batch_extract_service import plan_batch
+    from services.plan_batch import plan_batch
     from services.catalog_status import status_from_run, write_status
 
     import tkinter as tk

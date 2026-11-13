@@ -24,32 +24,16 @@ from ui.widgets.category_evidence_panel import CategoryEvidencePanel
 from ui.widgets.metadata_panel import MetadataPanel
 from tests.test_ui_geometry import _measured_window
 from tests.tk_support import close_root, require_tk, sandbox_app
+from tests.test_helpers import shown
 
 # ThePopulatedReviewScreenTests extracted to tests\the_populated_review_screen_tests.py — see that module for its definition.
-from tests.the_populated_review_screen_tests import ThePopulatedReviewScreenTests
+from tests.test_the_populated_review_screen_tests import ThePopulatedReviewScreenTests
 # CategoryEvidencePanelTests extracted to tests\category_evidence_panel_tests.py — see that module for its definition.
-from tests.category_evidence_panel_tests import CategoryEvidencePanelTests
+from tests.test_category_evidence_panel_tests import CategoryEvidencePanelTests
 # EmptyTagsRowIsSuppressed extracted to tests\empty_tags_row_is_suppressed.py — see that module for its definition.
-from tests.empty_tags_row_is_suppressed import EmptyTagsRowIsSuppressed
-def shown(widget):
-    """Every string the panel actually put on screen, in creation order.
-
-    Walks the live tree rather than the source: a label that was built and never packed is not shown, and a
-    string that only exists in a change log at the bottom of the file is not shown either.
-    """
-    found = []
-    pending = list(widget.winfo_children())
-    while pending:
-        child = pending.pop(0)
-        try:
-            text = str(child.cget("text"))
-        except tk.TclError:
-            text = ""
-        if text:
-            found.append(text)
-        pending.extend(child.winfo_children())
-    return found
+from tests.test_empty_tags_row_is_suppressed import EmptyTagsRowIsSuppressed
 
 
 if __name__ == "__main__":
     unittest.main()
+

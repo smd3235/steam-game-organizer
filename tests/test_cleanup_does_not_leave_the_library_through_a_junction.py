@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from core.logger import AppLogger
 from services.library_service import LibraryService
-from tests.test_cleanup_regressions import _tmp_dir
+from tests.test_helpers import _tmp_dir
 from utils.treewalk import is_link
 
 

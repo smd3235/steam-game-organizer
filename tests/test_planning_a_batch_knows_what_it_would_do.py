@@ -11,7 +11,7 @@ import zipfile
 from pathlib import Path
 from core.logger import AppLogger
 from tests.test_batch_extract import _game
-from services.batch_extract_service import plan_batch
+from services.plan_batch import plan_batch
 
 
 class PlanningABatchKnowsWhatItWouldDo(unittest.TestCase):

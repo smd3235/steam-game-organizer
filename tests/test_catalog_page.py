@@ -19,7 +19,9 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 
 from core.logger import AppLogger
-from core.uri_actions import parse_open_extracted_uri, parse_open_folder_uri, parse_uri
+from core.parse_open_extracted_uri import parse_open_extracted_uri
+from core.parse_open_folder_uri import parse_open_folder_uri
+from core.parse_uri import parse_uri
 from services.catalog_service import CatalogService
 from services.installer_detect import NEEDS_INSTALL_DIRNAME
 

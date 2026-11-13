@@ -14,8 +14,8 @@ from core.config import AppConfig
 from core.logger import AppLogger
 from tests.tk_support import close_root
 from tests.tk_support import require_tk
-from tests.test_setup_flow import _RecordingService
-from tests.test_setup_flow import _game
+from tests.test_helpers import _RecordingService
+from tests.test_helpers import _game
 from ui.setup_window import SetupWindow
 
 

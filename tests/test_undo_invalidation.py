@@ -10,7 +10,7 @@ import unittest
 import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from tests.test_library_summary import service
+from tests.test_helpers import service
 from core.logger import AppLogger
 
 

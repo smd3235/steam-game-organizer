@@ -10,7 +10,7 @@ import unittest.mock
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from core.logger import AppLogger
-from tests.test_setup_flow import _game
+from tests.test_helpers import _game
 from services.catalog_service import CatalogService
 
 

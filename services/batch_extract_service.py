@@ -27,6 +27,7 @@ import threading
 import time
 
 from core.exceptions import CancellationError
+from services.catalog_status import already_extracted  # noqa: F401 - re-exported for test compatibility
 from services.extract_service import ExtractService
 from utils.formatting import human_size
 

@@ -13,7 +13,7 @@ import zipfile
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from core.logger import AppLogger
-from tests.test_catalog_library import make_game
+from tests.test_helpers import make_game
 from services.catalog_service import CatalogService
 
 

@@ -17,20 +17,11 @@ from pathlib import Path
 
 from core.logger import AppLogger
 from services.library_service import LibraryService
+from tests.test_helpers import _tmp_dir
 from utils.treewalk import is_link
-
-def _tmp_dir(test_case):
-    """A temporary directory that is cleaned up when the test finishes."""
-    import tempfile as _tf
-
-    tmp = Path(_tf.mkdtemp())
-    test_case.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
-    return tmp
 
 
 # TestCleanupDoesNotLeaveTheLibraryThroughAJunction extracted to tests\test_cleanup_does_not_leave_the_library_through_a_junction.py — see that module for its definition.
-# Imported after _tmp_dir is defined because that module imports it from here,
-# which would otherwise be a circular import.
 from tests.test_cleanup_does_not_leave_the_library_through_a_junction import TestCleanupDoesNotLeaveTheLibraryThroughAJunction
 # TestEmptyCategoryFoldersAreReclaimed extracted to tests\test_empty_category_folders_are_reclaimed.py — see that module for its definition.
 from tests.test_empty_category_folders_are_reclaimed import TestEmptyCategoryFoldersAreReclaimed

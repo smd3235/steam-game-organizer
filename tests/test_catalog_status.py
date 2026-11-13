@@ -29,35 +29,13 @@ from services import batch_extract_service, catalog_service
 from services.catalog_service import CatalogService
 from services.catalog_status import STATUS_GLOBAL, STATUS_NAME, already_extracted, empty_status, archive_has_changed_since_extraction, elapsed_text, status_from_run, write_status
 from services.installer_detect import NEEDS_INSTALL_DIRNAME
-from tests.test_batch_extract import _game
+from tests.test_helpers import _game
 
 # TheStatusFileIsWrittenBesideTheCatalog extracted to tests\the_status_file_is_written_beside_the_catalog.py — see that module for its definition.
-from tests.the_status_file_is_written_beside_the_catalog import TheStatusFileIsWrittenBesideTheCatalog
+from tests.test_the_status_file_is_written_beside_the_catalog import TheStatusFileIsWrittenBesideTheCatalog
 # TheUnpackedBadgeTellsTheTruth extracted to tests\the_unpacked_badge_tells_the_truth.py — see that module for its definition.
-from tests.the_unpacked_badge_tells_the_truth import TheUnpackedBadgeTellsTheTruth
 # TheBannerIsWiredToTheFileThatFeedsIt extracted to tests\the_banner_is_wired_to_the_file_that_feeds_it.py — see that module for its definition.
-from tests.the_banner_is_wired_to_the_file_that_feeds_it import TheBannerIsWiredToTheFileThatFeedsIt
-def _unpacked_card(text: str) -> int:
-    """How many cards on the page carry the badge.
-
-    Counted on the rendered class rather than on 'badge-done', which also appears in the stylesheet and in the
-    script - a substring count would pass with the badge never drawn at all.
-    """
-    return text.count('class="badge badge-done"')
-
-def _payload_of(path: Path) -> dict:
-    """Read the status file back the way the browser would see it.
-
-    Nothing in Python can execute the file, so the assignment is stripped and the remainder parsed. That
-    checks two things at once: that the file really is a valid JavaScript object literal, and that what comes
-    out is what went in - including for a category whose name is trying to be code, which is the case a
-    hand-built string gets wrong.
-    """
-    text = path.read_text(encoding="utf-8")
-    marker = f"window.{STATUS_GLOBAL} = "
-    assert marker in text, f"the status file does not assign window.{STATUS_GLOBAL}: {text!r}"
-    raw = text.split(marker, 1)[1].strip()
-    return json.loads(raw[:-1] if raw.endswith(";") else raw)
+from tests.test_helpers import _unpacked_card
 
 def _assert_has(case, text: str, needle: str, message: str):
     """assertIn against a whole generated page, without printing the page when it fails.
@@ -222,3 +200,4 @@ class TheStaleBadgeTellsTheTruth(AStatusFileTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

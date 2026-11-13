@@ -12,7 +12,7 @@ from core.models import GameArchive
 from core.models import SteamMatch
 from ui.widgets.metadata_panel import MetadataPanel
 from tests.tk_support import close_root
-from tests.test_review_context_panels import shown
+from tests.test_helpers import shown
 from tests.tk_support import require_tk
 
 

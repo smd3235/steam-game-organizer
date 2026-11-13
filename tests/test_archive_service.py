@@ -37,7 +37,7 @@ from tests.discovery_incremental_cache import DiscoveryIncrementalCache
 # DiscoverySkipsTheAppProjectFolder extracted to tests\discovery_skips_the_app_project_folder.py — see that module for its definition.
 from tests.discovery_skips_the_app_project_folder import DiscoverySkipsTheAppProjectFolder
 # StubDrivenListing extracted to tests\stub_driven_listing.py — see that module for its definition.
-from tests.stub_driven_listing import StubDrivenListing
+from tests.test_stub_driven_listing import StubDrivenListing
 def _zip(path: Path, members: dict[str, bytes]) -> Path:
     with zipfile.ZipFile(path, "w") as handle:
         for name, body in members.items():
@@ -153,3 +153,4 @@ class GracefulFailure(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
