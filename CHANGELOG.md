@@ -5,6 +5,16 @@
 
 ## 9.33
 
+### 2026-11-13 11:00:00 — test: extract focused test classes from tests/test_services.py
+- `tests/test_steam_link.py`: New module with `TestSteamLink` (2 tests), extracted from `tests/test_services.py`. Pins the one-HTML-link-per-game scheme and removal of legacy `.desktop`/`.url` files.
+- `tests/test_artwork_image_shape.py`: New module with `TestArtworkImageShape` (5 tests), extracted from `tests/test_services.py`. Pins JPEG shape detection from file bytes and unreadable-file handling.
+- `tests/test_conversion_toggle.py`: New module with `TestConversionToggle` (8 tests), extracted from `tests/test_services.py`. Pins the `convert_archives` toggle default, restart persistence, and conversion-off move behaviour.
+- `tests/test_services.py`: Removed `TestSteamLink`, `TestArtworkImageShape`, `TestConversionToggle` classes (now in their own modules). Fixed a local `AppConfig` import that shadowed the module-level import.
+
+### 2026-11-13 10:30:00 — test: remove monolithic tests/test_regressions.py, classes already extracted
+- `tests/test_regressions.py`: Deleted. All 17 test classes previously extracted into `tests/test_scan_regressions.py`, `tests/test_api_regressions.py`, `tests/test_settings_regressions.py`, `tests/test_platform_regressions.py`, `tests/test_ui_regressions.py`, `tests/test_cleanup_regressions.py`, `tests/test_runtime_regressions.py`.
+- `tests/test_preview_regressions.py`: Deleted. Duplicate of `TestPreviewOnlyDoesNotMoveAnything` already present in `tests/test_scan_regressions.py`.
+
 ### 2026-11-13 10:00:00 — refactor: extract pure query functions from services/steam_service.py into core/steam_query_utils.py
 - `core/steam_query_utils.py`: New module holding `expand_acronyms`, `swap_trailing_numeral`, `to_roman`, `from_roman`, `score`, extracted from `services/steam_service.py`. All are pure functions with no instance-state dependency.
 - `services/steam_service.py`: Removed `_expand_acronyms`, `_swap_trailing_numeral`, `_to_roman`, `_from_roman`, `_score` method definitions. Added thin wrapper methods that delegate to `core.steam_query_utils`, keeping existing callers working. Removed now-unused `import difflib`.
