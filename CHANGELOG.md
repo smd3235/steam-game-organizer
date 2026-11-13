@@ -5,6 +5,13 @@
 
 ## 9.33
 
+### 2026-11-13 18:30:00 — feat: add module-split safety checks so test files are never missed
+- `tests/test_module_split_safety.py`: New safety test module with three checks:
+  - Reports oversized source files (>300 lines / >15 KB) that are candidates for splitting.
+  - Fails if any source module under core/, services/, app/, ui/ has no test file importing from it.
+  - Fails if any test file imports a symbol from a source module that no longer exists there (stale import after a split).
+- `tools/audit_module_splits.py`: Added `--check-tests` flag — when auditing, also reports oversized source files that lack a test file referencing them. Added `tests/` to SKIP_DIRS so test files aren't audited as split candidates. Added a prominent safety checklist to the docstring reminding developers to update tests, create new test files, run the full suite, run ruff, rebuild the frozen exe, update CHANGELOG.md, and commit+push after every split.
+
 ### 2026-11-13 18:15:00 — fix: point run_tests_parallel.py at relocated pytest.ini
 - `tools/run_tests_parallel.py`: Added `-c tests/pytest.ini` to the pytest command so it still picks up markers and filterwarnings after `pytest.ini` moved into `tests/`.
 

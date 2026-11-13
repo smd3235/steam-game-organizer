@@ -4,18 +4,38 @@ Scans project Python files for oversized modules that are candidates for splitti
 into smaller modules, and can heal them by extracting a class or function into its
 own module file.
 
+SAFETY CHECKLIST WHEN SPLITTING A MODULE:
+1. Run `python tools\audit_module_splits.py` (audit mode) to confirm no oversized
+   files remain after the split.
+2. Update every test file that imports from the split source module so it imports
+   from the new module instead. A symbol that moved must be tested from its new
+   location, not the old one.
+3. Create a new test file for the extracted module if no existing test covers it.
+4. Run `runtime\python.exe -m unittest discover -q` — all tests must pass.
+5. Run `ruff check .` — must be clean.
+6. Rebuild the frozen exe with `python tools\build_frozen.py`.
+7. Update CHANGELOG.md under ## 9.33.
+8. Commit and push to main.
+
 Run directly:  python tools\audit_module_splits.py
 
 Audit mode (default):
   Lists every .py file over the size threshold, with its top-level classes and
-  functions, line counts, and suggested extract targets.
+  functions, line counts, and suggested extract targets. Exits 1 if any oversized
+  files are found so CI can catch split-pending code before it is merged.
 
-Heal mode (--heal FILE SYMBOL):
+Heal mode (--heal FILE:SYMBOL):
   Extracts SYMBOL (a top-level class or function) from FILE into a new module under
   core/ or services/ based on FILE's directory, rewrites FILE to import SYMBOL from
   the new module, and adds a change comment to both files.
 
-Exits 0 on success; exits 1 on error or when audit finds oversized files.
+Check-tests mode (--check-tests):
+  For every oversized source file found in audit mode, checks whether a test file
+  exists that references the file's symbols. Reports any oversized source file
+  that lacks test coverage. Exits 1 if any gaps are found.
+
+Exits 0 on success; exits 1 on error, when audit finds oversized files, or when
+check-tests finds oversized files without test coverage.
 """
 
 from __future__ import annotations
@@ -25,8 +45,8 @@ import ast
 import sys
 from pathlib import Path
 
-# Directories that are never scanned or written: frozen outputs, bundled runtime, git.
-SKIP_DIRS = {".git", "dist", "build", "runtime", "__pycache__", ".pytest_cache", ".agent-cache", ".ruff_cache"}
+# Directories that are never scanned or written: frozen outputs, bundled runtime, git, tests.
+SKIP_DIRS = {".git", "dist", "build", "runtime", "__pycache__", ".pytest_cache", ".agent-cache", ".ruff_cache", "tests"}
 
 # Files over this many lines are flagged as oversized split candidates.
 OVER_SIZE_LINES = 300
@@ -275,6 +295,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Audit and heal oversized Python modules by splitting them.")
     parser.add_argument("--heal", metavar="FILE:SYMBOL", help="Extract SYMBOL from FILE into a new module.")
     parser.add_argument("--threshold", type=int, default=OVER_SIZE_LINES, help="Line count above which a file is flagged (default: 300).")
+    parser.add_argument("--check-tests", action="store_true", help="When auditing, also verify each oversized source file has a test file that references its symbols.")
     args = parser.parse_args()
     if args.heal:
         if ":" not in args.heal:
@@ -290,6 +311,7 @@ def main() -> int:
     # Audit mode.
     oversized_files = 0
     total_symbols = 0
+    test_coverage_gaps = 0
     for path in iter_source_files(PROJECT_ROOT):
         info = audit_file(path, args.threshold)
         if info is None:
@@ -320,9 +342,30 @@ def main() -> int:
             for c in candidates:
                 mod = suggest_module_name(path, c["name"])
                 print(f"    {c['name']} -> {mod}")
+            if args.check_tests:
+                # Check whether a test file references this source module's symbols.
+                test_files = list((PROJECT_ROOT / "tests").rglob("test_*.py"))
+                referenced = False
+                for tf in test_files:
+                    try:
+                        text = tf.read_text(encoding="utf-8")
+                    except OSError:
+                        continue
+                    if path.stem in text or f"from {path.relative_to(PROJECT_ROOT).as_posix()[:-3].replace('/', '.')}" in text:
+                        referenced = True
+                        break
+                if not referenced:
+                    test_coverage_gaps += 1
+                    print(f"  !! NO TEST COVERAGE: no test file under tests/ references '{path.stem}' or imports from this module.")
+                    print(f"     Create or update a tests/test_*.py that imports from {rel}.")
     print(f"\n{oversized_files} oversized file(s), {total_symbols} top-level symbol(s) across the codebase.")
+    if test_coverage_gaps:
+        print(f"{test_coverage_gaps} oversized file(s) lack test coverage.")
     if oversized_files:
         print("Run with --heal FILE:SYMBOL to extract a symbol into its own module.")
+        return 1
+    if test_coverage_gaps:
+        print("Add test coverage for the oversized modules listed above before merging.")
         return 1
     print("No oversized files found. Clean.")
     return 0
