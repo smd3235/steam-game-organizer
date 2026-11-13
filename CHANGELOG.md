@@ -5,6 +5,9 @@
 
 ## 9.33
 
+### 2026-11-13 04:00:00 — tooling: add module-split audit and heal tool
+- `tools/audit_module_splits.py`: New tool that scans project `.py` files for oversized modules (default threshold: 300 lines / 15 KB), parses them with `ast`, and reports top-level classes and functions with line counts and suggested extract targets. `--heal FILE:SYMBOL` extracts a named class or function into its own module, rewrites the original file to import from the new module, and adds change comments to both files. Audit mode exits 1 when oversized files are found, suitable for CI pre-merge checks.
+
 ### 2026-11-13 03:00:00 — security: validator catches remaining real-name in comment; scrub changelog entries
 - `tools/validate_game_names.py`: Added "cities skylines" to the deny list so word-boundary matching catches it in comments.
 - `services/steam_service.py`: Replaced real game name "Cities Skylines 2" in a comment with fictional "Stellar Squirrel 2".
