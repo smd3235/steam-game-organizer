@@ -5,6 +5,10 @@
 
 ## 9.33
 
+### 2026-11-13 06:00:00 — refactor: extract pure static methods from organizer_service.py into core/organizer_utils.py
+- `core/organizer_utils.py`: New module holding six pure functions extracted from `OrganizerService`: `zip_is_encrypted`, `looks_like_resource_failure`, `defender_flagged`, `still_running`, `stop_tool`, `pid_is_alive`. All were `@staticmethod` or `self`-less methods that took all inputs as parameters.
+- `services/organizer_service.py`: Removed the original static method definitions. Added thin `@staticmethod` wrapper methods that delegate to `core.organizer_utils`, keeping existing callers working. Dropped now-unused `import zipfile`.
+
 ### 2026-11-13 05:00:00 — refactor: extract _ConnectionPool from steam_service.py into core/connection_pool.py
 - `core/connection_pool.py`: New module holding the `_ConnectionPool` class and module-level `_SHARED_POOL` instance, extracted from `services/steam_service.py`. Self-contained (stdlib only): manages pooled HTTP/HTTPS keep-alive connections per host.
 - `services/steam_service.py`: Removed the 119-line `_ConnectionPool` class definition; imports `_SHARED_POOL` from `core.connection_pool` instead. Dropped now-unused `http.client` and `urlsplit` imports.

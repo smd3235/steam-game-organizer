@@ -2,14 +2,31 @@ from pathlib import Path
 from datetime import datetime
 from html import escape
 from urllib.request import pathname2url
-from urllib.parse import urlencode, quote
+from urllib.parse import quote
 import sys
 import threading
 # Imports split one per line for GitHub readability.
 from core.library_summary import LibrarySummary
+from core.catalog_utils import (
+    anchor,
+    archive_created,
+    archive_size,
+    asset_prefix,
+    batch_button,
+    clean_tags,
+    extract_uri,
+    find_banner,
+    open_folder_uri,
+    path_within,
+    remaining_button,
+    refresh_uri,
+    setup_uri,
+    store_url,
+    steam_protocol_url,
+)
 from .banner_art import banner_data_uri
 from core.constants import APP_NAME, ENTRY_POINT, LIBRARY_RESERVED_DIRS
-from core.uri_actions import SCHEME, safe_folder_name
+from core.uri_actions import safe_folder_name
 from services.catalog_status import STATUS_NAME, already_extracted, empty_status, write_status, archive_has_changed_since_extraction
 from services.installer_detect import NEEDS_INSTALL_DIRNAME, has_needs_install_mark
 from utils.formatting import human_size
@@ -23,8 +40,6 @@ import re
 # instances reuse a single walk. A lock guards concurrent access from worker threads.
 _COLLECT_CACHE: dict[str, dict] = {}
 _COLLECT_CACHE_LOCK = threading.Lock()
-
-BANNER_PRIORITY = ("header_image", "library_hero", "capsule_imagev5", "capsule_image", "library_capsule", "grid")
 
 # Generic custom banners per category. Every category gets its own coloured theme so categories
 # are distinguishable at a glance instead of all reusing the first game's art. Lowercased keys so
@@ -321,7 +336,7 @@ class CatalogService:
         # it and render a card whose heading was three spaces - present on the shelf, identifying nothing.
         name = str(metadata.get("name") or "").strip() or re.sub(r"\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$", "", game_dir.name).strip() or game_dir.name
         appid = str(metadata.get("appid") or "").strip()
-        banner = self._find_banner(game_dir, self._asset_prefix(game_dir, metadata))
+        banner = find_banner(game_dir, asset_prefix(game_dir, metadata))
         banner_rel = str(banner.relative_to(library_root)).replace("\\", "/") if banner else ""
         # Relative folder reference: the catalog is written into the library root, so this path stays valid
         # if the whole Games folder is copied elsewhere. An absolute path would break the moment it moves.
@@ -340,7 +355,7 @@ class CatalogService:
             # Steam's own tags. Written into the sidecar since tags were first captured, and read here for the
             # first time: they are the most descriptive thing Steam offers about a game - "Great Soundtrack",
             # "Immersive Sim", "Controller Support" - and none of it is visible anywhere else in the app.
-            "tags": self._clean_tags(metadata.get("tags")),
+            "tags": clean_tags(metadata.get("tags")),
             "folder": game_dir,
             "folder_rel": folder_rel,
             "archive": archive,
@@ -350,10 +365,10 @@ class CatalogService:
             # file on disk. The on-disk "Needs Install" marker is the fallback; this is the pre-extraction preview.
             "installer": self._archive_installer_kind(game_dir / archive) if archive else None,
             # Size on disk, so the catalog can sort and total a library rather than just list names.
-            "archive_size": self._archive_size(game_dir),
+            "archive_size": archive_size(game_dir),
             # Archive creation date: a reliable "is this a new file" signal the reader can compare against
             # the stale-extraction badge when an archive with the same name was replaced by a new download.
-            "archive_created": self._archive_created(game_dir),
+            "archive_created": archive_created(game_dir),
             # Full path to the archive on disk, for the stale-extraction check.
             # 'archive' above is a basename; this is the resolved path the marker was written from.
             "_archive_path": str(game_dir / archive) if archive else "",
@@ -376,45 +391,21 @@ class CatalogService:
             self.logger.warning("CATALOG", f"INSTALLER_KIND_FAILED path=[{Path(archive).name}] error={type(exc).__name__}")
             return None
 
-    def _clean_tags(self, raw):
-        """Steam's tag list, as a list of non-empty strings.
+    def _asset_prefix(self, game_dir, metadata):
+        """Filesystem-safe asset prefix for a game folder.
 
-        Defensive about the type because this is read out of a JSON file the app wrote but a person can also
-        edit: a string where a list was expected would otherwise iterate character by character and put
-        single letters in the search index.
+        Delegates to core.catalog_utils.asset_prefix. Kept as a method so existing
+        tests and call sites that use `self._asset_prefix(...)` keep working.
         """
-        if isinstance(raw, str):
-            raw = [raw]
-        if not isinstance(raw, list):
-            return []
-        seen = []
-        for value in raw:
-            text = str(value or "").strip()
-            if text and text not in seen:
-                seen.append(text)
-        return seen
+        return asset_prefix(game_dir, metadata)
 
-    def _archive_size(self, game_dir):
-        try:
-            for path in game_dir.iterdir():
-                if path.is_file() and path.suffix.lower() in (".zip", ".rar", ".7z"):
-                    return path.stat().st_size
-        except OSError:
-            pass
-        return 0
+    def _find_banner(self, game_dir, prefix):
+        """The best banner image for a game folder, by priority then any image file.
 
-    def _archive_created(self, game_dir):
-        """Archive file creation timestamp, as an ISO string for sorting/display."""
-        try:
-            for path in game_dir.iterdir():
-                if path.is_file() and path.suffix.lower() in (".zip", ".rar", ".7z"):
-                    st = path.stat()
-                    from datetime import datetime
-
-                    return datetime.fromtimestamp(st.st_ctime).strftime("%Y-%m-%d %H:%M")
-        except OSError:
-            pass
-        return ""
+        Delegates to core.catalog_utils.find_banner. Kept as a method so existing
+        tests and call sites that use `self._find_banner(...)` keep working.
+        """
+        return find_banner(game_dir, prefix)
 
     def _find_archive(self, game_dir):
         """The game archive inside the folder, shown so the catalog lists what is actually on disk."""
@@ -422,52 +413,6 @@ class CatalogService:
             return next((p.name for p in sorted(game_dir.iterdir()) if p.is_file() and p.suffix.lower() in (".zip", ".rar", ".7z")), "")
         except OSError:
             return ""
-
-    def _safe_name(self, value):
-        value = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", str(value or "")).strip().rstrip(".")
-        return re.sub(r"\s+", " ", value) or "Unnamed Game"
-
-    @staticmethod
-    def _path_within(candidate, root):
-        try:
-            candidate = Path(candidate).resolve()
-            root = Path(root).resolve()
-        except OSError:
-            return False
-        return candidate == root or root in candidate.parents
-
-    def _asset_prefix(self, game_dir, metadata):
-        # Assets are written on disk using the sanitized Steam name (see OrganizerService._asset_prefix), not
-        # the raw folder name, so prefer the metadata name when available for an exact match.
-        name = metadata.get("name")
-        if name:
-            return self._safe_name(name)
-        return re.sub(r"\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$", "", game_dir.name).strip() or game_dir.name
-
-    def _find_banner(self, game_dir, prefix):
-        marker = prefix + "_"
-        files = {}
-        for f in game_dir.glob("*"):
-            if f.suffix.lower() not in (".jpg", ".jpeg", ".png", ".webp"):
-                continue
-            if f.stem.startswith(marker):
-                files[f.stem[len(marker) :]] = f
-        for key in BANNER_PRIORITY:
-            if key in files:
-                return files[key]
-        for f in sorted(game_dir.glob("*")):
-            if f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
-                return f
-        return None
-
-    def _store_url(self, appid):
-        return f"https://store.steampowered.com/app/{appid}/"
-
-    def _steam_protocol_url(self, appid):
-        return f"steam://store/{appid}"
-
-    def _anchor(self, name):
-        return re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-") or "category"
 
     def _unpacked_archives(self, categories, extract_folders=()):
         """Which archives on the page are already unpacked, and where.
@@ -532,7 +477,7 @@ class CatalogService:
             if launch_target:
                 try:
                     target_path = Path(str(launch_target)).expanduser()
-                    if target_path.is_file() and target_path.suffix.lower() == ".exe" and (not folders or any(self._path_within(target_path, f) for f in folders)):
+                    if target_path.is_file() and target_path.suffix.lower() == ".exe" and (not folders or any(path_within(target_path, f) for f in folders)):
                         launch_targets[name] = str(target_path.resolve())
                 except Exception:
                     pass
@@ -649,7 +594,7 @@ class CatalogService:
         # data-toc-count is what lets the rail recount itself as a filter narrows the shelf. Without it the
         # numbers beside every category kept reporting the unfiltered totals, so a search matching 12 games
         # still showed 166 beside the category list.
-        toc_items = "".join(f'<li><a class="toc-link" href="#{self._anchor(name)}" data-target="{self._anchor(name)}"><span class="toc-dot" aria-hidden="true"></span><span class="toc-name">{escape(name)}</span><span class="count" data-toc-count="{self._anchor(name)}">{len(games)}</span></a></li>' for name, games in categories.items())
+        toc_items = "".join(f'<li><a class="toc-link" href="#{anchor(name)}" data-target="{anchor(name)}"><span class="toc-dot" aria-hidden="true"></span><span class="toc-name">{escape(name)}</span><span class="count" data-toc-count="{anchor(name)}">{len(games)}</span></a></li>' for name, games in categories.items())
         genre_chips = "".join(f'<button class="chip-btn" type="button" aria-pressed="false" data-genre="{escape(name)}">{escape(name)}<span class="chip-count">{genre_counts[name]}</span></button>' for name in top_genres)
         # Games that are already unpacked, shown first as a "ready to play" section so
         # the reader sees what they can jump straight into before browsing categories.
@@ -735,16 +680,16 @@ class CatalogService:
          This button hands the two boxes above to the app's own setup wizard, which saves
          them where the Extract links are checked against, and registers the
          steamgameorganizer:// link the buttons go through. -->
-<a class="btn btn-setup" id="setup-link" href="{self._setup_uri()}" data-setup="{self._setup_uri()}"
+<a class="btn btn-setup" id="setup-link" href="{setup_uri()}" data-setup="{setup_uri()}"
         title="Set the game library, this app and the extract folder for this PC">Set up on this PC</a>
 <span class="setup-fallback" id="setup-fallback" hidden>
           <span class="setup-fallback-text">Nothing opened? Open a terminal in the game folder and paste this:</span>
           <code class="setup-cmd" id="setup-cmd" title="Click to copy">{escape(self._setup_cmd)}</code>
           <button class="btn-copy-cmd" id="setup-copy" title="Copy the command to the clipboard">Copy</button>
         </span>
-      {self._batch_button("", total_games, total_bytes, "Extract all", "Unpack every game in the whole library", scope="the whole library") if total_games else ""}
-      {self._remaining_button(sum(1 for games in categories.values() for g in games if g["archive"] and g["archive"] not in unpacked), "Extract remaining", "Unpack only games not already extracted") if total_games else ""}
-      <button id="refresh-catalog" class="btn btn-ghost" type="button" data-refresh="{self._refresh_uri()}" title="Re-scan the library and refresh this page so Unpacked badges match what is on disk">Refresh catalog</button>
+      {batch_button("", total_games, total_bytes, "Extract all", "Unpack every game in the whole library", scope="the whole library") if total_games else ""}
+      {remaining_button(sum(1 for games in categories.values() for g in games if g["archive"] and g["archive"] not in unpacked), "Extract remaining", "Unpack only games not already extracted") if total_games else ""}
+      <button id="refresh-catalog" class="btn btn-ghost" type="button" data-refresh="{refresh_uri()}" title="Re-scan the library and refresh this page so Unpacked badges match what is on disk">Refresh catalog</button>
       <button id="multi-btn" class="btn btn-warning" type="button" data-multi="select" title="Select games to extract them together">Select games</button>
     <button id="extract-selected" class="btn btn-accent" type="button" data-multi="extract" title="Extract the selected games" hidden>Extract <span id="multi-count">0</span></button>
     <button id="clear-selection" class="btn btn-ghost" type="button" data-multi="clear" title="Clear the selection" hidden>Clear</button>
@@ -813,15 +758,15 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
         if with_art < len(games):
             facts += f' <span class="dot">•</span> {len(games) - with_art} without art'
         facts += "</span>"
-        return f'''<section id="{self._anchor(name)}" class="category" data-category="{escape(name)}">
+        return f'''<section id="{anchor(name)}" class="category" data-category="{escape(name)}">
   <div class="category-header" style="{layers}">
     <div class="category-titles">
       <h2>{escape(name)}</h2>
       {facts}
     </div>
    <div class="category-actions">
-      {self._batch_button(name, len(games), total, "Extract all", "Unpack every game in this category")}
-      {self._remaining_button(sum(1 for g in games if g["archive"] and g["archive"] not in unpacked), "Extract remaining", "Unpack only games in this category not already extracted")}
+      {batch_button(name, len(games), total, "Extract all", "Unpack every game in this category")}
+      {remaining_button(sum(1 for g in games if g["archive"] and g["archive"] not in unpacked), "Extract remaining", "Unpack only games in this category not already extracted")}
       <button class="jump-top" type="button" title="Jump back to the top of the catalog">&#8593; Top</button>
     </div>
   </div>
@@ -842,7 +787,7 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
             facts += f' <span class="dot">•</span> {len(games) - with_art} without art'
         facts += "</span>"
         layers = f"--gen:url('{banner_data_uri('Recently extracted')}')"
-        return f'''<section id="{self._anchor("Recently extracted")}" class="category recent" data-category="Recently extracted">
+        return f'''<section id="{anchor("Recently extracted")}" class="category recent" data-category="Recently extracted">
   <div class="category-stuck" aria-hidden="true"><span class="category-stuck-name">Recently extracted</span></div>
   <div class="category-header" style="{layers}">
     <div class="category-titles">
@@ -855,46 +800,6 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
   </div>
   <div class="grid">{cards}</div>
 </section>'''
-
-    def _batch_button(self, category, count, total_bytes, label, title, scope=""):
-        """A batch Extract link, carrying a category name and nothing else.
-
-        The link names a category rather than a list of archives, so the app enumerates the library itself and a
-        page cannot use the handler to pick its own sources. An empty category means the whole library, and the
-        URI then carries no category parameter at all - `scope` is only the wording shown in the confirmation, so
-        a display label never leaks into the request.
-
-        The count and size travel as data attributes rather than in the label so the script can put the real
-        figures in the confirmation prompt: a button reading "Extract all" over a shelf of 176 games is not
-        enough evidence to agree to hours of unpacking.
-        """
-        if not count:
-            return ""
-        detail = f"{count} game{'' if count == 1 else 's'}"
-        if total_bytes:
-            detail += f", {human_size(total_bytes)}"
-        shown = scope or category
-        return f'<a class="btn btn-batch" href="{self._batch_uri(category)}" data-batch="{self._batch_uri(category)}" data-batch-count="{count}" data-batch-size="{int(total_bytes or 0)}" data-batch-name="{escape(shown)}" data-batch-confirm="{escape(title)} ({escape(detail)})">{label} {count}</a>'
-
-    def _batch_uri(self, category):
-        """The steamgameorganizer:// link that unpacks a category, or the whole library when category is empty."""
-        query = urlencode({"category": category}) if category else ""
-        return f"{SCHEME}://extract-all?{query}" if query else f"{SCHEME}://extract-all"
-
-    def _remaining_button(self, count, label, title):
-        """A batch Extract link that unpacks only games not already extracted.
-
-        Uses extract-remaining instead of extract-all so the same skip-existing logic runs,
-        but the label says what it actually does: only the remaining games.
-        """
-        if not count:
-            return ""
-        detail = f"{count} game{'' if count == 1 else 's'}"
-        shown = "the remaining games"
-        return f'<a class="btn btn-batch" href="{self._remaining_uri()}" data-batch="{self._remaining_uri()}" data-batch-count="{count}" data-batch-size="0" data-batch-name="{escape(shown)}" data-batch-confirm="{escape(title)} ({escape(detail)})">{label} {count}</a>'
-
-    def _remaining_uri(self):
-        return f"{SCHEME}://extract-remaining"
 
     def _render_card(self, game, unpacked=(), needs_install=(), stale=(), unpacked_at=None, show_badges=True, extracted_paths=None, launch_targets=None, setup_done=None, marker_dirs=None):
         unpacked_at = unpacked_at or {}
@@ -913,9 +818,9 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
         # card keeps its artwork, its archive, its size and both path buttons, and says why the Steam
         # actions are missing rather than rendering a link to store.steampowered.com/app// .
         linked = bool(appid)
-        link_open = f'<a class="card-link" href="{self._store_url(appid)}" target="_blank" rel="noopener" title="Open {escape(game["name"])} on Steam">' if linked else '<div class="card-link card-link-plain" title="No Steam match for this game">'
+        link_open = f'<a class="card-link" href="{store_url(appid)}" target="_blank" rel="noopener" title="Open {escape(game["name"])} on Steam">' if linked else '<div class="card-link card-link-plain" title="No Steam match for this game">'
         link_close = "</a>" if linked else "</div>"
-        steam_button = f'<a class="btn btn-steam" href="{self._steam_protocol_url(appid)}" title="Open in the Steam client">Open in Steam</a>' if linked else ""
+        steam_button = f'<a class="btn btn-steam" href="{steam_protocol_url(appid)}" title="Open in the Steam client">Open in Steam</a>' if linked else ""
         no_match_badge = "" if linked else '<span class="badge badge-muted">No Steam match</span>'
         description = game["description"]
         truncated = description[:220] + ("…" if len(description) > 220 else "")
@@ -1023,8 +928,8 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
             if text and text not in facets:
                 facets.append(text)
         genre_attrs = "".join(f' data-genre="{escape(facet)}"' for facet in facets[:8])
-        extract_uri = self._extract_uri(game)
-        folder_uri = self._open_folder_uri(game)
+        extract_link = extract_uri(game)
+        folder_uri = open_folder_uri(game)
         # The library-relative folder and the archive name ride along on both path buttons, so the page can
         # rebuild a path under whichever game folder is typed into the toolbar. Without them the only copy of
         # either belongs to the machine that ran the scan, and both buttons break the moment the folder moves.
@@ -1088,16 +993,16 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
             mark_installed_action = f'<a class="btn btn-folder btn-mark-installed" href="#" data-mark-installed="1"{folder_attr}{archive_attr}{state_attrs} title="Mark setup/installation as complete so Play becomes available">Mark installed</a>'
 
         # Primary action: Extract / Re-extract / Play (ready) / Open installer / Open extracted
-        if extract_uri and is_stale:
-            primary_button = f'<a class="btn btn-extract btn-reextract" href="{extract_uri}" data-extract="{extract_uri}"{folder_attr}{archive_attr}{state_attrs} title="A newer archive is available - extract to update">Re-extract</a>'
+        if extract_link and is_stale:
+            primary_button = f'<a class="btn btn-extract btn-reextract" href="{extract_link}" data-extract="{extract_link}"{folder_attr}{archive_attr}{state_attrs} title="A newer archive is available - extract to update">Re-extract</a>'
         elif play_action:
             primary_button = play_action
         elif is_needs_install and (extracted_rel or extracted_path):
             primary_button = f'<a class="btn btn-open-extracted" href="#" data-open-extracted="1"{folder_attr}{archive_attr}{state_attrs} title="Open the folder with installer files">Open installer</a>'
         elif is_unpacked and (extracted_rel or extracted_path):
             primary_button = f'<a class="btn btn-open-extracted" href="#" data-open-extracted="1"{folder_attr}{archive_attr}{state_attrs} title="Open the extracted game folder">Open extracted</a>'
-        elif extract_uri:
-            primary_button = f'<a class="btn btn-extract" href="{extract_uri}" data-extract="{extract_uri}"{folder_attr}{archive_attr}{state_attrs} title="Unpack this archive to the chosen destination">Extract</a>'
+        elif extract_link:
+            primary_button = f'<a class="btn btn-extract" href="{extract_link}" data-extract="{extract_link}"{folder_attr}{archive_attr}{state_attrs} title="Unpack this archive to the chosen destination">Extract</a>'
         else:
             primary_button = ""
         # Secondary actions: stale access, pick launcher, mark installed. Never duplicate primary.
@@ -1144,55 +1049,6 @@ first thing to check &mdash; <em>Copy folder path</em> works either way.</p></fo
     {steam_button}
    </div>
 </article>'''
-
-    def _setup_uri(self):
-        """The setup link, without a query.
-
-        The query is filled in by the page's own boxes,
-        so the wizard the link opens starts on the folders the reader has
-        already typed rather than the ones the page was generated with.
-        Left empty here because the script is the only thing that
-        knows what the boxes hold at click time.
-        """
-        return f"{SCHEME}://setup"
-
-    def _refresh_uri(self):
-        """The steamgameorganizer:// link that asks the app to regenerate the catalog.
-
-        The page is static: its Unpacked badges were decided against disk at
-        generation time, and a file:// page cannot re-scan the folder itself, so
-        an extraction the user deleted outside the app stays badged Unpacked until
-        the page is regenerated. This link hands that to the app, which re-walks the
-        library and re-checks what is unpacked, and the page reloads to show it.
-        """
-        return f"{SCHEME}://refresh-catalog"
-
-    def _extract_uri(self, game):
-        """The steamgameorganizer:// link for a game's archive.
-
-        Percent-encoded whole, because a library is full of names with spaces, ampersands and quotes in them
-        and an unescaped '&' would split the source path across two query parameters - the handler would then
-        refuse a link this page built itself.
-
-        Only the source is sent. The destination is whatever is in the text box when the button is clicked,
-        which the script fills in; leaving it out means the handler falls back to the first configured folder
-        instead of a folder that was correct when the page was written.
-        """
-        name = game.get("archive") or ""
-        if not name:
-            return ""
-        source = Path(game["folder"]) / name
-        return f"{SCHEME}://extract?{urlencode({'src': str(source)})}"
-
-    def _open_folder_uri(self, game):
-        """The steamgameorganizer://open-folder link that opens a game's folder in Explorer.
-
-        The folder path is rebuilt from the toolbar-entered game folder at click time,
-        exactly like the Extract links, so it follows the reader's edited root rather
-        than being frozen to the machine that ran the scan.
-        """
-        folder_rel = game.get("folder_rel") or ""
-        return f"{SCHEME}://open-folder?{urlencode({'path': folder_rel})}"
 
     def _script(self):
         if getattr(self, "_script_cache", None) is not None:

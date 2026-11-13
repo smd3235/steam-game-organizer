@@ -5,7 +5,6 @@ import subprocess
 import tempfile
 import threading
 import time
-import zipfile
 import contextlib
 import json
 # Imports split one per line for GitHub readability.
@@ -26,6 +25,14 @@ from core.constants import (
     TEMP_FILE_TAG,
     NO_WINDOW,
     DEFAULT_ZIP_PASSWORD,
+)
+from core.organizer_utils import (
+    defender_flagged,
+    looks_like_resource_failure,
+    pid_is_alive,
+    stop_tool,
+    still_running,
+    zip_is_encrypted,
 )
 from core.exceptions import CancellationError
 from core.naming_utils import (
@@ -103,6 +110,25 @@ class OrganizerService:
 
     def _unique_dir(self, parent, name):
         return unique_dir(parent, name)
+
+    def _zip_is_encrypted(self, path):
+        return zip_is_encrypted(path)
+
+    def _looks_like_resource_failure(self, detail):
+        return looks_like_resource_failure(detail)
+
+    def _defender_flagged(self, detail):
+        return defender_flagged(detail)
+
+    def _still_running(self, process):
+        return still_running(process)
+
+    @staticmethod
+    def _stop_tool(process, grace=3.0):
+        return stop_tool(process, grace=grace)
+
+    def _pid_is_alive(self, pid):
+        return pid_is_alive(pid)
 
     def needs_catalog_launcher(self):
         """Whether a launcher file belongs beside the catalog on this machine.
@@ -631,18 +657,6 @@ class OrganizerService:
 
         return result
 
-    def _zip_is_encrypted(self, path):
-        """True when the zip's central directory marks any entry as encrypted.
-
-        Python's zipfile reads the flag bits without decrypting, so this is a cheap check that needs no
-        password. WinZip AES entries carry bit 0 of the general-purpose flags.
-        """
-        try:
-            with zipfile.ZipFile(path) as source:
-                return any(info.flag_bits & 0x1 for info in source.infolist() if not info.is_dir())
-        except Exception:
-            return False
-
     def _unlock_zip(self, path, ctx=None):
         """Remove the password from a WinZip AES zip in place, so the conversion below can extract it.
 
@@ -662,84 +676,6 @@ class OrganizerService:
         if not self._zip_is_encrypted(path):
             return False
         return ArchiveService(self.logger)._remove_zip_password(path, ctx)
-
-    def _looks_like_resource_failure(self, detail):
-        """True when a build died from memory pressure or an interrupt rather than from bad input.
-
-        7z reports these as exit 255 with 'Break signaled' and no useful explanation, which is
-        indistinguishable from a genuine error by exit code alone. Retrying one level lower costs a
-        minute; giving up costs the entire extraction.
-        """
-        text = (detail or "").lower()
-        return any(marker in text for marker in ("break signaled", "not enough memory", "out of memory", "cannot allocate", "killed"))
-
-    @staticmethod
-    def _defender_flagged(detail):
-        """The filenames Windows Defender refused to scan during a 7z build, parsed from its error text.
-
-        7z's content-intelligence integration asks Defender to scan every file as it packs. A file
-        Defender flags is reported as "Operation did not complete successfully because the file contains
-        a virus or potentially unwanted software", followed by the path on the next line and "The
-        system cannot find the file specified" on the line after. The names are extracted from the
-        first form, which is stable across 7-Zip versions; the second form is the same file reported
-        again after the scan was refused.
-        """
-        if not detail:
-            return []
-        names = []
-        # The actual format is "path : message", not "message path": 7z prints the member path first,
-        # then a colon, then the Defender refusal. The earlier version split on the message and took
-        # what came after, which found nothing and returned an empty list - so every Defender refusal
-        # was reported as a build failure with no exclusions to retry with.
-        for line in detail.split("|"):
-            line = line.strip()
-            if "Operation did not complete successfully because the file contains a virus" not in line:
-                continue
-            path = line.split(" : ", 1)[0].strip()
-            if not path:
-                continue
-            name = path.replace("\\", "/").lstrip("./").rsplit("/", 1)[-1]
-            if name:
-                names.append(name)
-        return names
-
-    @staticmethod
-    def _still_running(process):
-        # Tolerant on purpose: this runs from a finally block, and a process double or a platform that lacks
-        # one of these must not turn a handled failure into an AttributeError that hides the real cause.
-        poll = getattr(process, "poll", None)
-        if poll is None:
-            return False
-        try:
-            return poll() is None
-        except OSError:
-            return False
-
-    @staticmethod
-    def _stop_tool(process, grace=3.0):
-        """Ends a running archive tool.
-
-        terminate() asks first because 7z closes its output file on SIGTERM and the partial build can be
-        reused as a retry candidate; kill() is the backstop for a tool wedged in a syscall. Both are needed:
-        a level-9 LZMA2 build under memory pressure can ignore a polite signal for a long time.
-        """
-        if not OrganizerService._still_running(process):
-            return
-        with contextlib.suppress(OSError, AttributeError):
-            process.terminate()
-        deadline = time.monotonic() + grace
-        while time.monotonic() < deadline:
-            if not OrganizerService._still_running(process):
-                return
-            time.sleep(0.05)
-        with contextlib.suppress(OSError, AttributeError):
-            process.kill()
-        # subprocess.TimeoutExpired is a SubprocessError, not an OSError, so a suppress written for the
-        # signals above lets it straight through. That is the one exception this wait can raise, and letting
-        # it out of a `finally` replaces whatever was already failing - which is the masking of the real cause
-        # that the tolerance above exists to prevent.
-        with contextlib.suppress(OSError, AttributeError, subprocess.TimeoutExpired):
-            process.wait(timeout=5)
 
     @staticmethod
     def _watch_cancel(process, ctx):
@@ -925,35 +861,6 @@ class OrganizerService:
         if pid == os.getpid():
             return True
         return self._pid_is_alive(pid)
-
-    @staticmethod
-    def _pid_is_alive(pid):
-        """Whether a process id still exists. Written per platform because the obvious check is wrong here.
-
-        os.kill(pid, 0) is the portable idiom, but on Windows it raises a plain OSError for a pid that does
-        not exist as well as for one that does, so treating any OSError as "alive" means a dead run's folder is
-        never reclaimed - which is the whole case this sweep exists for.
-        """
-        if pid <= 0:
-            return False
-        if os.name == "nt":
-            import ctypes
-
-            # PROCESS_QUERY_LIMITED_INFORMATION is the least privilege that still answers "does this exist".
-            handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)
-            if not handle:
-                return False
-            ctypes.windll.kernel32.CloseHandle(handle)
-            return True
-        try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            return False
-        except PermissionError:
-            return True
-        except OSError:
-            return False
-        return True
 
     def _staging_dir(self, archive_path, library_root=None):
         """Creates the per-conversion staging folder this archive is built in, or returns None when there is
