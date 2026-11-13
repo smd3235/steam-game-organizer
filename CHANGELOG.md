@@ -5,6 +5,9 @@
 
 ## 9.33
 
+### 2026-11-13 18:00:00 — chore: move pytest.ini into tests/ folder
+- `pytest.ini`: Moved from project root to `tests/pytest.ini` — it is test configuration and belongs alongside the tests it configures. pytest must be invoked from within `tests/` or with `-c tests/pytest.ini` since it no longer lives at the root.
+
 ### 2026-11-13 17:45:00 — fix: stop test logs from writing to project root
 - `tests/test_steam_service.py`: Changed `setUp()` to write its log to a `TemporaryDirectory` instead of `Path("test.log")` in the project root, so test logs no longer pollute the repo root. Moved existing `test.log` into `logs/test/`.
 
