@@ -80,8 +80,9 @@ The result is a self-contained, browsable game library that works on any Windows
 
 Every screen below is a real capture of the app running, not a mock-up. They are produced by
 `tools\capture_screens.py`, which builds the actual windows against a throwaway library and writes one PNG per
-screen into [`docs/screenshots/`](docs/screenshots/). The library shown uses invented games and invented AppIDs —
-a public screenshot must never display someone's real collection.
+screen into [`docs/screenshots/`](docs/screenshots/). The catalog page is a browser document rather than a window,
+so it is rendered by headless Microsoft Edge and photographed from there. The library shown uses invented games and
+invented AppIDs — a public screenshot must never display someone's real collection.
 
 ```powershell
 runtime\python.exe tools\capture_screens.py                    # all screens
@@ -126,7 +127,30 @@ slow work.
 | **Metadata panel** | Steam AppID, title, genres, categories, tags, release date, developer/publisher and the confidence that this archive is really that game. A low-confidence match is shown as a guess, never as fact. |
 | **Category and actions** | The target category, accept/skip, and the title override for archives whose filename matches nothing. The **CONTINUE TO ORGANIZATION** button stays disabled until something is accepted. |
 
-### ⚙️ 4. Organize — the run, stage by stage
+### 🏷️ 4. Picking a category — the suggestion is a proposal, not a verdict
+
+<img src="docs/screenshots/review-category.png" width="900" alt="Review screen with the category list posted: the game's suggested category plus the full list of categories to choose from">
+
+The **CATEGORY** list holds the app's canonical categories plus every genre Steam reported for the selected game.
+The line beside it reads `Suggested: <category>` and turns **green** when the current choice matches the suggestion
+and **orange** when it has been overridden, so a deliberate re-categorisation is visible rather than silent.
+
+| Control | Behaviour |
+|---------|-----------|
+| **Category list** | Read-only combo. Choosing a value applies it to the selected game and re-renders its card in the list. |
+| **Use Suggested** | Puts the suggested value back, for when the override was a mistake. |
+| **Remembered choice** | Every change is recorded against the game's identity key (its folder/archive identity, not just its name), so the same game keeps the category on later scans and after a rename. |
+| **ACCEPT & NEXT** | Accepts the selected game with the chosen category and advances to the next unverified archive. |
+| **CONTINUE TO ORGANIZATION** | Stays disabled until at least one game is accepted, so an empty run cannot be started by muscle memory. |
+
+### ➕ 5. Adding a category of your own
+
+<img src="docs/screenshots/add-category.png" width="320" alt="Add Category prompt with a text box for the new category name">
+
+**＋ Add Category** asks for a name, appends it to the list and selects it immediately. The name is then treated
+like any built-in category: it can be suggested, remembered per game, and it becomes a folder in the library.
+
+### ⚙️ 6. Organize — the run, stage by stage
 
 <img src="docs/screenshots/organize.png" width="900" alt="Organize screen: stage timeline, progress bar and a feed of extracting, compressing and converting events">
 
@@ -136,7 +160,7 @@ run of 176 games and 244 GB this is the difference between a window that looks f
 is being compressed and how much disk it has written. **STOP** cancels through the archive tool; nothing partially
 built is left inside a game folder.
 
-### 🖼️ 5. Artwork — every image that will ship with the game
+### 🖼️ 7. Artwork — every image that will ship with the game
 
 <img src="docs/screenshots/artwork.png" width="900" alt="Artwork screen: one card per organized game with its banner and the asset files beside the folder">
 
@@ -145,7 +169,7 @@ One card per accepted game, showing the cached banner, the folder it belongs to,
 cache keys the catalog writes, so this panel is also how you check that a game's folder will hold the artwork the
 catalog page expects. Games whose download failed are named with the reason.
 
-### ✅ 6. Done — what actually happened, including the failures
+### ✅ 8. Done — what actually happened, including the failures
 
 <img src="docs/screenshots/done.png" width="900" alt="Done screen: outcome banner, per-outcome sections and the run report">
 
@@ -154,7 +178,25 @@ The Done screen does not report intent, it reports outcomes. Games are bucketed 
 conversions carry the archiver's own message and the free space at the moment of failure. **UNDO THE LAST RUN**
 restores every file the run moved, using the journal in `config/last-organization.json`.
 
-### 🧭 7. Setup wizard — the three folders that make Extract work
+### 🌐 9. The catalog page — the library as a clickable HTML shelf
+
+<img src="docs/screenshots/catalog.png" width="900" alt="Game Library.html catalog page: hero statistics, category shelves and game cards with banner art and Extract buttons">
+
+`Game Library.html` is written into the library root after every scan and every organize run, beside
+`Game Library.status.js`. It is a single self-contained page with relative paths, so it keeps working when the whole
+library folder is copied to another drive or another PC, and it opens from a file share without a server.
+
+| On the page | What it gives you |
+|-------------|-------------------|
+| **Hero statistics** | Games, categories, how many have artwork, how many are missing it, and the total size on disk — each number is also a filter. |
+| **Category shelves** | One section per category with its own banner, so a 20-category library is navigable instead of one long list. |
+| **Game cards** | The banner the organizer copied into the folder, plus name, release date, developer, genres, tags and size. |
+| **Extract button** | Starts `steamgameorganizer://extract?src=…` for one game. The link names the archive; the app checks it is inside the configured library before unpacking anything. |
+| **Extract category / Extract remaining** | Batch links that open the batch window for a whole category, or only for games that are not unpacked yet. |
+| **Status badges** | Reflect the last run: unpacked, partly unpacked, needs install. `Game Library.status.js` is what carries that state, so the page itself never goes stale as a file. |
+| **Search and filters** | Client-side only — no network calls, so the page works offline. |
+
+### 🧭 10. Setup wizard — the three folders that make Extract work
 
 <img src="docs/screenshots/setup.png" width="560" alt="Setup wizard: library folder, app folder and extract folder boxes with live check results below them">
 
@@ -163,7 +205,7 @@ from, where the app lives, and where the catalog's **Extract** button is allowed
 describe the machine as it is *right now* — before saving — so a red row names a problem the save is about to fix.
 Saving registers the `sgo-extract://` link as well, which is what makes extraction startable from the HTML catalog.
 
-### 📦 8. Batch extract — a whole category at once, from one link
+### 📦 11. Batch extract — a whole category at once, from one link
 
 <img src="docs/screenshots/batch-extract.png" width="700" alt="Batch extract window: per-game rows with size, state and detail; overall progress bar and speed metrics">
 
@@ -173,7 +215,15 @@ so a 40-game batch is readable while it runs. The metrics line shows bytes writt
 free space on the destination volume. Installer archives are routed to `Needs Install/` rather than treated as
 playable games.
 
-### 🎉 9. Extract result — the outcome of a single game
+### ⏳ 12. Extraction progress — what is being unpacked, right now
+
+<img src="docs/screenshots/extract-progress.png" width="320" alt="Extraction progress dialog: archive name, current file, progress bar and elapsed time">
+
+A single-game extraction shows this dialog instead of freezing the window. It names the archive, the file currently
+being written, a determinate progress bar and the elapsed time, and **Cancel** asks the archiver to stop rather than
+killing the process. When it finishes the dialog hands over to the result below.
+
+### 🎉 13. Extract result — the outcome of a single game
 
 <img src="docs/screenshots/extract-result.png" width="420" alt="Extract result dialog: green success tick, archive name, destination and file counts">
 
@@ -522,7 +572,7 @@ Phases run in order: **Discover → Organize → Catalog → Done**. Undo and Ba
 
 ## 📄 Game Library.html — what the catalog page does
 
-`CatalogService.generate` writes `Game Library.html` plus `Game Library.status.js` beside the library root. The page is a single self-contained HTML file (embedded CSS + vanilla JS, no build step, no external requests) that you open in a browser.
+`CatalogService.generate` writes `Game Library.html` plus `Game Library.status.js` beside the library root. The page is a single self-contained HTML file (embedded CSS + vanilla JS, no build step, no external requests) that you open in a browser. It is shown in the gallery as [📸 9. The catalog page](#-9-the-catalog-page--the-library-as-a-clickable-html-shelf).
 
 ### Browse and filter
 

@@ -63,6 +63,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 | **Tests must not pollute repo state** | Use `tests/tk_support.py:sandbox_app` for tests that create `AppConfig`/windows/writes. Never write to real `config/`, `cache/`, or `logs/`. |
 | **Atomic writes** | Follow temp-file + `os.replace` with retries for config/state files. |
 | **No screenshots left behind** | Delete any `*.png` screenshots created during checks. None in repo root when finished. |
+| **Scratch files stay in the project** | Never create temp files in `C:\Users\<user>\AppData\Local\Temp\kilo\` — or in any other folder outside this repository. Put throwaway scripts, generated HTML, captured images and redirects under `temp\` at the project root (gitignored), and delete them when finished. The only exception is `docs/screenshots/`, which is the committed README gallery. |
 | **Docs stay accurate** | If a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change. |
 
 ---
@@ -224,7 +225,7 @@ runtime\python.exe tools\layout_audit.py                     # clipping, off-win
 runtime\python.exe tools\capture_screens.py                  # one PNG per app screen into docs/screenshots/
 ```
 
-`tools\capture_screens.py` is the exception to the delete rule: its output is the README's screen gallery, so those PNGs are kept under `docs/screenshots/` and committed. It builds the real windows over a temp library, so it never writes the developer's `config/`, `cache/` or `logs/`, refuses to save a flat/blank capture, and needs an interactive desktop because `ImageGrab` reads composited pixels. Re-run it whenever a screen changes; a stale gallery is the same defect as a stale screenshot, only published.
+`tools\capture_screens.py` is the exception to the delete rule: its output is the README's screen gallery, so those PNGs are kept under `docs/screenshots/` and committed. It builds the real windows over a temp library (under `temp/`, never `%TEMP%`), so it never writes the developer's `config/`, `cache/` or `logs/`, refuses to save a flat/blank capture, and needs an interactive desktop because `ImageGrab` reads composited pixels. The catalog page is HTML, so that one screenshot is rendered by headless Microsoft Edge (`--screenshot`), which every Windows 10/11 machine already has. Re-run it whenever a screen changes; a stale gallery is the same defect as a stale screenshot, only published.
 
 Run both at every window size the app permits — the minimum included, because `minsize()` makes small sizes reachable. `tests/test_contrast.py` reports WCAG contrast ratios for every colour pair the app paints; run it after any theme change.
 

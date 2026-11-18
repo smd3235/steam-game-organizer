@@ -10,6 +10,13 @@ fictional games, drives each view into a realistic state, and grabs the window's
     python tools\\capture_screens.py --size 1440x900 --out docs/screenshots
     python tools\\capture_screens.py --keep-sandbox      # leave the temp library for inspection
 
+Two kinds of screen are captured. Tk windows are grabbed from the live app (`ImageGrab`), while the
+generated `Game Library.html` catalog is a browser page, so it is rendered by headless Microsoft Edge
+(`--screenshot` + `--virtual-time-budget`) rather than by Tk.
+
+The working library is created under `temp/` in this repository, never in `%TEMP%`: AGENTS.md requires
+scratch files to stay in the project, and the default output is the committed `docs/screenshots/` gallery.
+
 Rules this script obeys, because a screenshot is an artifact like any other:
 - The developer's real `config/`, `cache/` and `logs/` are never written: `Application` is built with
   an `AppConfig` rooted in a temp folder, exactly as `tests/tk_support.py:sandbox_app` does for tests.
@@ -31,8 +38,9 @@ import argparse
 import ctypes
 import os
 import shutil
+import subprocess
 import sys
-import tempfile
+import threading
 import time
 import tkinter as tk
 import zipfile
@@ -41,9 +49,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 from PIL import Image, ImageDraw, ImageFont, ImageGrab, ImageStat
 
 import app.application as application
+from core.catalog_utils import asset_prefix
 from core.config import AppConfig
 from core.models import ArtworkResult, GameArchive, ScanResult, SteamMatch
 from utils.filename_utils import identity_key, normalize_name
@@ -61,10 +72,33 @@ GAMES = [
     ("Signal Drift", "901008", "Adventure", ["Adventure", "Simulation"], ["Single-player", "Remote Play Together"], "Decode a radio signal that may be your own future.", ("#121c26", "#3b7ea1")),
 ]
 
-OUTPUT_NAMES = ["scan", "scan-running", "review", "organize", "artwork", "done", "setup", "batch-extract", "extract-result"]
+OUTPUT_NAMES = [
+    "scan",
+    "scan-running",
+    "review",
+    "review-category",
+    "add-category",
+    "organize",
+    "artwork",
+    "done",
+    "catalog",
+    "setup",
+    "batch-extract",
+    "extract-progress",
+    "extract-result",
+]
 
-_MIN_PNG_BYTES = 4096
 _FLAT_STDDEV = 2.0
+
+
+def _min_png_bytes(width: int, height: int) -> int:
+    """The "this is not a blank panel" size floor, scaled to the capture area.
+
+    A fixed 4 KB floor rejected the 183x86 Add Category prompt, which is a real screen that simply has
+    very few pixels. Scaling with the area keeps the check meaningful for a full window and honest for
+    a small dialog.
+    """
+    return max(1024, (width * height) // 60)
 
 
 def _dpi_aware() -> None:
@@ -225,14 +259,31 @@ def _raise_window(window: tk.Misc) -> None:
     window.update()
 
 
-def _capture(window: tk.Misc, target: Path) -> int:
-    """Grab the window's client area, verify it is a real image, and commit it atomically."""
+def _capture(window: tk.Misc, target: Path, extra_boxes: tuple[tuple[int, int, int, int], ...] = ()) -> int:
+    """Grab the window's client area, verify it is a real image, and commit it atomically.
+
+    `extra` covers windows that belong to the screen but are not children of it - a posted ttk
+    combobox dropdown is a separate override window that drops below the widget, often past the
+    window's bottom edge. Without including its box, the capture would be the plain screen again.
+    """
     if not window.winfo_viewable():
         raise RuntimeError(f"{window.winfo_class()} is not viewable - no interactive desktop to capture")
     _raise_window(window)
-    x, y = window.winfo_rootx(), window.winfo_rooty()
-    width, height = window.winfo_width(), window.winfo_height()
-    if width < 200 or height < 200:
+    boxes = [(window.winfo_rootx(), window.winfo_rooty(), window.winfo_width(), window.winfo_height())]
+    # Extra boxes describe windows that are not tkinter widgets we own (a ttk combobox popdown is a Tk
+    # path, not a Python object), so they arrive as raw screen rectangles.
+    boxes.extend(box for box in extra_boxes if box[2] > 0 and box[3] > 0)
+    if not boxes:
+        raise RuntimeError("nothing on screen to capture")
+    left = min(b[0] for b in boxes)
+    top = min(b[1] for b in boxes)
+    right = max(b[0] + b[2] for b in boxes)
+    bottom = max(b[1] + b[3] for b in boxes)
+    x, y = left, top
+    width, height = right - left, bottom - top
+    if width < 120 or height < 80:
+        # Dialogs are small on purpose (the Add Category prompt is about 380x140), so this only rejects a
+        # widget that was never mapped at all - a 1x1 placeholder cannot be a laid-out screen.
         raise RuntimeError(f"{window.winfo_class()} measured {width}x{height}; it was never laid out")
     image = ImageGrab.grab(bbox=(x, y, x + width, y + height), all_screens=True)
     spread = max(ImageStat.Stat(image.convert("RGB")).stddev)
@@ -244,7 +295,7 @@ def _capture(window: tk.Misc, target: Path) -> int:
     tmp = target.with_name(target.name + ".tmp")
     image.save(tmp, "PNG", optimize=True)
     size = tmp.stat().st_size
-    if size < _MIN_PNG_BYTES:
+    if size < _min_png_bytes(width, height):
         tmp.unlink(missing_ok=True)
         raise RuntimeError(f"{target.name}: PNG is only {size} bytes, which is a blank panel not a screen")
     os.replace(tmp, target)
@@ -292,6 +343,228 @@ def _show_review(app: application.Application, archives: list[GameArchive]) -> N
     review._verified(archives)
     review.select(archives[0])
     app.root.update()
+
+
+def _show_review_category(app: application.Application, archives: list[GameArchive]) -> tuple[str, tuple[int, int, int, int] | None]:
+    """Review, with the CATEGORY list posted, so the picking UI itself is the subject.
+
+    Returns the state and the popdown's screen rectangle. A ttk combobox list is a Tk path, not a
+    tkinter widget, and it opens below the widget - often past the window's bottom edge - so the capture
+    has to be widened to include it. Without that box the image would be identical to the plain review
+    screenshot.
+    """
+    _show_review(app, archives)
+    review = app.window.views["review"]
+    # Same game as the plain review capture on purpose: then the only difference between the two images
+    # is the posted list, so a reviewer can see that this screenshot adds something.
+    review.select(archives[0])
+    app.root.update()
+    combo = review.category
+    combo.focus_set()
+    app.root.update()
+    # Tk's ttk::combobox class binding opens the popup on Button-1 anywhere in the widget; aiming at
+    # the arrow area is where a user would click, and it keeps the list below the box.
+    combo.event_generate("<Button-1>", x=max(8, combo.winfo_width() - 10), y=combo.winfo_height() // 2)
+    app.root.update()
+    time.sleep(0.2)
+    app.root.update()
+    try:
+        path = str(app.root.tk.call("ttk::combobox::PopdownWindow", combo))
+        if not path:
+            return "closed", None
+        box = (
+            int(app.root.tk.call("winfo", "rootx", path)),
+            int(app.root.tk.call("winfo", "rooty", path)),
+            int(app.root.tk.call("winfo", "width", path)),
+            int(app.root.tk.call("winfo", "height", path)),
+        )
+        return "open", box
+    except (tk.TclError, ValueError):
+        return "closed", None
+
+
+def _unpost_category(app: application.Application) -> None:
+    try:
+        app.root.tk.call("ttk::combobox::Unpost", app.window.views["review"].category)
+    except tk.TclError:
+        pass
+
+
+def _descendants(widget: tk.Misc):
+    for child in widget.winfo_children():
+        yield child
+        yield from _descendants(child)
+
+
+def _capture_add_category(app: application.Application, target: Path) -> None:
+    """The Add Category prompt, captured from inside its own modal loop.
+
+    `simpledialog.askstring` blocks in `wait_window`, so the capture is scheduled first: the `after`
+    callback runs inside that loop, fills the entry with a plausible name, grabs the dialog and closes
+    it, which lets `add_category()` return.
+    """
+
+    def fill_and_grab(attempt: int = 0) -> None:
+        dialogs = [child for child in app.root.winfo_children() if isinstance(child, tk.Toplevel) and child.title() == "Add Category"]
+        if not dialogs:
+            # The dialog is built a moment after askstring starts; give it a few frames rather than
+            # assuming the first callback lands after it exists.
+            if attempt < 10:
+                app.root.after(100, lambda: fill_and_grab(attempt + 1))
+            return
+        dialog = dialogs[-1]
+        for widget in _descendants(dialog):
+            if isinstance(widget, tk.Entry):
+                widget.insert(0, "Roguelike")
+                break
+        dialog.update_idletasks()
+        dialog.update()
+        try:
+            _capture(dialog, target)
+        except Exception as exc:
+            # A callback exception in Tk is reported through `report_callback_exception` and otherwise
+            # vanishes; print it so a failed dialog capture names its cause.
+            print(f"add-category capture failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        finally:
+            dialog.destroy()
+
+    app.root.after(400, fill_and_grab)
+    app.window.views["review"].add_category()
+
+
+def _seed_organized(app: application.Application, archives: list[GameArchive]) -> None:
+    """File each archive into a library folder, the way a completed organize run leaves it.
+
+    The catalog page is generated from organized folders (`.game-info.json` + banner + archive), not
+    from loose archives, so the catalog screenshot needs this shape on disk. It uses the real
+    `write_metadata()` writer rather than a hand-built dict, so the page is built from the same
+    metadata an actual run produces.
+    """
+    library = app.config.library_root
+    for archive in archives:
+        title = archive.steam.name or archive.display_name
+        folder = library / archive.decision.category / f"{title} - 2024-03-12"
+        folder.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(folder / f"{title}.zip", "w") as bundle:
+            bundle.writestr("game/data.bin", b"x" * 4096)
+        app.services.organizer.write_metadata(folder, archive)
+        header = archive.artwork.assets.get("header_image")
+        if header and header.is_file():
+            # The name the catalog's banner lookup expects: <asset prefix>_grid.jpg.
+            shutil.copyfile(header, folder / f"{asset_prefix(folder, {'name': title})}_grid.jpg")
+        archive.organized_path = folder
+        archive.created_game_dir = True
+
+
+def _find_edge() -> Path | None:
+    """Locate Microsoft Edge, the only browser guaranteed on Windows 10/11 with a headless screenshot mode."""
+    roots = [os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES"), os.environ.get("LOCALAPPDATA")]
+    for root in roots:
+        if not root:
+            continue
+        candidate = Path(root) / "Microsoft" / "Edge" / "Application" / "msedge.exe"
+        if candidate.is_file():
+            return candidate
+    found = shutil.which("msedge")
+    return Path(found) if found else None
+
+
+def _capture_catalog(app: application.Application, target: Path, sandbox: Path, width: int, height: int) -> int:
+    """Render the generated Game Library.html in headless Edge and keep the viewport as a PNG.
+
+    The catalog is a browser page, not a Tk window, so it needs a browser to photograph. Edge's
+    headless `--screenshot` writes the viewport at `--window-size`, and `--virtual-time-budget` lets the
+    page's own JS finish painting first. A private `--user-data-dir` keeps the developer's real profile
+    out of the run.
+    """
+    written = app.services.catalog.generate(app.config.library_root, False) or []
+    pages = [Path(path) for path in written if str(path).lower().endswith(".html")]
+    if not pages:
+        raise RuntimeError("catalog.generate() wrote no HTML page")
+    html = pages[0].resolve()
+    edge = _find_edge()
+    if edge is None:
+        raise RuntimeError("Microsoft Edge not found; the catalog is a browser page and needs it to be rendered")
+    tmp = target.with_name(target.stem + ".tmp.png").resolve()
+    # Edge resolves the --screenshot path against its own working directory, so it must be absolute;
+    # given a relative path it exits 0 and writes nothing.
+    profile = sandbox / "edge-profile"
+    command = [
+        str(edge),
+        "--headless=new",
+        "--disable-gpu",
+        "--hide-scrollbars",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--force-device-scale-factor=1",
+        f"--user-data-dir={profile}",
+        f"--window-size={width},{height}",
+        "--virtual-time-budget=6000",
+        f"--screenshot={tmp}",
+        html.as_uri(),
+    ]
+    completed = subprocess.run(command, capture_output=True, text=True, timeout=180)
+    if not tmp.is_file():
+        raise RuntimeError(
+            "Edge wrote no screenshot for the catalog page "
+            f"(exit {completed.returncode}): {(completed.stderr or completed.stdout or '')[-400:]}"
+        )
+    with Image.open(tmp) as image:
+        spread = max(ImageStat.Stat(image.convert("RGB")).stddev)
+    if spread < _FLAT_STDDEV:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"{target.name}: the catalog page rendered as a single flat colour (stddev {spread:.2f})")
+    size = tmp.stat().st_size
+    if size < _min_png_bytes(width, height):
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"{target.name}: catalog PNG is only {size} bytes")
+    os.replace(tmp, target)
+    return size
+
+
+def _capture_extract_progress(app: application.Application, archive: GameArchive, target: Path) -> int:
+    """The extraction progress dialog, held open mid-run.
+
+    `ExtractProgressDialog` starts a real extraction thread in its constructor, which would either
+    unpack a real archive or fail instantly. `ExtractService` is patched with a stub whose `extract()`
+    blocks on an event that is never set, so the dialog stays in its running state long enough to be
+    photographed; the thread is a daemon and dies with the process.
+    """
+    from ui.extract_result_window import ExtractProgressDialog
+
+    release = threading.Event()
+
+    class _BlockingExtract:
+        def __init__(self, *_args, **_kwargs) -> None:
+            pass
+
+        def extract(self, *_args, **_kwargs) -> None:
+            # Never released: the dialog only has to stay in its running state, and this is a daemon
+            # thread that dies with the process.
+            release.wait(120)
+
+    with patch("services.extract_service.ExtractService", _BlockingExtract):
+        dialog = ExtractProgressDialog(
+            app.root,
+            archive.path,
+            app.config.extract_folder / archive.display_name,
+            app.logger,
+        )
+        app.root.update()
+        dialog._bar["value"] = 64
+        dialog._file_label.configure(text="game/pak0.pak")
+        dialog._elapsed.configure(text="00:03:12 elapsed")
+        app.root.update()
+        try:
+            return _capture(dialog, target)
+        finally:
+            try:
+                dialog.grab_release()
+            except tk.TclError:
+                pass
+            dialog.destroy()
 
 
 def _show_organize(app: application.Application, archives: list[GameArchive]) -> None:
@@ -445,7 +718,8 @@ def main(argv: list[str] | None = None) -> int:
     width, height = args.size
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    sandbox = Path(tempfile.mkdtemp(prefix="organizer-shots-"))
+    sandbox = PROJECT_ROOT / "temp" / f"capture-screens-{os.getpid()}"
+    sandbox.mkdir(parents=True, exist_ok=True)
     root = tk.Tk()
     app = _sandbox_application(root, sandbox)
     results: list[tuple[str, int]] = []
@@ -467,12 +741,30 @@ def main(argv: list[str] | None = None) -> int:
         if want("review"):
             _show_review(app, archives)
             results.append(("review", _capture_main(app, "review", out)))
+        if want("review-category"):
+            state, box = _show_review_category(app, archives)
+            results.append(("review-category", _capture(app.root, out / "review-category.png", extra_boxes=(box,) if box else ())))
+            _unpost_category(app)
+            if state != "open":
+                # The capture is still a real review screen, but its subject - the posted list - is
+                # missing, so say so rather than publish a duplicate under a new name.
+                failures.append("review-category: the CATEGORY list did not open, so the capture shows the plain review screen")
+        if want("add-category"):
+            _capture_add_category(app, out / "add-category.png")
+            path = out / "add-category.png"
+            if path.is_file():
+                results.append(("add-category", path.stat().st_size))
+            else:
+                failures.append("add-category: the Add Category dialog never produced a capture")
         if want("organize"):
             _show_organize(app, archives)
             results.append(("organize", _capture_main(app, "organize", out)))
         if want("artwork"):
             _show_artwork(app, archives)
             results.append(("artwork", _capture_main(app, "artwork", out)))
+        if want("catalog"):
+            _seed_organized(app, archives)
+            results.append(("catalog", _capture_catalog(app, out / "catalog.png", sandbox, width, height)))
         if want("done"):
             _mark_outcomes(archives)
             _show_done(app, archives)
@@ -489,6 +781,8 @@ def main(argv: list[str] | None = None) -> int:
                 results.append(("batch-extract", _capture(window, out / "batch-extract.png")))
             finally:
                 window.destroy()
+        if want("extract-progress"):
+            results.append(("extract-progress", _capture_extract_progress(app, archives[0], out / "extract-progress.png")))
         if want("extract-result"):
             _capture_extract_result(app, archives[0], out / "extract-result.png")
             path = out / "extract-result.png"
@@ -508,7 +802,9 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             pass
         if not args.keep_sandbox:
-            # The sandbox holds only generated files and logs; leaving it behind would litter %TEMP%.
+            # The sandbox holds only generated files, a throwaway Edge profile and logs. It lives under
+            # temp/ in the project (gitignored) because AGENTS.md forbids writing scratch files to
+            # %TEMP%\kilo or anywhere outside this repository.
             shutil.rmtree(sandbox, ignore_errors=True)
 
     print(f"=== screen captures -> {out.resolve()} ===")

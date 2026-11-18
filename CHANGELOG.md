@@ -5,6 +5,19 @@
 
 ## 9.33
 
+### 2026-11-18 18:40:00 — feat: capture the missing screens (category picking, catalog page, extraction)
+- `tools/capture_screens.py`: Four screens added to the gallery and one policy fix.
+  - `review-category`: posts the CATEGORY combobox and widens the capture to include its popdown list. A ttk combobox list is a separate window that opens below the widget, so a capture of the window alone was byte-identical to `review.png`; `_capture()` now takes extra screen rectangles and the run fails loudly if the list never opened.
+  - `add-category`: captures the Add Category prompt from inside its own modal loop (fills the entry, grabs, closes).
+  - `catalog`: renders the generated `Game Library.html` with headless Microsoft Edge (`--screenshot`, `--virtual-time-budget`, private `--user-data-dir`) after seeding the sandbox with organized game folders produced by the real `write_metadata()` writer.
+  - `extract-progress`: holds `ExtractProgressDialog` open by patching `ExtractService` with a stub whose `extract()` blocks, instead of running a real extraction.
+  - The "not blank" PNG floor now scales with capture area (`_min_png_bytes`): a fixed 4 KB rejected the 183x86 Add Category prompt, which is a real screen.
+  - Sandbox moved from `%TEMP%` to `temp/capture-screens-<pid>` in the project, per the new AGENTS rule.
+- `docs/screenshots/`: 13 committed PNGs (was 9) — added `review-category`, `add-category`, `catalog`, `extract-progress`.
+- `README.md`: Screens section renumbered to 13 entries with new subsections for picking a category, adding a category, the catalog page and extraction progress; the catalog chapter links to its screenshot.
+- `AGENTS.md`: New rule — scratch files never go to `C:\Users\<user>\AppData\Local\Temp\kilo\` or any folder outside the repository; they go under `temp/` at the project root and are deleted when finished. Documented that the catalog screenshot needs headless Edge.
+- `.gitignore`: `temp/` added.
+
 ### 2026-11-18 18:10:00 — fix: break the remaining import cycles and guard the pattern
 - `core/main.py`: `_handle_uri` is now imported inside `main()` at its use site. `core.handle_uri` → `core.handle_batch_uri` → `steam_game_organizer` → `core.main` → `core.handle_uri` was a load-time loop, so `import core.handle_uri` on its own raised `cannot import name '_handle_uri' from partially initialized module`. The app always imported `steam_game_organizer` first, which hid it.
 - `tests/declared_versions.py`: the patterns it needs are imported inside `declared_versions()` instead of at module scope, so `test_release_structure.py` (which imports the function at the bottom) and this module are no longer a two-way import.
