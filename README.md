@@ -28,6 +28,7 @@ No behavior change — documentation only.
 | If you want to… | Go to section |
 |-----------------|---------------|
 | Get a quick summary | [🎯 Overview](#-overview) |
+| See every screen with an explanation | [📸 Screens](#-screens) |
 | System requirements | [💻 System requirements](#-system-requirements) |
 | Download or build the app | [📦 Get the app](#-get-the-app) |
 | Run on your own machine | [🖥️ Running on your own machine](#-running-on-your-own-machine) |
@@ -72,6 +73,114 @@ The result is a self-contained, browsable game library that works on any Windows
 - **Does not support piracy.** Use it only for games you own and have the right to organize. It does not provide — and does not explain — how to obtain games you do not own.
 - **Does not need Steam installed.** It queries the Steam Store API at runtime for metadata — no Steam client required.
 - **Does not delete games.** The app never deletes anything it didn't create. Empty categories and re-categorized leftovers are moved to `Archive/` for review.
+
+---
+
+## 📸 Screens
+
+Every screen below is a real capture of the app running, not a mock-up. They are produced by
+`tools\capture_screens.py`, which builds the actual windows against a throwaway library and writes one PNG per
+screen into [`docs/screenshots/`](docs/screenshots/). The library shown uses invented games and invented AppIDs —
+a public screenshot must never display someone's real collection.
+
+```powershell
+runtime\python.exe tools\capture_screens.py                    # all screens
+runtime\python.exe tools\capture_screens.py --only review done # two of them
+runtime\python.exe tools\capture_screens.py --size 1440x900    # another window size
+```
+
+The script needs an interactive Windows desktop (it grabs composited screen pixels), never writes your real
+`config/`, `cache/` or `logs/`, and refuses to save a blank capture — a flat image is reported as a failure rather
+than shipped as a screenshot.
+
+### 🔍 1. Scan — what is in the library, and what the next scan will do
+
+<img src="docs/screenshots/scan.png" width="900" alt="Scan screen: library path, folder/archive/free-space counters, scan options and the next-scan plan line">
+
+| On screen | What it tells you |
+|-----------|-------------------|
+| **Library path** | The folder the app walks. Change it from the setup wizard or the `--setup` flag; the line above the counters always shows the folder currently in use. |
+| **Counters** | Top-level folders, archives at the library root, and free space on that volume — read instantly with a single `scandir`, so a library of any size still answers without a walk. |
+| **Scan options** | *New Only* skips archives whose game folder already exists. *Convert ZIP/RAR to 7z* rebuilds archives for better compression (and unlocks password-`123` zips first). *Download artwork* refreshes cached Steam/SteamGridDB images. |
+| **Preview only** | Turns the whole run into a dry run: nothing is moved, converted or renamed, and the plan line turns orange so the mode cannot be mistaken for a live run. |
+| **Next scan line** | Spells out what the current combination of toggles will do, instead of leaving the user to discover it after pressing the button. |
+
+### ⏳ 2. Scan in progress — live telemetry, not a spinner
+
+<img src="docs/screenshots/scan-running.png" width="900" alt="Scan running: phase timeline, progress bar, current file and a live activity feed">
+
+The scan reports each phase (`cleanup_done`, `dedupe_done`, `repair_done`, `discover_done`) as it finishes and
+streams the archive currently being inspected. A long scan over a multi-terabyte library therefore shows what it
+is doing and how far it has got, and **CANCEL** unwinds the job through the same cancellation watcher that a
+conversion uses. The activity feed keeps the last messages with their timestamps so a stall can be told apart from
+slow work.
+
+### 🧾 3. Review — verify the match before anything is moved
+
+<img src="docs/screenshots/review.png" width="900" alt="Review screen: archive list on the left, artwork and Steam metadata for the selected game on the right">
+
+| Panel | What it is for |
+|-------|----------------|
+| **Archive list** | Every discovered archive, filtered by *All / Needs Review / Verified / New Only / Artwork*. The summary strip above it counts archives, logical games, archives collapsed into one game, verified matches and low-confidence guesses. |
+| **Artwork panel** | The banner the app will copy into the game folder. `header_image` is preferred over the primary cached file so the panel and the catalog card agree; a missing image says why (no decoder, no match, pruned cache) instead of showing an empty box. |
+| **Metadata panel** | Steam AppID, title, genres, categories, tags, release date, developer/publisher and the confidence that this archive is really that game. A low-confidence match is shown as a guess, never as fact. |
+| **Category and actions** | The target category, accept/skip, and the title override for archives whose filename matches nothing. The **CONTINUE TO ORGANIZATION** button stays disabled until something is accepted. |
+
+### ⚙️ 4. Organize — the run, stage by stage
+
+<img src="docs/screenshots/organize.png" width="900" alt="Organize screen: stage timeline, progress bar and a feed of extracting, compressing and converting events">
+
+Each accepted archive moves through *organizing → extracting → compressing → converted*, and the screen shows the
+active stage, the file it is working on, the byte counts it has seen, and a rolling feed of completed steps. On a
+run of 176 games and 244 GB this is the difference between a window that looks frozen and one that says which game
+is being compressed and how much disk it has written. **STOP** cancels through the archive tool; nothing partially
+built is left inside a game folder.
+
+### 🖼️ 5. Artwork — every image that will ship with the game
+
+<img src="docs/screenshots/artwork.png" width="900" alt="Artwork screen: one card per organized game with its banner and the asset files beside the folder">
+
+One card per accepted game, showing the cached banner, the folder it belongs to, and the exact asset filenames
+(`<prefix>_grid.jpg`, `<prefix>_hero.jpg`, `<prefix>_logo.jpg`, …) that were downloaded. The names come from the
+cache keys the catalog writes, so this panel is also how you check that a game's folder will hold the artwork the
+catalog page expects. Games whose download failed are named with the reason.
+
+### ✅ 6. Done — what actually happened, including the failures
+
+<img src="docs/screenshots/done.png" width="900" alt="Done screen: outcome banner, per-outcome sections and the run report">
+
+The Done screen does not report intent, it reports outcomes. Games are bucketed into *converted*, *already 7z*,
+*left as-is*, *filed under Archive/*, *failed* and *never converted*, and each bucket names the games in it. Failed
+conversions carry the archiver's own message and the free space at the moment of failure. **UNDO THE LAST RUN**
+restores every file the run moved, using the journal in `config/last-organization.json`.
+
+### 🧭 7. Setup wizard — the three folders that make Extract work
+
+<img src="docs/screenshots/setup.png" width="560" alt="Setup wizard: library folder, app folder and extract folder boxes with live check results below them">
+
+Opens on first launch and from `steam_game_organizer.exe --setup`. The three boxes decide where games are read
+from, where the app lives, and where the catalog's **Extract** button is allowed to write. The checks below them
+describe the machine as it is *right now* — before saving — so a red row names a problem the save is about to fix.
+Saving registers the `sgo-extract://` link as well, which is what makes extraction startable from the HTML catalog.
+
+### 📦 8. Batch extract — a whole category at once, from one link
+
+<img src="docs/screenshots/batch-extract.png" width="700" alt="Batch extract window: per-game rows with size, state and detail; overall progress bar and speed metrics">
+
+Started by an `Extract category` link in the catalog. The header states the game count, the category and the exact
+destination before anything is unpacked; every game gets its own row with size, state and the current detail line,
+so a 40-game batch is readable while it runs. The metrics line shows bytes written, elapsed time, throughput and
+free space on the destination volume. Installer archives are routed to `Needs Install/` rather than treated as
+playable games.
+
+### 🎉 9. Extract result — the outcome of a single game
+
+<img src="docs/screenshots/extract-result.png" width="420" alt="Extract result dialog: green success tick, archive name, destination and file counts">
+
+One dialog per extraction, stating whether it succeeded, which archive it came from, where the files landed, how
+many files and bytes were written, and how long it took. A failed extraction shows the red variant with the
+archiver's message. For an installer archive the subtitle tells you to run the installer in the destination folder
+instead of claiming the game is ready to play.
 
 ---
 

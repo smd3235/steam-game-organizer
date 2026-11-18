@@ -6,12 +6,6 @@
 """
 
 
-from tests.test_release_structure import CHANGE_LOG_NOTE
-from tests.test_release_structure import DECLARED_NEXT_TO_NAME
-from tests.test_release_structure import FENCE
-from tests.test_release_structure import LABELLED_VERSION
-from tests.test_release_structure import VERSION_IN_HEADING
-from tests.test_release_structure import code_before_comment
 def declared_versions(text, markdown=False):
     """Yield (line number, version found, the line) for every version this text declares.
 
@@ -22,7 +16,18 @@ def declared_versions(text, markdown=False):
 
     Split out from the test that uses it so the rule can be pinned by synthetic input. A check that has never
     been made to fail is not a check - this repo has shipped one of those twice.
+
+    The patterns are imported inside the function, not at module scope. test_release_structure.py imports
+    this function at the bottom of its own module, so a module-level import back out of it made the pair
+    circular and left the load order to decide whether discovery worked.
     """
+    from tests.test_release_structure import CHANGE_LOG_NOTE
+    from tests.test_release_structure import DECLARED_NEXT_TO_NAME
+    from tests.test_release_structure import FENCE
+    from tests.test_release_structure import LABELLED_VERSION
+    from tests.test_release_structure import VERSION_IN_HEADING
+    from tests.test_release_structure import code_before_comment
+
     inside_fence = False
     for number, line in enumerate(text.splitlines(), 1):
         if markdown and FENCE.match(line):

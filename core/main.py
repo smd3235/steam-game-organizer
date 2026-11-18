@@ -16,8 +16,6 @@ from debug.diagnostics import Diagnostics
 from steam_game_organizer import _extract_to_disk
 from steam_game_organizer import _needs_setup
 from steam_game_organizer import _open_setup
-from core.handle_uri import _handle_uri
-
 
 def main():
     parser = argparse.ArgumentParser(description=APP_NAME)
@@ -80,6 +78,12 @@ def main():
     # extracts, so it needs Tk. It is kept before the main GUI launch so a protocol-handler click
     # from the catalog shows feedback without first drawing the full application window.
     if args.uri is not None and args.uri:
+        # Imported here rather than at module scope: core.handle_uri imports core.handle_batch_uri,
+        # which imports steam_game_organizer, which imports this module at the bottom. A module-level
+        # import closed that loop, so `import core.handle_uri` on its own raised "cannot import name
+        # '_handle_uri' from partially initialized module". The import is one per process either way.
+        from core.handle_uri import _handle_uri
+
         return _handle_uri(args.uri, config, logger)
     if args.extract:
         return _extract_to_disk(args, config, logger)

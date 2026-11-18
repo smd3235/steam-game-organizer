@@ -43,14 +43,13 @@ from tests.test_ui_geometry import _measured_window
 from tests.wait_for_organize import wait_for_organize
 # wait_until extracted to tests\wait_until.py — see that module for its definition.
 from tests.wait_until import wait_until
-ROOT = Path(__file__).resolve().parents[1]
+# ROOT and MOCK_APPIDS moved to test_helpers.py. They were defined here and imported back by
+# test_real_workflow.py, which made the pair order-dependent: importing test_real_workflow first (unittest's
+# alphabetical order) failed with a partially-initialised module. A constant belongs in the module with no
+# dependencies, so both live there now and are imported here to keep this module's public names working.
+from tests.test_helpers import MOCK_APPIDS, ROOT
 
-# Every AppID services/steam_service.py:_mock can hand out. A fixture that seeds artwork for a fixed list has
-# to be able to say that list is still complete, which is what the organize test asserts with it.
-MOCK_APPIDS = ("100001", "100002", "100003", "100004")
-
-# Imported after MOCK_APPIDS and ROOT are defined because test_real_workflow imports them from here,
-# which would otherwise be a circular import.
+# One-directional now: test_real_workflow imports its constants from test_helpers, not from this module.
 from tests.test_real_workflow import TestRealWorkflow
 
 

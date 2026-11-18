@@ -11,7 +11,7 @@ import pytest
 from pathlib import Path
 from urllib.parse import quote
 from core.uri_actions import UriRefused
-from tests.test_uri_actions import make_archive
+from tests.test_helpers import make_archive
 from core.parse_multi_uri import parse_multi_uri
 
 

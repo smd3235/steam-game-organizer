@@ -5,6 +5,23 @@
 
 ## 9.33
 
+### 2026-11-18 18:10:00 — fix: break the remaining import cycles and guard the pattern
+- `core/main.py`: `_handle_uri` is now imported inside `main()` at its use site. `core.handle_uri` → `core.handle_batch_uri` → `steam_game_organizer` → `core.main` → `core.handle_uri` was a load-time loop, so `import core.handle_uri` on its own raised `cannot import name '_handle_uri' from partially initialized module`. The app always imported `steam_game_organizer` first, which hid it.
+- `tests/declared_versions.py`: the patterns it needs are imported inside `declared_versions()` instead of at module scope, so `test_release_structure.py` (which imports the function at the bottom) and this module are no longer a two-way import.
+- `tests/multi_batch_tests.py` · `tests/typed_destination_tests.py`: `make_archive`/`uri_for` now come from `tests/test_helpers.py` instead of `tests/test_uri_actions.py`, so those modules no longer import each other.
+- `tests/test_module_split_safety.py`: new `TestTestModulesHaveNoImportCycles` parses every file under `tests/` with `ast` and fails on any module-scope import cycle between test modules, printing the cycle path and the fix. Function-level imports are deliberately ignored because they cannot close a load-time cycle.
+
+### 2026-11-18 17:40:00 — fix: two test modules hung on a live Tk loop, and auto-backup called a good build broken
+- `tests/test_the_entry_point_opens_the_wizard.py`: Patched `steam_game_organizer._open_setup` / `AppConfig` / `AppLogger`, none of which `main()` reads - it lives in `core/main.py` and imported those names at load time. The patches did nothing, so `main()` built a real `SetupWindow` against the real `config/settings.json` and the module hung on a Tk main loop instead of asserting. Now patches `core.main.*` and `core.handle_uri._open_setup`, calls `core.handle_uri._handle_uri` directly (the entry point no longer re-exports it), and drives the patches through `contextlib.ExitStack`.
+- `tests/test_real_workflow.py` · `tests/test_workflow_smoke.py` · `tests/test_helpers.py`: `ROOT` and `MOCK_APPIDS` moved to `test_helpers.py`. They were defined in `test_workflow_smoke.py` and imported by `test_real_workflow.py` while `test_workflow_smoke.py` imported `TestRealWorkflow` back - safe only in one import order, and unittest's alphabetical discovery loads `test_real_workflow` first, which failed with a partially-initialised module.
+- `tools/auto_backup.py`: The post-build test run now allows 900s instead of 180s. The suite includes `tests/test_frozen_build.py`, which runs a real PyInstaller build, so a passing run takes minutes and the old cap raised `TimeoutExpired` - reported as "Tests failed. Backup aborted." after every healthy `build_frozen.py` run.
+
+### 2026-11-18 17:20:00 — feat: capture every screen and publish a README gallery
+- `tools/capture_screens.py`: New. Builds the real `Application` over a throwaway sandbox project root, seeds it with eight fictional games (archives, Steam metadata and generated artwork), drives all five main views plus the setup wizard, batch-extract window and extract-result dialog into realistic states, and writes one PNG per screen into `docs/screenshots/`. DPI awareness is set before Tk starts so Tk coordinates and grabbed pixels agree on scaled displays; each PNG is written to a `.tmp` and `os.replace`d, a flat capture (occluded/unmapped window) is a reported failure rather than an image, and the sandbox root keeps the developer's real `config/`, `cache/` and `logs/` untouched. Options: `--out`, `--size WxH`, `--only NAME...`, `--keep-sandbox`.
+- `docs/screenshots/`: New. Nine committed PNGs (`scan`, `scan-running`, `review`, `organize`, `artwork`, `done`, `setup`, `batch-extract`, `extract-result`) captured at 1600x1000 (dialogs at their own sizes).
+- `README.md`: New "📸 Screens" section with every capture and a per-panel explanation of what each screen shows and what the user can do there, plus TOC entry.
+- `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`: Documented the tool and the fact that `docs/screenshots/` is the one PNG output the delete rule does not cover.
+
 ### 2026-11-13 18:30:00 — feat: add module-split safety checks so test files are never missed
 - `tests/test_module_split_safety.py`: New safety test module with three checks:
   - Reports oversized source files (>300 lines / >15 KB) that are candidates for splitting.

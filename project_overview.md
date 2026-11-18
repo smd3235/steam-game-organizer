@@ -188,6 +188,7 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 | `python tools\build_frozen.py` | Rebuild frozen exe — see [**ARCHITECTURE.md → Frozen build**](ARCHITECTURE.md#-frozen-build) for the build pipeline and why it's mandatory | [`tools/build_frozen.py`](tools/build_frozen.py) |
 | `runtime\python.exe tools\layout_audit.py` | Layout audit (clipping, off-window widgets, sibling overlap) | [`tools/layout_audit.py`](tools/layout_audit.py) |
 | `runtime\python.exe tools\analyze_screenshot.py <shot.png>` | Contrast audit (after theme changes) | [`tools/analyze_screenshot.py`](tools/analyze_screenshot.py) |
+| `runtime\python.exe tools\capture_screens.py` | Capture one PNG per screen into `docs/screenshots/` for the README gallery | [`tools/capture_screens.py`](tools/capture_screens.py) |
 
 ---
 

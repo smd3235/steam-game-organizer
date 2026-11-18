@@ -21,7 +21,13 @@ SEVEN_ZIP = ROOT / "runtime" / "7z.exe"
 
 
 def run_tests() -> bool:
-    """Run test suite and return True if all pass."""
+    """Run test suite and return True if all pass.
+
+    The timeout is 900s, not 180s. The suite includes `tests/test_frozen_build.py`, which runs a real
+    PyInstaller build, so a legitimate pass takes minutes - and every `build_frozen.py` finishes with this
+    check. At 180s the run hit `TimeoutExpired`, which the caller can only report as "Tests failed", so a
+    healthy build was repeatedly announced as a broken one.
+    """
     result = subprocess.run(
         [str(ROOT / "runtime" / "python.exe"), "-c",
          "import sys,unittest; sys.path.insert(0,'.'); "
@@ -30,7 +36,7 @@ def run_tests() -> bool:
          "sys.exit(0 if result.wasSuccessful() else 1)"],
         cwd=ROOT,
         capture_output=True,
-        timeout=180,
+        timeout=900,
     )
     return result.returncode == 0
 

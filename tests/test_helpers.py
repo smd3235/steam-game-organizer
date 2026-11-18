@@ -172,6 +172,17 @@ DOUBLE_ENCODED = re.compile("|".join(re.escape(s) for s in MOJIBAKE_SEQUENCES))
 
 MAX_SCANNED_BYTES = 2_000_000
 
+# `ROOT` and `MOCK_APPIDS` moved here from test_workflow_smoke.py. They were defined there and imported by
+# test_real_workflow.py, while test_workflow_smoke.py imported TestRealWorkflow back at the bottom of the
+# file - which is only safe if the two modules are imported in one particular order. Loading test_real_workflow
+# first (as unittest's alphabetical discovery does) then died with a partially-initialised circular import.
+# A constant has no dependencies, so it belongs in the shared helper module both sides can import safely.
+ROOT = Path(__file__).resolve().parents[1]
+
+# Every AppID services/steam_service.py:_mock can hand out. A fixture that seeds artwork for a fixed list has
+# to be able to say that list is still complete, which is what the organize test asserts with it.
+MOCK_APPIDS = ("100001", "100002", "100003", "100004")
+
 
 def game(root: Path, category: str, name: str, **metadata) -> Path:
     """One game folder with a sidecar carrying the fields the index reads."""

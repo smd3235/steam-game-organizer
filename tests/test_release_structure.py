@@ -203,8 +203,10 @@ class TestReleaseStructure(unittest.TestCase):
                     continue
                 self.assertIsNone(hardcoded.search(code_before_comment(line)), f"{path.relative_to(ROOT)}:{number} hardcodes a versioned User-Agent: {line.strip()[:120]}")
 
-# VersionRuleBehaviour extracted to tests\test_version_rule_behaviour.py — see that module for its definition.
-from tests.test_version_rule_behaviour import VersionRuleBehaviour
+# VersionRuleBehaviour is NOT re-exported here. It lives in tests/test_version_rule_behaviour.py, which unittest
+# discovery loads by name, and that module imports ROOT/app_name_pattern/change_log_versions/read_shipped/
+# shipped_texts/version_violations from this one. Importing it back made the pair a cycle: whichever module
+# discovery reached second saw a partially initialised first. One direction only from here on.
 # declared_versions extracted to tests\declared_versions.py — see that module for its definition.
 from tests.declared_versions import declared_versions
 

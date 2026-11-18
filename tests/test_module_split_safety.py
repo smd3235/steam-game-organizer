@@ -199,5 +199,74 @@ class TestTestImportsResolve(unittest.TestCase):
         )
 
 
+class TestTestModulesHaveNoImportCycles(unittest.TestCase):
+    """No pair of test modules may import each other.
+
+    A split moves a class into a new module and leaves `from tests.new_module import TheClass` at the
+    bottom of the original so discovery still exposes it. That is one direction, and it is safe. The
+    reverse import - the new module reading a fixture back out of the original - makes the pair
+    order-dependent: unittest discovery imports modules alphabetically, and whichever one it reaches
+    second sees a partially initialised first, raising `ImportError: cannot import name X from partially
+    initialized module`. That has broken this suite repeatedly (test_release_structure ↔
+    test_version_rule_behaviour, test_uri_actions ↔ typed_destination_tests, test_workflow_smoke ↔
+    test_real_workflow). Fixtures the new module needs belong in tests/test_helpers.py, which imports
+    nothing from tests/ and can never take part in a cycle.
+
+    Checked statically with `ast` so the answer does not depend on which modules happen to be imported
+    already when this test runs.
+    """
+
+    def _test_module_imports(self, path: Path) -> set[str]:
+        """Names of tests/*.py modules this file imports *at module scope*, from a static parse.
+
+        Only module-scope imports can close a load-time cycle. An import inside a function runs when
+        that function is called, long after discovery has finished importing every module, so it is not
+        a cycle - and flagging it would push real fixes toward worse code.
+        """
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (OSError, SyntaxError):
+            return set()
+        found: set[str] = set()
+
+        def scan(body):
+            for node in body:
+                if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("tests."):
+                    found.add(node.module.split(".", 1)[1].split(".", 1)[0])
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name.startswith("tests."):
+                            found.add(alias.name.split(".", 1)[1].split(".", 1)[0])
+                elif isinstance(node, (ast.If, ast.Try)):
+                    # A module-level `if`/`try` body executes during import, so its imports count too.
+                    scan(node.body)
+                    scan(getattr(node, "orelse", []))
+                    scan(getattr(node, "finalbody", []))
+
+        scan(tree.body)
+        return found
+
+    def test_no_cycle_between_test_modules(self):
+        tests_dir = PROJECT_ROOT / "tests"
+        graph = {path.stem: self._test_module_imports(path) for path in sorted(tests_dir.glob("*.py"))}
+        cycles = []
+        for start in sorted(graph):
+            stack = [(start, [start])]
+            while stack:
+                node, trail = stack.pop()
+                for target in sorted(graph.get(node, ())):
+                    if target == start:
+                        cycles.append(" -> ".join(trail + [start]))
+                    elif target in graph and target not in trail:
+                        stack.append((target, trail + [target]))
+        self.assertEqual(
+            [],
+            sorted(set(cycles)),
+            "test modules import each other, so discovery order decides whether they load:\n  "
+            + "\n  ".join(sorted(set(cycles)))
+            + "\nMove the shared fixture into tests/test_helpers.py and import it from there in both.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -12,8 +12,8 @@ from pathlib import Path
 from unittest.mock import patch
 from core.uri_actions import UriRefused
 from core.parse_uri import parse_uri
-from tests.test_uri_actions import make_archive
-from tests.test_uri_actions import uri_for
+from tests.test_helpers import make_archive
+from tests.test_helpers import uri_for
 from core.safe_folder_name import safe_folder_name
 
 

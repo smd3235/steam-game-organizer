@@ -17,8 +17,8 @@ from tests.tk_support import require_tk
 from tests.tk_support import close_root
 from tests.tk_support import sandbox_app
 from tests.test_artwork_render import _jpeg_bytes
-from tests.test_workflow_smoke import MOCK_APPIDS
-from tests.test_workflow_smoke import ROOT
+from tests.test_helpers import MOCK_APPIDS
+from tests.test_helpers import ROOT
 from tests.test_ui_geometry import _measured_window
 from tests.wait_for_organize import wait_for_organize
 from tests.wait_until import wait_until
