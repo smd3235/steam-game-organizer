@@ -10,12 +10,22 @@ organize pass.
 import tkinter as tk
 from tkinter import ttk
 from urllib.request import Request, urlopen
+from urllib.parse import urlparse
 import os
 import shutil
 from pathlib import Path
 from .theme import ACCENT_HI, ActivityFeed, BG, BORDER, CYAN, GREEN, MUTED, ORANGE, PANEL, PANEL2, PhaseTimeline, RED, TEXT, bind_wheel, human_size, panel, radio, scroll_text
 from core.constants import USER_AGENT
 from core.scan_view_utils import ago, space_delta, size
+
+# 2026-11-20: Bandit B310 — validate URL scheme before urlopen to prevent
+# file:// or custom scheme attacks. The SteamGridDB URL is hardcoded https,
+# but bandit cannot statically confirm this.
+def _safe_urlopen(req, timeout=12):
+    parsed = urlparse(req.full_url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Unsafe URL scheme: {parsed.scheme}")
+    return urlopen(req, timeout=timeout)  # nosec B310 — scheme validated above
 
 # Every phase a scan runs through, in order. Shown as a live timeline so the user can always see which step
 # is running, which already finished, and which were skipped (Preview Only).
@@ -789,7 +799,7 @@ class ScanView(tk.Frame):
                 # the SSL socket down cleanly - it is left for the garbage collector, and every key test left
                 # a ResourceWarning behind. This was the only HTTP call site in the app that read only the
                 # status line; the response is a few bytes of autocomplete JSON, so draining it costs nothing.
-                with urlopen(req, timeout=12) as r:
+                with _safe_urlopen(req, timeout=12) as r:
                     code = getattr(r, "status", 200)
                     r.read()
                 ok = code in (200, 204)

@@ -15,10 +15,15 @@ from typing import Optional
 
 
 class BatchItem:
-    """One game in the queue, and where it stands."""
+    """One game in the queue, and where it stands.
 
-    archive: Path
-    destination: Path
+    2026-11-20: Changed archive/destination annotations from Path to Optional[Path]
+    to match the constructor accepting Optional[Path]. mypy flagged assigning
+    Optional[Path] to Path-typed attributes.
+    """
+
+    archive: Optional[Path]
+    destination: Optional[Path]
     name: str = ""
     size: int = 0
     state: str = QUEUED

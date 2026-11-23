@@ -183,12 +183,15 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 | Command | Purpose | Code |
 |---------|---------|------|
-| `runtime\python.exe -m unittest discover -q` | Tests — expect `OK` with no skips — PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug | [`tests/`](tests/) |
+| `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_the_entry_point_opens_the_wizard.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_render_integrity.py --ignore=tests/test_pytest_mock_and_freezegun.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` | Tests — expect `OK` with no new skips | [`tests/`](tests/) |
 | `ruff check .` | Lint | [`ruff.toml`](ruff.toml) |
 | `python tools\build_frozen.py` | Rebuild frozen exe — see [**ARCHITECTURE.md → Frozen build**](ARCHITECTURE.md#-frozen-build) for the build pipeline and why it's mandatory | [`tools/build_frozen.py`](tools/build_frozen.py) |
+| `runtime\python.exe tools\quality_gate.py` | Combined quality gate: ruff → bandit → pip-audit → vulture → mypy → pytest → OCR tests | [`tools/quality_gate.py`](tools/quality_gate.py) |
+| `runtime\python.exe tools\ocr_test.py --size 1600x1000` | OCR-verify all app screens: expected UI text, no Python error windows, layout analysis | [`tools/ocr_test.py`](tools/ocr_test.py) |
+| `runtime\python.exe tools\log_audit.py` | Scan `logs/` for tracebacks, warnings, artwork failures, Steam lookup errors | [`tools/log_audit.py`](tools/log_audit.py) |
 | `runtime\python.exe tools\layout_audit.py` | Layout audit (clipping, off-window widgets, sibling overlap) | [`tools/layout_audit.py`](tools/layout_audit.py) |
 | `runtime\python.exe tools\analyze_screenshot.py <shot.png>` | Contrast audit (after theme changes) | [`tools/analyze_screenshot.py`](tools/analyze_screenshot.py) |
-| `runtime\python.exe tools\capture_screens.py` | Capture one PNG per screen into `docs/screenshots/` for the README gallery | [`tools/capture_screens.py`](tools/capture_screens.py) |
+| `runtime\python.exe tools\capture_screens.py --ocr` | Capture one PNG per screen into `docs/screenshots/` for the README gallery; `--ocr` OCR-verifies each screen immediately | [`tools/capture_screens.py`](tools/capture_screens.py) |
 
 ---
 

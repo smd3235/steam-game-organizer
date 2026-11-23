@@ -16,6 +16,7 @@ This lives in its own module rather than in `catalog_service` because both that 
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from core.constants import APP_NAME
 
@@ -260,8 +261,11 @@ def status_javascript(status: dict) -> str:
     """
     return f"/* Written by {APP_NAME}. Rewritten after every batch run. Safe to delete. */\nwindow.{STATUS_GLOBAL} = {json.dumps(status)};\n"
 
-def write_status(library_root, status: dict, logger=None) -> Path:
+def write_status(library_root, status: dict, logger=None) -> Optional[Path]:
     """Write the status file beside the catalog. Returns the path, or None if it could not be written.
+
+    2026-11-20: Changed return type from Path to Optional[Path] — the docstring already
+    stated "None if it could not be written" but the annotation disagreed, causing a mypy error.
 
     A failure here is logged and swallowed. The run it describes already happened and the game folders are
     already on disk, so a browser cannot be told about it must not turn a successful unpack into a failed one.

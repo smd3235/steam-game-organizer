@@ -41,20 +41,37 @@ class TestNewOnlyWithNothingNewDoesNotBlockOnTheVerifyScreen(unittest.TestCase):
             "a scan with nothing new left no way to finish the run",
         )
 
-    def test_the_continue_button_is_disabled_while_games_are_unresolved(self):
+    def test_the_continue_button_is_clickable_while_games_are_unresolved(self):
         from core.models import GameArchive
+        from tkinter import messagebox
 
-        archive = GameArchive(
-            self.app.config.library_root / "Game.zip",
-            "Game",
-            "game",
-            "game",
-            ".zip",
-            (0,),
-        )
-        self.view.load([archive])
-        self.root.update()
-        self.assertEqual(str(self.view.continue_button.cget("state")), "disabled")
+        # Mock messagebox to capture the warning
+        shown = {}
+        original_showwarning = messagebox.showwarning
+        def capture_showwarning(title, message, **kwargs):
+            shown["title"] = title
+            shown["message"] = message
+        messagebox.showwarning = capture_showwarning
+        try:
+            archive = GameArchive(
+                self.app.config.library_root / "Game.zip",
+                "Game",
+                "game",
+                "game",
+                ".zip",
+                (0,),
+            )
+            self.view.load([archive])
+            self.root.update()
+            # Button should be enabled (clickable) so user can see what's needed
+            self.assertEqual(str(self.view.continue_button.cget("state")), "normal")
+            # Clicking it should show a message about what to do
+            self.view.continue_to_organize()
+            self.root.update()
+            self.assertIn("Steam identification required", shown.get("title", ""))
+            self.assertIn("skip them first", shown.get("message", ""))
+        finally:
+            messagebox.showwarning = original_showwarning
 
     def test_the_empty_list_says_the_run_is_done(self):
         self.view.load([])

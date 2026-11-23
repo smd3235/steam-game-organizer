@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # build writes an EXE-00.toc whose XML declaration reads `<?xml version="1.0"`,
 # which the version scanner picked up as a declared version and reported as a
 # release-structure failure. They hold nothing a reviewer reads.
-NOT_SOURCE = {"cache", "logs", "config", "__pycache__", ".git", "Processing", "runtime", "build", "dist"}
+NOT_SOURCE = {"cache", "logs", "config", "__pycache__", ".git", "Processing", "runtime", "build", "dist", ".github"}
 PROSE_SUFFIXES = {".md"}
 
 # A version beside the product's name - the User-Agent case, which is the one that actually happened. The name is

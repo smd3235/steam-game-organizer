@@ -91,7 +91,7 @@ def require_tk(case):
 
 
 def close_root(root):
-    """Tear a Tk root down without leaving timers behind, then destroy it.
+    """Tear a Tk root down without leaving timers behind, then withdraw it.
 
     The app schedules several self-rescheduling `after` callbacks - the drain loop, the window's clock, the
     review and organize tickers, the metrics refresh. Each one re-arms itself for 15ms to 500ms later, so a
@@ -100,7 +100,11 @@ def close_root(root):
     two hundred lines of that: noise that trains you to ignore this suite's output, and it hides a real
     failing test in exactly the same place a real one would print.
 
-    Cancelling everything pending before destroy() costs one round trip and silences all of it.
+    Cancelling everything pending before withdrawing costs one round trip and silences all of it. Roots are
+    withdrawn (hidden) rather than destroyed because on Windows, destroying a `tk.Tk()` and creating a new
+    one in the same process can leave the Tcl interpreter unable to reinitialise
+    ("couldn't read init.tcl"). Withdrawing keeps the interpreter alive so each
+    test's `tk.Tk()` gets a clean window on the same interpreter.
     """
     if root is None:
         return
@@ -136,7 +140,7 @@ def close_root(root):
         # A root that is already gone has nothing pending to cancel.
         pass
     try:
-        root.destroy()
+        root.withdraw()
     except Exception:
         pass
 

@@ -118,7 +118,7 @@ def main():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     master.save(OUT, format="ICO", sizes=[(s, s) for s in SIZES])
     print(f"  wrote {OUT}  ({OUT.stat().st_size:,} bytes)")
-    with Image.open(OUT) as check:
+    with Image.open(OUT) as check:  # noqa: F823 — sys.exit() above always exits, so Image is defined here
         got = sorted({s[0] for s in check.info["sizes"]})
         print(f"  sizes embedded: {got}")
         missing = [s for s in SIZES if s not in got]

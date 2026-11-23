@@ -293,7 +293,7 @@ class ArchiveService:
         # Stat is needed for the cache key; when the file is missing there is nothing
         # to cache, so proceed straight to the sniff (which will fail on its own).
         stat = None
-        cache_key = None
+        cache_key: str | None = None  # 2026-11-20: annotation for mypy (was inferred as None then str)
         cached = None
         try:
             stat = path.stat()
@@ -317,16 +317,19 @@ class ArchiveService:
                 tool, _reason = ExtractService.find_tool()
                 if not tool:
                     if stat is not None:
+                        assert cache_key is not None  # 2026-11-20: mypy can't correlate stat/cache_key
                         _installer_kind_cache[cache_key] = (stat.st_size, stat.st_mtime_ns, None)
                     return None
                 proc = subprocess.run([tool, "l", "-slt", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", creationflags=NO_WINDOW)
                 if proc.returncode != 0:
                     if stat is not None:
+                        assert cache_key is not None  # 2026-11-20: mypy can't correlate stat/cache_key
                         _installer_kind_cache[cache_key] = (stat.st_size, stat.st_mtime_ns, None)
                     return None
                 names = [m.group(1) for m in re.finditer(r"^Path = (.*)$", proc.stdout, re.M)]
             result = installer_from_names(names)
             if stat is not None:
+                assert cache_key is not None  # 2026-11-20: mypy can't correlate stat/cache_key
                 _installer_kind_cache[cache_key] = (stat.st_size, stat.st_mtime_ns, result)
             return result
         except Exception as exc:

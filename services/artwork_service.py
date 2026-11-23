@@ -2,12 +2,22 @@ from pathlib import Path
 from core.constants import USER_AGENT
 from core.models import ArtworkResult
 from urllib.request import Request, urlopen
+from urllib.parse import urlparse
 from urllib.error import HTTPError
 import json
 import time
 import shutil
 from core.exceptions import CancellationError
 from utils.filename_utils import identity_key
+
+
+# 2026-11-20: Bandit B310 — validate URL scheme before urlopen to prevent
+# file:// or custom scheme attacks from compromised API responses.
+def _safe_urlopen(req, timeout=12):
+    parsed = urlparse(req.full_url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Unsafe URL scheme: {parsed.scheme}")
+    return urlopen(req, timeout=timeout)  # nosec B310 — scheme validated above
 
 # image_shape extracted to services\image_shape.py — see that module for its definition.
 from services.image_shape import image_shape
@@ -162,7 +172,7 @@ class ArtworkService:
                 ctx.checkpoint()
             headers = {"Authorization": f"Bearer {self.api_key}", "Accept": "application/json", "User-Agent": USER_AGENT}
             req = Request(f"https://www.steamgriddb.com/api/v2/games/steam/{appid}", headers=headers)
-            with urlopen(req, timeout=12) as response:
+            with _safe_urlopen(req, timeout=12) as response:
                 game_payload = json.loads(response.read().decode("utf-8", errors="replace"))
             games = game_payload.get("data") or []
             if isinstance(games, dict):
@@ -177,7 +187,7 @@ class ArtworkService:
             if ctx:
                 ctx.checkpoint()
             req = Request(f"https://www.steamgriddb.com/api/v2/grids/game/{game_id}", headers=headers)
-            with urlopen(req, timeout=12) as response:
+            with _safe_urlopen(req, timeout=12) as response:
                 grid_payload = json.loads(response.read().decode("utf-8", errors="replace"))
             grids = grid_payload.get("data") or []
             portrait = [row for row in grids if isinstance(row, dict) and row.get("width") and row.get("height") and float(row["width"]) / float(row["height"]) < 0.85]
@@ -222,7 +232,7 @@ class ArtworkService:
                 ctx.checkpoint()
             try:
                 req = Request(url, headers={"User-Agent": USER_AGENT})
-                with urlopen(req, timeout=12) as r:
+                with _safe_urlopen(req, timeout=12) as r:
                     data = r.read()
                 if len(data) < 1024:
                     raise OSError("Steam returned an empty/invalid artwork response")
@@ -310,7 +320,7 @@ class ArtworkService:
                 if ctx:
                     ctx.checkpoint()
                 req = Request(url, headers={"User-Agent": USER_AGENT})
-                with urlopen(req, timeout=12) as response:
+                with _safe_urlopen(req, timeout=12) as response:
                     data = response.read()
                 if len(data) < 1024:
                     continue

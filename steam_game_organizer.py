@@ -207,7 +207,23 @@ def _needs_setup(config):
     root = config.library_root
     return not root or not root.is_dir()
 
-from core.main import main
+def main(*args, **kwargs):
+    """Entry point, imported lazily from core.main.
+
+    This used to be `from core.main import main` at module scope. core/main.py imports the helpers above
+    from this module, so the two files imported each other. From source that worked because the script
+    and the module are the same object; in a frozen build the entry script is only registered as
+    __main__, so core.main's import loaded a *second* copy of this file, which reached the old
+    `from core.main import main` while core.main was still half-initialised:
+
+        ImportError: cannot import name 'main' from partially initialized module 'core.main'
+
+    Importing inside the function means it happens after this module has finished loading, so the cycle
+    has nothing to close. The name stays on this module so `steam_game_organizer.main()` keeps working.
+    """
+    from core.main import main as run_main
+
+    return run_main(*args, **kwargs)
 
 # Re-exported so tests can patch them: patch.object(steam_game_organizer, "AppConfig", ...)
 from core.config import AppConfig  # noqa: F401

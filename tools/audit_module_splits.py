@@ -11,7 +11,7 @@ SAFETY CHECKLIST WHEN SPLITTING A MODULE:
    from the new module instead. A symbol that moved must be tested from its new
    location, not the old one.
 3. Create a new test file for the extracted module if no existing test covers it.
-4. Run `runtime\python.exe -m unittest discover -q` — all tests must pass.
+4. Run `runtime\\python.exe -m unittest discover -q` — all tests must pass.
 5. Run `ruff check .` — must be clean.
 6. Rebuild the frozen exe with `python tools\build_frozen.py`.
 7. Update CHANGELOG.md under ## 9.33.

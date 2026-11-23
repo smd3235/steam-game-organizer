@@ -94,6 +94,83 @@ ruff --version     # should print a version
 7z                 # should print 7-Zip help
 ```
 
+### Quality Gate
+
+`tools\quality_gate.py` runs every verification tool in one pass:
+
+| Step | Tool | What it checks | Fails the gate? |
+|------|------|---------------|-----------------|
+| 1 | ruff | Lint check | Yes |
+| 2 | bandit | Security scan (medium+ issues) | Yes |
+| 3 | pip-audit | Dependency vulnerability check | Yes |
+| 4 | vulture | Dead code scan | No (advisory only) |
+| 5 | mypy | Type check on modified source modules | Yes |
+| 6 | pytest | Test suite with coverage | Yes |
+| 7 | OCR tests | Captures all screens, verifies UI text, detects error windows | Yes |
+
+```powershell
+runtime\python.exe tools\quality_gate.py
+```
+
+### Security Scanning
+
+**Bandit** scans Python source for security issues (B310 `urlopen` scheme validation, B103 permissive `chmod`, etc.):
+
+```powershell
+python -m bandit -r core services ui app utils --severity-level medium --confidence-level medium
+```
+
+**pip-audit** checks installed Python dependencies for known vulnerabilities:
+
+```powershell
+python -m pip_audit
+```
+
+**Pre-commit hooks** (`.pre-commit-config.yaml`) run ruff, mypy, bandit, pytest, and OCR tests on every commit. Install with:
+
+```powershell
+runtime\Scripts\pre-commit install
+```
+
+### OCR Testing
+
+`tools\ocr_test.py` captures all app screens via `capture_screens.py`, runs Tesseract OCR with multiple PSM modes on each image, and verifies expected UI text is present. It also detects Python error dialogs / traceback windows via `pywinauto` UI Automation and analyzes UI layout via `OpenCV`.
+
+```powershell
+# Capture and OCR-verify all screens
+runtime\python.exe tools\ocr_test.py --size 1600x1000
+
+# OCR-verify existing captures without re-capturing
+runtime\python.exe tools\ocr_test.py --no-capture --out temp/ocr-captures
+```
+
+`tools\capture_screens.py` also supports `--ocr` to OCR-verify each screen immediately after capturing it:
+
+```powershell
+runtime\python.exe tools\capture_screens.py --size 1600x1000 --ocr
+```
+
+### Log Auditing
+
+`tools\log_audit.py` scans `logs/` for Python tracebacks, repeated warnings, artwork failures, Steam lookup errors, and other anomalies:
+
+```powershell
+# Audit all logs
+runtime\python.exe tools\log_audit.py
+
+# Audit only logs from a specific date onward
+runtime\python.exe tools\log_audit.py --since 2026-11-20
+
+# Only show WARN and above
+runtime\python.exe tools\log_audit.py --level WARN
+
+# JSON output
+runtime\python.exe tools\log_audit.py --report json
+```
+
+---
+
+
 ---
 
 ## 🔄 The Change Workflow
@@ -108,8 +185,9 @@ Work through this checklist in order:
 | 2 | **Changelog** | Add a dated entry under `## 9.33` (newest first). |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
 | 4 | **Lint** | `ruff check .` — must pass. See [🧹 Lint](#-lint). |
-| 5 | **Tests** | `runtime\python.exe -m unittest discover -q` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
-| 6 | **Build** | `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists. See [🏗️ Build](#-build--frozen-exe-pipeline). |
+| 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
+| 6 | **Quality Gate** | `runtime\python.exe tools\quality_gate.py` — runs ruff, bandit, pip-audit, vulture, mypy, pytest, and OCR tests. |
+| 7 | **Build** | `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists. See [🏗️ Build](#-build--frozen-exe-pipeline). |
 | 7 | **Commit + push** | `git add` the changed source, docs, and changelog; commit with a descriptive message; push to GitHub. See [🔀 Git / GitHub Workflow](#-git--github-workflow). |
 
 ---

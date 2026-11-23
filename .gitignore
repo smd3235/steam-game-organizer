@@ -2,6 +2,9 @@ __pycache__/
 *.py[cod]
 *.tmp
 *.log
+*.coverage
+htmlcov/
+test_localsystem.txt
 cache/
 logs/
 .agent-cache/

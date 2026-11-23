@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ruff bandit pip-audit vulture pytest pytest-cov pytest-mock pytest-xdist pytesseract opencv-python-headless numpy pywinauto pillow pyinstaller
+          pip install -e . 2>/dev/null || true
+
+      - name: Install Tesseract OCR
+        run: |
+          winget install UB-Mannheim.TesseractOCR
+          echo "TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe" >> $GITHUB_ENV
+
+      - name: Set up bundled runtime TCL library
+        run: |
+          echo "TCL_LIBRARY=$PWD/runtime/tcl/tcl8.6" >> $GITHUB_ENV
+
+      - name: Run ruff lint check
+        run: ruff check .
+
+      - name: Run bandit security scan (medium+ issues fail the gate)
+        run: python -m bandit -r core services ui app utils --severity-level medium --confidence-level medium
+
+      - name: Run pip-audit dependency vulnerability check
+        run: python -m pip_audit
+
+      - name: Run mypy type check on modified source modules
+        run: python -m mypy ui/review_view.py core/models.py --ignore-missing-imports --follow-imports=skip
+
+      - name: Run pytest suite with coverage
+        run: python -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils --cov-report=term-missing
+        env:
+          TCL_LIBRARY: ${{ github.workspace }}/runtime/tcl/tcl8.6
+          TK_LIBRARY: ${{ github.workspace }}/runtime/tcl/tk8.6
+
+      - name: Run OCR UI tests across all screens
+        run: python tools/ocr_test.py --size 1600x1000
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/

@@ -1343,7 +1343,9 @@ class OrganizerService:
                     # read-only files that provoke this in the first place the orphan cannot be unlinked until
                     # the flag is cleared. Leaving it would keep the duplicate that starts the next run wrong.
                     try:
-                        os.chmod(str(target), 0o666)
+                        # 2026-11-20: Bandit B103 — 0o600 clears Windows read-only flag without granting
+                        # group/other write access. 0o666 was overly permissive.
+                        os.chmod(str(target), 0o600)
                     except OSError:
                         pass
                     target.unlink()

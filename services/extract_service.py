@@ -292,7 +292,7 @@ class ExtractService:
         # rglob the caller already performed), reuse it instead of walking again.
         try:
             dir_map = {d.name: d for d in dirs}
-            file_counts = {}
+            file_counts: dict[str, int] = {}  # 2026-11-20: added annotation for mypy
             items = files if files is not None else [p for p in destination.rglob("*") if p.is_file()]
             for p in items:
                 top = p.relative_to(destination).parts[0]
@@ -451,6 +451,7 @@ class ExtractService:
         cancelled = False
         code = None
         try:
+            assert process.stdout is not None  # 2026-11-20: mypy flags IO[str] | None as possibly None
             for line in process.stdout:
                 line = line.strip()
                 if not line:

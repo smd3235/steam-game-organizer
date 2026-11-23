@@ -356,7 +356,9 @@ class ReviewView(tk.Frame):
         # left at all and the run appeared to hang on the verify screen.
         unfinished = [a for a in self.archives if not a.decision.accepted and not a.decision.skipped]
         done = not unfinished
-        self.continue_button.configure(state="normal" if done else "disabled")
+        # Always keep Continue to Organization clickable so the user gets a clear message
+        # about what still needs to be done (skip unresolved, accept pending).
+        self.continue_button.configure(state="normal")
         self.accept_button.configure(state="disabled" if done else "normal")
         # When nothing is left to accept, Accept & Next greys out and Continue to Organization becomes
         # the highlighted (purple) primary action so the user's next step is obvious.
@@ -454,12 +456,15 @@ class ReviewView(tk.Frame):
             self._single_lookup(self.selected.normalized_title)
 
     def wrong_match(self):
-        self.selected.steam = SteamMatch()
-        self.selected.artwork = ArtworkResult()
-        self.selected.decision.accepted = False
-        self.selected.decision.skipped = False
-        self.selected.decision.category = "Unsorted"
-        self.selected.decision.suggested_category = ""
+        key = self.selected.identity_key
+        for a in self.archives:
+            if a.identity_key == key:
+                a.steam = SteamMatch()
+                a.artwork = ArtworkResult()
+                a.decision.accepted = False
+                a.decision.skipped = False
+                a.decision.category = "Unsorted"
+                a.decision.suggested_category = ""
         self.list.refresh()
         self._update_summary()
         self._update_continue_state()
@@ -511,21 +516,48 @@ class ReviewView(tk.Frame):
         self._advance()
 
     def _apply_group_decision(self, archive, category, accepted, skipped):
-        archive.decision.changed_from_suggestion = bool(archive.decision.suggested_category) and category != archive.decision.suggested_category
-        archive.decision.category = category
-        archive.decision.accepted = accepted
-        archive.decision.skipped = skipped
+        # Apply to all archives with the same identity_key so the group moves together
+        key = archive.identity_key
+        for a in self.archives:
+            if a.identity_key == key:
+                a.decision.changed_from_suggestion = bool(a.decision.suggested_category) and category != a.decision.suggested_category
+                a.decision.category = category
+                a.decision.accepted = accepted
+                a.decision.skipped = skipped
 
     def continue_to_organize(self):
-        unresolved = [a for a in self.archives if not a.steam.found and not a.decision.skipped]
-        pending = [a for a in self.archives if a.steam.found and not a.decision.accepted and not a.decision.skipped]
-        if unresolved:
-            messagebox.showwarning("Steam identification required", f"{len(unresolved)} game(s) still need a verified Steam identity. Resolve or skip them first.", parent=self.winfo_toplevel())
+        # Dedupe by identity_key so the count matches what the user sees in the list view.
+        # set_items() deduplicates archives by identity_key when rendering; multiple archives
+        # for one game (e.g. part1.zip + part2.zip) share an identity_key and count as one game.
+        unresolved_keys = {a.identity_key for a in self.archives if not a.steam.found and not a.decision.skipped}
+        pending_keys = {a.identity_key for a in self.archives if a.steam.found and not a.decision.accepted and not a.decision.skipped}
+        if unresolved_keys:
+            unresolved = [a for a in self.archives if a.identity_key in unresolved_keys]
+            names = ", ".join(a.display_name for a in unresolved[:5])
+            more = f" (and {len(unresolved_keys) - 5} more)" if len(unresolved_keys) > 5 else ""
+            messagebox.showwarning("Steam identification required",
+            f"{len(unresolved_keys)} game(s) still need a verified Steam identity.{more}\n"
+            f"First unresolved: {names}\n"
+            f"Resolve each Steam match or skip them first to leave those archives untouched.",
+            parent=self.winfo_toplevel())
+            # Switch to "All" filter so hidden unresolved games become visible
+            self.list.set_filter("", "All")
+            # Select the first unresolved game so the user can see what needs attention
+            self.select(unresolved[0])
             return
-        if pending:
+        if pending_keys:
+            pending = [a for a in self.archives if a.identity_key in pending_keys]
+            names = ", ".join(a.display_name for a in pending[:5])
+            more = f" (and {len(pending_keys) - 5} more)" if len(pending_keys) > 5 else ""
             messagebox.showwarning("Review decisions required",
-            f"{len(pending)} verified game(s) still need a category decision. Use Accept & Next or "
-            "Use All Suggestions first.", parent=self.winfo_toplevel())
+            f"{len(pending_keys)} verified game(s) still need a category decision.{more}\n"
+            f"First pending: {names}\n"
+            f"Choose a category and click Accept & Next for each, or use Use All Suggestions.",
+            parent=self.winfo_toplevel())
+            # Switch to "All" filter so hidden pending games become visible
+            self.list.set_filter("", "All")
+            # Select the first pending game so the user can see what needs attention
+            self.select(pending[0])
             return
         if self.on_next:
             self.on_next()

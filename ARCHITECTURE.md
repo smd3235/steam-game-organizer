@@ -230,12 +230,24 @@ Development and installation scripts, not part of the application:
 | [`tools/capture_screens.py`](tools/capture_screens.py) | Builds the real windows over a temp library and writes one PNG per screen into `docs/screenshots/` for the README gallery. Atomic writes, blank-capture refusal, needs an interactive desktop. |
 | [`tools/build_icon.py`](tools/build_icon.py) · [`tools/verify_archives.py`](tools/verify_archives.py) · [`tools/tk_probe.py`](tools/tk_probe.py) | Miscellaneous development tools. |
 | [`tools/auto_backup.py`](tools/auto_backup.py) · [`tools/compare_backups.py`](tools/compare_backups.py) · [`tools/create_shortcut.py`](tools/create_shortcut.py) · [`tools/restore_backup.py`](tools/restore_backup.py) · [`tools/review_backups.py`](tools/review_backups.py) · [`tools/run_tests_parallel.py`](tools/run_tests_parallel.py) | Backup management, shortcuts, parallel test runner. |
+| [`tools/quality_gate.py`](tools/quality_gate.py) | Combined verification: ruff → bandit → pip-audit → vulture → mypy → pytest → OCR tests. Runs every check in one pass. |
+| [`tools/ocr_test.py`](tools/ocr_test.py) | Captures all app screens via `capture_screens.py`, runs Tesseract OCR with multiple PSM modes on each image, verifies expected UI text, detects Python error dialogs / traceback windows via `pywinauto`, and analyzes UI layout via `OpenCV`. |
+| [`tools/log_audit.py`](tools/log_audit.py) | Scans `logs/` for Python tracebacks, repeated warnings, artwork failures, Steam lookup errors, and other anomalies. Supports `--since`, `--level`, and `--report json`. |
+| [`tools/capture_screens.py`](tools/capture_screens.py) | Builds the real windows over a temp library and writes one PNG per screen into `docs/screenshots/` for the README gallery. Supports `--ocr` to OCR-verify each screen immediately after capturing. Atomic writes, blank-capture refusal, needs an interactive desktop. |
 
 ---
 
 ## 🧪 tests
 
-`runtime\python.exe -m unittest discover -q` — expect `OK` with no skips. PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug.
+`runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_the_entry_point_opens_the_wizard.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_render_integrity.py --ignore=tests/test_pytest_mock_and_freezegun.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — expect `OK` with no new skips. PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug.
+
+Additional testing tooling installed in the bundled runtime:
+
+| Tool | Role |
+|------|------|
+| `pytest-mock` | `mocker` fixture for cleaner mocking than `unittest.mock.patch` |
+| `freezegun` | `freeze_time` decorator/context manager for deterministic time-based testing |
+| `pytest-cov` | Code coverage reporting (`--cov=. --cov-report=term-missing`) |
 
 | Test | Role | Key invariants |
 |------|------|----------------|

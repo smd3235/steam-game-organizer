@@ -11,7 +11,7 @@ modules, the test suite is updated to match and nothing is missed:
 3. Every symbol a test file imports from a source module actually exists — stale
    imports left behind after a split are caught by name, not by opaque failures.
 
-Run as part of the suite:  runtime\python.exe -m unittest discover -q
+Run as part of the suite:  runtime\\python.exe -m unittest discover -q
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def iter_source_modules(root: Path):
             yield path, path.relative_to(root).as_posix().replace("/", ".")[:-3]
 
 
-def test_file_references_module(test_path: Path, module_name: str) -> bool:
+def file_references_module(test_path: Path, module_name: str) -> bool:
     """Return True if test_path's text imports or references module_name."""
     try:
         text = test_path.read_text(encoding="utf-8")
@@ -121,7 +121,7 @@ class TestEverySourceModuleHasTestCoverage(unittest.TestCase):
         test_files = list((PROJECT_ROOT / "tests").rglob("test_*.py"))
         missing = []
         for path, module_name in iter_source_modules(PROJECT_ROOT):
-            referenced = any(test_file_references_module(tf, module_name) for tf in test_files)
+            referenced = any(file_references_module(tf, module_name) for tf in test_files)
             if not referenced:
                 missing.append(f"  {path.relative_to(PROJECT_ROOT)} ({module_name})")
         report = "\n".join(sorted(missing))

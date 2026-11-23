@@ -9,6 +9,7 @@ fictional games, drives each view into a realistic state, and grabs the window's
     python tools\\capture_screens.py --only review done  # just those screens
     python tools\\capture_screens.py --size 1440x900 --out docs/screenshots
     python tools\\capture_screens.py --keep-sandbox      # leave the temp library for inspection
+    python tools\\capture_screens.py --ocr               # also OCR-verify each captured screen
 
 Two kinds of screen are captured. Tk windows are grabbed from the live app (`ImageGrab`), while the
 generated `Game Library.html` catalog is a browser page, so it is rendered by headless Microsoft Edge
@@ -30,6 +31,10 @@ Rules this script obeys, because a screenshot is an artifact like any other:
 
 Environment requirements: an interactive Windows desktop. `ImageGrab` reads the composited screen, so
 a session with no visible desktop (a service, a locked RDP session) cannot capture anything.
+
+When --ocr is given, each captured PNG is also run through Tesseract OCR to verify expected UI text
+is present and no Python error dialogs / traceback windows are visible. OCR results are reported
+alongside capture results; missing required text or forbidden error text is a failure.
 """
 
 from __future__ import annotations
@@ -51,13 +56,108 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-from PIL import Image, ImageDraw, ImageFont, ImageGrab, ImageStat
+from PIL import Image, ImageDraw, ImageFont, ImageGrab, ImageStat, ImageOps
 
 import app.application as application
 from core.catalog_utils import asset_prefix
 from core.config import AppConfig
 from core.models import ArtworkResult, GameArchive, ScanResult, SteamMatch
 from utils.filename_utils import identity_key, normalize_name
+
+# Expected UI header text per screen for OCR verification (matches tools/ocr_test.py)
+OCR_SCREEN_HEADERS: dict[str, list[str]] = {
+    "scan": ["STEAM GAME ORGANIZER", "SCAN"],
+    "scan-running": ["STEAM GAME ORGANIZER", "SCAN"],
+    "review": ["STEAM GAME ORGANIZER", "GAME REVIEW"],
+    "review-category": ["STEAM GAME ORGANIZER", "GAME REVIEW"],
+    "add-category": ["STEAM GAME ORGANIZER"],
+    "organize": ["STEAM GAME ORGANIZER", "ORGANIZE"],
+    "artwork": ["STEAM GAME ORGANIZER", "ARTWORK"],
+    "catalog": ["STEAM GAME ORGANIZER"],
+    "done": ["STEAM GAME ORGANIZER", "DONE"],
+    "setup": ["STEAM GAME ORGANIZER"],
+    "batch-extract": ["STEAM GAME ORGANIZER", "EXTRACT"],
+    "extract-progress": ["STEAM GAME ORGANIZER", "EXTRACT"],
+    "extract-result": ["STEAM GAME ORGANIZER", "EXTRACT"],
+}
+
+OCR_FORBIDDEN = [
+    "traceback", "raise systemexit", "filenotfounderror", "modulenotfounderror",
+    "permissionerror", "keyerror", "indexerror", "typeerror", "valueerror",
+    "attributeerror", "importerror", "oserror", "runtimeerror",
+    "python.exe", "pythonw.exe", "unhandled exception", "fatal error",
+]
+
+
+def _ocr_check(image_path: Path, screen_name: str) -> tuple[list[str], list[str], list[str], float]:
+    """Run OCR on a captured image and return (found_required, missing_required, found_forbidden, confidence)."""
+    try:
+        import pytesseract
+        pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    except ImportError:
+        return [], [], ["pytesseract_not_installed"], 0.0
+
+    try:
+        image = Image.open(image_path)
+    except Exception as exc:
+        return [], [], [f"cannot_open_image: {exc}"], 0.0
+
+    try:
+        gray = ImageOps.grayscale(image)
+        w, h = gray.size
+        if w < 1400:
+            scale = 1400 / w
+            gray = gray.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+        gray = ImageOps.autocontrast(gray, cutoff=1)
+    except Exception:
+        pass
+
+    best_text = ""
+    best_confidence = 0.0
+    for psm in [6, 11, 12]:
+        try:
+            data = pytesseract.image_to_data(
+                gray,
+                output_type=pytesseract.Output.DICT,
+                config=f"--psm {psm}",
+            )
+            words = []
+            confs = []
+            for i, conf in enumerate(data["conf"]):
+                if conf > 0 and data["text"][i].strip():
+                    words.append(data["text"][i])
+                    confs.append(conf)
+            text = " ".join(words)
+            conf = sum(confs) / len(confs) if confs else 0.0
+            score = len(words) * (conf / 100)
+            if score > len(best_text.split()) * (best_confidence / 100):
+                best_text = text
+                best_confidence = conf
+        except Exception:
+            continue
+
+    text_lower = " ".join(best_text.split()).lower()
+    found_required: list[str] = []
+    missing_required: list[str] = []
+    for header in OCR_SCREEN_HEADERS.get(screen_name, []):
+        header_words = header.lower().split()
+        if len(header_words) == 1:
+            if header.lower() in text_lower:
+                found_required.append(header)
+            else:
+                missing_required.append(header)
+        else:
+            if all(w in text_lower for w in header_words):
+                found_required.append(header)
+            else:
+                missing_required.append(header)
+
+    found_forbidden: list[str] = []
+    for forb in OCR_FORBIDDEN:
+        if forb in text_lower:
+            found_forbidden.append(forb)
+
+    return found_required, missing_required, found_forbidden, best_confidence
 
 # Fictional games only. A screenshot shipped in a public repository must not show somebody's real
 # library, so every name, AppID and category here is invented.
@@ -707,6 +807,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--size", type=_parse_size, default=(1600, 1000), help="main window size, e.g. 1600x1000")
     parser.add_argument("--only", nargs="*", default=None, help="capture only these screens: " + " ".join(OUTPUT_NAMES))
     parser.add_argument("--keep-sandbox", action="store_true", help="do not delete the temporary library")
+    parser.add_argument("--ocr", action="store_true", help="also OCR-verify each captured screen for expected UI text")
     args = parser.parse_args(argv)
 
     wanted = set(args.only) if args.only else None
@@ -810,6 +911,28 @@ def main(argv: list[str] | None = None) -> int:
     print(f"=== screen captures -> {out.resolve()} ===")
     for name, size in results:
         print(f"  {name + '.png':<22} {size / 1024:8.1f} KB")
+
+    if args.ocr:
+        print(f"\n=== OCR verification -> {out.resolve()} ===")
+        ocr_failures = 0
+        for name, _size in results:
+            image_path = out / f"{name}.png"
+            if not image_path.is_file():
+                continue
+            found_required, missing_required, found_forbidden, confidence = _ocr_check(image_path, name)
+            if missing_required or found_forbidden:
+                ocr_failures += 1
+                print(f"  OCR FAIL  {name + '.png':<22} confidence={confidence:.1f}%")
+                for missing in missing_required:
+                    print(f"    MISSING required text: '{missing}'")
+                for forbidden in found_forbidden:
+                    print(f"    FORBIDDEN text found: '{forbidden}'")
+            else:
+                print(f"  OCR OK    {name + '.png':<22} confidence={confidence:.1f}%  required={len(found_required)}")
+        if ocr_failures > 0:
+            failures.append(f"OCR: {ocr_failures} screen(s) had missing required or forbidden text")
+        print(f"ocr checked {len(results)} screen(s)")
+
     if failures:
         for failure in failures:
             print(f"  FAILED  {failure}", file=sys.stderr)
