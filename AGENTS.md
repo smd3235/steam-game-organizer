@@ -467,3 +467,50 @@ i = i + 1
 - Every changed file must include at least one comment explaining what changed and why.
 
 ---
+
+## ➕ Adding a New UI Screen
+
+Adding a screen means four things:
+
+1. **Create the view class** in `ui/` (e.g., `ui/my_view.py`), subclassing `tk.Frame`.
+2. **Register it in `app/application.py`** — add it to the screen registry and wire its navigation button.
+3. **Wire navigation** in `ui/main_window.py` — add a tab/button that switches to the new screen.
+4. **Add OCR expectations** in `tools/ocr_test.py` (`SCREEN_EXPECTATIONS`) so the screen's header text is verified in CI.
+
+Before adding a new screen, check whether an existing screen can absorb the feature. The app already has scan, review, organize, artwork, catalog, done, setup, batch-extract, and extract-result screens.
+
+---
+
+## 🔍 Steam Match Troubleshooting
+
+When an archive doesn't match a Steam game:
+
+1. **Check the archive filename** — `normalize_name()` strips release groups (tenoke, dodi, fitgirl, etc.) from both start and end. If the game title isn't recognized, the match will fail.
+2. **Check the Steam search** — the app queries Steam's storesearch API with multiple name variants (original, "X, The", leading-article stripped, edition words stripped, subtitle stripped).
+3. **Check for an internal AppID** — archives with `steam_settings/steam_appid.txt` or `appmanifest_*.acf` are matched by AppID first, before any text search.
+4. **Use the "Wrong Match" button** on the review screen if Steam identified the wrong game — this clears the Steam match and lets you re-search.
+5. **Use "Search Again"** to retry with a different search term.
+6. **Check the logs** — `logs/` shows every Steam API call and its result. Look for `Steam identification required` warnings.
+
+Common naming patterns that match:
+- `Game Name - 12345.zip` (AppID in filename)
+- `Game.Name.12345.rar` (AppID in filename)
+- `Game [12345].7z` (AppID in filename)
+- `tenoke-ball.x.pit.risen.ballbylon.zip` (release group stripped from start)
+- `Ultimate Edition: Game Name.zip` (leading edition words stripped)
+- `Game Name - Subtitle.zip` (subtitle stripped)
+
+---
+
+## 📦 Release Process (Summary)
+
+When you're ready to cut a release:
+
+1. **Update `CHANGELOG.md`** — move all unreleased entries under a new release heading with a date.
+2. **Update the frozen exe** — `python tools\build_frozen.py`.
+3. **Create a GitHub Release** — tag the release, paste the changelog notes, upload the frozen exe zip.
+4. **Start a fresh `## Unreleased` section** in `CHANGELOG.md` for new changes.
+
+Note: version numbers (`9.33` etc.) have been removed from the codebase; releases are identified by date tag only.
+
+---
