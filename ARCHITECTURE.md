@@ -3,7 +3,7 @@
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
-[![Tests: unittest](https://img.shields.io/badge/tests-unittest-success.svg)](tests/)
+[![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
 
 ---
 
@@ -239,7 +239,7 @@ Development and installation scripts, not part of the application:
 
 ## 🧪 tests
 
-`runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_the_entry_point_opens_the_wizard.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_render_integrity.py --ignore=tests/test_pytest_mock_and_freezegun.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — expect `OK` with no new skips. PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug.
+`runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — expect `OK` with no new skips. PyInstaller is installed in the bundled runtime so the frozen-build test runs; any other skip is a bug.
 
 Additional testing tooling installed in the bundled runtime:
 

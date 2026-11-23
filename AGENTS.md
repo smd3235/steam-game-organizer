@@ -3,7 +3,7 @@
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
-[![Tests: unittest](https://img.shields.io/badge/tests-unittest-success.svg)](tests/)
+[![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
 
 > [!IMPORTANT]
 > **Windows is the only platform.** There is no second environment to keep green. The Flatpak/SteamOS target is gone. Anything that branches on platform should raise or return a refusal rather than keep a second implementation.
@@ -376,7 +376,7 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 - [ ] `CHANGELOG.md` has a new dated entry under `## 9.33` (newest first).
 - [ ] `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` updated if behavior, architecture, commands, test counts, or frozen build layout changed.
 - [ ] `ruff check .` passes.
-- [ ] `runtime\python.exe -m unittest discover -q` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs).
+- [ ] `runtime\python.exe -m pytest tests/ -q -p no:xdist` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs).
 - [ ] If any source code changed, rebuilt the exe with `python tools\build_frozen.py`.
 - [ ] No `*.png` screenshots left in repo root; no writes to real `config/`, `cache/`, or `logs/` (use `tests/tk_support.py:sandbox_app` in tests).
 - [ ] Committed and pushed to GitHub so the public repository reflects the change.

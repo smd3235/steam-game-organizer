@@ -41,7 +41,7 @@ Every change must follow this checklist **in order**:
 | 2 | **Changelog** | Add a dated entry under `## 9.33` (newest first) |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed |
 | 4 | **Lint** | `ruff check .` — must pass |
-| 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_the_entry_point_opens_the_wizard.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_render_integrity.py --ignore=tests/test_pytest_mock_and_freezegun.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` |
+| 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` |
 | 6 | **Build** | `python tools\build_frozen.py` — if any source code changed |
 | 7 | **Commit + push** | `git add` the changed source, docs, and changelog; commit; push |
 
