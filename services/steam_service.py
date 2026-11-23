@@ -29,6 +29,13 @@ _appid_in_archive_cache: dict[str, tuple[int, int, str]] = {}
 _details_cache: dict[str, tuple[float, dict]] = {}
 _DETAILS_CACHE_TTL_SECONDS = 3600  # 1 hour
 
+# Rate-limit state for Steam's store API. Steam returns HTTP 429 when a client
+# makes too many requests too quickly. Once rate-limited, subsequent requests
+# back off progressively instead of hammering the endpoint and making things worse.
+_rate_limited_until: float = 0.0  # monotonic time when the rate limit expires
+_backoff_delay: float = 1.0  # current backoff delay in seconds, doubles on each 429
+_MAX_BACKOFF: float = 60.0  # cap the backoff so a single bad run doesn't stall forever
+
 
 # How close an AppID read out of an archive has to look to the filename before it is believed. Low enough to
 # accept the punctuation and packaging differences a filename carries, high enough to reject a copy-pasted or
@@ -162,14 +169,42 @@ class SteamService:
     def _request_json(self, url, ctx=None):
         if ctx:
             ctx.checkpoint()
+        global _rate_limited_until, _backoff_delay
+        # If we are currently rate-limited, sleep until the limit expires instead
+        # of making a request that Steam will just reject again.
+        now = time.monotonic()
+        if now < _rate_limited_until:
+            remaining = _rate_limited_until - now
+            self.logger.debug("STEAM", f"RATE_LIMITED url=[{url}] sleeping_for={remaining:.1f}s")
+            if ctx:
+                ctx.checkpoint()
+            time.sleep(min(remaining, 5.0))
+            if ctx:
+                ctx.checkpoint()
         # Use shared connection pool for keep-alive
         response = _SHARED_POOL.request("GET", url, headers={"User-Agent": self.user_agent, "Accept": "application/json"})
         data = response.read()
         if ctx:
             ctx.checkpoint()
+        # HTTP 429 Too Many Requests: Steam is rate-limiting us. Record when the
+        # limit expires (honoring Retry-After if present) and back off so the
+        # next request doesn't just get rejected again.
+        if response.status == 429:
+            retry_after = response.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    _rate_limited_until = time.monotonic() + float(retry_after)
+                except ValueError:
+                    _rate_limited_until = time.monotonic() + _backoff_delay
+            else:
+                _rate_limited_until = time.monotonic() + _backoff_delay
+            _backoff_delay = min(_backoff_delay * 2, _MAX_BACKOFF)
+            self.logger.warning("STEAM", f"RATE_LIMITED url=[{url}] retry_after={retry_after} backoff={_backoff_delay:.1f}s")
+            raise RuntimeError(f"Steam rate-limited (HTTP 429), retry after {_rate_limited_until - time.monotonic():.0f}s")
         return json.loads(data.decode("utf-8", errors="replace"))
 
     def lookup(self, title: str, ctx=None, refresh: bool = False, archive_path: str | Path | None = None):
+        global _rate_limited_until, _backoff_delay
         key = identity_key(title)
         # Fast path 1: AppID from archive filename (e.g., "Game Name - 12345.zip")
         # This is the fastest - just parses the filename, no I/O at all.
@@ -218,9 +253,22 @@ class SteamService:
         steam_match = self._mock(title) if self.mock else (self._lookup_appid(direct_appid, ctx) if direct_appid else self._lookup_store(title, ctx))
         if not steam_match.found and not refresh and not self.mock:
             for attempt in (2, 3):
+                # Sleep with backoff before retrying so transient failures and
+                # rate limits have time to clear. On a rate limit, _lookup_store
+                # already slept; this is an additional small backoff.
+                if ctx:
+                    ctx.checkpoint()
+                time.sleep(min(_backoff_delay, _MAX_BACKOFF))
                 self.logger.info("STEAM", f"RETRY_LOOKUP title=[{title}] attempt={attempt} reason=[initial_no_match]")
-                steam_match = self._lookup_store(title, ctx)
+                try:
+                    steam_match = self._lookup_store(title, ctx)
+                except RuntimeError:
+                    # Rate-limited: _request_json already slept and raised. Back
+                    # off longer and try again.
+                    _backoff_delay = min(_backoff_delay * 2, _MAX_BACKOFF)
+                    continue
                 if steam_match.found:
+                    _backoff_delay = 1.0  # reset backoff on success
                     break
         if steam_match.found:
             self.cache[key] = steam_match

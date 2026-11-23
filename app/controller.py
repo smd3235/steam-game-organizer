@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import time
+import tkinter.messagebox as messagebox
 from pathlib import Path
 
 from app.events import Event
@@ -706,6 +707,29 @@ class AppController:
             target_root = Path(destination).expanduser().resolve()
             accepted = list(archives)
             source_paths = {a.path.expanduser().resolve() for a in accepted}
+            # Proactive disk space check: refuse to start an organize that would need
+            # more free space than the destination drive has. Conversion extracts each
+            # archive to a temp folder before repacking to .7z, so the drive briefly
+            # holds both the source and the working extraction. Checking up front avoids
+            # a run dying halfway through with no room left and a half-organized library.
+            needed_bytes = sum((a.path.stat().st_size for a in accepted if a.path.is_file()), 0)
+            try:
+                free = shutil.disk_usage(target_root).free
+            except OSError:
+                free = None
+            if free is not None and needed_bytes > free:
+                needed_gb = needed_bytes / (1024 ** 3)
+                free_gb = free / (1024 ** 3)
+                msg = (
+                    f"Not enough free space to organize.\n\n"
+                    f"Selected games total: {needed_gb:.1f} GB\n"
+                    f"Free on destination:  {free_gb:.1f} GB\n\n"
+                    f"Free up at least {needed_gb - free_gb:.1f} GB on the destination drive, "
+                    f"or organize fewer games at once."
+                )
+                self.dispatch(lambda: messagebox.showerror("Not enough disk space", msg, parent=None))
+                done([])
+                return None
             groups = {}
             for archive in accepted:
                 groups.setdefault(archive.identity_key, []).append(archive)

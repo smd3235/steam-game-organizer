@@ -79,6 +79,8 @@ class ReviewView(tk.Frame):
         ttk.Button(action_frame, text="Use All Suggestions", style="Secondary.TButton", command=self.use_all_suggestions).pack(side="left", padx=(0, 4))
         self.approve_all_button = ttk.Button(action_frame, text="Approve All Verified", style="Primary.TButton", command=self.approve_all)
         self.approve_all_button.pack(side="left", padx=(4, 0))
+        self.retry_failed_button = ttk.Button(action_frame, text="Retry Failed", style="Secondary.TButton", command=self.retry_failed)
+        self.retry_failed_button.pack(side="left", padx=(4, 0))
         ttk.Button(action_frame, text="Extract Selected", style="Primary.TButton", command=self.extract_selected).pack(side="left", padx=(4, 0))
         self.list = GameList(self, self.select)
         self.list.grid(row=2, column=0, sticky="nsew", padx=(0, 10))
@@ -255,6 +257,15 @@ class ReviewView(tk.Frame):
         self.list.refresh()
         self._update_summary()
         self._update_suggestion_hint()
+
+    def retry_failed(self):
+        failed = [a for a in self.archives if not a.steam.found and not a.decision.skipped]
+        if not failed:
+            messagebox.showinfo("Retry Failed", "No games need re-verification.", parent=self.winfo_toplevel())
+            return
+        self.cancel_lookup()
+        self.progress.configure(text=f"Re-verifying {len(failed)} failed game(s)...")
+        self.verify_ctx = self.controller.verify_all(failed, self._progress, self._verified, download_artwork=False)
 
     def _filters_changed(self):
         self.list.set_filter(self.search_var.get(), "New Only" if self.mode_var.get() == "New Only" else self.filter_var.get())
