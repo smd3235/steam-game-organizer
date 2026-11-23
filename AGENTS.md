@@ -228,7 +228,7 @@ python tools\build_frozen.py
 
 ## 📝 Logging
 
-Each launch writes its own timestamped log file under `logs/` (`organizer-<VERSION>-<YYYYMMDD>-<HHMMSS>.log`), so old runs are never overwritten. The last `ROTATED_LOGS` (10) run logs are kept; older ones are removed. Each file rotates by size (`AppLogger.MAX_BYTES` = 5 MB, keeping `.1` and `.2` rolled files).
+Each launch writes its own timestamped log file under `logs/` (`organizer-<YYYYMMDD>-<HHMMSS>.log`), so old runs are never overwritten. The last `ROTATED_LOGS` (10) run logs are kept; older ones are removed. Each file rotates by size (`AppLogger.MAX_BYTES` = 5 MB, keeping `.1` and `.2` rolled files).
 
 `core/logger.py` `AppLogger` supports a level threshold (`set_level`) and optional console output (`console=True`, used for headless CLI mode). `install_excepthook()` routes uncaught exceptions through the logger. All writes are thread-locked and a failed write is swallowed so logging never kills the run.
 
@@ -276,7 +276,7 @@ A fake `7z` written as a shebang script with no extension is invisible to `shuti
 
 #### Test logs never touch the real logs directory
 
-`tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-<VERSION>-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test runs never pollute the user's log history, and real runs are easy to tell apart. The env var is set with `setdefault` so an explicit export still takes precedence.
+`tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test runs never pollute the user's log history, and real runs are easy to tell apart. The env var is set with `setdefault` so an explicit export still takes precedence.
 
 ---
 

@@ -11,7 +11,7 @@ import time
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from .theme import ACCENT, ACCENT_HI, ACCENT_HOVER, BG, MUTED, ORANGE, PANEL, PANEL2, PANEL3, TEXT, Theme, panel, tooltip
-from core.constants import APP_NAME, VERSION
+from core.constants import APP_NAME
 from debug.diagnostics import Diagnostics
 from .scan_view import ScanView, SCAN_PHASES
 from .review_view import ReviewView
@@ -39,7 +39,7 @@ class MainWindow:
         self.run_preview_only = False
         self.run_unlock_zip = False
         self.run_archives = None
-        root.title(f"{APP_NAME} v{VERSION}")
+        root.title(APP_NAME)
         root.geometry("1280x760")
         root.minsize(1100, 680)
         root.report_callback_exception = self._callback_error
@@ -114,7 +114,6 @@ class MainWindow:
         head = tk.Frame(outer, bg=BG)
         head.grid(row=0, column=0, sticky="ew")
         tk.Label(head, text=APP_NAME.upper(), bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold")).pack(side="left")
-        tk.Label(head, text=f"v{VERSION}", bg=BG, fg=MUTED, font=("TkDefaultFont", 8, "bold")).pack(side="right")
         nav = panel(outer)
         nav.grid(row=1, column=0, sticky="ew", pady=(4, 6))
         self.nav_buttons = {}

@@ -8,7 +8,6 @@
 from pathlib import Path
 import argparse
 from core.constants import APP_NAME
-from core.constants import VERSION
 from core.config import AppConfig
 from core.logger import AppLogger
 from core.state import StateStore
@@ -33,7 +32,7 @@ def main():
     parser.add_argument("--zip-password", default="", help="Password for an encrypted .zip or .rar")
     args = parser.parse_args()
     if args.version:
-        print(VERSION)
+        print(APP_NAME)
         return 0
     # Resolve the project root so logs, config and cache always land in the same
     # place whether running from source or the frozen exe. Always search upward

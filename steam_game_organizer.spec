@@ -27,7 +27,6 @@ a = Analysis(
         ('tools', 'tools'),
         ('assets', 'assets'),
         ('runtime', 'runtime'),
-        ('VERSION.txt', '.'),
         ('AGENTS.md', '.'),
         ('ARCHITECTURE.md', '.'),
         ('README.md', '.'),

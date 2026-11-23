@@ -58,7 +58,7 @@ def test_log_rotation_keeps_last_ten(tmp_path):
     # can be coarse, so distinct offsets alone are not always enough).
     for i in range(12):
         mtime = now - (12 - i) * 60  # each file 1 minute newer than the last
-        name = f"organizer-9.33-20260115-{120000 + i:06d}.log"
+        name = f"organizer-20260115-{120000 + i:06d}.log"
         _make_log_file(log_dir, name, mtime)
         time.sleep(0.01)
 
@@ -71,12 +71,12 @@ def test_log_rotation_keeps_last_ten(tmp_path):
     assert len(remaining) == ROTATED_LOGS, f"Expected {ROTATED_LOGS} logs, got {len(remaining)}: {remaining}"
 
     # The 2 oldest should have been deleted
-    assert "organizer-9.33-20260115-120000.log" not in remaining
-    assert "organizer-9.33-20260115-120001.log" not in remaining
+    assert "organizer-20260115-120000.log" not in remaining
+    assert "organizer-20260115-120001.log" not in remaining
 
     # The 10 newest should remain
     for i in range(2, 12):
-        name = f"organizer-9.33-20260115-{120000 + i:06d}.log"
+        name = f"organizer-20260115-{120000 + i:06d}.log"
         assert name in remaining, f"Expected {name} to remain after rotation"
 
 
@@ -88,7 +88,7 @@ def test_log_rotation_under_ten_keeps_all(tmp_path):
     now = datetime.now(tz=timezone.utc).timestamp()
     for i in range(5):
         mtime = now - (5 - i) * 60
-        name = f"organizer-9.33-20260115-{130000 + i:06d}.log"
+        name = f"organizer-20260115-{130000 + i:06d}.log"
         _make_log_file(log_dir, name, mtime)
         time.sleep(0.01)
 

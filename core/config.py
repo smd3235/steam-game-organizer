@@ -21,7 +21,7 @@ import shutil
 import time
 from datetime import datetime, timezone
 
-from core.constants import APP_NAME, VERSION
+from core.constants import APP_NAME
 
 ROTATED_LOGS = 10  # keep the last 10 run logs; older ones are removed
 
@@ -88,7 +88,7 @@ class AppConfig:
             # and a reader can tell which run produced which log. Rotation keeps
             # the last ROTATED_LOGS so a PC does not accumulate unbounded logs.
             stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-            self.log_file = self.log_dir / f"organizer-{VERSION}-{stamp}.log"
+            self.log_file = self.log_dir / f"organizer-{stamp}.log"
             self._rotate_logs()
         self._migrate_from_appdata()
         self.load()

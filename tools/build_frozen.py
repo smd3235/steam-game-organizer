@@ -40,7 +40,7 @@ USER_DATA = ("config", "cache", "logs")
 # Folders the app resolves at runtime by walking its own project root. Anything not in this
 # list stays inside _internal/, where PyInstaller puts it and where the app never looks.
 SIBLINGS = ("core", "services", "ui", "utils", "app", "debug", "tools", "assets", "runtime")
-FILES = ("VERSION.txt", "AGENTS.md", "ARCHITECTURE.md", "CHANGELOG.md", "README.md", "ruff.toml")
+FILES = ("AGENTS.md", "ARCHITECTURE.md", "CHANGELOG.md", "README.md", "ruff.toml")
 
 
 def run_backup_if_needed():

@@ -68,7 +68,7 @@ class FrozenBuildLaysOutTheBundle(unittest.TestCase):
         bundle = self.root / "dist" / "steam_game_organizer"
         exe = bundle / "steam_game_organizer.exe"
         self.assertTrue(exe.is_file(), f"no exe at {exe}")
-        for name in ("core", "services", "runtime", "VERSION.txt"):
+        for name in ("core", "services", "runtime"):
             self.assertTrue((bundle / name).exists(), f"bundle is missing {name}")
         self.assertTrue((bundle / "runtime" / "7z.exe").is_file(), "the frozen app has no 7z.exe to unpack with")
 

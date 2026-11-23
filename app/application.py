@@ -16,7 +16,6 @@ from services.rollback_service import RollbackService
 from services.library_service import LibraryService
 from services.catalog_service import CatalogService
 from ui.main_window import MainWindow
-from core.constants import VERSION
 
 
 class Application:
@@ -139,7 +138,7 @@ class Application:
             self._pump_handle = self.root.after(15, self._pump)
 
     def run(self):
-        self.logger.info("APPLICATION", f"START version={VERSION}")
+        self.logger.info("APPLICATION", "START")
         self.root.mainloop()
         return 0
 

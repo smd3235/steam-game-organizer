@@ -5,7 +5,7 @@ Any `AppConfig` created during a test run writes to
 run never pollutes the user's log history and real runs are easy to tell apart.
 
 Test logs live under `<project root>/logs/test/` with a timestamped name
-(`organizer-<VERSION>-TEST-<YYYYMMDD>-<HHMMSS>.log`), so they are documented
+(`organizer-TEST-<YYYYMMDD>-<HHMMSS>.log`), so they are documented
 alongside real logs but never confused with them. The env var is set with
 `setdefault` so a caller who explicitly exports it keeps control.
 """
@@ -21,5 +21,5 @@ _test_dir = _project_root / "logs" / "test"
 _test_dir.mkdir(parents=True, exist_ok=True)
 
 stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-_test_log = str(_test_dir / f"organizer-9.33-TEST-{stamp}.log")
+_test_log = str(_test_dir / f"organizer-TEST-{stamp}.log")
 os.environ.setdefault("STEAM_GAME_ORGANIZER_TEST_LOG", _test_log)

@@ -1,6 +1,6 @@
 """Constants shared across the app, each with the reason it exists written beside it.
 
-APP_NAME, ENTRY_POINT, VERSION and USER_AGENT identify the app; ARCHIVE_EXTENSIONS
+APP_NAME, ENTRY_POINT and USER_AGENT identify the app; ARCHIVE_EXTENSIONS
 is what the scanner treats as a game; NO_WINDOW keeps bundled 7z from flashing a
 console; DEFAULT_CATEGORIES is the starting set the review screen can file under;
 LOCK_MARKER, PROCESSING_DIRNAME and the TEMP_* names mark in-flight conversion
@@ -17,12 +17,7 @@ APP_NAME = "Steam Game Organizer"
 # name in the release-structure tests, so it was two places to change and one place nobody remembered. Renaming
 # the app is otherwise a change to this line alone.
 ENTRY_POINT = "steam_game_organizer.py"
-VERSION = "9.33"
-# The one place a version is allowed to be written out. This string was hardcoded as ".../9.0" in five places
-# and never moved again, so every request to Steam's API, to SteamGridDB, and every artwork fetch still
-# identified the app as 9.0 long after the release it shipped in. Derived here so a version bump cannot leave
-# it behind.
-USER_AGENT = f"{APP_NAME}/{VERSION}"
+USER_AGENT = APP_NAME
 ARCHIVE_EXTENSIONS = {".zip", ".rar", ".7z"}
 # On Windows, pass this to subprocess.run/Popen so that console applications
 # (7z.exe etc.) don't flash a CMD window when the app itself runs windowed.
