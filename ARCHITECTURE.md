@@ -136,7 +136,7 @@ The exe is moved into the bundle folder (not beside it) to restore the source-ch
 | Item | Requirement |
 |------|-------------|
 | `runtime/7z.exe` | Required. `build_frozen.py` verifies it exists before reporting success; without it extraction tools report no archiver. |
-| Lint / version scan | Excluded (`runtime` and `dist`). `ruff.toml` excludes them; [`tests/test_release_structure.py`](tests/test_release_structure.py) skips them in `NOT_SOURCE` because their files declare Python's and 7-Zip's versions — findings that are not this app's to fix. |
+| Lint / version scan | Excluded (`runtime` and `dist`). `ruff.toml` excludes them; they declare Python's and 7-Zip's versions — findings that are not this app's to fix. |
 | Interpreter path | The bundled `python313._pth` makes `sys.path` exactly what the file says. Any new entry point or tool meant to run under the bundled interpreter must insert its own folder into `sys.path`, or it dies with `ModuleNotFoundError` on a copy. |
 
 ---
@@ -256,7 +256,6 @@ Additional testing tooling installed in the bundled runtime:
 | [`tests/test_zero_skips.py`](tests/test_zero_skips.py) | AST scan of every test file; fails on any `unittest.skip`/`skipIf`/`skipUnless`/`expectedFailure`/`SkipTest`/`self.skipTest`. | Only exemption: `tests/test_frozen_build.py`'s `@unittest.skipUnless(HAS_PYINSTALLER)` |
 | [`tests/test_platform.py`](tests/test_platform.py) | Bans `xdg-open`, `xdg-mime`/`mimeapps.list`, `flatpak`, `/proc/meminfo`, `/home/`, `/root/`, `/usr/bin`, Linux browser package names from production code strings; scans test code too. | Legacy `.desktop` filenames the app deletes are exempt |
 | [`tests/test_dead_code.py`](tests/test_dead_code.py) | Asserts superseded names (`wait_for_cancel`, `CATEGORY_GENRES`, `ConfigurationError`, `ServiceError`, `_steam_link`, `STAGE_COST`, `_activity_wheel`) are gone; each entry documents what replaced it. | Each entry documents what replaced the removed name |
-| [`tests/test_release_structure.py`](tests/test_release_structure.py) | Removed — version enforcement no longer part of the project. |
 | [`tests/test_render_integrity.py`](tests/test_render_integrity.py) | Asks what a widget was told to paint rather than how big it is — catches panels that laid out correctly but rendered blank. | Widget-level rendering audit |
 | [`tests/test_contrast.py`](tests/test_contrast.py) | A `TestCase`, not a script — the audit cannot quietly stop running. | Reports WCAG contrast ratios for every colour pair the app paints |
 | [`tests/test_frozen_build.py`](tests/test_frozen_build.py) | Runs `build_frozen.main()` against a scratch tree; asserts exe lands inside bundle with `core/`, `services/`, `runtime/`, `runtime/7z.exe` present. | Because the app resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings |
@@ -270,3 +269,157 @@ A test that cannot run is worse than no test, because it is reported as present.
 Every regression is proved by reverting its fix and watching the test fail, then restoring and watching it pass. Record the failure count, not just that it failed.
 
 ---
+
+## 🔄 Data flow diagrams
+
+The app runs one scan → review → organize → done flow per run. These diagrams show how data moves between layers.
+
+### Scan → Review → Organize → Done
+
+```mermaid
+flowchart TD
+    A[scan_view.py] -->|discovers archives| B[review_view.py]
+    B -->|accept / skip / wrong match| C[organize_view.py]
+    C -->|convert zip/rar → 7z| D[done_view.py]
+    C -->|artwork download| E[artwork_view.py]
+    D -->|catalog HTML| F[Game Library.html]
+    B -->|steam lookup| G[services/steam_service.py]
+    G -->|Steam storesearch API| H[(Steam Web API)]
+    E -->|SteamGridDB API| I[(SteamGridDB)]
+    C -->|move archives| J[library folder / Archive/]
+```
+
+### Scan phase internals
+
+```mermaid
+flowchart TD
+    A[scan_view.py] --> B[services/library_service.py]
+    B --> C[audit existing library]
+    B --> D[scan library folder for archives]
+    C --> E[normalize archive names]
+    D --> E
+    E --> F[services/steam_service.py]
+    F --> G[Steam Store search / AppID match]
+    G --> H[archive_service.py: identity cache]
+    H --> I[review_view.py: show for accept/skip]
+```
+
+### Review → Organize flow
+
+```mermaid
+flowchart TD
+    A[review_view.py] -->|accept| B[organize_service.py]
+    A -->|skip| C[skip to Archive/]
+    A -->|wrong match| D[reset steam match]
+    B -->|category move| D2[library/<category>/<game>/]
+    B -->|convert zip/rar → 7z| E[services/extract_service.py]
+    E -->|write .sgo-extract-info| F[marker file beside archive]
+    B -->|download artwork| G[services/artwork_service.py]
+    G -->|primary/hero/logo/icon| H[assets/]
+    B -->|write catalog| I[services/catalog_service.py]
+    I -->|Game Library.html| J[library root]
+```
+
+---
+
+## 🔧 Error handling patterns
+
+Three mechanisms exist for surfacing problems; use the right one:
+
+| Mechanism | When to use | Where |
+|-----------|-------------|-------|
+| `tkinter.messagebox` | User must see it now (missing library folder, no free space, wrong match) | `ui/review_view.py`, `ui/organize_view.py`, `ui/setup_window.py` |
+| `core/logger.py` `AppLogger` | Background info that belongs in `logs/` (archive skipped, artwork failed, Steam lookup resolved) | All `services/` modules |
+| `raise CancellationError` | User cancelled the run; unwind the worker cleanly | `app/controller.py`, `app/jobs.py`, `services/*` |
+| `raise OrganizerError` | Unexpected but recoverable condition | `core/exceptions.py` |
+
+**Never** `except Exception: pass` without logging or showing something — a swallowed exception leaves the user with a silent half-done run. Log at `WARN` or show a `messagebox` so the user knows something didn't happen.
+
+---
+
+## 🖼️ Artwork download flow
+
+```mermaid
+flowchart TD
+    A[review_view.py] -->|accept game| B[services/artwork_service.py]
+    B -->|check cache keyed by appid| C{cache hit?}
+    C -->|yes| D[return cached assets]
+    C -->|no| E[SteamGridDB API: hero / grid / logo / icon]
+    E -->|download| F[cache under assets/<appid>/]
+    F -->|10-day TTL| G[stale entries deleted on re-init]
+    G -->|compose banner| I[services/banner_art.py]
+    I -->|fallback: generated name-keyed banner| J[no flat grey cards]
+    D -->|return| K[ui/artwork_view.py: display cards]
+```
+
+Artwork rules:
+- **Primary**: one hero image per game
+- **Additional**: grid, logo, icon, background variants
+- **Cache**: keyed by Steam AppID, 10-day TTL, stale entries deleted on re-init
+- **Fallback**: generated name-keyed banner so no card is ever a flat grey block
+
+---
+
+## 🎯 Review / accept / skip state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unreviewed
+    Unreviewed --> Accepted : accept() + category chosen
+    Unreviewed --> Skipped : skip()
+    Unreviewed --> WrongMatch : wrong_match()
+    WrongMatch --> Unreviewed : reset + re-search
+    Accepted --> Organized : organize() moves archive
+    Accepted --> Reverted : undo_last() rollback
+    Skipped --> Organized : archive moved to Archive/
+    Organized --> [*]
+    WrongMatch --> [*]
+```
+
+Decision rules:
+- **Accept**: requires `steam.found == True`; writes category + Steam identity to `controller.remember_category()`
+- **Skip**: moves archive to `Archive/` without Steam identity
+- **Wrong Match**: resets `steam = SteamMatch()`, `decision.accepted = False`, `decision.skipped = False`, `category = "Unsorted"`; user re-searches
+
+---
+
+## 📡 Event bus pattern (`app/events.py`)
+
+Progress and state changes are published on an event bus so the UI stays in sync without direct service-to-view coupling:
+
+```mermaid
+flowchart TD
+    A[services/*] -->|publish| B[app/events.py: Event bus]
+    B --> C[app/controller.py: dispatch to UI thread]
+    C --> D[ui/* views: refresh list, progress, summary]
+```
+
+Events carry: screen name, archive, steam match, artwork, stage, message. UI views subscribe via `on_progress` / `on_verified` callbacks passed from `review_view.py` / `organize_view.py` into `controller.verify_all()` / `controller.organize()`.
+
+---
+
+## 🛑 Cancellation pattern (`CancellationError`)
+
+Cancellation is cooperative, not forceful:
+
+1. **Job creation**: `app/jobs.py:JobContext` holds a `threading.Event()` cancel flag
+2. **Checkpoints**: long-running work calls `ctx.checkpoint()` which raises `CancellationError` if cancelled
+3. **Propagation**: `CancellationError` bubbles up through all worker layers (`services/*`, `app/controller.py`) without being swallowed
+4. **UI response**: cancel button sets state to `"stopping"`, worker exits on next checkpoint, `done()` callback runs with cancelled status
+
+Never `except CancellationError: pass` — it must propagate so the run stops cleanly.
+
+---
+
+## 🗄️ Identity & normalization rules
+
+| Rule | Behavior |
+|------|----------|
+| `identity_key` | Lowercase alphanumerics only — `"Ball x Pit Risen Ballbylon"` and `"ball.x.pit.risen.ballbylon"` match |
+| Release group stripping | `tenoke-`, `dodi-`, `fitgirl-`, etc. stripped from start AND end of filename |
+| Edition word stripping | `Ultimate Edition:`, `Director's Cut:`, `Game of the Year` stripped from start |
+| Subtitle stripping | `Game Name - Subtitle` → `Game Name` |
+| Leading article | `"The "`, `"A "`, `"An "` stripped for Steam search |
+| `"X, The" → "The X"` | Steam Store index order preserved |
+
+Identity keys are used to group multi-archive games (part1.zip + part2.zip → one `identity_key`) so accepting one accepts all.

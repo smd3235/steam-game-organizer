@@ -237,7 +237,7 @@ python tools\build_frozen.py
 | Item | Requirement |
 |------|-------------|
 | `runtime/7z.exe` | Required. `build_frozen.py` verifies it exists before reporting success. |
-| Lint / version scan | Excluded (`runtime` and `dist`). `ruff.toml` excludes them; `tests/test_release_structure.py` skips them in `NOT_SOURCE`. |
+| Lint / version scan | Excluded (`runtime` and `dist`). `ruff.toml` excludes them; they declare Python's and 7-Zip's versions — findings that are not this app's to fix. |
 | Interpreter path | The bundled `python313._pth` makes `sys.path` exactly what the file says. Any new entry point or tool meant to run under the bundled interpreter must insert its own folder into `sys.path`, or it dies with `ModuleNotFoundError`. |
 
 ---
