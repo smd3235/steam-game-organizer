@@ -1,7 +1,7 @@
 """The setup wizard: the three folders a fresh PC has to be told.
 
 The catalog's "Set up on this PC" button and the --setup command line both open
-this. A Toplevel rather than the Application's own window, for the same reason
+this. A CTkToplevel rather than the Application's own window, for the same reason
 the batch window is one: the protocol handler runs with no main window, and
 this is the only thing that has to appear.
 
@@ -15,17 +15,18 @@ anything is saved.
 
 from __future__ import annotations
 
+import customtkinter as ctk
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, ttk
+from tkinter import filedialog
 
 from core.constants import APP_NAME
 from core.uri_actions import SetupRequest
 from services.setup_service import SetupService
-from ui.theme import ACCENT_HI, BG, BORDER, ENTRY_BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, Theme
+from ui.custom_theme import ACCENT, ACCENT_HI, ACCENT_HOVER, BG, BORDER, ENTRY_BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, Theme, CTkFrame, CTkLabel, CTkEntry, CTkButton, CTkTextbox
 
 
-class SetupWindow(tk.Toplevel):
+class SetupWindow(ctk.CTkToplevel):
     """Sets the game library, the app folder and the extract folder, and saves them.
 
     service is injectable so a test can watch a save without touching settings
@@ -62,7 +63,7 @@ class SetupWindow(tk.Toplevel):
         self.extract_var = tk.StringVar(value=self.prefill.extract or str(config.extract_folder))
 
         self.title(f"Set up {APP_NAME} on this PC")
-        self.configure(bg=BG)
+        self.configure(fg_color=BG)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
         self.columnconfigure(0, weight=1)
@@ -84,27 +85,28 @@ class SetupWindow(tk.Toplevel):
     # ------------------------------------------------------------------ layout
 
     def _header(self):
-        head = tk.Frame(self, bg=PANEL)
+        head = CTkFrame(self, fg_color=PANEL, corner_radius=8)
         head.grid(row=0, column=0, sticky="ew", padx=18, pady=(16, 6))
         head.columnconfigure(0, weight=1)
 
         # Title and description
-        title_label = tk.Label(head, text=f"Set up {APP_NAME} on this PC", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w")
+        title_label = CTkLabel(head, text=f"Set up {APP_NAME} on this PC", fg_color=PANEL, text_color=TEXT,
+                               font=("TkDefaultFont", 17, "bold"), anchor="w")
         title_label.grid(row=0, column=0, sticky="w")
 
-        desc_label = tk.Label(head,
+        desc_label = CTkLabel(head,
             text="Three folders decide whether the catalog's Extract buttons work here. Set them "
                  "once; the choices are saved beside the app.",
-            bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left",
+            fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left",
             wraplength=620)
         desc_label.grid(row=1, column=0, sticky="w", pady=(4, 12))
 
         # Visual separator
-        separator = tk.Frame(head, bg=ACCENT_HI, height=1, relief="flat")
+        separator = tk.Frame(head, bg=ACCENT_HI, height=1)
         separator.grid(row=2, column=0, sticky="ew", pady=(4, 0))
 
     def _fields(self):
-        body = tk.Frame(self, bg=BG)
+        body = CTkFrame(self, fg_color=BG, corner_radius=0)
         body.grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 8))
         body.columnconfigure(0, weight=1)
 
@@ -116,34 +118,36 @@ class SetupWindow(tk.Toplevel):
 
         for index, (label, variable, hint) in enumerate(rows):
             # Field container for better visual grouping
-            field_container = tk.Frame(body, bg=BG)
+            field_container = CTkFrame(body, fg_color=BG, corner_radius=0)
             field_container.grid(row=index, column=0, sticky="ew", pady=(0, 8))
             field_container.columnconfigure(0, weight=1)
 
             # Label
-            label_widget = tk.Label(field_container, text=label, bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 10, "bold"), anchor="w")
+            label_widget = CTkLabel(field_container, text=label, fg_color=BG, text_color=ACCENT_HI,
+                                    font=("TkDefaultFont", 10, "bold"), anchor="w")
             label_widget.grid(row=0, column=0, sticky="w")
 
             # Input frame
-            input_frame = tk.Frame(field_container, bg=BG)
+            input_frame = CTkFrame(field_container, fg_color=BG, corner_radius=0)
             input_frame.grid(row=1, column=0, sticky="ew", pady=(2, 0))
             input_frame.columnconfigure(0, weight=1)
 
-            entry = tk.Entry(input_frame, textvariable=variable, bg=ENTRY_BG, fg=TEXT,
-                insertbackground=TEXT, font=("TkDefaultFont", 10), relief="flat",
-                highlightbackground=BORDER, highlightthickness=1, bd=0)
+            entry = CTkEntry(input_frame, textvariable=variable, fg_color=ENTRY_BG, text_color=TEXT,
+                font=("TkDefaultFont", 10), border_width=0, corner_radius=6)
             entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
 
-            browse_btn = ttk.Button(input_frame, text="Browse…", command=self._browse_for(variable))
+            browse_btn = CTkButton(input_frame, text="Browse…", command=self._browse_for(variable),
+                width=80, height=28)
             browse_btn.grid(row=0, column=1, sticky="e")
 
             # Hint text
-            hint_label = tk.Label(field_container, text=hint, bg=BG, fg=MUTED, font=("TkDefaultFont", 8), anchor="w", justify="left", wraplength=600)
+            hint_label = CTkLabel(field_container, text=hint, fg_color=BG, text_color=MUTED,
+                font=("TkDefaultFont", 8), anchor="w", justify="left", wraplength=600)
             hint_label.grid(row=2, column=0, sticky="w", pady=(2, 0))
 
             # Visual separator between fields (except after the last one)
             if index < len(rows) - 1:
-                separator = tk.Frame(body, bg=BORDER, height=1, relief="flat")
+                separator = tk.Frame(body, bg=BORDER, height=1)
                 separator.grid(row=index + 1, column=0, sticky="ew", pady=(0, 4))
 
     def _browse_for(self, variable):
@@ -156,50 +160,54 @@ class SetupWindow(tk.Toplevel):
 
     def _checks(self):
         # Container for the checks section with visual framing
-        check_container = tk.Frame(self, bg=PANEL2, highlightbackground=BORDER, highlightthickness=1)
+        check_container = CTkFrame(self, fg_color=PANEL2, corner_radius=8)
         check_container.grid(row=2, column=0, sticky="nsew", padx=18, pady=(0, 8))
         check_container.columnconfigure(0, weight=1)
         check_container.rowconfigure(1, weight=1)
 
         # Header
-        header_frame = tk.Frame(check_container, bg=PANEL2)
+        header_frame = CTkFrame(check_container, fg_color=PANEL2, corner_radius=0)
         header_frame.grid(row=0, column=0, sticky="ew", pady=(8, 8))
-        tk.Label(header_frame, text="Checks", bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
+        CTkLabel(header_frame, text="Checks", fg_color=BG, text_color=ACCENT_HI,
+                 font=("TkDefaultFont", 9, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
 
         # Report area
-        self.report = tk.Text(check_container, height=10, bg=ENTRY_BG, fg=TEXT, wrap="word",
-            font=("TkDefaultFont", 9), relief="flat", highlightthickness=1,
-            highlightbackground=BORDER, state="disabled")
+        self.report = CTkTextbox(check_container, height=10, fg_color=ENTRY_BG, text_color=TEXT,
+            font=("TkDefaultFont", 9), corner_radius=6, border_width=1, border_color=BORDER,
+            state="disabled")
         self.report.grid(row=1, column=0, sticky="nsew", padx=(8, 0), pady=(0, 8))
         # The three levels, each in its own colour so a problem is visible before
         # the message is read. The palette names the colours; nothing here invents one.
-        self.report.tag_configure("error", foreground=RED)
-        self.report.tag_configure("warn", foreground=ORANGE)
-        self.report.tag_configure("ok", foreground=GREEN)
+        self.report.tag_config("error", foreground=RED)
+        self.report.tag_config("warn", foreground=ORANGE)
+        self.report.tag_config("ok", foreground=GREEN)
 
     def _footer(self):
         # Container for the footer with better visual grouping
-        footer_container = tk.Frame(self, bg=BG)
+        footer_container = CTkFrame(self, fg_color=BG, corner_radius=0)
         footer_container.grid(row=3, column=0, sticky="ew", padx=18, pady=(18, 16))
         footer_container.columnconfigure(0, weight=1)
 
         # Separator
-        separator = tk.Frame(footer_container, bg=BORDER, height=1, relief="flat")
+        separator = tk.Frame(footer_container, bg=BORDER, height=1)
         separator.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
 
         # Status and button section
-        action_frame = tk.Frame(footer_container, bg=BG)
+        action_frame = CTkFrame(footer_container, fg_color=BG, corner_radius=0)
         action_frame.grid(row=1, column=0, sticky="ew")
         action_frame.columnconfigure(0, weight=1)
 
-        self.status = tk.Label(action_frame, text="", bg=BG, fg=MUTED, font=("TkDefaultFont", 9), anchor="w")
+        self.status = CTkLabel(action_frame, text="", fg_color=BG, text_color=MUTED,
+            font=("TkDefaultFont", 9), anchor="w")
         self.status.grid(row=0, column=0, sticky="w")
 
         # Button container for better grouping
-        button_frame = tk.Frame(action_frame, bg=BG)
+        button_frame = CTkFrame(action_frame, fg_color=BG, corner_radius=0)
         button_frame.grid(row=0, column=1, sticky="e")
 
-        ttk.Button(button_frame, text="Save setup", style="Primary.TButton", command=self.save).grid(row=0, column=0, sticky="e")
+        CTkButton(button_frame, text="Save setup", command=self.save,
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="white",
+            font=("TkDefaultFont", 9, "bold")).grid(row=0, column=0, sticky="e")
 
     # ------------------------------------------------------------------ behaviour
 
@@ -219,12 +227,12 @@ class SetupWindow(tk.Toplevel):
         saved, rows = self.service.apply(self.config, self.library_var.get(), self.app_var.get(), self.extract_var.get())
         errors = [message for level, message in rows if level == "error"]
         if errors:
-            self.status.configure(text="Not saved: " + errors[0], fg=RED)
+            self.status.configure(text="Not saved: " + errors[0], text_color=RED)
         elif saved:
-            self.status.configure(text="Saved. The catalog's Extract buttons now work from this PC.", fg=GREEN)
+            self.status.configure(text="Saved. The catalog's Extract buttons now work from this PC.", text_color=GREEN)
             self._show_launch_button()
         else:
-            self.status.configure(text="Not saved.", fg=RED)
+            self.status.configure(text="Not saved.", text_color=RED)
         # The registration row flips from "not registered" to the command that was
         # written, so the reader sees the button was not the only thing that changed.
         self.refresh_checks()
@@ -232,7 +240,9 @@ class SetupWindow(tk.Toplevel):
     def _show_launch_button(self):
         """Show a button to close the wizard and launch the main application."""
         if not hasattr(self, "_launch_btn"):
-            self._launch_btn = ttk.Button(self, text="Launch Steam Game Organizer", style="Primary.TButton", command=self._launch_app)
+            self._launch_btn = CTkButton(self, text="Launch Steam Game Organizer", command=self._launch_app,
+                fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="white",
+                font=("TkDefaultFont", 9, "bold"))
             self._launch_btn.grid(row=4, column=0, sticky="ew", padx=18, pady=(0, 16))
         else:
             self._launch_btn.grid()
