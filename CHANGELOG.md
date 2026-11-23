@@ -3,6 +3,25 @@
 >[!NOTE]
 > All entries are timestamped with the date and time they were added (YYYY-MM-DD HH:MM:SS). Releases are newest first; the current development section is **unreleased**. Every change between releases is logged below with a timestamp. When a release is cut, a new top-level section is created and these notes move under it.
 
+### Change type prefixes
+
+Each entry starts with a type prefix:
+
+| Prefix | Meaning |
+|--------|---------|
+| `feat:` | New feature or capability |
+| `fix:` | Bug fix |
+| `docs:` | Documentation only |
+| `build:` | Build system, frozen exe, runtime bundling |
+| `refactor:` | Code change that neither fixes a bug nor adds a feature |
+| `test:` | Adding or updating tests |
+| `chore:` | Build process, tooling, config changes that don't affect users |
+| `perf:` | Performance improvement |
+| `security:` | Security fix or scanning |
+
+---
+
+
 ## Unreleased
 
 ### 2026-11-23 19:00:00 — fix: Tkinter test isolation improved on Windows
@@ -11,8 +30,6 @@
 - `tests/test_pytest_mock_and_freezegun.py`: Rewrote log rotation test to use `time.sleep()` between file creations instead of `freezegun` (Windows filesystem mtime resolution made freezegun-based mtimes unreliable).
 - `tests/test_release_structure.py`: Added `.github` to `NOT_SOURCE` set so CI YAML's `python-version: "3.13"` is not picked up as a declared app version.
 - `tools/quality_gate.py`: Sets both `TCL_LIBRARY` and `TK_LIBRARY` env vars for the test subprocess. Excludes only `test_frozen_build.py` (slow), `test_real_workflow.py`, and `test_category_evidence_panel_tests.py` (Tkinter interpreter corruption on Windows when run in the same process as other GUI tests — these pass individually).
-
-### 2026-11-20 22:00:00 — fix: Continue to Organization count now matches what the user sees
 
 ### 2026-11-20 22:00:00 — fix: Continue to Organization count now matches what the user sees
 - `ui/review_view.py`: `continue_to_organize()` now dedupes games by `identity_key` so the count matches the list view (which deduplicates multi-part archives like part1.zip + part2.zip). Previously 3 archives sharing one `identity_key` were reported as "3 games pending" while the user only saw 1 entry in the list. The warning now names specific games, switches the list filter to "All" so hidden games become visible, and selects the first unfinished game.
