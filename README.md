@@ -3,9 +3,13 @@
 [![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](AGENTS.md)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/windows/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
 [![CI: GitHub Actions](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](.github/workflows/ci.yml)
+[![Security: bandit](https://img.shields.io/badge/security-bandit-red.svg)](.github/workflows/ci.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen.svg)](.github/dependabot.yml)
+[![CodeQL](https://img.shields.io/badge/codeql-enabled-blueviolet.svg)](.github/codeql.yml)
 
 > **Built for Windows.** One library, one catalog, one click to play.  
 > Scan `.zip`/`.rar`/`.7z` archives you downloaded from outside of Steam, match them to Steam's store metadata, convert to **7z** for better compression, organize into category folders, download artwork, and build a clickable HTML game catalog — all in one self-contained frozen exe. No Python, no 7-Zip, and no installation required on the machine that runs it.
