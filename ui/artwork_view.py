@@ -4,26 +4,24 @@ from .theme import ACCENT_HI, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, T
 from .widgets.artwork_panel import ArtworkPanel
 
 
+from services.organizer_service import OrganizerService
+
+
 def _asset_prefix_for(archive):
     """The filename prefix this game's artwork actually carries on disk.
 
-    Taken from OrganizerService._safe_name, which is what writes the files, rather than a second opinion
+    Taken from OrganizerService._asset_prefix, which is what writes the files, rather than a second opinion
     formed here. The screen used to collapse whitespace with ' '.join(name.split()), which agrees with the
     sanitiser on ordinary names and disagrees on every name holding a character the sanitiser removes - so
     'Settlements: Legacy' was listed as 'Settlements: Legacy_grid.jpg' while the file on disk was
     'Settlements Legacy_grid.jpg', and a name that is nothing but punctuation was listed as '???' against a
     file called 'Unnamed Game'. Four of twelve real Steam names were wrong.
     """
-    from services.organizer_service import OrganizerService
-
     # Delegated to OrganizerService._asset_prefix(), which is the function move() writes the filenames with,
     # rather than a copy of its body. A second copy of that expression is exactly how this screen came to name
     # files that do not exist: the prefix here had drifted from the prefix there. _asset_prefix() reads no
-    # instance state, so it is called on an instance built without __init__ - the same trick organize_view.py
-    # uses for _available_ram. Called on the class instead, the title lands in `self` and the call raises
-    # TypeError, which is not an error this screen reports: MainWindow's report_callback handler swallows it,
-    # so every accepted game would silently vanish from the page.
-    return OrganizerService._asset_prefix(OrganizerService.__new__(OrganizerService), archive)
+    # instance state, so it can be called on an unbound instance.
+    return OrganizerService._asset_prefix(archive)
 
 
 class ArtworkView(tk.Frame):

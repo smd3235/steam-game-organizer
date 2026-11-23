@@ -40,7 +40,6 @@ class MainWindow:
         self.run_unlock_zip = False
         self.run_archives = None
         root.title(APP_NAME)
-        root.geometry("1280x760")
         root.minsize(1100, 680)
         root.report_callback_exception = self._callback_error
         Theme(root)

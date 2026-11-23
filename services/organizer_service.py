@@ -96,7 +96,8 @@ class OrganizerService:
     def _game_name(self, archive):
         return game_name(archive)
 
-    def _asset_prefix(self, archive):
+    @staticmethod
+    def _asset_prefix(archive):
         return asset_prefix(archive)
 
     def _modified_at(self, path):

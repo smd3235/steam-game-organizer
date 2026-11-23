@@ -49,13 +49,15 @@ class SetupWindow(tk.Toplevel):
         self.library_var = tk.StringVar(value=self.prefill.library or str(config.library_root))
         # The app folder is where the app itself lives. In a frozen build, that's the folder containing the exe
         # (bundle root), not _internal. In source, it's the project root.
-        app_default = (
-            self.prefill.app or str(Path(sys.executable).resolve().parent)
-            if getattr(sys, "frozen", False) else
-            self.prefill.app or (
+        app_default = self.prefill.app or (
+            str(Path(sys.executable).resolve().parent)
+            if getattr(sys, "frozen", False)
+            else (
                 str(Path(__file__).resolve().parents[1])
                 if not self.prefill.library
-                else str(Path(self.prefill.library).expanduser().resolve())))
+                else str(Path(self.prefill.library).expanduser().resolve())
+            )
+        )
         self.app_var = tk.StringVar(value=app_default)
         self.extract_var = tk.StringVar(value=self.prefill.extract or str(config.extract_folder))
 

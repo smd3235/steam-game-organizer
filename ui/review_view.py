@@ -37,6 +37,8 @@ class ReviewView(tk.Frame):
         self.search_var = tk.StringVar()
         self.filter_var = tk.StringVar(value="All")
         self.mode_var = tk.StringVar(value="New Only")
+        # Column widths: left panel (games list) takes ~34%, right panel (details) takes ~66%.
+        # minsize keeps both panels usable at narrow window sizes.
         self.columnconfigure(0, weight=34, minsize=350)
         self.columnconfigure(1, weight=66)
         self.rowconfigure(2, weight=1)
@@ -67,11 +69,6 @@ class ReviewView(tk.Frame):
         f = ttk.Combobox(filter_frame, textvariable=self.filter_var, state="readonly", values=["All", "Needs Review", "Verified", "New Only", "Artwork"], width=14)
         f.pack(side="left", padx=(5, 0))
         f.bind("<<ComboboxSelected>>", lambda e: self._filters_changed())
-        # Mode group
-        mode_frame = tk.Frame(controls, bg=PANEL)
-        mode_frame.grid(row=0, column=2, sticky="w", padx=(0, 10))
-        self._radio(mode_frame, "ALL", "All").pack(side="left", padx=(0, 2))
-        self._radio(mode_frame, "NEW ONLY", "New Only").pack(side="left", padx=(2, 0))
         # Action group
         action_frame = tk.Frame(controls, bg=PANEL)
         action_frame.grid(row=0, column=3, sticky="e")
@@ -81,7 +78,8 @@ class ReviewView(tk.Frame):
         self.approve_all_button.pack(side="left", padx=(4, 0))
         self.retry_failed_button = ttk.Button(action_frame, text="Retry Failed", style="Secondary.TButton", command=self.retry_failed)
         self.retry_failed_button.pack(side="left", padx=(4, 0))
-        ttk.Button(action_frame, text="Extract Selected", style="Primary.TButton", command=self.extract_selected).pack(side="left", padx=(4, 0))
+        self.extract_button = ttk.Button(action_frame, text="Extract Selected", style="Primary.TButton", command=self.extract_selected)
+        self.extract_button.pack(side="left", padx=(4, 0))
         self.list = GameList(self, self.select)
         self.list.grid(row=2, column=0, sticky="nsew", padx=(0, 10))
         right = panel(self)
