@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    groups:
+      python-deps:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    allow:
+      - dependency-name: "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    version-update-strategy: "auto"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps"
+      include: "scope"

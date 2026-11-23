@@ -1,0 +1,28 @@
+# CODEOWNERS
+
+# Core application logic
+/core/ @smd3235
+/services/ @smd3235
+/app/ @smd3235
+/utils/ @smd3235
+
+# UI layer
+/ui/ @smd3235
+
+# Tests
+/tests/ @smd3235
+
+# Build & tooling
+/tools/ @smd3235
+*.spec @smd3235
+*.toml @smd3235
+*.yaml @smd3235
+*.yml @smd3235
+
+# Documentation
+AGENTS.md @smd3235
+ARCHITECTURE.md @smd3235
+project_overview.md @smd3235
+README.md @smd3235
+CHANGELOG.md @smd3235
+CONTRIBUTING.md @smd3235
