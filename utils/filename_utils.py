@@ -28,7 +28,7 @@ RELEASE_TAG = re.compile(
     r"[\s._\-]*[\(\[\{]?\s*(?:"
     r"steam[\s._\-]*rip|steam[\s._\-]*rg|repack(?:ed|ing)?|reloaded|drm[\s._\-]*free"
     r"|fit[\s._\-]*girl|dodi|tenoke|el[\s._\-]*amigos|razor\s*1911"
-    r")\s*[\)\]\}]?(?:\s+by\s+\S+)?(?:\s*\.\s*[a-z]{2,4}\b)?\s*.*$",
+    r")\s*[\)\]\}]?(?:\s+by\s+\S+)?(?:\s*\.\s*[a-z]{2,4}\b)?\s*$",
     re.I,
 )
 
@@ -86,6 +86,8 @@ def normalize_name(value: str) -> str:
     # which it used to do - "Some Game Multiplayer" became "Some Game player" and "Game Properly Done" became
     # "Game ly Done", because multi and proper were matched with no trailing boundary at all.
     value = RELEASE_TAG.sub("", value)
+    # Release group at START of filename: "TENOKE-Game Title" → "Game Title"
+    value = re.sub(r"^(?:fitgirl|tenoke|dodi|repack(?:ed|ing)?|reloaded|razor\s*1911|steam[\s._\-]*rip|steam[\s._\-]*rg|drm[\s._\-]*free|el[\s._\-]*amigos)[\s._\-]+", "", value, flags=re.I)
     # These four are ordinary English as well as tags, so they only count as a tag when they are the last word.
     # "multi", "proper", "portable", "iso" are release/packaging states, not title words.
     # Do not add genre words here - "incremental" is a real genre (idle/incremental games), and

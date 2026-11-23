@@ -466,6 +466,8 @@ class SteamService:
         stripped = re.sub(r"\s+(?:v?\d+(?:[.\-_ ]+\d+)+|v?\d{5,}|build\s*\d+)\s*$", "", title, flags=re.I)
         add(stripped)
         add(re.sub(r"(?:fitgirl|tenoke|dodi|repack|portable)$", "", title, flags=re.I))
+        # Release group at START of filename: "TENOKE-Game Title" → "Game Title"
+        add(re.sub(r"^(?:fitgirl|tenoke|dodi|repack(?:ed|ing)?|reloaded|razor\s*1911|steam[\s._\-]*rip|steam[\s._\-]*rg|drm[\s._\-]*free|el[\s._\-]*amigos)[\s._\-]+", "", title, flags=re.I))
         # Crack-by credits: "CRACKED BY GROUP", "CRACK: GROUP", "CRACKED-BY GROUP", bare "CRACKED".
         add(re.sub(r"\s*(?:cracked?[-.\s]*(?:by|:|-)|crack:)\s+\S.*$|\s+cracked?\s*$", "", title, flags=re.I))
         add(re.sub(r"\d+[a-z]\d*[a-z]*$", "", title, flags=re.I))
