@@ -153,7 +153,7 @@ class ExtractResultWindow(tk.Toplevel):
 
         self.title("Extraction complete")
         self.configure(bg=BG)
-        self.resizable(False, False)
+        self.resizable(True, True)
         self.grab_set()
 
         outer = tk.Frame(self, bg=BG)
