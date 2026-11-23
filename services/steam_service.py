@@ -510,6 +510,22 @@ class SteamService:
         the_reorder = re.match(r"^(?P<rest>.+?),\s*the\s*$", stripped, flags=re.I)
         if the_reorder:
             add("The " + the_reorder.group("rest").strip())
+        # "The X" -> "X, The": Steam Store search sometimes misses leading "The " titles; try both orders.
+        the_prefix = re.match(r"^the\s+(.+)$", stripped, flags=re.I)
+        if the_prefix:
+            add(the_prefix.group(1).strip() + ", The")
+        # Leading article stripping: Steam often indexes under the title without "The " / "A " / "An " prefix.
+        leading_article = re.sub(r"^(?:the|a|an)\s+", "", stripped, flags=re.I).strip()
+        if leading_article and leading_article != stripped:
+            add(leading_article)
+        # Leading edition/marketing words: "Ultimate Edition: Game Name" → "Game Name".
+        edition_stripped_front = re.sub(r"^(?:ultimate|definitive|complete|enhanced|remastered|director'?s cut|game of the year|goty|deluxe|anniversary|collector'?s|gold|platinum)\s*(?:edition)?\s*[:\-]?\s*", "", stripped, flags=re.I).strip()
+        if edition_stripped_front and edition_stripped_front != stripped:
+            add(edition_stripped_front)
+        # Subtitle stripping: "Game Name - Subtitle" → "Game Name". Steam often can't see past the subtitle.
+        subtitle_stripped = re.sub(r"\s*[:\-|]\s*.+$", "", stripped).strip()
+        if subtitle_stripped and subtitle_stripped != stripped:
+            add(subtitle_stripped)
         # Try Steam autocomplete API for better suggestions
         autocomplete_variants = self._autocomplete_suggestions(query, ctx)
         for v in autocomplete_variants:
