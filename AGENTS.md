@@ -58,13 +58,18 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 | **Comment on every change** | Every changed file must include a comment explaining what changed and why. |
 | **Push to GitHub on every change** | After commit + local verification, push so the public repo reflects the current state. Never leave work committed locally only. |
 | **Changelog with every change** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
-| **Frozen exe required** | If you change any source code, rebuild with `python tools\build_frozen.py` before considering complete. |
+| **Frozen exe required** | **If you change ANY source code, you MUST rebuild with `python tools\build_frozen.py` before considering the task complete.** The user runs ONLY the frozen exe in `dist/steam_game_organizer/`, never from source. Source changes without a rebuilt exe do not reach the user. |
 | **Never edit build artifacts** | `dist/`, `build/`, `runtime/` are read-only outputs. Treat them as vendored, never modify. |
 | **Tests must not pollute repo state** | Use `tests/tk_support.py:sandbox_app` for tests that create `AppConfig`/windows/writes. Never write to real `config/`, `cache/`, or `logs/`. |
 | **Atomic writes** | Follow temp-file + `os.replace` with retries for config/state files. |
 | **No screenshots left behind** | Delete any `*.png` screenshots created during checks. None in repo root when finished. |
 | **Scratch files stay in the project** | Never create temp files in `C:\Users\<user>\AppData\Local\Temp\kilo\` — or in any other folder outside this repository. Put throwaway scripts, generated HTML, captured images and redirects under `temp\` at the project root (gitignored), and delete them when finished. The only exception is `docs/screenshots/`, which is the committed README gallery. |
 | **Docs stay accurate** | If a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change. |
+
+---
+
+> [!IMPORTANT]
+> **Frozen exe required — MANDATORY.** If you change ANY source code, you MUST rebuild with `python tools\build_frozen.py` before considering the task complete. The user runs ONLY the frozen exe in `dist/steam_game_organizer/`, never from source. Source changes without a rebuilt exe do not reach the user. Source changes without a rebuilt exe do not reach the user.
 
 ---
 
