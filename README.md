@@ -49,6 +49,9 @@ No behavior change — documentation only.
 | Bundled runtime (`runtime/`) | [📦 Bundled runtime components (`runtime/`)](#-bundled-runtime-components-runtime-) |
 | Quick links to key code | [🔗 Quick links to key code sections](#-quick-links-to-key-code-sections) |
 | Contributor documentation | [📚 Contributor documentation](#-contributor-documentation) |
+| &nbsp;&nbsp;&nbsp;&nbsp;└─ GitHub CI | [📊 GitHub CI](#github-ci) |
+| &nbsp;&nbsp;&nbsp;&nbsp;└─ Quality tools | [🛠️ Quality tools](#quality-tools-installed-in-the-bundled-runtime) |
+| &nbsp;&nbsp;&nbsp;&nbsp;└─ Pushing changes | [🚀 Pushing changes](#pushing-changes-to-github) |
 
 ---
 
