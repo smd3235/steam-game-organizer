@@ -408,7 +408,54 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 - [ ] No `*.png` screenshots left in repo root; no writes to real `config/`, `cache/`, or `logs/` (use `tests/tk_support.py:sandbox_app` in tests).
 - [ ] Committed and pushed to GitHub so the public repository reflects the change.
 
-**Quick verification after any change:** `ruff check .` passes, `runtime\python.exe -m unittest discover -q` reports `OK`, each doc still describes what the code actually does, and `CHANGELOG.md` has a new dated entry for the change.
+**Quick verification after any change:** `ruff check .` passes, `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs), each doc still describes what the code actually does, and `CHANGELOG.md` has a new dated entry for the change.
+
+---
+
+## 📝 Operational notes
+
+These are details that trip up new contributors. Read them before your first change.
+
+### Tkinter tests excluded from the quality gate
+
+Several GUI tests (`test_lifecycle.py`, `test_artwork_render.py`, `test_displayed_data.py`, `test_category_evidence_panel_tests.py`, `test_review_context_panels.py`, `test_render_integrity.py`, `test_real_workflow.py`, `test_artwork_arriving_as_assets_is_still_artwork.py`, `test_ui_geometry.py`, `test_worker_updates_reach_the_ui_thread.py`) are **intentionally excluded** from the quality gate's pytest step (`--ignore=...` in `tools\quality_gate.py` and the CI workflow).
+
+**Reason:** On Windows, creating and destroying `tk.Tk()` windows repeatedly in the same process corrupts the Tcl interpreter ("couldn't read init.tcl"). These tests pass when run individually but crash when run together in the suite. Do **not** remove them from the ignore list — instead, run them individually if you need to verify them:
+
+```powershell
+runtime\python.exe -m pytest tests/test_lifecycle.py -v
+```
+
+### Pre-commit hooks
+
+`.pre-commit-config.yaml` is configured with hooks for **ruff**, **mypy**, **bandit**, **pytest**, and **OCR tests**. Install them once:
+
+```powershell
+runtime\Scripts\pre-commit install
+```
+
+After that, every `git commit` runs the hooks automatically. If a hook fails, the commit is rejected.
+
+### OCR testing
+
+`tools\ocr_test.py` captures every application screen via `capture_screens.py`, runs Tesseract OCR with multiple PSM modes on each image, and verifies expected UI text is present. It also detects Python error dialogs / traceback windows via `pywinauto` UI Automation and analyzes UI layout via `OpenCV`. It's part of the quality gate — if OCR finds missing button text or a Python error window, the gate fails.
+
+### Comment examples
+
+**Good** (explains *why*, not *what*):
+
+```python
+# 2026-11-20: Removed '.*$' from RELEASE_TAG — it ate everything after the tag name,
+# so 'tenoke-ball.x.pit.risen.ballbylon' lost its game title and returned empty.
+value = RELEASE_TAG.sub("", value)
+```
+
+**Bad** (just restates the code):
+
+```python
+# Add 1 to i
+i = i + 1
+```
 
 ---
 
