@@ -280,14 +280,12 @@ class BatchExtractWindow(tk.Toplevel):
         return (item.name, size, word, detail)
 
     def _render_all(self):
-        self.list.configure(state="normal")
         self.list.delete(*self.list.get_children())
         for item in self.plan.items:
             # The item id is remembered so the row can be rewritten in place. Deleting and reinserting would
             # shift every row below it, so the list would jump under the reader on every progress event.
             iid = self.list.insert("", "end", values=self._row_text(item), tags=(item.state, "detail"))
             self.rows[id(item)] = iid
-        self.list.configure(state="disabled")
         pin_bottom(self.list)
 
     def _update_row(self, item):
