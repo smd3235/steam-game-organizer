@@ -1,6 +1,6 @@
 # Steam Game Organizer — AGENTS.md
 
-[![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
+[![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
@@ -42,7 +42,7 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 | **ARCHITECTURE.md** | Module map and service inventory: what each module does and how they wire together | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | **project_overview.md** | What the app does, data flow, key decisions, catalog page mechanics | [`project_overview.md`](project_overview.md) |
 | **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
-| **CHANGELOG.md** | Dated change log under `## 9.33` (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
+| **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
 **Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate).
 
@@ -57,7 +57,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 | **Windows only** | No POSIX-specific code paths. Refuse or raise rather than keep a second implementation. |
 | **Comment on every change** | Every changed file must include a comment explaining what changed and why. |
 | **Push to GitHub on every change** | After commit + local verification, push so the public repo reflects the current state. Never leave work committed locally only. |
-| **Changelog with every change** | Add a dated entry to the top of `## 9.33` in `CHANGELOG.md` at the same time as the code change. Never defer. |
+| **Changelog with every change** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
 | **Frozen exe required** | If you change any source code, rebuild with `python tools\build_frozen.py` before considering complete. |
 | **Never edit build artifacts** | `dist/`, `build/`, `runtime/` are read-only outputs. Treat them as vendored, never modify. |
 | **Tests must not pollute repo state** | Use `tests/tk_support.py:sandbox_app` for tests that create `AppConfig`/windows/writes. Never write to real `config/`, `cache/`, or `logs/`. |
@@ -182,7 +182,7 @@ Work through this checklist in order:
 | Step | Action | Details |
 |------|--------|---------|
 | 1 | **Comment** | Add a comment explaining the change in every modified file. See [🏷️ Comment Style](#-comment-style). |
-| 2 | **Changelog** | Add a dated entry under `## 9.33` (newest first). |
+| 2 | **Changelog** | Add a dated entry under `CHANGELOG.md` (newest first). |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
 | 4 | **Lint** | `ruff check .` — must pass. See [🧹 Lint](#-lint). |
 | 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
@@ -336,7 +336,7 @@ This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer
 |------|---------------|
 | **Branch before you change** | Create a branch from `main` for each body of work (`git checkout -b <name>`). Never commit directly to `main` unless it is a trivial docs-only fix. |
 | **Commit messages** | Use conventional style: `type(scope): short summary`. Types: `feat`, `fix`, `docs`, `build`, `refactor`, `test`, `chore`. Example: `build: rebuild frozen exe after archive cache changes`. |
-| **Changelog with every commit** | Add a dated entry to the top of `## 9.33` in `CHANGELOG.md` at the same time as the code change. Never defer. |
+| **Changelog with every commit** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
 | **Push regularly** | `git push origin <branch>` so your work is backed up on GitHub. Do not force-push `main`. |
 | **Pull requests** | Open a PR from your branch to `main`. Tests must pass (`OK`, no skips) and lint must be clean (`ruff check .`) before merging. |
 | **Do not commit build artifacts** | `runtime/`, `dist/`, `build/`, `cache/`, `logs/`, `config/`, `backup/` are excluded by `.gitignore`. Never add them. |
@@ -358,13 +358,13 @@ These four files are the project's map of itself. If a reader acts on them, they
 > **Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later.
 
 > [!IMPORTANT]
-> **MANDATORY — add a changelog note for every change.** `CHANGELOG.md` is the project's record of what changed and when. Every change to code, config, tools, or docs gets a dated entry under the current development version (right now `## 9.33`), formatted as:
+> **MANDATORY — add a changelog note for every change.** `CHANGELOG.md` is the project's record of what changed and when. Every change to code, config, tools, or docs gets a dated entry under `CHANGELOG.md`, formatted as:
 
 ```markdown
 ### YYYY-MM-DD — one-line summary of the change
 ```
 
-A bullet list may follow, naming the files touched and the behavior before/after. Add entries to the **top** of the `## 9.33` section in chronological order (newest first). The version number only moves when a release is cut; until then everything lands under the unreleased section. If you changed it, it goes in the changelog.
+A bullet list may follow, naming the files touched and the behavior before/after. Add entries to the **top** of `CHANGELOG.md` in chronological order (newest first). The version number only moves when a release is cut; until then everything lands under the unreleased section. If you changed it, it goes in the changelog.
 
 ---
 
@@ -373,7 +373,7 @@ A bullet list may follow, naming the files touched and the behavior before/after
 Before considering any task complete, verify every rule in [**Rules at a Glance**](#-rules-at-a-glance) plus:
 
 - [ ] All source files changed have a comment explaining what changed and why.
-- [ ] `CHANGELOG.md` has a new dated entry under `## 9.33` (newest first).
+- [ ] `CHANGELOG.md` has a new dated entry under `CHANGELOG.md` (newest first).
 - [ ] `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` updated if behavior, architecture, commands, test counts, or frozen build layout changed.
 - [ ] `ruff check .` passes.
 - [ ] `runtime\python.exe -m pytest tests/ -q -p no:xdist` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs).

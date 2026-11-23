@@ -1,9 +1,9 @@
 ﻿# Changelog
 
 >[!NOTE]
-> All entries are timestamped with the date and time they were added (YYYY-MM-DD HH:MM:SS). Releases are newest first; the current development version is **9.33**. The app version stays at 9.33 until a release is cut; every change between releases is logged below with a timestamp. When the version is bumped, a new top-level section is created and these notes move under it.
+> All entries are timestamped with the date and time they were added (YYYY-MM-DD HH:MM:SS). Releases are newest first; the current development section is **unreleased**. Every change between releases is logged below with a timestamp. When a release is cut, a new top-level section is created and these notes move under it.
 
-## 9.33
+## Unreleased
 
 ### 2026-11-23 19:00:00 — fix: Tkinter test isolation improved on Windows
 - `tests/conftest.py`: New autouse pytest fixture `_tk_cleanup` cancels all pending Tk `after` callbacks and resets `tk._default_root` before and after each test, eliminating cross-test Tkinter state leaks. Roots are not destroyed between tests — on Windows, destroying and recreating `tk.Tk()` corrupts the Tcl interpreter ("couldn't read init.tcl"), so each test's `tk.Tk()` runs on the same persistent interpreter.
@@ -1428,7 +1428,7 @@ Windows primary platform; three things that quietly only worked on Linux now wor
 
 
 > [!NOTE]
-> **Note on versioning:** The app version stays at 9.33 until a release is cut. Every change made between releases is logged here under "9.33 — development (unreleased)" with a timestamp. When the version is bumped, a new top-level section is created and the unreleased notes move under it. This keeps one chronological record of every change, so nothing is overlooked.
+> All changes are logged here with a timestamp. This keeps one chronological record of every change, so nothing is overlooked.
 
 
 

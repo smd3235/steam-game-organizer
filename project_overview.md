@@ -1,6 +1,6 @@
-# project_overview.md — v9.33
+# project_overview.md — Steam Game Organizer
 
-[![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
+[![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
@@ -35,7 +35,7 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 | **ARCHITECTURE.md** | Module map and service inventory: what each module does and how they wire together | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | **project_overview.md** | What the app does, data flow, key decisions, catalog page mechanics | [`project_overview.md`](project_overview.md) |
 | **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
-| **CHANGELOG.md** | Dated change log under `## 9.33` (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
+| **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
 **Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) in [`AGENTS.md`](AGENTS.md).
 

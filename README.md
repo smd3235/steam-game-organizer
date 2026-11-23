@@ -1,6 +1,6 @@
 # Steam Game Organizer
 
-[![Version 9.33](https://img.shields.io/badge/version-9.33-blue.svg)](CHANGELOG.md)
+[![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](AGENTS.md)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/windows/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -15,7 +15,7 @@
 > Scan `.zip`/`.rar`/`.7z` archives you downloaded from outside of Steam, match them to Steam's store metadata, convert to **7z** for better compression, organize into category folders, download artwork, and build a clickable HTML game catalog — all in one self-contained frozen exe. No Python, no 7-Zip, and no installation required on the machine that runs it.
 
 <!--
-README.md overhaul — v9.33, 2026-11-12.
+README.md overhaul — Steam Game Organizer, 2026-11-12.
 Rewrote every user-facing section for depth and scanability:
 - "Running on your own machine" is now a numbered, end-to-end procedure (was 6 short lines).
 - Install & run, setup wizard, protocol handler, and CLI flags each got full step-by-step tables and copy-pasteable examples.
@@ -270,7 +270,7 @@ Use this if you just want to run the app on your PC or on a friend's PC. No Pyth
    Releases are listed newest first. Open the top release (the one at the top of the page).
 
 3. **Download the zip asset.**  
-   Under "Assets" on the release page, download the file named `steam-game-organizer-<version>.zip` — for example `steam-game-organizer-9.33.zip`. Save it somewhere easy to find, such as your Downloads folder.
+   Under "Assets" on the release page, download the file named `steam-game-organizer-<version>.zip`. Save it somewhere easy to find, such as your Downloads folder.
 
 4. **Extract the zip.**  
    Right-click the downloaded zip and choose **Extract All**, or open it in 7-Zip and extract it. Extract it to wherever you want the app to live — for example `E:\Games\Steam Game Organizer\`.  
@@ -717,9 +717,9 @@ steam-game-organizer/
 ├── AGENTS.md              # Operating instructions: build, test, lint, run
 ├── ARCHITECTURE.md        # Module map and service inventory
 ├── project_overview.md    # App purpose, data flow, key decisions
-├── CHANGELOG.md           # Dated change log, v9.33 development section
+├── CHANGELOG.md           # Dated change log
 ├── README.md              # This file
-├── VERSION.txt            # 9.33
+├── VERSION.txt            # Version (see CHANGELOG.md)
 ├── steam_game_organizer.py# Entry point (CLI + GUI launcher)
 ├── steam_game_organizer.spec  # PyInstaller spec
 ├── ruff.toml              # Lint contract
@@ -800,7 +800,7 @@ This project is ready to be made public. Here's what's ready:
 
 - **Code quality**: 98 Python source files across 8 directories, clean lint (`ruff check .` passes), comprehensive test suite (739 tests, 0 functional failures). The only collection-time errors are 4 pre-existing `test_regressions.py` indentation bugs unrelated to this codebase's behavior. Every test module is a `TestCase` (not a script with a `main()`), so discovery actually runs its tests — `tests/test_contrast.py` was once a script that discovery ran zero tests from, and that class of bug is now guarded against by `tests/test_zero_skips.py` (AST scan, not grep, so comments and docstrings naming skip constructs don't trigger it).
 - **Build pipeline**: Frozen exe builds successfully with PyInstaller via [`tools/build_frozen.py`](tools/build_frozen.py) — an onedir build (`console=False`, `exclude_binaries=True`). The lift step moves `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, `runtime/` out of `_internal/` into the bundle root because `steam_game_organizer.py` resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings; leaving them in `_internal/` puts `runtime/7z.exe` one folder out of reach and every extraction reports no archiver. Before wiping the old bundle it backs up `config/`, `cache/`, `logs/` into a temp dir and restores them after. It retries `rmtree` up to 5 times (Windows Defender or an indexer can hold a DLL open) and verifies `runtime/7z.exe` exists before reporting success. PyInstaller is installed in the bundled runtime so the frozen-build layout check runs. `dist/` and `build/` are build artefacts excluded by `.gitignore`; a fresh build writes an `EXE-00.toc` whose XML declaration reads `<?xml version="1.0"` which the release-structure version scanner reports as a declared version, so [`tests/test_release_structure.py`](tests/test_release_structure.py) excludes both directories from its walk.
-- **Documentation**: Comprehensive README (this file, user-facing), AGENTS.md operating instructions (build/test/lint/run/commit-after-build checklist), ARCHITECTURE.md module map and service inventory (all 35 modules with safety invariants and wiring diagrams), project_overview.md data flow and key decisions (do-not-re-litigate section), CHANGELOG.md with detailed YYYY-MM-DD HH:MM:SS timestamps under the v9.33 development section.
+- **Documentation**: Comprehensive README (this file, user-facing), AGENTS.md operating instructions (build/test/lint/run/commit-after-build checklist), ARCHITECTURE.md module map and service inventory (all 35 modules with safety invariants and wiring diagrams), project_overview.md data flow and key decisions (do-not-re-litigate section), CHANGELOG.md with detailed YYYY-MM-DD HH:MM:SS timestamps.
 - **Security & privacy**: No hardcoded Steam game data in production code — Steam Store API is queried at runtime only, test fixtures are fictional data isolated to `--mock` mode and never shipped to users. URI validation and path safety checks in [`core/uri_actions.py`](core/uri_actions.py): every field treated as hostile input, source must resolve inside the configured library root, must exist with an archive extension, destination must not sit inside a system folder or the library itself. Protocol handler registered under `HKCU` (per-user, no elevation). Path safety uses `.resolve()` and validates against allowed roots (library root, app root), rejects traversal. Atomic writes follow temp-file + `os.replace` with retries for config/state files.
 
 ### Test data privacy
@@ -853,7 +853,7 @@ Add a license here if you want others to reuse or modify the code. Without one, 
 |------|------|--------------|
 | **Entry point** | [`steam_game_organizer.py`](steam_game_organizer.py) | CLI + GUI launcher. Parses command-line flags (`--setup`, `--uri`, `--version`, `--diagnostics`, `--health`, `--mock`), starts the Tkinter application when no CLI flag is given, and serves as the `steamgameorganizer://` URI handler target. Owns the app project root resolution via `Path(__file__).resolve().parent`. |
 | **Config** | [`core/config.py`](core/config.py) | `AppConfig` dataclass — reads/writes `config/settings.json` atomically (temp-file + `os.replace` with retry on `PermissionError` for OneDrive locks). Derives every path it writes from its project root (library root, extract folders, config/cache/logs/backup roots). Performs drive-letter resolution when the stored library path doesn't exist on the current machine. Detects first-launch (missing `settings.json` or nonexistent library root) to open the setup wizard. |
-| **Constants** | [`core/constants.py`](core/constants.py) | Version (`VERSION = "9.33"`), `USER_AGENT`, archive extensions (`.zip`/`.rar`/`.7z`), category list, compression thresholds (`ARCHIVE_APPID_MIN_SCORE`, `MEMORY_HEADROOM` for adaptive 7z compression), artwork cache TTL (10 days), batch size limits, UI palette and theme constants. |
+| **Constants** | [`core/constants.py`](core/constants.py) | Version (`VERSION`), `USER_AGENT`, archive extensions (`.zip`/`.rar`/`.7z`), category list, compression thresholds (`ARCHIVE_APPID_MIN_SCORE`, `MEMORY_HEADROOM` for adaptive 7z compression), artwork cache TTL (10 days), batch size limits, UI palette and theme constants. |
 | **Models** | [`core/models.py`](core/models.py) | Plain-data containers: `GameArchive` (archive path, identity_key, appid, name, category, release_date, metadata), `SteamMatch` (appid, name, score, found flag), `ScanResult` (moved/failed/skipped counts, per-file decisions), `CatalogSummary` (index for categories, genres, developers, archive sizes). |
 | **URI actions** | [`core/uri_actions.py`](core/uri_actions.py) | Owns `SCHEME` (`steamgameorganizer://`) and `SYSTEM_PATHS` (folders a typed destination may not sit inside). Parses all actions: `extract`, `extract-all`, `extract-multi`, `setup`, `open-extracted`, `play`, `pick-launcher`, `mark-installed`, `refresh-catalog`, `open-folder`. Validates every field as hostile input — source must resolve inside the configured library root, must exist with an archive extension, destination must not sit inside a system folder or the library itself. |
 | **Logger** | [`core/logger.py`](core/logger.py) | `AppLogger` — timestamped, component-tagged logging. Creates one timestamped log file per launch under `logs/` (`organizer-<VERSION>-<YYYYMMDD>-<HHMMSS>.log`), rotates by size (`MAX_BYTES` = 5 MB keeping `.1` and `.2` rolled files), keeps last 10 rotated logs, thread-locked writes, failed writes swallowed so logging never kills the run. `set_level` threshold and optional console output for CLI mode. `install_excepthook()` routes uncaught exceptions through the logger instead of a default traceback. |
@@ -898,7 +898,7 @@ If you plan to modify code, read [`AGENTS.md`](AGENTS.md) first — it is the op
 | **AGENTS.md** | Build, test, lint, run, commit, push — Windows only | [`AGENTS.md`](AGENTS.md) |
 | **ARCHITECTURE.md** | Module map, service inventory, wiring diagrams | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | **project_overview.md** | What the app does, data flow, key decisions, catalog mechanics | [`project_overview.md`](project_overview.md) |
-| **CHANGELOG.md** | Dated change log under `## 9.33` | [`CHANGELOG.md`](CHANGELOG.md) |
+| **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 | **CONTRIBUTING.md** | Contributing guide, change workflow, commit message conventions | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
 ### GitHub CI

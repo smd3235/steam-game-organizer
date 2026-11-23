@@ -38,7 +38,7 @@ Every change must follow this checklist **in order**:
 | Step | Action | Details |
 |------|--------|---------|
 | 1 | **Comment** | Add a comment explaining the change in every modified file |
-| 2 | **Changelog** | Add a dated entry under `## 9.33` (newest first) |
+| 2 | **Changelog** | Add a dated entry to `CHANGELOG.md` (newest first) |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed |
 | 4 | **Lint** | `ruff check .` — must pass |
 | 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` |
@@ -52,7 +52,7 @@ Every change must follow this checklist **in order**:
 | **Windows only** | No POSIX-specific code paths. Refuse or raise rather than keep a second implementation. |
 | **Comment on every change** | Every changed file must include a comment explaining what changed and why. |
 | **Push to GitHub on every change** | After commit + local verification, push so the public repo reflects the current state. Never leave work committed locally only. |
-| **Changelog with every change** | Add a dated entry to the top of `## 9.33` in `CHANGELOG.md` at the same time as the code change. Never defer. |
+| **Changelog with every change** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
 | **Frozen exe required** | If you change any source code, rebuild with `python tools\build_frozen.py` before considering complete. |
 | **Never edit build artifacts** | `dist/`, `build/`, `runtime/` are read-only outputs. Treat them as vendored, never modify. |
 | **Tests must not pollute repo state** | Use `tests/tk_support.py:sandbox_app` for tests that create `AppConfig`/windows/writes. Never write to real `config/`, `cache/`, or `logs/`. |
@@ -91,7 +91,7 @@ Example: `build: rebuild frozen exe after archive cache changes`
 
 - Open a PR from your branch to `main`
 - Tests must pass (`OK`, no new skips) and lint must be clean (`ruff check .`) before merging
-- Update `CHANGELOG.md` with a dated entry under `## 9.33` before merging
+- Update `CHANGELOG.md` with a dated entry before merging
 - Do not commit build artifacts (`runtime/`, `dist/`, `build/`, `cache/`, `logs/`, `config/`, `backup/`)
 
 ## Project Docs
@@ -102,6 +102,6 @@ Example: `build: rebuild frozen exe after archive cache changes`
 | `ARCHITECTURE.md` | Module map and service inventory: what each module does and how they wire together |
 | `project_overview.md` | What the app does, its data flow, key decisions, and the catalog page mechanics |
 | `README.md` | User-facing install, run, workflow, other-PC, and development-check instructions |
-| `CHANGELOG.md` | Dated change log under `## 9.33` (newest first) |
+| `CHANGELOG.md` | Dated change log (newest first) |
 
 When a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later.
