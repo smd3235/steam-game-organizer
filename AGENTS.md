@@ -73,6 +73,17 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 
 ---
 
+> [!IMPORTANT]
+> **Push the full project to GitHub — MANDATORY.** After ANY change (source, docs, tools, changelog), you MUST:
+> 1. **Update ALL affected markdown docs** (`AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, `README.md`, `CHANGELOG.md`) BEFORE pushing. Docs that describe behavior must match the code — if behavior changed, docs changed too, in the same commit.
+> 2. **`git add -A`** the entire project — source, docs, changelog, everything. Never push only selected files.
+> 3. **Commit** with a descriptive conventional message.
+> 4. **`git push origin main`** so GitHub always reflects the current state.
+> 
+> Never leave work committed locally only. Never push source changes without updated docs. Never push docs without source changes. The public repository must always match what runs on your machine.
+
+---
+
 ## 🛠️ Prerequisites & Setup
 
 ### What you need
@@ -193,7 +204,7 @@ Work through this checklist in order:
 | 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
 | 6 | **Quality Gate** | `runtime\python.exe tools\quality_gate.py` — runs ruff, bandit, pip-audit, vulture, mypy, pytest, and OCR tests. |
 | 7 | **Build** | `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists. See [🏗️ Build](#-build--frozen-exe-pipeline). |
-| 7 | **Commit + push** | `git add` the changed source, docs, and changelog; commit with a descriptive message; push to GitHub. See [🔀 Git / GitHub Workflow](#-git--github-workflow). |
+| 7 | **Commit + push** | `git add -A` the changed source, docs, and changelog; commit with a descriptive conventional message; push to GitHub. **Update all affected markdown docs BEFORE pushing.** See [🔀 Git / GitHub Workflow](#-git--github-workflow). |
 
 ---
 
@@ -336,6 +347,17 @@ This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer
 
 > [!IMPORTANT]
 > **Update GitHub on every change.** After any file is changed, committed locally, and verified, push to GitHub so the public repository always reflects the current state. Never leave work committed locally only.
+
+---
+
+> [!IMPORTANT]
+> **Push the full project — never selected files.** Before you push:
+> 1. **Update ALL affected markdown docs** (`AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, `README.md`, `CHANGELOG.md`) **BEFORE pushing**. If behavior changed, docs changed too — in the same commit.
+> 2. **`git add -A`** the entire project — source, docs, changelog, everything. Never push only selected files.
+> 3. **Commit** with a descriptive conventional message.
+> 4. **`git push origin main`** so GitHub always reflects the current state.
+> 
+> Never leave work committed locally only. Never push source changes without updated docs. Never push docs without source changes. The public repository must always match what runs on your machine.
 
 | Rule | What it means |
 |------|---------------|
