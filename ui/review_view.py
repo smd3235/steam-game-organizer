@@ -129,9 +129,7 @@ class ReviewView(tk.Frame):
         hero.columnconfigure(0, weight=3)
         hero.columnconfigure(1, weight=2)  # Artwork gets more space
         self.art = ArtworkPanel(hero)
-        self.art.configure(height=420)
         self.art.grid(row=0, column=0, sticky="nsew", pady=(0, 7))
-        self.art.grid_propagate(False)
         self.meta = MetadataPanel(hero)
         self.meta.grid(row=0, column=1, sticky="nsew", pady=(0, 7), padx=(10, 0))
         # Evidence panel

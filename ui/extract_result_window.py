@@ -42,7 +42,7 @@ class ExtractProgressDialog(tk.Toplevel):
 
         self.title("Extracting installer…" if needs_install else "Extracting")
         self.configure(bg=BG)
-        self.resizable(False, False)
+        self.resizable(True, True)
         self.grab_set()
 
         outer = tk.Frame(self, bg=BG)

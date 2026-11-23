@@ -38,10 +38,6 @@ STATE_WORD = {
     CANCELLED: "Not done",
 }
 
-# Every column is a fixed character offset so a row can be rewritten in place. Tk's Text has no columns, only
-# lines, so the alignment is the tab stops configured in _table - without them the four fields run together into
-# one unreadable line.
-FIELD_STOPS = (34, 46, 58)
 
 
 class BatchExtractWindow(tk.Toplevel):
@@ -155,7 +151,25 @@ class BatchExtractWindow(tk.Toplevel):
         table_container.columnconfigure(0, weight=1)
         table_container.rowconfigure(0, weight=1)
 
-        self.list = tk.Text(table_container, bg=PANEL2, fg=TEXT, relief="flat", wrap="none", height=12, undo=False, font=("TkDefaultFont", 9), padx=10, pady=8, state="disabled", tabs=FIELD_STOPS)
+        # ttk.Treeview with proper columns replaces the old tk.Text + tab-stops approach.
+        # Tab stops were fragile: long game names overflowed into the size column, and any
+        # font change misaligned every column. Treeview columns always align regardless of
+        # font size or name length.
+        self.list = ttk.Treeview(
+            table_container,
+            columns=("size", "status", "detail"),
+            show="tree headings",
+            height=12,
+            selectmode="none",
+        )
+        self.list.column("#0", width=300, minwidth=200, stretch=True)       # game name
+        self.list.column("size", width=90, minwidth=70, stretch=False)      # archive size
+        self.list.column("status", width=100, minwidth=80, stretch=False)   # waiting/extracting/done/failed
+        self.list.column("detail", width=260, minwidth=150, stretch=True)   # status detail
+        self.list.heading("#0", text="Game", anchor="w")
+        self.list.heading("size", text="Size", anchor="w")
+        self.list.heading("status", text="Status", anchor="w")
+        self.list.heading("detail", text="Detail", anchor="w")
         self.list.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
         scroll = ttk.Scrollbar(table_container, orient="vertical", command=self.list.yview, style="Dark.Vertical.TScrollbar")
         scroll.grid(row=0, column=1, sticky="ns", padx=(0, 12), pady=12)
@@ -257,41 +271,33 @@ class BatchExtractWindow(tk.Toplevel):
         self._pump = self.after(150, self._tick)
 
     def _row_text(self, item):
-        """The four fields of a row, in the order the tab stops are set for."""
+        """The four fields of a row, returned as a tuple for Treeview insertion."""
         size = human_size(item.size) if item.size else "-"
         word = STATE_WORD.get(item.state, item.state)
         detail = item.detail
         if item.state == EXTRACTING and item.percent and not detail.startswith(f"{item.percent}%"):
             detail = f"{item.percent}%  {detail}".strip()
-        return f"{item.name}\t{size}\t{word}\t{detail}"
+        return (item.name, size, word, detail)
 
     def _render_all(self):
         self.list.configure(state="normal")
-        self.list.delete("1.0", "end")
+        self.list.delete(*self.list.get_children())
         for item in self.plan.items:
-            # The line number is remembered so the row can be rewritten in place. Deleting and reinserting would
+            # The item id is remembered so the row can be rewritten in place. Deleting and reinserting would
             # shift every row below it, so the list would jump under the reader on every progress event.
-            self.rows[id(item)] = self.list.index("end-1c")
-            self.list.insert("end", self._row_text(item) + "\n", (item.state, "detail"))
+            iid = self.list.insert("", "end", values=self._row_text(item), tags=(item.state, "detail"))
+            self.rows[id(item)] = iid
         self.list.configure(state="disabled")
         pin_bottom(self.list)
 
     def _update_row(self, item):
         """Rewrite one row's text, keeping its tags, and follow it while it is the active game."""
-        start = self.rows.get(id(item))
-        if start is None:
+        iid = self.rows.get(id(item))
+        if iid is None:
             return
-        self.list.configure(state="normal")
-        # "lineend", not "+1c". The character index counts one character, so deleting "+1c" removed the
-        # row's first letter and left the rest of it behind to be duplicated on every progress tick.
-        # "lineend" stops before the newline, which is why the replacement carries no trailing newline of
-        # its own: adding one would leave an extra blank line behind and the list would grow per tick.
-        self.list.delete(start, f"{start} lineend")
-        # The row's own state is re-applied as a tag, so a row turns green or red without a colour lookup here.
-        self.list.insert(start, self._row_text(item), (item.state, "detail"))
-        self.list.configure(state="disabled")
+        self.list.item(iid, values=self._row_text(item), tags=(item.state, "detail"))
         if item.state == EXTRACTING:
-            self.list.see(start)
+            self.list.see(iid)
 
     def _refresh_metrics(self):
         """The running totals. Cheap enough for every tick, which is what keeps them honest."""
