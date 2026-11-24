@@ -722,12 +722,16 @@ def _show_artwork(app: application.Application, archives: list[GameArchive]) -> 
 
 def _capture_setup(app: application.Application, width: int, height: int) -> object:
     from ui.setup_window import SetupWindow
+    import time
 
     window = SetupWindow(app.root, app.config, app.logger)
     window.geometry(f"680x540+{max(40, width // 2 - 340)}+{max(40, height // 2 - 270)}")
-    window.wm_deiconify()
+    window.deiconify()
     window.wm_attributes("-topmost", True)
     window.update_idletasks()
+    window.winfo_id()
+    window.update()
+    time.sleep(0.5)  # Give CustomTkinter time to fully realize the window
     window.update()
     app.root.update()
     return window
