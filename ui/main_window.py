@@ -14,6 +14,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from .custom_theme import CTk, CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkTextbox, CTkScrollbar, CTkCanvas, Theme, panel, tooltip
+from .theme import ACCENT_HI, BG, BORDER, MUTED, ORANGE, PANEL, PANEL2, PANEL3, RED, TEXT, CYAN
 from core.constants import APP_NAME
 from debug.diagnostics import Diagnostics
 from .scan_view import ScanView, SCAN_PHASES
