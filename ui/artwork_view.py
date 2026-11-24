@@ -1,8 +1,14 @@
+"""Artwork review screen: shows each accepted game's downloaded artwork assets (hero/grid/logo/icon)
+with a clickable card per game and an "Open Game Folder" button that launches the archive's folder."""
+
+from __future__ import annotations
+
+import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
-from .theme import ACCENT_HI, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, TEXT, panel, pin_bottom
+from ui.theme import ACCENT_HI, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, TEXT, Theme, panel, pin_bottom
 from .widgets.artwork_panel import ArtworkPanel
-
+from ui.custom_theme import CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkCanvas
 
 from services.organizer_service import OrganizerService
 
@@ -24,37 +30,38 @@ def _asset_prefix_for(archive):
     return OrganizerService._asset_prefix(archive)
 
 
-class ArtworkView(tk.Frame):
+class ArtworkView(ctk.CTkFrame):
     def __init__(self, parent, on_done, on_review=None):
-        super().__init__(parent, bg=BG)
+        super().__init__(parent, fg_color=BG)
         self.on_done = on_done
         self.on_review = on_review
         self.archives = []
         self.columnconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
-        tk.Label(self, text="ARTWORK", bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(self, text="Artwork & Steam assets", bg=BG, fg=TEXT, font=("TkDefaultFont", 24, "bold")).grid(row=1, column=0, sticky="nw")
+        CTkLabel(self, text="ARTWORK", fg_color=PANEL, text_color=ACCENT_HI, font=("TkDefaultFont", 9, "bold")).grid(row=0, column=0, sticky="w")
+        CTkLabel(self, text="Artwork & Steam assets", fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 24, "bold")).grid(row=1, column=0, sticky="nw")
         shell = panel(self)
         shell.grid(row=2, column=0, sticky="nsew", pady=(18, 0))
         shell.columnconfigure(0, weight=1)
         shell.rowconfigure(0, weight=1)
-        self.canvas = tk.Canvas(shell, bg=PANEL, highlightthickness=0)
-        self.scroll = ttk.Scrollbar(shell, orient="vertical", command=self.canvas.yview, style="Dark.Vertical.TScrollbar")
+        self.canvas = CTkCanvas(shell, fg_color=PANEL, highlightthickness=0)
+        self.scroll = ttk.Scrollbar(shell, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
         self.scroll.grid(row=0, column=1, sticky="ns", pady=12)
-        self.inner = tk.Frame(self.canvas, bg=PANEL)
+        self.inner = CTkFrame(self.canvas, fg_color=PANEL)
         self.window = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
         self.inner.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(self.window, width=e.width))
         for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
             self.winfo_toplevel().bind(seq, self._route_wheel, add="+")
         self._bind_content_wheel(self.inner)
-        actions = tk.Frame(self, bg=BG)
+        actions = CTkFrame(self, fg_color=BG)
         actions.grid(row=3, column=0, sticky="ew", pady=(10, 0))
-        self.summary = tk.Label(actions, text="", bg=BG, fg=MUTED, font=("TkDefaultFont", 9), anchor="w")
+        self.summary = CTkLabel(actions, text="", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 9), anchor="w")
         self.summary.pack(side="left", fill="x", expand=True)
-        ttk.Button(actions, text="CONTINUE TO DONE  ›", style="Primary.TButton", command=self.on_done).pack(side="right")
+        CTkButton(actions, text="CONTINUE TO DONE  ›", fg_color=ACCENT_HI, hover_color=ACCENT_HOVER, text_color=TEXT,
+                  font=("TkDefaultFont", 9, "bold"), command=self.on_done).pack(side="right")
 
     def _wheel(self, event):
         self.canvas.yview_scroll(-1 if getattr(event, "delta", 0) > 0 or getattr(event, "num", 0) == 4 else 1, "units")
@@ -99,34 +106,34 @@ class ArtworkView(tk.Frame):
         asset_count = 0
         accepted_count = sum(1 for archive in self.archives if archive.decision.accepted)
         if not accepted_count:
-            empty_frame = tk.Frame(self.inner, bg=PANEL)
+            empty_frame = CTkFrame(self.inner, fg_color=PANEL)
             empty_frame.pack(fill="x", padx=30, pady=40)
-            tk.Label(empty_frame, text="No organized games have artwork to review.", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 11), justify="center").pack()
-            tk.Label(empty_frame, text="Return to Review, accept a verified game, and organize it first.", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 10), justify="center").pack(pady=(6, 14))
+            CTkLabel(empty_frame, text="No organized games have artwork to review.", fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 11), justify="center").pack()
+            CTkLabel(empty_frame, text="Return to Review, accept a verified game, and organize it first.", fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 10), justify="center").pack(pady=(6, 14))
             if self.on_review:
-                ttk.Button(empty_frame, text="← Go to Review", style="Primary.TButton", command=self.on_review).pack()
+                CTkButton(empty_frame, text="← Go to Review", fg_color=ACCENT_HI, hover_color=ACCENT_HOVER, text_color="white",
+                          font=("TkDefaultFont", 9, "bold"), command=self.on_review).pack()
         for archive in self.archives:
             if not archive.decision.accepted:
                 continue
-            card = tk.Frame(self.inner, bg=PANEL2, highlightbackground=BORDER, highlightthickness=1)
+            card = CTkFrame(self.inner, fg_color=PANEL2, border_color=BORDER, border_width=1)
             card.pack(fill="x", pady=(0, 6), padx=2)
             card.columnconfigure(1, weight=1)
             preview = ArtworkPanel(card)
             preview.grid(row=0, column=0, rowspan=3, sticky="nw", padx=10, pady=10)
             preview.configure(width=150, height=190)
             preview.grid_propagate(False)
-            preview.update_idletasks()
             preview.show(archive.artwork)
-            tk.Label(card, text=archive.steam.name or archive.display_name, bg=PANEL2, fg=TEXT,
+            CTkLabel(card, text=archive.steam.name or archive.display_name, fg_color=PANEL2, text_color=TEXT,
                      font=("TkDefaultFont", 12, "bold"), anchor="w").grid(row=0, column=1,
                      sticky="ew", padx=(0, 12), pady=(12, 3))
-            tk.Label(card, text=f"Folder: {archive.path.parent}", bg=PANEL2, fg=MUTED,
+            CTkLabel(card, text=f"Folder: {archive.path.parent}", fg_color=PANEL2, text_color=MUTED,
                      font=("TkDefaultFont", 8), anchor="w", wraplength=700,
                      justify="left").grid(row=1, column=1, sticky="ew", padx=(0, 12), pady=2)
             prefix = _asset_prefix_for(archive)
             names = []
             if archive.artwork.path and archive.artwork.path.is_file():
-                names.append(f"{prefix}_grid{archive.artwork.path.suffix}")
+                names.append(f"{prefix}_{archive.artwork.path.suffix}")
                 artwork_count += 1
             # The asset name is the dict KEY, exactly as LibraryService._audit_game writes it. It used to be
             # recovered from the cached file's stem with stem.split('_',1)[-1], which is a guess that holds only
@@ -138,13 +145,13 @@ class ArtworkView(tk.Frame):
                     names.append(f"{prefix}_{key}{path.suffix}")
                     asset_count += 1
             link = "Steam Chrome shortcut created" if archive.steam.appid else "No Steam shortcut"
-            tk.Label(card, text=f"{link}\nAssets: {', '.join(names) if names else 'No artwork downloaded'}",
-                     bg=PANEL2, fg=GREEN if names else ORANGE, font=("TkDefaultFont", 8),
+            CTkLabel(card, text=f"{link}\nAssets: {', '.join(names) if names else 'No artwork downloaded'}",
+                     fg_color=PANEL2, text_color=GREEN if names else ORANGE, font=("TkDefaultFont", 8),
                      anchor="w", wraplength=700, justify="left").grid(row=2, column=1,
                      sticky="ew", padx=(0, 12), pady=(2, 12))
-            ttk.Button(card, text="OPEN GAME FOLDER", style="Secondary.TButton",
-                       command=lambda path=archive.path.parent: self._open_folder(path)).grid(
-                           row=0, column=2, rowspan=3, padx=(0, 12), pady=10)
+            CTkButton(card, text="OPEN GAME FOLDER", fg_color=PANEL2, hover_color=PANEL3, text_color=TEXT,
+                      font=("TkDefaultFont", 9), command=lambda path=archive.path.parent: self._open_folder(path)).grid(
+                        row=0, column=2, rowspan=3, padx=(0, 12), pady=10)
         self._bind_content_wheel(self.inner)
         self.summary.configure(text=f"{artwork_count} primary artwork files • {asset_count} additional Steam assets • {accepted_count} organized games")
         self.inner.update_idletasks()

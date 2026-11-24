@@ -6,11 +6,14 @@ and swaps between them. It also drives the idle clock and the per-phase timer th
 a scan or organize run is in progress.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 import time
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from .theme import ACCENT, ACCENT_HI, ACCENT_HOVER, BG, MUTED, ORANGE, PANEL, PANEL2, PANEL3, TEXT, Theme, panel, tooltip
+from tkinter import filedialog, messagebox
+from .custom_theme import CTk, CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkTextbox, CTkScrollbar, CTkCanvas, Theme, panel, tooltip
 from core.constants import APP_NAME
 from debug.diagnostics import Diagnostics
 from .scan_view import ScanView, SCAN_PHASES
@@ -21,7 +24,7 @@ from .done_view import DoneView
 
 
 class MainWindow:
-    def __init__(self, root, config, state, bus, controller, logger, jobs):
+    def __init__(self, root: CTk, config, state, bus, controller, logger, jobs):
         self.root = root
         self.config = config
         self.state = state
@@ -106,30 +109,30 @@ class MainWindow:
         self.timer_id = self.root.after(500, self._tick)
 
     def build(self):
-        outer = tk.Frame(self.root, bg=BG)
+        outer = CTkFrame(self.root, fg_color=BG)
         outer.pack(fill="both", expand=True, padx=14, pady=8)
         outer.columnconfigure(0, weight=1)
         outer.rowconfigure(2, weight=1)
-        head = tk.Frame(outer, bg=BG)
+        head = CTkFrame(outer, fg_color=BG)
         head.grid(row=0, column=0, sticky="ew")
-        tk.Label(head, text=APP_NAME.upper(), bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold")).pack(side="left")
+        CTkLabel(head, text=APP_NAME.upper(), fg_color=BG, text_color=ACCENT_HI, font=("TkDefaultFont", 9, "bold")).pack(side="left")
         nav = panel(outer)
         nav.grid(row=1, column=0, sticky="ew", pady=(4, 6))
         self.nav_buttons = {}
         for key, label in [("scan", "SCAN"), ("review", "REVIEW"), ("organize", "ORGANIZE"), ("artwork", "ARTWORK"), ("done", "DONE")]:
             # Navigation tabs - clickable, keyboard accessible, with clear active state.
             # Numbering removed: workflow is non-linear (users jump back to Scan from Review, etc.)
-            b = tk.Button(nav, text=label, bg=PANEL2, fg=MUTED, activebackground=PANEL3,
-                activeforeground=TEXT, font=("TkDefaultFont", 9, "bold"), padx=22, pady=10,
-                relief="flat", bd=0, highlightthickness=0, cursor="hand2", takefocus=True)
+            b = CTkButton(nav, text=label, fg_color=PANEL2, text_color=MUTED, hover_color=PANEL3,
+                font=("TkDefaultFont", 9, "bold"), padx=22, pady=10,
+                height=34, cursor="hand2")
             b.pack(side="left", padx=2, pady=4)
             b.configure(command=lambda k=key: self._nav(k))
             b.bind("<Return>", lambda e, k=key: self._nav(k))
             b.bind("<KP_Enter>", lambda e, k=key: self._nav(k))
             self.nav_buttons[key] = b
-        self.nav_summary = tk.Label(nav, text="", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8, "bold"))
+        self.nav_summary = CTkLabel(nav, text="", fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 8, "bold"), anchor="e")
         self.nav_summary.pack(side="right", padx=14)
-        self.body = tk.Frame(outer, bg=BG)
+        self.body = CTkFrame(outer, fg_color=BG)
         self.body.grid(row=2, column=0, sticky="nsew")
         self.body.columnconfigure(0, weight=1)
         self.body.rowconfigure(0, weight=1)
@@ -151,24 +154,28 @@ class MainWindow:
         self.views["done"] = DoneView(self.body, lambda: self.show("scan"), self.undo_last,
             self.open_library, self.state, rollback=self.controller.services.rollback,
             config=self.config, on_scan_artwork=self.scan_new_artwork)
-        foot = tk.Frame(outer, bg=BG)
+        foot = CTkFrame(outer, fg_color=BG)
         foot.grid(row=3, column=0, sticky="ew", pady=(4, 0))
-        self.status = tk.Label(foot, text="Ready — configure options and scan your Games directory.", bg=BG, fg=MUTED, font=("TkDefaultFont", 8), anchor="w")
+        self.status = CTkLabel(foot, text="Ready — configure options and scan your Games directory.", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 8), anchor="w")
         self.status.pack(side="left", fill="x", expand=True)
-        self.setup_btn = ttk.Button(foot, text="Setup", style="Secondary.TButton", command=self.open_setup)
+        self.setup_btn = CTkButton(foot, text="Setup", command=self.open_setup, fg_color=PANEL2, text_color=TEXT,
+            font=("TkDefaultFont", 9), hover_color=PANEL3, height=32, width=80)
         self.setup_btn.pack(side="right", padx=(0, 6))
         tooltip(self.setup_btn, "Set up game library, app folder, and extract folder")
         self._pulse_setup_btn()
-        self.regen_btn = ttk.Button(foot, text="Regenerate HTML", style="Secondary.TButton", command=self.regenerate_html)
+        self.regen_btn = CTkButton(foot, text="Regenerate HTML", command=self.regenerate_html, fg_color=PANEL2, text_color=TEXT,
+            font=("TkDefaultFont", 9), hover_color=PANEL3, height=32)
         self.regen_btn.pack(side="right", padx=(6, 0))
         tooltip(self.regen_btn, "Rewrite Game Library.html from the current library without scanning")
-        health_btn = ttk.Button(foot, text="System Health", style="Secondary.TButton", command=self.health)
+        health_btn = CTkButton(foot, text="System Health", command=self.health, fg_color=PANEL2, text_color=TEXT,
+            font=("TkDefaultFont", 9), hover_color=PANEL3, height=32)
         health_btn.pack(side="right", padx=(6, 0))
         tooltip(health_btn, "Check configuration and environment")
-        diag_btn = ttk.Button(foot, text="Diagnostics", style="Secondary.TButton", command=self.diagnostics)
+        diag_btn = CTkButton(foot, text="Diagnostics", command=self.diagnostics, fg_color=PANEL2, text_color=TEXT,
+            font=("TkDefaultFont", 9), hover_color=PANEL3, height=32)
         diag_btn.pack(side="right", padx=(6, 0))
         tooltip(diag_btn, "Full diagnostic report for troubleshooting")
-        self.runtime = tk.Label(foot, text="READY", bg=BG, fg=ACCENT_HI, font=("TkDefaultFont", 8, "bold"))
+        self.runtime = CTkLabel(foot, text="READY", fg_color=BG, text_color=ACCENT_HI, font=("TkDefaultFont", 8, "bold"), anchor="w")
         self.runtime.pack(side="right", padx=(0, 6))
         self.show("scan")
 
@@ -180,8 +187,8 @@ class MainWindow:
         placed immediately behind the button. Its border width grows from 0px to
         8px and back to 0px over two animation halves, using ACCENT_HI.
         """
-        glow = tk.Frame(self.setup_btn.master, bg=BG, highlightbackground=ACCENT_HI, highlightthickness=0)
-        glow.place(in_=self.setup_btn, x=-4, y=-4, relx=0, rely=0, anchor="nw", bordermode="outside")
+        glow = CTkFrame(self.setup_btn.master, fg_color=ACCENT_HI)
+        glow.place(in_=self.setup_btn, x=-4, y=-4, relx=0, rely=0, anchor="nw")
         glow.lower(self.setup_btn)
 
         steps = 24
@@ -192,14 +199,14 @@ class MainWindow:
             if step < steps // 2:
                 thick = int(max_thick * (step / (steps // 2)))
                 try:
-                    glow.configure(highlightthickness=thick)
+                    glow.configure(fg_color=ACCENT_HI)
                     self._pulse_id = self.root.after(25, lambda: _animate(step + 1))
                 except tk.TclError:
                     glow.destroy()
             elif step < steps:
                 thick = int(max_thick * (1 - (step - steps // 2) / (steps // 2)))
                 try:
-                    glow.configure(highlightthickness=thick)
+                    glow.configure(fg_color=ACCENT_HI)
                     self._pulse_id = self.root.after(25, lambda: _animate(step + 1))
                 except tk.TclError:
                     glow.destroy()
@@ -291,13 +298,8 @@ class MainWindow:
         for k, b in self.nav_buttons.items():
             is_active = k == key
             b.configure(
-                bg=ACCENT if is_active else PANEL2, fg="white" if is_active else MUTED,
-                    activebackground=ACCENT_HOVER if is_active else PANEL3,
-                    activeforeground="white" if is_active else TEXT,
-                    relief="flat" if is_active else "flat", bd=2 if is_active else 0,
-                    highlightthickness=2 if is_active else 0,
-                    highlightbackground=ACCENT if is_active else BG,
-                    highlightcolor=ACCENT if is_active else BG
+                fg_color=ACCENT if is_active else PANEL2, text_color="white" if is_active else MUTED,
+                hover_color=ACCENT_HOVER if is_active else PANEL3
             )
         if key == "organize":
             self.views[key].set_preview_only(self.run_preview_only)
@@ -314,8 +316,8 @@ class MainWindow:
             ov = self.views["organize"]
             ov.confirm_label.configure(
                 text=f"Organize {len(accepted)} accepted archive(s) into dated game folders? "
-                     f"The newest version becomes active, older versions move to the library "
-                     f"Archive folder, and artwork + Steam links are included.")
+                f"The newest version becomes active, older versions move to the library "
+                f"Archive folder, and artwork + Steam links are included.")
             ov.confirm_bar.grid()
             ov.organize_button.configure(state="disabled")
 
@@ -432,7 +434,7 @@ class MainWindow:
         # Since artwork is cached, verification finishes quickly from cache. Mirroring scan_done(): the
         # run stays in progress until verification_done() calls _end and advances to Review.
         self.views["review"].load(archives, download_artwork=True)
-        self.status.configure(text=f"Artwork scan complete  -  {len(archives)} new archive(s)  -  verification running in background")
+        self.status.configure(text=f"Artwork scan complete  •  {len(archives)} new archive(s)  -  verification running in background")
         self.show("scan")
 
     def _scan_progress(self, event):
@@ -604,37 +606,37 @@ class MainWindow:
 
     def diagnostics(self):
         d = Diagnostics(self.config, self.state, self.logger)
-        w = tk.Toplevel(self.root)
+        w = CTkToplevel(self.root)
         w.title("Diagnostics")
         w.geometry("920x680")
-        w.configure(bg=BG)
+        w.configure(fg_color=BG)
         w.transient(self.root)
         outer = panel(w)
         outer.pack(fill="both", expand=True, padx=12, pady=12)
-        wrap = tk.Frame(outer, bg=PANEL)
+        wrap = CTkFrame(outer, fg_color=PANEL)
         wrap.pack(fill="both", expand=True, padx=12, pady=12)
-        t = tk.Text(wrap, bg=PANEL, fg=TEXT, insertbackground=TEXT, relief="flat", wrap="none")
-        sb = ttk.Scrollbar(wrap, orient="vertical", command=t.yview, style="Dark.Vertical.TScrollbar")
-        t.configure(yscrollcommand=sb.set)
-        t.pack(side="left", fill="both", expand=True)
+        text = CTkTextbox(wrap, fg_color=PANEL, text_color=TEXT, insert_color=TEXT, relief="flat", wrap="none")
+        sb = CTkScrollbar(wrap, orient="vertical", command=t.yview)
+        text.configure(yscrollcommand=sb.set)
+        text.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
-        t.insert("1.0", d.report())
-        t.configure(state="disabled")
-        ttk.Button(outer, text="Close", style="Secondary.TButton", command=w.destroy).pack(anchor="e", padx=12, pady=(0, 12))
+        text.insert("1.0", d.report())
+        text.configure(state="disabled")
+        CTkButton(outer, text="Close", command=w.destroy, fg_color=PANEL2, hover_color=PANEL3, text_color=TEXT).pack(anchor="e", padx=12, pady=(0, 12))
 
     def health(self):
         d = Diagnostics(self.config, self.state, self.logger)
-        w = tk.Toplevel(self.root)
+        w = CTkToplevel(self.root)
         w.title("System Health")
         w.geometry("920x680")
-        w.configure(bg=BG)
+        w.configure(fg_color=BG)
         outer = panel(w)
         outer.pack(fill="both", expand=True, padx=12, pady=12)
-        text = tk.Text(outer, bg=PANEL, fg=TEXT, relief="flat", wrap="word")
-        sb = ttk.Scrollbar(outer, orient="vertical", command=text.yview, style="Dark.Vertical.TScrollbar")
+        text = CTkTextbox(outer, fg_color=PANEL, text_color=TEXT, relief="flat", wrap="word")
+        sb = CTkScrollbar(outer, orient="vertical", command=text.yview)
         text.configure(yscrollcommand=sb.set)
         text.pack(side="left", fill="both", expand=True, padx=12, pady=12)
         sb.pack(side="right", fill="y", pady=12)
         text.insert("1.0", d.health_text())
         text.configure(state="disabled")
-        ttk.Button(w, text="Close", style="Secondary.TButton", command=w.destroy).pack(anchor="e", padx=18, pady=(0, 12))
+        CTkButton(w, text="Close", command=w.destroy, fg_color=PANEL2, hover_color=PANEL3, text_color=TEXT).pack(anchor="e", padx=18, pady=(0, 12))

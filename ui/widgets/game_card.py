@@ -1,3 +1,10 @@
+"""A single game card in the Review list — shows category, Steam match status,
+category badge, confidence pill, and category decision. Clicking toggles selection
+and triggers an accept/skip review on the parent screen."""
+
+from __future__ import annotations
+
+import customtkinter as ctk
 import tkinter as tk
 from ui.theme import PANEL, PANEL3, TEXT, MUTED, ACCENT, ACCENT_HI, GREEN, ORANGE, CYAN, BORDER, CHART_COLORS
 from core.constants import DEFAULT_CATEGORIES
@@ -11,9 +18,9 @@ for _i, _cat in enumerate(DEFAULT_CATEGORIES):
 _CATEGORY_COLORS["Unsorted"] = MUTED
 
 
-class GameCard(tk.Frame):
+class GameCard(ctk.CTkFrame):
     def __init__(self, parent, archive, on_select, selected=False):
-        super().__init__(parent, bg=PANEL, highlightbackground=BORDER, highlightthickness=1, padx=12, pady=10)
+        super().__init__(parent, fg_color=PANEL, border_color=BORDER, border_width=1, padx=12, pady=10)
         self.archive = archive
         self.on_select = on_select
         self.selected = selected
@@ -24,25 +31,25 @@ class GameCard(tk.Frame):
         # says nothing.
         cat = archive.decision.category or "Unsorted"
         strip_color = _CATEGORY_COLORS.get(cat, MUTED)
-        self._strip = tk.Frame(self, bg=strip_color, height=14)
+        self._strip = ctk.CTkFrame(self, fg_color=strip_color, height=14)
         self._strip.pack(anchor="w", fill="x", pady=(0, 4))
-        top = tk.Frame(self, bg=PANEL)
+        top = CTkFrame(self, fg_color=PANEL)
         top.pack(fill="x")
-        self.title = tk.Label(top, text=(archive.steam.name or archive.display_name), bg=PANEL, fg=TEXT, anchor="w", justify="left", wraplength=260, font=("TkDefaultFont", 10, "bold"))
+        self.title = CTkLabel(top, text=(archive.steam.name or archive.display_name), fg_color=PANEL, text_color=TEXT, anchor="w", justify="left", wraplength=260, font=("TkDefaultFont", 10, "bold"))
         self.title.pack(side="left", fill="x", expand=True)
-        self.badge = tk.Label(top, text="NEW", bg=ACCENT, fg="white", font=("TkDefaultFont", 7, "bold"), padx=6, pady=3)
+        self.badge = CTkLabel(top, text="NEW", fg_color=ACCENT, text_color="white", font=("TkDefaultFont", 7, "bold"), padx=6, pady=3)
         self.badge._fixed_bg = True
         self.badge.pack(side="right")
         # How sure the match is, as a pill rather than a word in the meta line. It used to be there as text -
         # "Medium confidence" in the same grey as the file extension beside it - so a match the app itself was
         # unsure of looked exactly as settled as one it was sure of, and the only way to notice was to read the
         # small print. Amber next to green is the whole point of showing it.
-        self.conf = tk.Label(top, text="", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 7, "bold"), padx=6, pady=3)
+        self.conf = CTkLabel(top, text="", fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 7, "bold"), padx=6, pady=3)
         self.conf._fixed_bg = True
         self.conf.pack(side="right", padx=(0, 6))
-        self.status = tk.Label(self, text="Steam match pending", bg=PANEL, fg=MUTED, anchor="w", font=("TkDefaultFont", 8))
+        self.status = CTkLabel(self, text="Steam match pending", fg_color=PANEL, text_color=MUTED, anchor="w", font=("TkDefaultFont", 8))
         self.status.pack(fill="x", pady=(6, 0))
-        self.meta = tk.Label(self, text=archive.extension.upper().lstrip(".") + "  •  " + archive.path.name, bg=PANEL, fg=MUTED, anchor="w", font=("TkDefaultFont", 7))
+        self.meta = CTkLabel(self, text=archive.extension.upper().lstrip(".") + "  •  " + archive.path.name, fg_color=PANEL, text_color=MUTED, anchor="w", font=("TkDefaultFont", 7))
         self.meta.pack(fill="x", pady=(4, 0))
         self._overlay = None
         self._make_overlay()
@@ -53,7 +60,7 @@ class GameCard(tk.Frame):
     def _make_overlay(self):
         """Hover overlay showing genre and release date metadata, matching the HTML catalog's .card-hover.
         Shown on mouse-enter / mouse-leave; hidden by default."""
-        self._overlay = tk.Label(self, bg=PANEL3, fg=TEXT, font=("TkDefaultFont", 7), justify="left", anchor="w", padx=8, pady=6, relief="flat", highlightthickness=1, highlightbackground=BORDER)
+        self._overlay = CTkLabel(self, fg_color=PANEL3, text_color=TEXT, font=("TkDefaultFont", 7), justify="left", anchor="w", padx=8, pady=6, corner_radius=0)
         self._overlay.pack_forget()
         self.bind("<Enter>", self._on_enter, add="+")
         self.bind("<Leave>", self._on_leave, add="+")
@@ -72,14 +79,14 @@ class GameCard(tk.Frame):
         """Apply a background colour to this card and every child, so a hover or
         selection change never leaves a stale strip behind.
 
-        Two children carry a semantic colour that must survive a hover — the badge
-        and the confidence pill — so they are marked _fixed_bg and skipped, which
-        keeps their green/amber/accent fills intact instead of painting them the
-        card's panel colour."""
+        Two children carry a semantic colour that must survive a hover or
+        selection change — the badge and the confidence pill — so they are marked
+        _fixed_bg and skipped, which keeps their green/amber/accent fills intact
+        instead of painting them the card's panel colour."""
         if getattr(widget, "_fixed_bg", False):
             return
         try:
-            widget.configure(bg=bg)
+            widget.configure(fg_color=bg)
         except tk.TclError:
             pass
         for c in widget.winfo_children():
@@ -96,7 +103,7 @@ class GameCard(tk.Frame):
                 return
             state["i"] = (state["i"] + 1) % len(colors)
             try:
-                badge.configure(bg=colors[state["i"]])
+                badge.configure(fg_color=colors[state["i"]])
                 self._pulse_id = self.after(800, _step)
             except tk.TclError:
                 state["run"] = False
@@ -138,7 +145,7 @@ class GameCard(tk.Frame):
         self.selected = value
         bg = PANEL3 if value else PANEL
         border = ACCENT_HI if value else BORDER
-        self.configure(bg=bg, highlightbackground=border, highlightthickness=2 if value else 1)
+        self.configure(fg_color=bg, border_color=border, border_width=2 if value else 1)
         self._stop_badge_pulse()
         self._set_bg_recursive(self, bg)
 
@@ -149,20 +156,20 @@ class GameCard(tk.Frame):
         if s.found:
             self.title.configure(text=s.name or self.archive.display_name)
             self.status.configure(text=f"✓  {s.name}  •  AppID {s.appid}", fg=GREEN)
-            self.badge.configure(text="MATCHED", bg=GREEN, fg="#071b12")
+            self.badge.configure(text="MATCHED", fg_color=GREEN, text_color="#071b12")
             self._show_confidence(s)
         else:
             self.status.configure(text="!  Steam match not found", fg=ORANGE if s.reason else MUTED)
-            self.badge.configure(text="REVIEW", bg=ORANGE, fg="#211505")
+            self.badge.configure(text="REVIEW", fg_color=ORANGE, text_color="#211505")
         if self.archive.decision.skipped:
             self.status.configure(text="↷  Skipped — archive will remain untouched", fg=MUTED)
-            self.badge.configure(text="SKIPPED", bg=PANEL3, fg=MUTED)
+            self.badge.configure(text="SKIPPED", fg_color=PANEL3, text_color=MUTED)
             # _show_confidence ran a line ago, inside the `if s.found` branch, and this branch runs after it,
             # so a skipped archive that had matched Steam was left showing SKIPPED beside an amber "Medium
             # 0.70". A skipped archive is not being filed under anything, so there is no match to be unsure
             # of and the pill goes - colour as well as text, because an emptied pill that keeps the warning
             # fill paints a warning badge-shaped hole next to the badge. Reset to the construction values.
-            self.conf.configure(text="", bg=PANEL, fg=MUTED)
+            self.conf.configure(text="", fg_color=PANEL, text_color=MUTED)
         elif s.found:
             edited = " • edited" if self.archive.decision.changed_from_suggestion else ""
             self.meta.configure(text=f"{self.archive.decision.category}{edited}  •  {self.archive.path.name}", fg=CYAN if edited else MUTED)
@@ -185,6 +192,6 @@ class GameCard(tk.Frame):
         if score:
             text = f"{text} {score:.2f}"
         if level == "high":
-            self.conf.configure(text=text, bg=GREEN, fg="#071b12")
+            self.conf.configure(text=text, fg_color=GREEN, text_color="#071b12")
         else:
-            self.conf.configure(text=text, bg=ORANGE, fg="#211505")
+            self.conf.configure(text=text, fg_color=ORANGE, text_color="#211505")

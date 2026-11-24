@@ -1,20 +1,27 @@
+"""Artwork panel on the Review screen — shows the matched game's Steam artwork
+(primary hero/grid logo/icon) with fallback to placeholder text."""
+
+from __future__ import annotations
+
+import customtkinter as ctk
 import tkinter as tk
 import base64, shutil, subprocess
+from PIL import Image
 from services.artwork_service import image_shape
-from ui.theme import PANEL2, BORDER, MUTED, ACCENT
+from ui.theme import PANEL2, BORDER, MUTED, ACCENT, Theme, CTkFrame, CTkLabel
 
 
-class ArtworkPanel(tk.Frame):
+class ArtworkPanel(ctk.CTkFrame):
     def __init__(self, parent):
-        super().__init__(parent, bg=PANEL2, highlightbackground=BORDER, highlightthickness=1)
+        super().__init__(parent, fg_color=PANEL2, border_color=BORDER, border_width=1)
         self.photo = None
         # Reduced padding and more compact loading text
-        self.label = tk.Label(self, text="ARTWORK\nLoading…", bg=PANEL2, fg=MUTED, font=("TkDefaultFont", 8, "bold"), justify="center")
+        self.label = CTkLabel(self, text="ARTWORK\nLoading…", fg_color=PANEL2, text_color=MUTED, font=("TkDefaultFont", 8, "bold"), justify="center")
         self.label.pack(expand=True, padx=2, pady=2)
 
     def show(self, result):
         if not result:
-            self.label.configure(image="", text="No artwork", compound="center", fg=MUTED)
+            self.label.configure(image="", text="No artwork", compound="center", text_color=MUTED)
             return
         candidates = []
         asset_paths = {name: path for name, path in result.assets.items() if path and name not in ("background", "background_raw")}
@@ -46,14 +53,12 @@ class ArtworkPanel(tk.Frame):
         portrait_candidates = [path for path in candidates if path.exists() and self._is_portrait(path)]
         candidates = banner_candidates or portrait_candidates or [path for path in candidates if path.exists()]
         if not candidates:
-            self.label.configure(image="", text="No artwork", compound="center", fg=MUTED)
+            self.label.configure(image="", text="No artwork", compound="center", text_color=MUTED)
             return
         for path in candidates:
             if not path or not path.exists():
                 continue
             try:
-                from PIL import Image, ImageTk
-
                 img = Image.open(path)
                 w = self.winfo_width()
                 h = self.winfo_height()
@@ -62,14 +67,9 @@ class ArtworkPanel(tk.Frame):
                 if h < 2:
                     h = self.winfo_reqheight() or 420
                 img.thumbnail((max(20, w - 2), max(20, h - 2)))
-                self.photo = ImageTk.PhotoImage(img, master=self)
-                self.label.configure(image=self.photo, compound="center", text="", fg=ACCENT)
-                return
-            except Exception:
-                pass
-            try:
-                self.photo = tk.PhotoImage(file=str(path), master=self)
-                self.label.configure(image=self.photo, compound="center", text="", fg=ACCENT)
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(img.width, img.height))
+                self.photo = ctk_img
+                self.label.configure(image=self.photo, compound="center", text="", text_color=ACCENT)
                 return
             except Exception:
                 pass
@@ -82,19 +82,21 @@ class ArtworkPanel(tk.Frame):
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10,
                         check=False)
                     if converted.returncode == 0 and converted.stdout:
-                        self.photo = tk.PhotoImage(data=base64.b64encode(converted.stdout).decode("ascii"))
-                        self.label.configure(image=self.photo, compound="center", text="", fg=ACCENT)
+                        ctk_img = ctk.CTkImage(light_image=Image.open(__import__('io').BytesIO(converted.stdout)),
+                                               dark_image=Image.open(__import__('io').BytesIO(converted.stdout)),
+                                               size=(230, 230))
+                        self.photo = ctk_img
+                        self.label.configure(image=self.photo, compound="center", text="", text_color=ACCENT)
                         return
             except Exception:
                 pass
-        self.label.configure(image="", text=self._why(result, candidates), compound="center", fg=MUTED)
+        self.label.configure(image="", text=self._why(result, candidates), compound="center", text_color=MUTED)
 
     def _why(self, result, candidates):
         """Name the reason the picture is missing, rather than a flat refusal.
 
         Every candidate was readable and every decoder was tried and failed, so the cause is the toolchain,
-        not the file. Saying so is the difference between a person installing Pillow and a person concluding
-        the artwork never downloaded - which is what a bare "could not be rendered" told them.
+        not the file.
 
         The result.reason field describes where the artwork came from ("Cache hit", "Downloaded from …"),
         not why it cannot be displayed, so it is deliberately not returned here: a cached JPEG that Pillow

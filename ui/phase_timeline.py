@@ -5,15 +5,31 @@
     inline.
 """
 
+from __future__ import annotations
+
+import customtkinter as ctk
 import time
-import tkinter as tk
 from utils.formatting import human_duration
-from ui.palette import BORDER
-from ui.theme import pill
-from ui.palette import PANEL
+from ui.palette import BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL3, RED, ACCENT_HI
+
+# Pill colours mapping from group name to (bg, fg)
+PILL_COLOURS = {
+    "good": (GREEN, "#071b12"),
+    "warn": (ORANGE, "#211505"),
+    "bad": (RED, "#260a10"),
+    "muted": (PANEL3, MUTED),
+    "accent": (ACCENT_HI, "white"),
+}
 
 
-class PhaseTimeline(tk.Frame):
+def pill(parent, text, kind="accent"):
+    """Pill-shaped label matching the HTML catalog's data-tip callout."""
+    bg, fg = PILL_COLOURS.get(kind, PILL_COLOURS["accent"])
+    return ctk.CTkLabel(parent, text=text, fg_color=bg, text_color=fg, corner_radius=12,
+                        font=("TkDefaultFont", 8, "bold"), padx=9, pady=4)
+
+
+class PhaseTimeline(ctk.CTkFrame):
     """A row of stage chips showing every step of a run at once, so the current step is obvious and finished
     steps stay visible instead of being replaced by the newest line of text.
     This is what makes a long run legible: 'Converting 4 of 30' is a single overwritable sentence, while the
@@ -25,7 +41,7 @@ class PhaseTimeline(tk.Frame):
     STATE_KIND = {"pending": "muted", "active": "accent", "done": "good", "skipped": "muted", "failed": "bad", "skipped_soft": "muted"}
 
     def __init__(self, parent, phases, bg=PANEL, show_timing=True, **kw):
-        super().__init__(parent, bg=bg, **kw)
+        super().__init__(parent, fg_color=bg, **kw)
         self.states = {}
         self.chips = {}
         self.labels = {}
@@ -33,10 +49,11 @@ class PhaseTimeline(tk.Frame):
         self.elapsed = {}
         self.show_timing = show_timing
         for column, (key, label) in enumerate(phases):
-            cell = tk.Frame(self, bg=bg)
+            cell = CTkFrame(self, fg_color=bg)
             cell.grid(row=0, column=column, sticky="w", padx=(0, 10))
             if column:
-                tk.Frame(cell, bg=BORDER, width=2, height=20).pack(side="left", fill="y", padx=(0, 8))
+                divider = CTkFrame(cell, fg_color=BORDER, width=2, height=20)
+                divider.pack(side="left", fill="y", padx=(0, 8))
             self.chips[key] = pill(cell, label, "muted")
             self.chips[key].pack(side="left")
             self.states[key] = "pending"
@@ -45,7 +62,10 @@ class PhaseTimeline(tk.Frame):
     def _render(self, key):
         state = self.states[key]
         chip = self.chips[key]
-        chip.restyle(self.STATE_KIND.get(state, "muted"))
+        kind = self.STATE_KIND.get(state, "muted")
+        kind_colors = {"muted": MUTED, "active": ACCENT_HI, "good": GREEN, "bad": RED, "skipped": MUTED, "skipped_soft": MUTED}
+        color = kind_colors.get(kind, MUTED)
+        chip.configure(text_color=color)
         mark = {"done": "✓ ", "failed": "✗ ", "active": "▸ ", "skipped": "– "}.get(state, "")
         timing = ""
         if self.show_timing and key in self.elapsed and state in ("done", "failed"):

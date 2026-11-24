@@ -1,26 +1,30 @@
-import tkinter as tk
-from ui.theme import ACCENT_HI, MUTED, ORANGE, PANEL, TEXT
+"""The category evidence panel on the Review screen — shows why Steam suggested
+a particular category, what terms fired, and how runners-up scored.
+
+Rendered against `decision.suggested_category`, never `decision.category`: a remembered
+decision replaces `category` while `suggested_category` keeps the freshly computed value,
+and the whole point of the panel is that a person can see the two disagree. Labelling
+the winner "(suggested: <the same name>)" made the disagreement invisible, which is the
+one thing this panel exists to prevent.
+"""
+
+from __future__ import annotations
+
+import customtkinter as ctk
+from ui.theme import ACCENT_HI, MUTED, ORANGE, PANEL, TEXT, Theme, CTkFrame, CTkLabel
 from core.constants import CategoryEvidence
 
 
-class CategoryEvidencePanel(tk.Frame):
-    """Why the suggested category is what it is, in words the evidence can actually support.
-
-    Rendered against `decision.suggested_category`, never `decision.category`: a remembered decision replaces
-    `category` while `suggested_category` keeps the freshly computed value, and the whole point of the panel
-    is that a person can see the two disagree. Labelling the winner "(suggested: <the same name>)" made the
-    disagreement invisible, which is the one thing this panel exists to prevent.
-    """
-
+class CategoryEvidencePanel(ctk.CTkFrame):
     def __init__(self, parent, **kw):
-        super().__init__(parent, bg=PANEL, **kw)
-        self.heading = tk.Label(self, text="WHY THIS CATEGORY", bg=PANEL, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold"))
+        super().__init__(parent, fg_color=PANEL, **kw)
+        self.heading = CTkLabel(self, text="WHY THIS CATEGORY", fg_color=PANEL, text_color=ACCENT_HI, font=("TkDefaultFont", 9, "bold"), anchor="w")
         self.heading.pack(anchor="w", padx=14, pady=(10, 4))
-        self.body = tk.Frame(self, bg=PANEL)
+        self.body = CTkFrame(self, fg_color=PANEL)
         self.body.pack(fill="x", padx=14, pady=(0, 6))
 
     def _line(self, text, fg=TEXT, bold=False, pady=0):
-        tk.Label(self.body, text=text, bg=PANEL, fg=fg, font=("TkDefaultFont", 8, "bold" if bold else "normal"), justify="left", anchor="w").pack(fill="x", pady=pady)
+        CTkLabel(self.body, text=text, fg_color=PANEL, text_color=fg, font=("TkDefaultFont", 8, "bold" if bold else "normal"), justify="left", anchor="w").pack(fill="x", pady=pady)
 
     def show(self, decision, genres=()):
         for w in self.body.winfo_children():

@@ -1,4 +1,4 @@
-"""The shared look of every screen: colors, fonts, ttk styles, and the widgets built on them.
+"""The shared look of every screen: colors, fonts, CTk widgets, and the widgets built on them.
 Theme holds the visual vocabulary in one place so every screen reads the same and a change to one
 color propagates everywhere instead of hunting through fifteen views. It also re-exports the formatting
 helpers (human_size, human_duration, clock_stamp) so views import one module instead of two.
@@ -6,9 +6,25 @@ The ActivityFeed, PhaseTimeline, Sparkline and pill widgets live here because se
 and placing them beside the styles that paint them keeps the color-and-widget pairing visible together.
 """
 
+from __future__ import annotations
 
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk
+
+# Re-export CustomTkinter classes so views import one module
+CTk = ctk.CTk
+CTkToplevel = ctk.CTkToplevel
+CTkFrame = ctk.CTkFrame
+CTkLabel = ctk.CTkLabel
+CTkButton = ctk.CTkButton
+CTkEntry = ctk.CTkEntry
+CTkComboBox = ctk.CTkComboBox
+CTkScrollbar = ctk.CTkScrollbar
+CTkTextbox = ctk.CTkTextbox
+CTkCheckBox = ctk.CTkCheckBox
+CTkRadioButton = ctk.CTkRadioButton
+CTkProgressBar = ctk.CTkProgressBar
+CTkCanvas = ctk.CTkCanvas
 
 # Re-exported so views keep importing one module, while the single implementation lives outside the UI layer
 # where the controller can use it too.
@@ -29,6 +45,19 @@ __all__ = [
     "BORDER",
     "CHART_COLORS",
     "CYAN",
+    "CTk",
+    "CTkButton",
+    "CTkCanvas",
+    "CTkCheckBox",
+    "CTkComboBox",
+    "CTkEntry",
+    "CTkFrame",
+    "CTkLabel",
+    "CTkProgressBar",
+    "CTkRadioButton",
+    "CTkScrollbar",
+    "CTkToplevel",
+    "CTkTextbox",
     "DANGER",
     "DANGER_HOVER",
     "DANGER_TEXT",
@@ -54,8 +83,10 @@ __all__ = [
     "human_duration",
     "human_size",
     "panel",
+    "panel2",
     "pill",
     "pin_bottom",
+    "radio",
     "radio",
     "reveal_staggered",
     "scroll_text",
@@ -63,59 +94,70 @@ __all__ = [
     "wheel_step",
 ]
 
-class Theme:
-    def __init__(self, root):
-        self.root = root
-        root.configure(bg=BG)
-        style = ttk.Style(root)
-        try:
-            style.theme_use("clam")
-        except tk.TclError:
-            pass
-        style.configure("TFrame", background=BG)
-        style.configure("Panel.TFrame", background=PANEL)
-        style.configure("Panel2.TFrame", background=PANEL2)
-        style.configure("TLabel", background=BG, foreground=TEXT)
-        style.configure("Panel.TLabel", background=PANEL, foreground=TEXT)
-        style.configure("Muted.TLabel", background=BG, foreground=MUTED, font=("TkDefaultFont", 9))
-        style.configure("PanelMuted.TLabel", background=PANEL, foreground=MUTED, font=("TkDefaultFont", 9))
-        style.configure("Hero.TLabel", background=BG, foreground=TEXT, font=("TkDefaultFont", 24, "bold"))
-        style.configure("Section.TLabel", background=BG, foreground=TEXT, font=("TkDefaultFont", 14, "bold"))
-        style.configure("Accent.TLabel", background=BG, foreground=ACCENT_HI, font=("TkDefaultFont", 9, "bold"))
-        style.configure("Primary.TButton", background=ACCENT, foreground="white", borderwidth=0, bordercolor=ACCENT, padding=(16, 8), font=("TkDefaultFont", 9, "bold"))
-        style.map("Primary.TButton", background=[("active", ACCENT_HOVER), ("disabled", PANEL3)], foreground=[("disabled", MUTED)])
-        style.configure("Secondary.TButton", background=PANEL2, foreground=TEXT, borderwidth=1, bordercolor=BORDER, relief="solid", padding=(13, 7), font=("TkDefaultFont", 9, "bold"))
-        style.map("Secondary.TButton", background=[("active", PANEL3)])
-        style.configure("Danger.TButton", background=DANGER, foreground=DANGER_TEXT, borderwidth=1, bordercolor=BORDER, padding=(13, 7), font=("TkDefaultFont", 9, "bold"))
-        style.map("Danger.TButton", background=[("active", DANGER_HOVER)])
-        style.configure("TCombobox", fieldbackground=PANEL2, background=PANEL2, foreground=TEXT, arrowcolor=TEXT, bordercolor=BORDER)
-        style.map("TCombobox", fieldbackground=[("readonly", PANEL2)], foreground=[("readonly", TEXT)])
-        style.configure("Dark.Vertical.TScrollbar", background=PANEL2, troughcolor=BG, bordercolor=BORDER, arrowcolor=MUTED, width=14)
-        style.map("Dark.Vertical.TScrollbar", background=[("active", ACCENT)])
-        # The plain TScrollbar and TProgressbar were never configured, so the controls built on them fell back to
-        # Tk's stock light theme: a #dcdad5 trough and a stock blue fill, which on this background is a pale slab
-        # across the middle of the window. Both are configured here as well as their Dark.* variants, because a
-        # control that asks for the default name should still land in the palette. Style lookup cannot merge a
-        # TProgressbar into a Dark.Horizontal.TProgressbar on its own, so the defaults are coloured directly.
-        style.configure("TScrollbar", background=PANEL2, troughcolor=BG, bordercolor=BORDER, arrowcolor=MUTED, width=14)
-        style.map("TScrollbar", background=[("active", ACCENT)])
-        style.configure("TProgressbar", background=PANEL2, troughcolor=BG, bordercolor=BORDER, lightcolor=ACCENT, thickness=14)
-        style.configure("Dark.Horizontal.TProgressbar", background=PANEL2, troughcolor=BG, bordercolor=BORDER, lightcolor=ACCENT, thickness=14)
-        style.configure("TEntry", fieldbackground=ENTRY_BG, foreground=TEXT, insertcolor=TEXT, bordercolor=BORDER)
-        style.configure("TCheckbutton", background=BG, foreground=TEXT, bordercolor=BORDER)
-        style.map("TCheckbutton", background=[("active", BG)])
 
-def radio(parent, text, value, variable, command=None, padx=8):
-    """One radio-button builder. Two private copies had already drifted apart by a pixel and by whether they
-    fired a command, so any restyle meant editing both and hoping."""
-    return tk.Radiobutton(parent, text=text, value=value, variable=variable, bg=PANEL,
-        fg=TEXT, activebackground=PANEL, activeforeground=TEXT, selectcolor=PANEL2,
-        disabledforeground=MUTED, highlightthickness=1, highlightbackground=BORDER,
-        highlightcolor=ACCENT, bd=0, font=("TkDefaultFont", 8, "bold"), padx=padx,
-        pady=5, command=command)
+class Theme:
+    """CustomTkinter theme manager.
+
+    Replaces tkinter ttk.Style configuration. Call Theme(root) once at app startup
+    to set the appearance mode and colour theme. All widget classes in ui/custom_theme.py
+    inherit their colours from this theme automatically.
+    """
+
+    _instance = None
+
+    def __init__(self, root: ctk.CTk, mode: str = "dark"):
+        self.root = root
+        self.mode = mode
+
+        # CustomTkinter handles colour theming natively
+        ctk.set_appearance_mode(mode)
+        ctk.set_default_color_theme("blue")  # base theme; we override colours per-widget
+
+        # Store reference so widgets can access theme colours
+        self.bg = BG
+        self.panel = PANEL
+        self.panel2 = PANEL2
+        self.text = TEXT
+        self.muted = MUTED
+        self.border = BORDER
+        self.accent = ACCENT
+        self.accent_hi = ACCENT_HI
+        self.green = GREEN
+        self.orange = ORANGE
+        self.red = RED
+
+    @classmethod
+    def get_instance(cls) -> Theme:
+        return cls._instance
+
+    @classmethod
+    def set_instance(cls, instance: Theme) -> None:
+        cls._instance = instance
+
 
 def panel(parent, **kw):
-    return tk.Frame(parent, bg=PANEL, highlightbackground=BORDER, highlightthickness=1, **kw)
+    """CTkFrame replacement with panel styling."""
+    return CTkFrame(parent, fg_color=PANEL, corner_radius=8, **kw)
+
+
+def panel2(parent, **kw):
+    """Secondary panel with slightly different shade."""
+    return CTkFrame(parent, fg_color=PANEL2, corner_radius=8, **kw)
+
+
+def radio(parent, text, value, variable, command=None, padx=8):
+    """Radio button widget with consistent styling."""
+    return CTkRadioButton(parent, text=text, value=value, variable=variable, fg_color=PANEL,
+        text_color=TEXT, hover_color=ACCENT_HOVER, border_color=BORDER,
+        font=("TkDefaultFont", 8, "bold"), padx=padx, pady=5, command=command)
+
+
+def pill(parent, text, kind="accent"):
+    """Pill-shaped label matching the HTML catalog's data-tip callout."""
+    bg, fg = PILL_KINDS.get(kind, PILL_KINDS["accent"])
+    return CTkLabel(parent, text=text, fg_color=bg, text_color=fg, corner_radius=12,
+                    font=("TkDefaultFont", 8, "bold"), padx=9, pady=4)
+
 
 def wheel_step(event):
     """Turns a mouse-wheel event into a yview_scroll step, handling both X11 delta and Button-4/5."""
@@ -124,17 +166,21 @@ def wheel_step(event):
         return -max(1, abs(delta) // 120) * (1 if delta > 0 else -1)
     return -1 if getattr(event, "num", 0) == 4 else 1
 
+
 def scroll_text(widget, event):
     widget.yview_scroll(wheel_step(event), "units")
     return "break"
+
 
 def bind_wheel(widget, callback):
     for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
         widget.bind(sequence, callback, add="+")
 
+
 def pin_bottom(widget):
-    """Keep a scrolling surface parked on its newest content while a run streams into it. Accepts either a
-    Canvas or a Text widget, and stays silent if the widget is already destroyed or not yet laid out."""
+    """Keep a scrolling surface parked on its newest content while a run streams into it.
+    Accepts either a Canvas or a Text widget, and stays silent if the widget is already destroyed
+    or not yet laid out."""
     try:
         if isinstance(widget, tk.Text) or isinstance(widget, tk.Entry):
             widget.see("end")
@@ -143,24 +189,18 @@ def pin_bottom(widget):
     except tk.TclError:
         pass
 
-def pill(parent, text, kind="accent"):
-    bg, fg = PILL_KINDS.get(kind, PILL_KINDS["accent"])
-    label = tk.Label(parent, text=text, bg=bg, fg=fg, font=("TkDefaultFont", 8, "bold"), padx=9, pady=4)
-    label.restyle = lambda new_kind: label.configure(**dict(zip(("bg", "fg"), PILL_KINDS.get(new_kind, PILL_KINDS["accent"]), strict=True)))
-    return label
-
 
 from ui.phase_timeline import PhaseTimeline
 
 
-class Sparkline(tk.Canvas):
+class Sparkline(ctk.CTkCanvas):
     """A rolling throughput trace. A single number like '214 MB/s' is easy to read but easy to miss; the shape
     of the last minute shows whether the run is speeding up, stalling on a slow archive, or about to finish.
     Drawn on a Canvas rather than a widget image so it costs nothing to repaint once per tick.
     """
 
     def __init__(self, parent, bg=PANEL2, height=34, fg=CYAN, fill=None, points=60, **kw):
-        super().__init__(parent, bg=bg, height=height, highlightthickness=0, bd=0, **kw)
+        super().__init__(parent, fg_color=bg, height=height, highlightthickness=0, border_width=0, **kw)
         self.values = []
         self.max_points = points
         self.fg = fg
@@ -171,7 +211,7 @@ class Sparkline(tk.Canvas):
             return
         self.values.append(float(value))
         if len(self.values) > self.max_points:
-            self.values = self.values[-self.max_points :]
+            self.values = self.values[-self.max_points:]
         self.redraw()
 
     def clear(self):
@@ -198,6 +238,7 @@ class Sparkline(tk.Canvas):
             self.create_polygon(0, h, *points, w, h, fill=self.fill, stipple="gray25", outline="")
         self.create_line(*points, fill=self.fg, width=2, smooth=True)
         self.create_text(4, 4, anchor="nw", text=f"peak {human_size(peak)}/s", fill=MUTED, font=("TkDefaultFont", 7))
+
 
 class ActivityFeed:
     """An append-only live event feed shared by the Scan and Organize screens.
@@ -263,16 +304,17 @@ class ActivityFeed:
         """Forgets the live-line key so the next update starts a new line rather than overwriting the last."""
         self._last_key = None
 
+
 def reveal_staggered(widgets, root, stagger=80, interval=16):
     """Sequentially reveal a list of widgets with a fade-in, matching the HTML catalog's
     IntersectionObserver .in-view animation.
-    Each widget's highlightthickness animates from 0 to 1 (simulating a fade-in of the
-    border) over 20 steps. 'stagger' is the delay between each widget's start.
+    Each widget's border thickness animates from 0 to 1 over 20 steps. 'stagger' is the delay between
+    each widget's start.
     """
     states = []
     for w in widgets:
         try:
-            orig = int(w.cget("highlightthickness") or 0)
+            orig = int(w.cget("border_width") or 0)
         except tk.TclError:
             orig = 0
         states.append({"w": w, "step": 0, "orig": orig})
@@ -283,7 +325,7 @@ def reveal_staggered(widgets, root, stagger=80, interval=16):
         if s["step"] <= 20:
             alpha = min(1.0, s["step"] / 20.0)
             try:
-                w.configure(highlightthickness=int(s["orig"] * alpha))
+                w.configure(border_width=int(s["orig"] * alpha))
             except tk.TclError:
                 pass
         if s["step"] < 20:
@@ -291,12 +333,13 @@ def reveal_staggered(widgets, root, stagger=80, interval=16):
             root.after(interval, lambda: _tick(idx))
         else:
             try:
-                w.configure(highlightthickness=s["orig"])
+                w.configure(border_width=s["orig"])
             except tk.TclError:
                 pass
 
     for idx in range(len(widgets)):
         root.after(idx * stagger, lambda i=idx: _tick(i))
+
 
 class Tooltip:
     """Hover tooltip matching the HTML catalog's data-tip callout.
@@ -318,11 +361,12 @@ class Tooltip:
         if self.tip is not None:
             return
         try:
-            self.tip = tk.Toplevel(bg=ACCENT_HI)
+            self.tip = ctk.CTkToplevel(bg=ACCENT_HI)
             self.tip.withdraw()
             self.tip.overrideredirect(True)
-            self.tip.configure(bg=ACCENT_HI)
-            label = tk.Label(self.tip, text=self.text, bg=ACCENT_HI, fg="white", font=("TkDefaultFont", 8, "bold"), padx=8, pady=4)
+            self.tip.configure(fg_color=ACCENT_HI)
+            label = ctk.CTkLabel(self.tip, text=self.text, fg_color=ACCENT_HI, text_color="white",
+                                 font=("TkDefaultFont", 8, "bold"), padx=8, pady=4)
             label.pack()
         except tk.TclError:
             self.tip = None
@@ -344,16 +388,18 @@ class Tooltip:
         except tk.TclError:
             pass
 
-class StatusBar(tk.Frame):
+
+class StatusBar(ctk.CTkFrame):
     """A simple status bar at bottom of windows."""
 
-    def __init__(self, parent, bg=PANEL, **kw):
-        super().__init__(parent, bg=bg, highlightbackground=BORDER, highlightthickness=1, **kw)
-        self.label = tk.Label(self, text="", bg=bg, fg=MUTED, anchor="w", padx=10)
+    def __init__(self, parent, fg_color=BG, **kw):
+        super().__init__(parent, fg_color=fg_color, border_width=1, border_color=BORDER, **kw)
+        self.label = CTkLabel(self, text="", fg_color=fg_color, text_color=MUTED, anchor="w", padx=10)
         self.label.pack(fill="x")
 
     def set(self, text):
         self.label.configure(text=text)
+
 
 def center_window(window, width=None, height=None):
     """Center a window on screen."""
@@ -366,6 +412,7 @@ def center_window(window, width=None, height=None):
     y = (window.winfo_screenheight() // 2) - (height // 2)
     window.geometry(f"{width}x{height}+{x}+{y}")
     return window
+
 
 def tooltip(widget, text):
     """Attach a hover tooltip to a widget."""
