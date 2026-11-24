@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use crate::category_evidence::{CategoryEvidence, unsorted_evidence};
+use crate::category_evidence::{unsorted_evidence, CategoryEvidence};
 
 /// The result of looking one game up against Steam's store API and its own files.
 ///
@@ -194,11 +194,21 @@ pub struct MinimalArchive {
 }
 
 impl MinimalArchive {
-    pub fn steam_appid(&self) -> &str { &self.appid }
-    pub fn steam_name(&self) -> &str { &self.name }
-    pub fn user_title(&self) -> &str { &self.name }
-    pub fn display_name(&self) -> &str { &self.name }
-    pub fn decision_category(&self) -> &str { &self.category }
+    pub fn steam_appid(&self) -> &str {
+        &self.appid
+    }
+    pub fn steam_name(&self) -> &str {
+        &self.name
+    }
+    pub fn user_title(&self) -> &str {
+        &self.name
+    }
+    pub fn display_name(&self) -> &str {
+        &self.name
+    }
+    pub fn decision_category(&self) -> &str {
+        &self.category
+    }
 }
 
 /// Minimal stand-in for `GameArchive` so the library repair pass can reuse the organizer's conversion
@@ -218,7 +228,13 @@ pub struct RepairArchive {
 }
 
 impl RepairArchive {
-    pub fn display_name(&self) -> &str { &self.name }
-    pub fn user_title(&self) -> &str { &self.name }
-    pub fn decision_category(&self) -> &str { "" }
+    pub fn display_name(&self) -> &str {
+        &self.name
+    }
+    pub fn user_title(&self) -> &str {
+        &self.name
+    }
+    pub fn decision_category(&self) -> &str {
+        ""
+    }
 }

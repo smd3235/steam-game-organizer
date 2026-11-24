@@ -23,6 +23,16 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — feat: convert core/logger.py to Rust
+- `src/logger.rs`: Converted from `core/logger.py` — `AppLogger` with size-based rotation, level thresholds, console output, JSON format option, correlation IDs, and thread-safe writes. Includes unit test for level ordering.
+- `src/lib.rs`: Added `logger` module declaration.
+
+### 2026-11-24 — feat: convert constants, canonical_category, suggest_category_with_evidence to Rust
+- `src/constants.rs`: Converted from `core/constants.py` — `APP_NAME`, `ENTRY_POINT`, `USER_AGENT`, `ARCHIVE_EXTENSIONS`, `NO_WINDOW`, `DEFAULT_CATEGORIES`, `SUPPLEMENTAL_CATEGORIES`, `CATEGORY_ALIASES`, `IGNORED_AUTO_CATEGORIES`, `LOCK_MARKER`, `PROCESSING_DIRNAME`, `LIBRARY_RESERVED_DIRS`, `TEMP_DIR_PREFIX`, `TEMP_FILE_TAG`, `COMPRESSION_LEVEL`, `MIN_COMPRESSION_LEVEL`, `LEVEL_RAM_BYTES`, `RAM_HEADROOM_BYTES`, `COMPRESSION_THREADS`, `DEFAULT_ZIP_PASSWORD`.
+- `src/canonical_category.rs`: Converted from `core/canonical_category.py` — `canonical_category()` maps alternative spellings to canonical categories.
+- `src/suggest_category_with_evidence.rs`: Converted from `core/suggest_category_with_evidence.py` — `suggest_category_with_evidence()` and `suggest_category()` for category classification with evidence scoring.
+- `AGENTS.md`: Updated crate table to match actual dependencies.
+
 ### 2026-11-24 — feat: begin Rust conversion of pure core/utils modules
 - `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, `README.md`: Documented the Rust conversion statuses (`python`/`rust`/`both`), conversion order (`core/`/`utils/` → `services/` → `app/` → `ui/`), Rust toolchain prerequisites (`cargo`, `rustc`, `clippy`), Rust lint/test commands (`cargo check`, `cargo clippy --all-targets`, `cargo test`), and the `src/`/`Cargo.toml` layout alongside the Python tree.
 - `Cargo.toml`: Created with the first crates for pure-module conversion: `serde`, `serde_json`, `thiserror`, `chrono`, `regex`, `walkdir`, `clap`, `reqwest`, `tokio`, `log`, `env_logger`, `image`, `screenshot`.

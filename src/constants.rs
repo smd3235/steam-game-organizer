@@ -24,16 +24,54 @@ pub const ARCHIVE_EXTENSIONS: [&str; 3] = [".zip", ".rar", ".7z"];
 pub const NO_WINDOW: u32 = 0x00000008; // CREATE_NO_WINDOW
 
 pub const DEFAULT_CATEGORIES: [&str; 11] = [
-    "Action", "Adventure", "Casual", "Automation", "Idle", "Management", "RPG", "Simulation",
-    "Strategy", "Survival", "Unsorted",
+    "Action",
+    "Adventure",
+    "Casual",
+    "Automation",
+    "Idle",
+    "Management",
+    "RPG",
+    "Simulation",
+    "Strategy",
+    "Survival",
+    "Unsorted",
 ];
 
 pub const SUPPLEMENTAL_CATEGORIES: [&str; 34] = [
-    "Roguelike", "Soulslike", "Tidy Up", "Cozy", "Bullet Heaven", "Metroidvania", "Platformer",
-    "First-Person Shooter", "Third-Person Shooter", "Fighting", "Horror", "Puzzle", "Tower Defense",
-    "Deckbuilding", "Card Game", "Turn-Based", "Tactical", "Stealth", "Sandbox", "Open World",
-    "Exploration", "Walking Sim", "Life Sim", "Tycoon", "Shop Management", "City Builder", "Fishing",
-    "Cooking", "Farming", "Crafting", "Party Game", "Local Co-op", "Rhythm", "Visual Novel",
+    "Roguelike",
+    "Soulslike",
+    "Tidy Up",
+    "Cozy",
+    "Bullet Heaven",
+    "Metroidvania",
+    "Platformer",
+    "First-Person Shooter",
+    "Third-Person Shooter",
+    "Fighting",
+    "Horror",
+    "Puzzle",
+    "Tower Defense",
+    "Deckbuilding",
+    "Card Game",
+    "Turn-Based",
+    "Tactical",
+    "Stealth",
+    "Sandbox",
+    "Open World",
+    "Exploration",
+    "Walking Sim",
+    "Life Sim",
+    "Tycoon",
+    "Shop Management",
+    "City Builder",
+    "Fishing",
+    "Cooking",
+    "Farming",
+    "Crafting",
+    "Party Game",
+    "Local Co-op",
+    "Rhythm",
+    "Visual Novel",
 ];
 
 /// Category aliases map alternative spellings to canonical categories.
@@ -106,8 +144,15 @@ pub const CATEGORY_ALIASES: [(&str, &str); 56] = [
 
 /// Categories that carry no scoring weight for auto-categorization.
 pub const IGNORED_AUTO_CATEGORIES: [&str; 9] = [
-    "indie", "early access", "free to play", "multiplayer", "single-player", "single player",
-    "online co-op", "co-op", "massively multiplayer",
+    "indie",
+    "early access",
+    "free to play",
+    "multiplayer",
+    "single-player",
+    "single player",
+    "online co-op",
+    "co-op",
+    "massively multiplayer",
 ];
 
 /// Marker file written into a repack folder recording the owning process, so an abandoned

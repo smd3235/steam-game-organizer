@@ -13,7 +13,7 @@
 //! 2026-11-24: Converted from `core/logger.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-use std::fs::{OpenOptions, remove_file};
+use std::fs::{remove_file, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -49,7 +49,12 @@ const MAX_BYTES: u64 = 5 * 1024 * 1024; // 5 MB per file
 const MAX_FILES: u32 = 3; // active + 2 rotated
 
 impl AppLogger {
-    pub fn new(path: &Path, level: &str, console: bool, json_format: bool) -> std::io::Result<Self> {
+    pub fn new(
+        path: &Path,
+        level: &str,
+        console: bool,
+        json_format: bool,
+    ) -> std::io::Result<Self> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -157,7 +162,11 @@ impl AppLogger {
         }
 
         let _lock = self.lock.lock().unwrap();
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&self.path) {
+        if let Ok(mut f) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.path)
+        {
             let _ = f.write_all(line.as_bytes());
         }
     }
@@ -203,8 +212,7 @@ impl AppLogger {
                     f.write_all(
                         format!(
                             "PANIC: {}\n",
-                            info
-                                .location()
+                            info.location()
                                 .map(|l| format!("{}", l))
                                 .unwrap_or_default()
                         )

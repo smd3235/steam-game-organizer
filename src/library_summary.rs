@@ -81,7 +81,10 @@ impl LibrarySummary {
             }
         }
         let mut result: Vec<(String, u32)> = totals.into_iter().collect();
-        result.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase())));
+        result.sort_by(|a, b| {
+            b.1.cmp(&a.1)
+                .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+        });
         result
     }
 
@@ -146,13 +149,20 @@ impl LibrarySummary {
             .into_iter()
             .filter(|(_, found)| found.len() >= 2)
             .map(|(key, mut found)| {
-                found.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()).then_with(|| a.1.cmp(&b.1)));
+                found.sort_by(|a, b| {
+                    a.0.to_lowercase()
+                        .cmp(&b.0.to_lowercase())
+                        .then_with(|| a.1.cmp(&b.1))
+                });
                 (key, found)
             })
             .collect();
 
         let mut categories_sorted = rows;
-        categories_sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase())));
+        categories_sorted.sort_by(|a, b| {
+            b.1.cmp(&a.1)
+                .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+        });
 
         LibrarySummary {
             categories: categories_sorted,
