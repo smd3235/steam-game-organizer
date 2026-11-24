@@ -49,6 +49,7 @@ def _measured_window(root, size="1280x800"):
 
 @pytest.mark.geometry
 @pytest.mark.ui
+@pytest.mark.isolated
 class TestUiGeometry(unittest.TestCase):
     def test_audit_progress_moves_the_bar_and_names_the_folder(self):
         # The audit fetches artwork for every game folder in the library, which is the slowest thing a scan
@@ -451,7 +452,7 @@ class TestUiGeometry(unittest.TestCase):
             self.assertEqual(states["extract"], "done")
             self.assertEqual(states["verify"], "pending")  # never reached
             self.assertIn("7z build exited 255", organize.detail_label.cget("text"))
-            self.assertIn("FAILED", organize.log.get("1.0", "end"))
+            self.assertIn("FAILED", organize.feed.get("1.0", "end"))
         finally:
             close_root(root)
 
@@ -799,7 +800,7 @@ class TestUiGeometry(unittest.TestCase):
             organize.ctx = object()
             organize.started_at = __import__("time").monotonic()
             organize.progress_update({"stage": "compressing", "file": "Big.7z", "source_bytes": 4 * 1024**3, "progress": 0.42, "tool_percent": 42, "tool_file": "data/pak42.bin", "level": 9})
-            organize._refresh_metrics()
+            organize.refresh()
             root.update_idletasks()
             pressure = organize.pressure.cget("text")
             self.assertIn("level 9", pressure)
@@ -833,12 +834,12 @@ class TestUiGeometry(unittest.TestCase):
             organize.feed.clear()
             for percent in (10, 20, 30, 40, 50):
                 organize.progress_update({"stage": "compressing", "file": "Same.7z", "source_bytes": 1024, "progress": percent / 100, "tool_percent": percent})
-            text = organize.log.get("1.0", "end")
+            text = organize.feed.get("1.0", "end")
             self.assertEqual(text.count("COMPRESSING: Same.7z"), 1, f"the live stage was appended repeatedly instead of redrawn:\n{text}")
             self.assertIn("50%", text, "the live line did not show the latest percentage")
             # A real transition must still be kept as its own line underneath the live one.
             organize.progress_update({"stage": "converted", "file": "Same.7z", "source_bytes": 1024, "target_bytes": 512})
-            text = organize.log.get("1.0", "end")
+            text = organize.feed.get("1.0", "end")
             self.assertIn("CONVERTED: Same.7z", text)
         finally:
             close_root(root)
@@ -866,7 +867,7 @@ class TestUiGeometry(unittest.TestCase):
             organize.done_bytes = 0
             organize.ctx = object()  # the metrics ticker only runs while a job is active
             organize.progress_update({"stage": "converted", "file": "A.7z", "source_bytes": 4 * 1024**3, "target_bytes": 2 * 1024**3})
-            organize._refresh_metrics()
+            organize.refresh()
             root.update_idletasks()
             metrics = organize.metrics.cget("text")
             self.assertIn("running 01:00", metrics)

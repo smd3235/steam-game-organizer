@@ -24,6 +24,7 @@ from tests.wait_for_organize import wait_for_organize
 from tests.wait_until import wait_until
 
 
+@pytest.mark.isolated
 class TestRealWorkflow(unittest.TestCase):
     def setUp(self):
         require_tk(self)

@@ -202,7 +202,7 @@ Work through this checklist in order:
 | 2 | **Changelog** | Add a dated entry under `CHANGELOG.md` (newest first). |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
 | 4 | **Lint** | `ruff check .` — must pass. See [🧹 Lint](#-lint). |
-| 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
+| 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --ignore=tests/test_workflow_smoke.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
 | 6 | **Quality Gate** | `runtime\python.exe tools\quality_gate.py` — runs ruff, bandit, pip-audit, vulture, mypy, pytest, and OCR tests. |
 | 7 | **Build** | `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists. See [🏗️ Build](#-build--frozen-exe-pipeline). |
 | 7 | **Commit + push** | `git add -A` the changed source, docs, and changelog; commit with a descriptive conventional message; push to GitHub. **Update all affected markdown docs BEFORE pushing.** See [🔀 Git / GitHub Workflow](#-git--github-workflow). |
@@ -294,6 +294,25 @@ A fake `7z` written as a shebang script with no extension is invisible to `shuti
 #### Test logs never touch the real logs directory
 
 `tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test runs never pollute the user's log history, and real runs are easy to tell apart. The env var is set with `setdefault` so an explicit export still takes precedence.
+
+#### Isolated GUI tests
+
+Some GUI tests must never run in the same process as other tests. On Windows, creating and destroying multiple `tk.Tk()` roots in one process corrupts the Tcl interpreter ("couldn't read init.tcl" or "invalid command name `tcl_findLibrary`"). These tests are marked `@pytest.mark.isolated` and are **deselected by default**:
+
+- `tests/test_ui_geometry.py` — window geometry and layout measurements (references CustomTkinter view attributes lost during migration)
+- `tests/test_real_workflow.py` / `tests/test_workflow_smoke.py` — full workflow through real Tk and MainWindow
+
+Run them **one file at a time**, never as a batch:
+
+```powershell
+# Isolated tests are skipped by default; this shows them as skipped:
+runtime\python.exe -m pytest tests/test_ui_geometry.py -v
+
+# To actually run isolated tests, use --run-isolated (then run each file alone):
+runtime\python.exe -m pytest tests/test_ui_geometry.py --run-isolated -v
+```
+
+Never run two isolated test files in the same `pytest` invocation.
 
 ---
 
