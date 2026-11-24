@@ -124,8 +124,8 @@ class MainWindow:
             # Navigation tabs - clickable, keyboard accessible, with clear active state.
             # Numbering removed: workflow is non-linear (users jump back to Scan from Review, etc.)
             b = CTkButton(nav, text=label, fg_color=PANEL2, text_color=MUTED, hover_color=PANEL3,
-                font=("TkDefaultFont", 9, "bold"), padx=22, pady=10,
-                height=34, cursor="hand2")
+                font=("TkDefaultFont", 9, "bold"), height=34, cursor="hand2")
+            b.pack(side="left", padx=22, pady=10)
             b.pack(side="left", padx=2, pady=4)
             b.configure(command=lambda k=key: self._nav(k))
             b.bind("<Return>", lambda e, k=key: self._nav(k))
