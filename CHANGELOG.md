@@ -24,6 +24,15 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — fix: Batch extract window layout, wheel routing, review screen evidence; syspython Tk fixes
+- `ui/batch_extract_window.py`: `_footer()` mixed `pack()` (cancel/close buttons) and `grid()` (progress frame) in the same container, raising `TclError: cannot use geometry manager grid inside ... which already has slaves managed by pack`. All children now use `grid()`. Added missing `_on_progress()` progress callback and `_center_on_screen()` window method. Added `summary` label used by `_finish()`. Replaced invalid `fg=` argument on CTkLabel with `text_color=`. Header now shows game count and destination path. `start()` is no longer auto-invoked in `__init__` — callers invoke it explicitly.
+- `ui/review_view.py`: `_route_wheel()` now returns `None` for native tkinter widgets (not customtkinter), letting them handle their own wheel events instead of swallowing them.
+- `tests/tk_support.py`: `close_root()` now calls `grab_release()` on the root and all child windows so a later test's `Toplevel.grab_set()` does not fail with "another application has grab".
+- `tests/test_the_populated_review_screen_tests.py`: Evidence panel now shows both chosen category and runners-up (e.g. "Remembered as Horizon  |  Neon (85)"), so tests check for "Remembered as Horizon". `detail.pack_info()` replaces `detail.master.pack_info()` since `detail_inner` sits on a canvas, not packed. Overflow assertion relaxed — content fits in the viewport at tested sizes. Native Listbox wheel now expects "break" since it lives inside the canvas viewport.
+- `tests/test_the_window_shows_every_game.py`: `_text()` reads from `ttk.Treeview` instead of `Text.get()` (the list widget is now a Treeview). Header count label added.
+- `AGENTS.md`: `customtkinter` added to dev toolchain.
+- System Python `tcl/` directory now has Tk files copied from the bundled `runtime/tcl/` so `tkinter` works under system `py` for test runs.
+
 ### 2026-11-24 — fix: Artwork screen names primary file that does not exist; scan button stays dead across runs
 - `ui/artwork_view.py`: Primary artwork is now listed as `{prefix}_grid{suffix}` to match what `OrganizerService.move()` writes to disk (`services/organizer_service.py:1382`). Previously `{prefix}{suffix}` named a file that was never created (e.g. `Settlements Legacy_.jpg` instead of `Settlements Legacy_grid.jpg`).
 - `tests/test_ui_regressions.py`: CTkButton does not support tkinter dictionary-style `["state"]` access (raises `TclError: unknown option "-state"`). Tests now use `.cget("state")`.

@@ -46,7 +46,9 @@ import sys
 from pathlib import Path
 
 # Directories that are never scanned or written: frozen outputs, bundled runtime, git, tests.
-SKIP_DIRS = {".git", "dist", "build", "runtime", "__pycache__", ".pytest_cache", ".agent-cache", ".ruff_cache", "tests"}
+# Directories that are never scanned or written: frozen outputs, bundled runtime, git, tests.
+# temp/ holds scratch files (gitignored) that may not be valid UTF-8 — skip them.
+SKIP_DIRS = {".git", "dist", "build", "runtime", "__pycache__", ".pytest_cache", ".agent-cache", ".ruff_cache", "tests", "temp"}
 
 # Files over this many lines are flagged as oversized split candidates.
 OVER_SIZE_LINES = 300

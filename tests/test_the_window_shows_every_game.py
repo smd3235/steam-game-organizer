@@ -52,9 +52,12 @@ class TheWindowShowsEveryGame(unittest.TestCase):
         return self.window
 
     def _text(self):
-        # "end-1c", not "end". A Tk text always ends in a newline, so reading to "end" counts a phantom
-        # empty row past the last game and every row count here would be one too high.
-        return self.window.list.get("1.0", "end-1c")
+        # self.list is a ttk.Treeview: read each row's values and join them.
+        lines = []
+        for iid in self.window.list.get_children():
+            vals = self.window.list.item(iid, "values")
+            lines.append(" ".join(str(v) for v in vals))
+        return "\n".join(lines)
 
     def _labels(self, widget):
         found = []

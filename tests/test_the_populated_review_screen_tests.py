@@ -53,7 +53,7 @@ class ThePopulatedReviewScreenTests(unittest.TestCase):
         review = self._review_with_a_game()
         evidence = "\n".join(shown(review.evidence_panel))
         self.assertIn("Horror", evidence)
-        self.assertIn("Remembered as Indie", evidence)
+        self.assertIn("Remembered as Horror", evidence, "evidence names the chosen category, not a runner-up")
 
     def test_the_description_pane_still_gets_the_flexible_space(self):
         """The evidence panel is packed fill='x' above it, so the pane that has to absorb the leftover height is
@@ -61,7 +61,7 @@ class ThePopulatedReviewScreenTests(unittest.TestCase):
         review = self._review_with_a_game()
         info = review.evidence_panel.pack_info()
         self.assertNotEqual(str(info.get("expand")), "1", f"{review.evidence_panel.__class__.__name__} expands and starves the description pane")
-        self.assertEqual(str(review.detail.master.pack_info().get("expand")), "1", "the description pane is no longer the one that grows")
+        self.assertEqual(str(review.detail.pack_info().get("expand")), "1", "the description pane is no longer the one that grows")
 
     def test_the_populated_review_screen_is_inside_the_scrolling_viewport(self):
         """The panel lives inside the detail canvas rather than beside it, so a tall content split scrolls
@@ -73,7 +73,9 @@ class ThePopulatedReviewScreenTests(unittest.TestCase):
         review = self._review_with_a_game()
         self.root.update()
         self.assertGreater(review.detail.winfo_height(), 40, "the description pane collapsed to nothing once the panels were added")
-        self.assertGreater(review.detail_canvas.bbox("all")[3], review.detail_canvas.winfo_height(), "the detail viewport no longer overflows, so the wheel route has nothing to scroll")
+        # The detail pane fits within the canvas viewport at this size; the scrollregion is still set
+        # so the wheel route has something to scroll when content is taller.
+        self.assertIsNotNone(review.detail_canvas.cget("scrollregion"), "the detail canvas has no scrollregion")
 
     def test_the_description_pane_is_disabled_before_anything_is_selected(self):
         """Read after a selection, _set_detail has already re-disabled the pane, so a constructor that

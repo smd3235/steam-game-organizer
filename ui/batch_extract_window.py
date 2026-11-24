@@ -80,8 +80,8 @@ class BatchExtractWindow(ctk.CTkToplevel):
 
         if scanning:
             self._show_scanning()
-        elif plan:
-            self.start()
+        # start() is called explicitly by run_batch_window() / the caller, not here,
+        # so items stay QUEUED until the caller starts the job.
 
         self._center_on_screen()
         self.after(50, lambda: self.lift())
@@ -97,14 +97,28 @@ class BatchExtractWindow(ctk.CTkToplevel):
         head = CTkFrame(self, fg_color=PANEL, corner_radius=8)
         head.grid(row=0, column=0, sticky="ew", padx=18, pady=(16, 6))
         head.columnconfigure(0, weight=1)
+        head.columnconfigure(1, weight=0)
+        head.columnconfigure(2, weight=0)
 
         CTkLabel(head, text="Batch Extract", fg_color=PANEL, text_color=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
+
+        self.header_count = CTkLabel(head, text="", fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 11, "bold"), anchor="e")
+        self.header_count.grid(row=0, column=1, sticky="e", padx=(12, 0))
 
         CTkLabel(head,
             text="Each archive is extracted once. Accepted games are moved into their category folder; "
                  "skipped games are left untouched. Failed games stay where they are.",
             fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left",
-            wraplength=620).grid(row=1, column=0, sticky="w", pady=(4, 12))
+            wraplength=620).grid(row=1, column=0, columnspan=2, sticky="w", pady=(4, 12))
+        if self.plan:
+            count = len(self.plan.items)
+            already = getattr(self.plan, "already_done", 0)
+            if already:
+                self.header_count.configure(text=f"{already} already unpacked  •  Extracting {count} games")
+            else:
+                self.header_count.configure(text=f"Extracting {count} games")
+            self.header_dest = CTkLabel(head, text=str(self.plan.destination), fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 9), anchor="e")
+            self.header_dest.grid(row=0, column=2, sticky="e")
 
     def _table(self):
         table_container = CTkFrame(self, fg_color=PANEL2, corner_radius=8)
@@ -134,17 +148,18 @@ class BatchExtractWindow(ctk.CTkToplevel):
         footer_container = CTkFrame(self, fg_color=BG)
         footer_container.grid(row=3, column=0, sticky="ew", padx=18, pady=(0, 16))
         footer_container.columnconfigure(0, weight=1)
+        footer_container.columnconfigure(1, weight=0)
 
         self.cancel_btn = CTkButton(footer_container, text="STOP RUN", command=self._stop,
             fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=TEXT, font=("TkDefaultFont", 9, "bold"), height=32)
-        self.cancel_btn.pack(side="left", padx=(12, 0))
+        self.cancel_btn.grid(row=0, column=0, sticky="w", padx=(12, 0))
 
         self.close_btn = CTkButton(footer_container, text="CLOSE", command=self._on_close,
             fg_color=PANEL3, hover_color=PANEL2, text_color=TEXT, font=("TkDefaultFont", 9, "bold"), height=32)
-        self.close_btn.pack(side="right")
+        self.close_btn.grid(row=0, column=1, sticky="e")
 
         self.progress_frame = CTkFrame(footer_container, fg_color=BG)
-        self.progress_frame.grid(row=1, column=0, sticky="ew", pady=(12, 0))
+        self.progress_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         self.progress_frame.columnconfigure(0, weight=1)
 
         self.bar = CTkProgressBar(self.progress_frame, mode="determinate")
@@ -156,6 +171,9 @@ class BatchExtractWindow(ctk.CTkToplevel):
 
         self.metrics = CTkLabel(self.progress_frame, text="", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 8))
         self.metrics.pack(anchor="w", padx=0, pady=(0, 0))
+
+        self.summary = CTkLabel(self.progress_frame, text="", fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 9), justify="left")
+        self.summary.pack(anchor="w", padx=0, pady=(4, 0))
 
     # ------------------------------------------------------------------ behaviour
 
@@ -169,6 +187,11 @@ class BatchExtractWindow(ctk.CTkToplevel):
         self._refresh_metrics()
         self._pump = self.after(150, self._tick)
         threading.Thread(target=self.job.run, daemon=True).start()
+
+    def _on_progress(self, stage, item, detail=""):
+        """Progress callback from BatchExtractJob (runs on the worker thread). Re-post to the Tk thread."""
+        if item is not None:
+            self.job.queue.put(("progress", item))
 
     def _tick(self):
         try:
@@ -250,10 +273,10 @@ class BatchExtractWindow(ctk.CTkToplevel):
         self.bar.set(100)
         self.cancel_btn.configure(state="disabled", text="STOPPED" if job.cancel_requested else "FINISHED")
         self.remaining.configure(text=f"{job.plan.count} accounted for  -  0 remaining")
-        self.summary.configure(text=job.summary(), fg=RED if job.failed else TEXT)
+        self.summary.configure(text=job.summary(), text_color=RED if job.failed else TEXT)
         if job.failed:
             names = ", ".join(item.name for item in job.plan.items if item.state == FAILED)
-            self.summary.configure(text=f"{job.summary()}\nFailed: {names}", fg=RED)
+            self.summary.configure(text=f"{job.summary()}\nFailed: {names}", text_color=RED)
         self.close_btn.focus_set()
         if self.on_finished:
             self.on_finished(job)
@@ -276,6 +299,17 @@ class BatchExtractWindow(ctk.CTkToplevel):
             self.master.quit()
         except (tk.TclError, AttributeError):
             pass
+
+    def _center_on_screen(self):
+        """Place the window near the centre of the screen once it has a size."""
+        self.update_idletasks()
+        w = self.winfo_width()
+        h = self.winfo_height()
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        x = max(0, (sw - w) // 2)
+        y = max(0, (sh - h) // 2)
+        self.geometry(f"{w}x{h}+{x}+{y}")
 
 
 def run_batch_window(master, plan=None, logger=None, password="", on_finished=None, scanning=True):

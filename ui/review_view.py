@@ -262,8 +262,14 @@ class ReviewView(ctk.CTkFrame):
             self.verify_ctx = None
 
     def _route_wheel(self, event):
-        """Route a wheel event into the detail canvas, or hand it back to the widget that owns it."""
+        """Route a wheel event into the detail canvas, or hand it back to the widget that owns it.
+
+        Native tkinter widgets (not customtkinter) handle their own wheel events, so they are passed
+        through unchanged. Only CTk widgets inside the scrollable viewports are intercepted.
+        """
         widget = event.widget
+        if not isinstance(widget, ctk.CTkBaseClass):
+            return None
         if widget is self.detail_canvas or self._is_descendant(widget, self.detail_canvas):
             return "break"
         if widget is self.list or self._is_descendant(widget, self.list):

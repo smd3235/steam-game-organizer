@@ -143,6 +143,20 @@ def close_root(root):
         root.withdraw()
     except Exception:
         pass
+    # Release any active grab so a later test's Toplevel can grab_set() without
+    # "another application has grab". Grabs live on Toplevel windows, not just the root.
+    try:
+        root.grab_release()
+    except Exception:
+        pass
+    try:
+        for child in root.winfo_children():
+            try:
+                child.grab_release()
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 def sandbox_app(case, root, mock=True, project_root=None):
