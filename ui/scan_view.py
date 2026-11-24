@@ -18,7 +18,7 @@ import os
 import shutil
 from pathlib import Path
 from .custom_theme import CTk, CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkEntry, CTkComboBox, CTkScrollbar, CTkTextbox, CTkCheckBox, CTkRadioButton, CTkProgressBar, CTkCanvas, Theme, panel, pill, wheel_step, bind_wheel, pin_bottom
-from .theme import BG, PANEL, PANEL2, PANEL3, TEXT, MUTED, ACCENT_HI, ACCENT, ORANGE, RED, CYAN
+from .theme import BG, PANEL, PANEL2, PANEL3, TEXT, MUTED, ACCENT_HI, ACCENT_HOVER, ACCENT, ORANGE, RED, CYAN
 from .theme import BG, PANEL, PANEL2, TEXT, MUTED, ACCENT_HI, ACCENT
 from core.constants import USER_AGENT
 from core.scan_view_utils import ago, space_delta, size
