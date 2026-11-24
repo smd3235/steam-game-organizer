@@ -8,11 +8,15 @@
 
 pub mod canonical_category;
 pub mod category_evidence;
+pub mod configured_bases;
 pub mod constants;
 pub mod errors;
 pub mod library_summary;
 pub mod logger;
 pub mod models;
 pub mod naming_utils;
+pub mod safe_folder_name;
 pub mod state;
 pub mod suggest_category_with_evidence;
+pub mod system_paths;
+pub mod within;

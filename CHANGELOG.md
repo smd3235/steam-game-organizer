@@ -23,6 +23,13 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — feat: convert core/within.py, safe_folder_name.py, configured_bases.py, system_paths.py to Rust
+- `src/within.rs`: Converted from `core/within.py` — path containment check (`within()`), normalizes `..`/`.` segments without requiring paths to exist on disk.
+- `src/safe_folder_name.rs`: Converted from `core/safe_folder_name.py` — `safe_folder_name()` strips forbidden Windows chars, reserved device names (CON, COM1-LPT9), trailing dots/spaces; caps at 120 chars.
+- `src/configured_bases.rs`: Converted from `core/configured_bases.py` — `configured_bases()` normalizes user-approved extract folders with `~` expansion.
+- `src/system_paths.rs`: Converted from `core/system_paths.py` — `system_paths()` reads protected system folders from Windows env vars.
+- `core/within.py`, `core/safe_folder_name.py`, `core/configured_bases.py`, `core/system_paths.py`: Removed after successful Rust conversion.
+
 ### 2026-11-24 — feat: convert core/logger.py to Rust
 - `src/logger.rs`: Converted from `core/logger.py` — `AppLogger` with size-based rotation, level thresholds, console output, JSON format option, correlation IDs, and thread-safe writes. Includes unit test for level ordering.
 - `src/lib.rs`: Added `logger` module declaration.
