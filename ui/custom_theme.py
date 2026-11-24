@@ -23,6 +23,7 @@ color constants as ui/palette.py so existing code keeps working.
 from __future__ import annotations
 
 import customtkinter as ctk
+import tkinter as tk
 
 # ── Re-export CustomTkinter classes so views import one module ──────────────────
 CTk = ctk.CTk
@@ -137,6 +138,17 @@ def wheel_step(event):
 def bind_wheel(widget, callback):
     for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
         widget.bind(sequence, callback, add="+")
+
+
+def pin_bottom(widget):
+    """Keep a scrolling surface parked on its newest content while a run streams into it."""
+    try:
+        if isinstance(widget, tk.Text) or isinstance(widget, tk.Entry):
+            widget.see("end")
+        else:
+            widget.yview_moveto(1.0)
+    except tk.TclError:
+        pass
 
 
 def human_size(n: int) -> str:

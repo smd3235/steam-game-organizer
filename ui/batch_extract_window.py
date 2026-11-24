@@ -16,6 +16,7 @@ app has one way of doing this rather than two.
 
 from __future__ import annotations
 
+import customtkinter as ctk
 import queue
 import shutil
 import threading
@@ -24,11 +25,11 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 
-from ui.theme import ACCENT_HI, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, Theme, human_duration, human_size, pin_bottom
+from ui.custom_theme import ACCENT, ACCENT_HOVER, BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, PANEL3, RED, TEXT, Theme, human_duration, human_size, pin_bottom, CTkFrame, CTkLabel, CTkButton, CTkProgressBar
 from services.batch_extract_service import CANCELLED, DONE, EXTRACTING, FAILED, QUEUED, SKIPPED, BatchExtractJob
 
-# The word shown for each state. The colour is not here: each state is a tag on the Text, configured once below,
-# so a row cannot be written in a colour that was never declared in the palette.
+# The word shown for each state. The colour is not here: each state is a tag on the Treeview row,
+# configured once below, so a row cannot be written in a colour that was never declared in the palette.
 STATE_WORD = {
     QUEUED: "Waiting",
     EXTRACTING: "Extracting",
@@ -39,8 +40,7 @@ STATE_WORD = {
 }
 
 
-
-class BatchExtractWindow(tk.Toplevel):
+class BatchExtractWindow(ctk.CTkToplevel):
     """Runs a BatchExtractJob and shows what every game in it is doing.
 
     A Toplevel rather than the Application's own window because the protocol handler runs with no main window:
@@ -50,228 +50,145 @@ class BatchExtractWindow(tk.Toplevel):
     def __init__(self, master, plan=None, logger=None, password="", on_finished=None, scanning=False):
         super().__init__(master)
         Theme(master)
-        self.plan = plan
+        self.config = None  # Will be set by caller if needed
         self.logger = logger
         self.password = password
         self.on_finished = on_finished
-        self.rows = {}
+        self.scanning = scanning
+        self.plan = plan
         self.job = None
-        self._events = queue.Queue()
         self._pump = None
         self._closed = False
-        self.scanning = scanning
+        self.rows = {}  # identity_key -> Treeview item id
 
-        self.title("Extracting games")
-        self.configure(bg=PANEL)
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.transient(master)
+
+        self.title("Batch Extract")
+        self.configure(fg_color=BG)
+        self.resizable(True, True)
+        self.grab_set()
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
 
         self._header()
-        self._summary_row()
         self._table()
         self._footer()
 
-        # Wide enough for a game name, a size, a status and a detail line. A library-sized run scrolls, which is
-        # why every row carries its own state rather than relying on being seen.
-        self.geometry("900x640")
-        self.minsize(640, 400)
-        self.deiconify()
-        self.lift()
+        self.geometry("900x600")
+        self.minsize(600, 400)
+
+        if scanning:
+            self._show_scanning()
+        elif plan:
+            self.start()
+
+        self._center_on_screen()
+        self.after(50, lambda: self.lift())
         self.after_idle(lambda: self.attributes("-topmost", True))
         self.after_idle(lambda: self.attributes("-topmost", False))
-        if not self.scanning:
-            self.cancel_btn.focus_set()
+
+        self.bind("<Escape>", lambda e: self._on_close())
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ------------------------------------------------------------------ layout
 
     def _header(self):
-        head = tk.Frame(self, bg=PANEL)
+        head = CTkFrame(self, fg_color=PANEL, corner_radius=8)
         head.grid(row=0, column=0, sticky="ew", padx=18, pady=(16, 6))
         head.columnconfigure(0, weight=1)
 
-        if self.scanning:
-            # Scanning mode header
-            title_label = tk.Label(head, text="Scanning library", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w")
-            title_label.grid(row=0, column=0, sticky="w")
-            subtitle_label = tk.Label(head, text="discovering archives and checking installer signatures", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w")
-            subtitle_label.grid(row=1, column=0, sticky="w")
-            return
+        CTkLabel(head, text="Batch Extract", fg_color=PANEL, text_color=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w").grid(row=0, column=0, sticky="w")
 
-        # Extraction mode header
-        main_title = tk.Label(head, text=f"Extracting {self.plan.count} game{'s' if self.plan.count != 1 else ''}", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 17, "bold"), anchor="w")
-        main_title.grid(row=0, column=0, sticky="w")
-
-        category_frame = tk.Frame(head, bg=PANEL)
-        category_frame.grid(row=1, column=0, sticky="w", pady=(2, 0))
-        category_label = tk.Label(category_frame, text=self.plan.category, bg=PANEL, fg=ACCENT_HI, font=("TkDefaultFont", 9, "bold"), anchor="w")
-        category_label.grid(row=0, column=0, sticky="w")
-
-        destination_frame = tk.Frame(head, bg=PANEL)
-        destination_frame.grid(row=2, column=0, sticky="w", pady=(4, 0))
-        destination_label = tk.Label(destination_frame, text=f"To  {self.plan.destination}", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w", justify="left", wraplength=660)
-        destination_label.grid(row=0, column=0, sticky="w")
-
-        if self.plan.already_done:
-            already_frame = tk.Frame(head, bg=PANEL)
-            already_frame.grid(row=3, column=0, sticky="w", pady=(2, 0))
-            already_label = tk.Label(already_frame, text=f"{self.plan.already_done} already unpacked, so left alone", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w")
-            already_label.grid(row=0, column=0, sticky="w")
-
-    def _summary_row(self):
-        bar_container = tk.Frame(self, bg=PANEL)
-        bar_container.grid(row=1, column=0, sticky="ew", padx=18, pady=(4, 8))
-        bar_container.columnconfigure(0, weight=1)
-
-        # Progress bar section
-        progress_frame = tk.Frame(bar_container, bg=PANEL)
-        progress_frame.grid(row=0, column=0, sticky="ew")
-        progress_frame.columnconfigure(0, weight=1)
-
-        self.bar = ttk.Progressbar(progress_frame, style="Dark.Horizontal.TProgressbar", mode="determinate", maximum=100)
-        self.bar.grid(row=0, column=0, sticky="w", padx=(0, 12))
-        self.bar["value"] = 0
-
-        # Info section
-        info_frame = tk.Frame(bar_container, bg=PANEL)
-        info_frame.grid(row=0, column=1, sticky="ew", padx=(12, 0))
-        info_frame.columnconfigure(0, weight=1)
-
-        self.remaining = tk.Label(info_frame, text="Starting...", bg=PANEL, fg=TEXT, font=("TkDefaultFont", 9, "bold"), anchor="w")
-        self.remaining.grid(row=0, column=0, sticky="ew")
-
-        self.metrics = tk.Label(info_frame, text="", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8), anchor="w")
-        self.metrics.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        CTkLabel(head,
+            text="Each archive is extracted once. Accepted games are moved into their category folder; "
+                 "skipped games are left untouched. Failed games stay where they are.",
+            fg_color=PANEL, text_color=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left",
+            wraplength=620).grid(row=1, column=0, sticky="w", pady=(4, 12))
 
     def _table(self):
-        # Container for the table with visual framing
-        table_container = tk.Frame(self, bg=PANEL2, highlightbackground=BORDER, highlightthickness=1)
+        table_container = CTkFrame(self, fg_color=PANEL2, corner_radius=8)
         table_container.grid(row=2, column=0, sticky="nsew", padx=18, pady=(0, 10))
         table_container.columnconfigure(0, weight=1)
         table_container.rowconfigure(0, weight=1)
 
-        # ttk.Treeview with proper columns replaces the old tk.Text + tab-stops approach.
-        # Tab stops were fragile: long game names overflowed into the size column, and any
-        # font change misaligned every column. Treeview columns always align regardless of
-        # font size or name length.
-        self.list = ttk.Treeview(
-            table_container,
-            columns=("size", "status", "detail"),
-            show="tree headings",
-            height=12,
-            selectmode="none",
-        )
-        self.list.column("#0", width=300, minwidth=200, stretch=True)       # game name
-        self.list.column("size", width=90, minwidth=70, stretch=False)      # archive size
-        self.list.column("status", width=100, minwidth=80, stretch=False)   # waiting/extracting/done/failed
-        self.list.column("detail", width=260, minwidth=150, stretch=True)   # status detail
+        self.list = ttk.Treeview(table_container, columns=("size", "status", "detail"),
+                                show="tree headings", height=12, selectmode="none")
+        self.list.column("#0", width=300, minwidth=200, stretch=True)
+        self.list.column("size", width=90, minwidth=70, stretch=False)
+        self.list.column("status", width=100, minwidth=80, stretch=False)
+        self.list.column("detail", width=260, minwidth=150, stretch=True)
         self.list.heading("#0", text="Game", anchor="w")
         self.list.heading("size", text="Size", anchor="w")
         self.list.heading("status", text="Status", anchor="w")
         self.list.heading("detail", text="Detail", anchor="w")
         self.list.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
-        scroll = ttk.Scrollbar(table_container, orient="vertical", command=self.list.yview, style="Dark.Vertical.TScrollbar")
+        scroll = ttk.Scrollbar(table_container, orient="vertical", command=self.list.yview)
         scroll.grid(row=0, column=1, sticky="ns", padx=(0, 12), pady=12)
         self.list.configure(yscrollcommand=scroll.set)
 
-        for state, colour in ((QUEUED, MUTED), (EXTRACTING, ACCENT_HI), (DONE, GREEN), (FAILED, RED), (SKIPPED, MUTED), (CANCELLED, ORANGE)):
+        for state, colour in ((QUEUED, MUTED), (EXTRACTING, ACCENT_HOVER), (DONE, GREEN), (FAILED, RED), (SKIPPED, MUTED), (CANCELLED, ORANGE)):
             self.list.tag_configure(state, foreground=colour)
-        self.list.tag_configure("size", foreground=MUTED)
-        self.list.tag_configure("detail", foreground=MUTED)
-        self.list.tag_configure("failed-detail", foreground=RED)
 
     def _footer(self):
-        foot = tk.Frame(self, bg=PANEL)
-        foot.grid(row=3, column=0, sticky="ew", padx=18, pady=(0, 16))
-        foot.columnconfigure(0, weight=1)
+        footer_container = CTkFrame(self, fg_color=BG)
+        footer_container.grid(row=3, column=0, sticky="ew", padx=18, pady=(0, 16))
+        footer_container.columnconfigure(0, weight=1)
 
-        # Summary section
-        summary_frame = tk.Frame(foot, bg=PANEL)
-        summary_frame.grid(row=0, column=0, sticky="ew")
-        summary_frame.columnconfigure(0, weight=1)
+        self.cancel_btn = CTkButton(footer_container, text="STOP RUN", command=self._stop,
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=TEXT, font=("TkDefaultFont", 9, "bold"), height=32)
+        self.cancel_btn.pack(side="left", padx=(12, 0))
 
-        self.summary = tk.Label(summary_frame, text="", bg=PANEL, fg=MUTED, font=("TkDefaultFont", 9), anchor="w", justify="left", wraplength=620)
-        self.summary.grid(row=0, column=0, sticky="w")
+        self.close_btn = CTkButton(footer_container, text="CLOSE", command=self._on_close,
+            fg_color=PANEL3, hover_color=PANEL2, text_color=TEXT, font=("TkDefaultFont", 9, "bold"), height=32)
+        self.close_btn.pack(side="right")
 
-        # Button section
-        button_frame = tk.Frame(foot, bg=PANEL)
-        button_frame.grid(row=0, column=1, sticky="e")
+        self.progress_frame = CTkFrame(footer_container, fg_color=BG)
+        self.progress_frame.grid(row=1, column=0, sticky="ew", pady=(12, 0))
+        self.progress_frame.columnconfigure(0, weight=1)
 
-        self.cancel_btn = ttk.Button(button_frame, text="STOP RUN", style="Danger.TButton", command=self._stop)
-        self.cancel_btn.grid(row=0, column=0, sticky="e")
+        self.bar = CTkProgressBar(self.progress_frame, mode="determinate")
+        self.bar.pack(fill="x", padx=0, pady=(0, 4))
+        self.bar.set(0)
 
-        self.close_btn = ttk.Button(button_frame, text="CLOSE", style="Secondary.TButton", command=self._on_close)
-        self.close_btn.grid(row=0, column=1, sticky="e", padx=(8, 0))
+        self.remaining = CTkLabel(self.progress_frame, text="0 of 0 done - 0 remaining", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 9))
+        self.remaining.pack(anchor="w", padx=0, pady=(0, 4))
 
-    # ------------------------------------------------------------------ running
+        self.metrics = CTkLabel(self.progress_frame, text="", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 8))
+        self.metrics.pack(anchor="w", padx=0, pady=(0, 0))
+
+    # ------------------------------------------------------------------ behaviour
 
     def start(self):
-        """Build every row, then start the job.
-
-        The rows exist before the first archive is touched. A list that fills in as games finish cannot answer
-        "how many are left", which is the question this window is for.
-        """
         self.scanning = False
         self._render_all()
         self._start_job()
 
     def _start_job(self):
-        self.job = BatchExtractJob(self.plan, self.logger, on_progress=self._queue, password=self.password)
+        self.job = BatchExtractJob(self.plan, self.logger, on_progress=self._on_progress, password=self.password)
         self._refresh_metrics()
         self._pump = self.after(150, self._tick)
-        threading.Thread(target=self.job.run, name="batch-extract", daemon=True).start()
-
-    def set_plan(self, plan):
-        """Replace the header with the real plan and start extraction.
-
-        Called from the Tk thread after plan_batch finishes on a background thread. If the plan is
-        empty, the window reports "nothing to extract" and waits for the user to close it, which
-        lets the handler return 0 without opening a headless console nobody reads.
-        """
-        self.plan = plan
-        self.scanning = False
-        for child in self.grid_slaves(row=0):
-            child.destroy()
-        self._header()
-        self.remaining.configure(text=f"Preparing {plan.count} game{'s' if plan.count != 1 else ''}...")
-        if plan.items:
-            self._render_all()
-            self._start_job()
-        else:
-            self.cancel_btn.configure(state="disabled")
-            self.remaining.configure(text=f"Nothing to extract from {plan.category or 'the whole library'}.")
-            if plan.already_done:
-                self.remaining.configure(text=f"Nothing to extract from {plan.category or 'the whole library'}. {plan.already_done} already unpacked, so left alone.")
-        self.close_btn.focus_set()
-
-    def _queue(self, stage="", item=None, detail=""):
-        """Hand a transition to the Tk thread. Never touches a widget from here."""
-        self._events.put((stage, item, detail))
+        threading.Thread(target=self.job.run, daemon=True).start()
 
     def _tick(self):
-        """Drain the queue on the Tk thread. Scheduled by Tk, so it is the only place widgets are touched."""
-        if self._closed:
-            return
-        finished = False
         try:
-            while True:
-                stage, item, detail = self._events.get_nowait()
-                if stage == "finished":
-                    finished = True
-                    break
-                if item is not None:
-                    self._update_row(item)
+            msg = self.job.queue.get_nowait()
         except queue.Empty:
             pass
-        if finished:
-            self._finish()
-            return
-        self._refresh_metrics()
-        self._pump = self.after(150, self._tick)
+        else:
+            event, payload = msg
+            if event == "progress":
+                self._update_row(payload)
+            elif event == "done":
+                self._update_row(payload)
+                self._refresh_metrics()
+            elif event == "finished":
+                self._finish()
+                return
+        if not self._closed:
+            self._pump = self.after(150, self._tick)
 
     def _row_text(self, item):
-        """The four fields of a row, returned as a tuple for Treeview insertion."""
         size = human_size(item.size) if item.size else "-"
         word = STATE_WORD.get(item.state, item.state)
         detail = item.detail
@@ -282,14 +199,11 @@ class BatchExtractWindow(tk.Toplevel):
     def _render_all(self):
         self.list.delete(*self.list.get_children())
         for item in self.plan.items:
-            # The item id is remembered so the row can be rewritten in place. Deleting and reinserting would
-            # shift every row below it, so the list would jump under the reader on every progress event.
             iid = self.list.insert("", "end", values=self._row_text(item), tags=(item.state, "detail"))
             self.rows[id(item)] = iid
         pin_bottom(self.list)
 
     def _update_row(self, item):
-        """Rewrite one row's text, keeping its tags, and follow it while it is the active game."""
         iid = self.rows.get(id(item))
         if iid is None:
             return
@@ -298,13 +212,12 @@ class BatchExtractWindow(tk.Toplevel):
             self.list.see(iid)
 
     def _refresh_metrics(self):
-        """The running totals. Cheap enough for every tick, which is what keeps them honest."""
         job = self.job
         if not job:
             return
         finished = sum(1 for item in job.plan.items if item.finished)
         total = len(job.plan.items)
-        self.bar["value"] = (finished / total * 100) if total else 100
+        self.bar.set((finished / total * 100) if total else 100)
         self.remaining.configure(text=f"{finished} of {total} done  -  {total - finished} remaining")
 
         elapsed = (time.monotonic() - job.started_at) if job.started_at else 0
@@ -317,11 +230,6 @@ class BatchExtractWindow(tk.Toplevel):
         self.metrics.configure(text="  -  ".join(parts))
 
     def _free_bytes(self):
-        """Room left where the files are landing, or None when it cannot be read.
-
-        None rather than 0 on purpose: an unreadable volume is not a full one, and "0 B free" would read as the
-        run being about to fail for a reason it has not hit.
-        """
         probe = Path(self.plan.destination)
         while not probe.exists() and probe != probe.parent:
             probe = probe.parent
@@ -330,30 +238,19 @@ class BatchExtractWindow(tk.Toplevel):
         except OSError:
             return None
 
-    # ------------------------------------------------------------------ finishing
-
     def _stop(self):
-        """Ask the run to stop. Deliberately does not close the window.
-
-        Closing on the request would report a stopped run as a finished one, and the games already unpacked would
-        be indistinguishable from the ones that never started. The button says STOPPING and the run unwinds on its
-        own, which is the arrangement the organize view already uses.
-        """
         if not self.job or self.job.done.is_set():
             return
         self.job.cancel()
         self.cancel_btn.configure(state="disabled", text="STOPPING...")
 
     def _finish(self):
-        """Stop the pump and report the outcome. The window stays open until closed."""
         job = self.job
         self._pump = None
-        self.bar["value"] = 100
+        self.bar.set(100)
         self.cancel_btn.configure(state="disabled", text="STOPPED" if job.cancel_requested else "FINISHED")
         self.remaining.configure(text=f"{job.plan.count} accounted for  -  0 remaining")
         self.summary.configure(text=job.summary(), fg=RED if job.failed else TEXT)
-        # The failed games are named in the summary rather than left only in their rows: a run of 176 with 3
-        # failures is a success with caveats, and the caveats should not require scrolling to find.
         if job.failed:
             names = ", ".join(item.name for item in job.plan.items if item.state == FAILED)
             self.summary.configure(text=f"{job.summary()}\nFailed: {names}", fg=RED)
@@ -362,7 +259,6 @@ class BatchExtractWindow(tk.Toplevel):
             self.on_finished(job)
 
     def _on_close(self):
-        """Close the window, cancelling a live run first so closing cannot leave 7z writing unattended."""
         if self.job and not self.job.done.is_set():
             self.job.cancel()
             self.title("Stopping the current game, then closing...")
@@ -383,12 +279,6 @@ class BatchExtractWindow(tk.Toplevel):
 
 
 def run_batch_window(master, plan=None, logger=None, password="", on_finished=None, scanning=True):
-    """Build the window and start it. Returns the window, for a caller that wants to keep a handle on it.
-
-    When scanning=True (the default), the window opens immediately showing "Scanning library" and does not
-    start extraction. The caller must invoke window.set_plan(plan) once the background plan_batch completes.
-    When scanning=False, plan must be provided and start() is called immediately.
-    """
     window = BatchExtractWindow(master, plan, logger=logger, password=password, on_finished=on_finished, scanning=scanning)
     if not scanning:
         window.start()
