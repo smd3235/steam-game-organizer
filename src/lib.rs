@@ -21,6 +21,7 @@ pub mod library_utils;
 pub mod logger;
 pub mod models;
 pub mod naming_utils;
+pub mod organizer_utils;
 pub mod parse_batch_uri;
 pub mod parse_extract_root_action;
 pub mod parse_mark_installed_uri;
