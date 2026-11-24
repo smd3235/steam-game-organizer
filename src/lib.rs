@@ -20,6 +20,7 @@ pub mod library_utils;
 pub mod logger;
 pub mod models;
 pub mod naming_utils;
+pub mod parse_uri;
 pub mod path_safety;
 pub mod prefill;
 pub mod safe_folder_name;
