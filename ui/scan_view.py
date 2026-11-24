@@ -95,7 +95,7 @@ class ScanView(ctk.CTkFrame):
                                       fg_color=PANEL2, text_color=TEXT, hover_color=ACCENT_HOVER,
                                       font=("TkDefaultFont", 9))
         self.convert_cb.pack(side="left", padx=(0, 10))
-        self.scan_btn = CTkButton(conv_row, text="Start Scan", command=self.scan,
+        self.scan_btn = CTkButton(conv_row, text="Start Scan", command=self.on_scan,
                                   fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=TEXT,
                                   font=("TkDefaultFont", 9, "bold"), height=32, width=120)
         self.scan_btn.pack(side="left", padx=(0, 6))
