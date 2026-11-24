@@ -1,0 +1,17 @@
+# cargo-deny configuration for steam-game-organizer
+[licenses]
+allow = [
+    # Permissive licenses used by all current dependencies
+    "MIT",
+    "Apache-2.0",
+    "Unlicense",
+    "Unicode-3.0",
+]
+
+[advisories]
+ignore = ["RUSTSEC-2026-0543"]
+
+[bans]
+
+[sources]
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
