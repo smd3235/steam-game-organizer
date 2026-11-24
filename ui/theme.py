@@ -182,7 +182,7 @@ def pin_bottom(widget):
     Accepts either a Canvas or a Text widget, and stays silent if the widget is already destroyed
     or not yet laid out."""
     try:
-        if isinstance(widget, tk.Text) or isinstance(widget, tk.Entry):
+        if isinstance(widget, (tk.Text, tk.Entry, ctk.CTkTextbox, ctk.CTkEntry)):
             widget.see("end")
         else:
             widget.yview_moveto(1.0)

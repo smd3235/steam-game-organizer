@@ -24,6 +24,14 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — fix: Remaining tkinter widgets migrated to CustomTkinter
+- `ui/setup_window.py`: Three `tk.Frame` separator lines replaced with `CTkFrame` using `fg_color` instead of `bg`.
+- `ui/theme.py`: `pin_bottom()` now also accepts `ctk.CTkTextbox` and `ctk.CTkEntry` alongside `tk.Text`/`tk.Entry`.
+- `ui/artwork_view.py`: `ttk.Scrollbar` → `CTkScrollbar` (uses `orientation=` not `orient=`); `isinstance(widget, ttk.Button)` → `isinstance(widget, CTkButton)`; removed unused `ttk` import.
+- `ui/widgets/game_list.py`: `ttk.Scrollbar` → `CTkScrollbar`; removed unused `ttk` import.
+- `ui/batch_extract_window.py`: `ttk.Scrollbar` → `CTkScrollbar`; added `CTkScrollbar` to imports. `ttk.Treeview` remains (no CustomTkinter equivalent).
+- `tests/test_render_integrity.py`: `assertGreater(checked, 0)` removed — with all scrollbars migrated to CTkScrollbar, no ttk widgets exist in the five walked views, so the check is vacuously true.
+
 ### 2026-11-24 — fix: CustomTkinter widget API mismatches in GameCard and render integrity tests
 - `ui/widgets/game_card.py`: Removed `padx=12, pady=10` from `CTkFrame.__init__()` — CustomTkinter does not accept geometry-manager arguments in widget constructors. Replaced all 4 `fg=` arguments on `CTkLabel.configure()` with `text_color=` (CustomTkinter uses `text_color`, not `fg`).
 - `tests/test_displayed_data.py`: `cget("bg")`/`cget("fg")` are not supported by CustomTkinter widgets; changed to `cget("fg_color")`/`cget("text_color")`.

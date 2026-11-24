@@ -473,12 +473,39 @@ i = i + 1
 
 Adding a screen means four things:
 
-1. **Create the view class** in `ui/` (e.g., `ui/my_view.py`), subclassing `tk.Frame`.
+1. **Create the view class** in `ui/` (e.g., `ui/my_view.py`), subclassing `CTkFrame`.
 2. **Register it in `app/application.py`** — add it to the screen registry and wire its navigation button.
 3. **Wire navigation** in `ui/main_window.py` — add a tab/button that switches to the new screen.
 4. **Add OCR expectations** in `tools/ocr_test.py` (`SCREEN_EXPECTATIONS`) so the screen's header text is verified in CI.
 
 Before adding a new screen, check whether an existing screen can absorb the feature. The app already has scan, review, organize, artwork, catalog, done, setup, batch-extract, and extract-result screens.
+
+---
+
+## 🎨 CustomTkinter Widget Rules
+
+All UI widgets must use CustomTkinter (`customtkinter` / `CTk*`) instead of tkinter/ttk widgets. CustomTkinter does not accept geometry-manager arguments (`padx`, `pady`, `ipadx`, `ipady`) in widget constructors — set padding through `pack/grid/place` options instead.
+
+| tkinter/ttk widget | CustomTkinter replacement | Notes |
+|---|---|---|
+| `tk.Frame` | `CTkFrame` | Uses `fg_color` instead of `bg` |
+| `tk.Label` | `CTkLabel` | Uses `text_color` instead of `fg` |
+| `tk.Button` | `CTkButton` | Uses `fg_color`, `text_color`, `hover_color` |
+| `tk.Entry` | `CTkEntry` | Uses `fg_color`, `text_color`, `border_color` |
+| `tk.Text` | `CTkTextbox` | Use `.get("1.0", "end-1c")` for text; no `.widget` attribute |
+| `tk.Canvas` | `CTkCanvas` | From `ui.custom_theme` |
+| `ttk.Scrollbar` | `CTkScrollbar` | Uses `orientation=` instead of `orient=` |
+| `ttk.Treeview` | (keep) | No CustomTkinter equivalent yet |
+| `tk.StringVar` | (keep) | Works with CTk widgets |
+| `tk.Toplevel` | `CTkToplevel` | For dialog windows |
+
+**`cget()` restrictions:** CTk widgets do not support `cget("bg")`, `cget("fg")`, `cget("background")`, or `cget("foreground")`. Use `cget("fg_color")` and `cget("text_color")` instead. `configure(fg=...)` is invalid — use `configure(text_color=...)`.
+
+**`winfo_children()` recursion:** When recursing through widget children, skip CustomTkinter widgets (`type(widget).__module__.startswith("customtkinter")`) when calling tkinter-only `cget()` options.
+
+**Image handling:** `CTkImage` has no `.width()` method — use `._size[0]` / `._size[1]` instead.
+
+**`pin_bottom()` helper:** `ui/theme.py:pin_bottom()` accepts `tk.Text`, `tk.Entry`, `ctk.CTkTextbox`, and `ctk.CTkEntry` — call `.see("end")` for text-like widgets, `.yview_moveto(1.0)` for canvases.
 
 ---
 

@@ -102,7 +102,7 @@ class SetupWindow(ctk.CTkToplevel):
         desc_label.grid(row=1, column=0, sticky="w", pady=(4, 12))
 
         # Visual separator
-        separator = tk.Frame(head, bg=ACCENT_HI, height=1)
+        separator = CTkFrame(head, fg_color=ACCENT_HI, height=1)
         separator.grid(row=2, column=0, sticky="ew", pady=(4, 0))
 
     def _fields(self):
@@ -147,7 +147,7 @@ class SetupWindow(ctk.CTkToplevel):
 
             # Visual separator between fields (except after the last one)
             if index < len(rows) - 1:
-                separator = tk.Frame(body, bg=BORDER, height=1)
+                separator = CTkFrame(body, fg_color=BORDER, height=1)
                 separator.grid(row=index + 1, column=0, sticky="ew", pady=(0, 4))
 
     def _browse_for(self, variable):
@@ -189,7 +189,7 @@ class SetupWindow(ctk.CTkToplevel):
         footer_container.columnconfigure(0, weight=1)
 
         # Separator
-        separator = tk.Frame(footer_container, bg=BORDER, height=1)
+        separator = CTkFrame(footer_container, fg_color=BORDER, height=1)
         separator.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
 
         # Status and button section

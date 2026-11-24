@@ -4,10 +4,9 @@ with a clickable card per game and an "Open Game Folder" button that launches th
 from __future__ import annotations
 
 import customtkinter as ctk
-from tkinter import ttk
 from ui.theme import ACCENT_HI, ACCENT_HOVER, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, PANEL3, TEXT, panel, pin_bottom
 from .widgets.artwork_panel import ArtworkPanel
-from ui.custom_theme import CTkFrame, CTkLabel, CTkButton, CTkCanvas
+from ui.custom_theme import CTkFrame, CTkLabel, CTkButton, CTkCanvas, CTkScrollbar
 
 from services.organizer_service import OrganizerService
 
@@ -44,7 +43,7 @@ class ArtworkView(ctk.CTkFrame):
         shell.columnconfigure(0, weight=1)
         shell.rowconfigure(0, weight=1)
         self.canvas = CTkCanvas(shell, highlightthickness=0)
-        self.scroll = ttk.Scrollbar(shell, orient="vertical", command=self.canvas.yview)
+        self.scroll = CTkScrollbar(shell, orientation="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
         self.scroll.grid(row=0, column=1, sticky="ns", pady=12)
@@ -83,7 +82,7 @@ class ArtworkView(ctk.CTkFrame):
         return None
 
     def _bind_content_wheel(self, widget):
-        if isinstance(widget, ttk.Button):
+        if isinstance(widget, CTkButton):
             return
         for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
             widget.bind(sequence, self._wheel, add="+")

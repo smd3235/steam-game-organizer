@@ -4,9 +4,8 @@ scrolling, selection tracking, and auto-scroll to newest when running."""
 from __future__ import annotations
 
 import customtkinter as ctk
-from tkinter import ttk
 from .game_card import GameCard
-from ui.theme import ACCENT_HI, BG, MUTED, CTkFrame, CTkLabel, pin_bottom  # CTkFrame/CTkLabel used below were dropped from the import, causing NameError
+from ui.theme import ACCENT_HI, BG, MUTED, CTkFrame, CTkLabel, CTkScrollbar, pin_bottom  # CTkFrame/CTkLabel used below were dropped from the import, causing NameError
 
 
 class GameList(ctk.CTkFrame):
@@ -26,7 +25,7 @@ class GameList(ctk.CTkFrame):
         wrap = CTkFrame(self, fg_color=BG)
         wrap.pack(fill="both", expand=True)
         self.canvas = ctk.CTkCanvas(wrap, highlightthickness=0)
-        self.scroll = ttk.Scrollbar(wrap, orient="vertical", command=self.canvas.yview)
+        self.scroll = CTkScrollbar(wrap, orientation="vertical", command=self.canvas.yview)
         self.inner = CTkFrame(self.canvas, fg_color=BG)
         self.win = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scroll.set)

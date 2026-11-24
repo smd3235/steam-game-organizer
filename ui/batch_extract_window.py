@@ -25,7 +25,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 
-from ui.custom_theme import ACCENT, ACCENT_HOVER, BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, PANEL3, RED, TEXT, Theme, human_duration, human_size, pin_bottom, CTkFrame, CTkLabel, CTkButton, CTkProgressBar
+from ui.custom_theme import ACCENT, ACCENT_HOVER, BG, GREEN, MUTED, ORANGE, PANEL, PANEL2, PANEL3, RED, TEXT, Theme, human_duration, human_size, pin_bottom, CTkFrame, CTkLabel, CTkButton, CTkProgressBar, CTkScrollbar
 from services.batch_extract_service import CANCELLED, DONE, EXTRACTING, FAILED, QUEUED, SKIPPED, BatchExtractJob
 
 # The word shown for each state. The colour is not here: each state is a tag on the Treeview row,
@@ -137,7 +137,7 @@ class BatchExtractWindow(ctk.CTkToplevel):
         self.list.heading("status", text="Status", anchor="w")
         self.list.heading("detail", text="Detail", anchor="w")
         self.list.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
-        scroll = ttk.Scrollbar(table_container, orient="vertical", command=self.list.yview)
+        scroll = CTkScrollbar(table_container, orientation="vertical", command=self.list.yview)
         scroll.grid(row=0, column=1, sticky="ns", padx=(0, 12), pady=12)
         self.list.configure(yscrollcommand=scroll.set)
 
