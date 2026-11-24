@@ -8,6 +8,7 @@
 
 pub mod canonical_category;
 pub mod category_evidence;
+pub mod category_folder;
 pub mod configured_bases;
 pub mod constants;
 pub mod destination_parent;
@@ -17,6 +18,7 @@ pub mod logger;
 pub mod models;
 pub mod naming_utils;
 pub mod path_safety;
+pub mod prefill;
 pub mod safe_folder_name;
 pub mod setup_hint;
 pub mod state;

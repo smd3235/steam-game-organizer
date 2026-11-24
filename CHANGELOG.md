@@ -23,6 +23,11 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — feat: convert core/prefill.py, core/category_folder.py to Rust
+- `src/prefill.rs`: Converted from `core/prefill.py` — `prefill()` cleans query values for text boxes.
+- `src/category_folder.rs`: Converted from `core/category_folder.py` — `category_folder()` validates batch category names.
+- `core/prefill.py`, `core/category_folder.py`: Removed after successful Rust conversion.
+
 ### 2026-11-24 — feat: convert core/path_safety.py, typed_destination.py, destination_parent.py to Rust
 - `src/path_safety.rs`: Converted from `core/path_safety.py` — `DeletionGuard`, `is_within`, `protected_roots`, `is_protected`, `safe_rmtree`, `safe_unlink`.
 - `src/typed_destination.rs`: Converted from `core/typed_destination.py` — `typed_destination()` validates user-typed destination paths.
