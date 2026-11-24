@@ -24,6 +24,11 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — fix: CustomTkinter widget API mismatches in GameCard and render integrity tests
+- `ui/widgets/game_card.py`: Removed `padx=12, pady=10` from `CTkFrame.__init__()` — CustomTkinter does not accept geometry-manager arguments in widget constructors. Replaced all 4 `fg=` arguments on `CTkLabel.configure()` with `text_color=` (CustomTkinter uses `text_color`, not `fg`).
+- `tests/test_displayed_data.py`: `cget("bg")`/`cget("fg")` are not supported by CustomTkinter widgets; changed to `cget("fg_color")`/`cget("text_color")`.
+- `tests/test_render_integrity.py`: `_colour_conflicts()` now skips CustomTkinter widgets (they use `fg_color`/`text_color`, not `bg`/`fg`). `panel.photo.width()` → `panel.photo._size[0]` (CTkImage has no `width()` method). `organize.feed.widget` → `organize.feed` (CTkTextbox has no `.widget` attribute). `scan.feed` → `scan.activity` (scan view's feed is `self.activity`, not `self.feed`). Ttk style system colors (`SystemButtonFace`) excluded from palette checks.
+
 ### 2026-11-24 — fix: Batch extract window layout, wheel routing, review screen evidence; syspython Tk fixes
 - `ui/batch_extract_window.py`: `_footer()` mixed `pack()` (cancel/close buttons) and `grid()` (progress frame) in the same container, raising `TclError: cannot use geometry manager grid inside ... which already has slaves managed by pack`. All children now use `grid()`. Added missing `_on_progress()` progress callback and `_center_on_screen()` window method. Added `summary` label used by `_finish()`. Replaced invalid `fg=` argument on CTkLabel with `text_color=`. Header now shows game count and destination path. `start()` is no longer auto-invoked in `__init__` — callers invoke it explicitly.
 - `ui/review_view.py`: `_route_wheel()` now returns `None` for native tkinter widgets (not customtkinter), letting them handle their own wheel events instead of swallowing them.

@@ -20,7 +20,7 @@ _CATEGORY_COLORS["Unsorted"] = MUTED
 
 class GameCard(ctk.CTkFrame):
     def __init__(self, parent, archive, on_select, selected=False):
-        super().__init__(parent, fg_color=PANEL, border_color=BORDER, border_width=1, padx=12, pady=10)
+        super().__init__(parent, fg_color=PANEL, border_color=BORDER, border_width=1)
         self.archive = archive
         self.on_select = on_select
         self.selected = selected
@@ -155,14 +155,14 @@ class GameCard(ctk.CTkFrame):
         self._stop_badge_pulse()
         if s.found:
             self.title.configure(text=s.name or self.archive.display_name)
-            self.status.configure(text=f"✓  {s.name}  •  AppID {s.appid}", fg=GREEN)
+            self.status.configure(text=f"✓  {s.name}  •  AppID {s.appid}", text_color=GREEN)
             self.badge.configure(text="MATCHED", fg_color=GREEN, text_color="#071b12")
             self._show_confidence(s)
         else:
-            self.status.configure(text="!  Steam match not found", fg=ORANGE if s.reason else MUTED)
+            self.status.configure(text="!  Steam match not found", text_color=ORANGE if s.reason else MUTED)
             self.badge.configure(text="REVIEW", fg_color=ORANGE, text_color="#211505")
         if self.archive.decision.skipped:
-            self.status.configure(text="↷  Skipped — archive will remain untouched", fg=MUTED)
+            self.status.configure(text="↷  Skipped — archive will remain untouched", text_color=MUTED)
             self.badge.configure(text="SKIPPED", fg_color=PANEL3, text_color=MUTED)
             # _show_confidence ran a line ago, inside the `if s.found` branch, and this branch runs after it,
             # so a skipped archive that had matched Steam was left showing SKIPPED beside an amber "Medium
@@ -172,7 +172,7 @@ class GameCard(ctk.CTkFrame):
             self.conf.configure(text="", fg_color=PANEL, text_color=MUTED)
         elif s.found:
             edited = " • edited" if self.archive.decision.changed_from_suggestion else ""
-            self.meta.configure(text=f"{self.archive.decision.category}{edited}  •  {self.archive.path.name}", fg=CYAN if edited else MUTED)
+            self.meta.configure(text=f"{self.archive.decision.category}{edited}  •  {self.archive.path.name}", text_color=CYAN if edited else MUTED)
         elif not self.archive.decision.skipped:
             # Badge pulse for unreviewed cards: a subtle breathing animation
             # that draws attention to archives needing a decision.

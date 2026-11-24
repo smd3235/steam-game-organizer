@@ -72,7 +72,7 @@ class MatchConfidenceIsVisibleAsAWarning(unittest.TestCase):
 
     def _colours(self, card):
         """The pill's own colours, read back off the widget rather than off the source."""
-        return card.conf.cget("bg"), card.conf.cget("fg")
+        return card.conf.cget("fg_color"), card.conf.cget("text_color")
 
     def test_a_high_confidence_match_is_green(self):
         card = self._card("High", 0.98)
@@ -104,7 +104,7 @@ class MatchConfidenceIsVisibleAsAWarning(unittest.TestCase):
         card = GameCard(self.root, archive, lambda a: None)
         self.assertEqual(card.badge.cget("text"), "SKIPPED")
         self.assertEqual(card.conf.cget("text"), "", "a skipped archive shows a confidence pill beside its SKIPPED badge")
-        self.assertNotEqual(card.conf.cget("bg"), ORANGE, "an emptied pill kept the warning fill, so a skipped game still looks doubtful")
+        self.assertNotEqual(card.conf.cget("fg_color"), ORANGE, "an emptied pill kept the warning fill, so a skipped game still looks doubtful")
 
 # GREEN is imported from ui.palette rather than written out here. It was a literal in this file, holding a
 # value from the generated catalog's CSS (`--good`) rather than the Tkinter theme's green, so it had drifted
