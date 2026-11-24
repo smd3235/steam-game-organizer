@@ -9,6 +9,9 @@
 pub mod errors;
 pub mod state;
 pub mod category_evidence;
+pub mod constants;
+pub mod canonical_category;
+pub mod suggest_category_with_evidence;
 pub mod models;
 pub mod naming_utils;
 pub mod library_summary;
