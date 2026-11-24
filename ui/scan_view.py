@@ -53,6 +53,7 @@ class ScanView(ctk.CTkFrame):
         self.on_cancel = on_cancel
         self.on_scan_artwork = on_scan_artwork
         self.scanning = False
+        self.config = None
         self.library_root = None
         # Attached by MainWindow.build() once the view exists. The convert_var trace below fires on the
         # initial `set()` that shows the saved setting, which happens before there is a controller to
