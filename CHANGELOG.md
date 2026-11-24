@@ -23,6 +23,12 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — feat: convert core/path_safety.py, typed_destination.py, destination_parent.py to Rust
+- `src/path_safety.rs`: Converted from `core/path_safety.py` — `DeletionGuard`, `is_within`, `protected_roots`, `is_protected`, `safe_rmtree`, `safe_unlink`.
+- `src/typed_destination.rs`: Converted from `core/typed_destination.py` — `typed_destination()` validates user-typed destination paths.
+- `src/destination_parent.rs`: Converted from `core/destination_parent.py` — `destination_parent()` resolves extract destination.
+- `core/path_safety.py`, `core/typed_destination.py`, `core/destination_parent.py`: Removed after successful Rust conversion.
+
 ### 2026-11-24 — feat: convert core/setup_hint.py, core/uri_actions.py to Rust
 - `src/setup_hint.rs`: Converted from `core/setup_hint.py` — `setup_hint()` returns the fresh-PC setup pointer message.
 - `src/uri_actions.rs`: Converted from `core/uri_actions.py` — `ExtractRequest`, `PlayRequest`, `ExtractRootRequest`, `SetupRequest`, `BatchExtractRequest`, `MultiBatchRequest` dataclasses and `UriRefused` error type.

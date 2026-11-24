@@ -1,0 +1,282 @@
+//! Path-safety guards for every destructive file operation in the app.
+//!
+//! The app's rule is: nothing outside the folders the user configured may ever be
+//! removed, moved, or overwritten by this code. Every deletion target is resolved
+//! and checked against an allowed-root list before anything touches the disk. A
+//! path that cannot be resolved, or that resolves outside every allowed root, is
+//! refused rather than acted on.
+//!
+//! A second, independent guard blocks protected system paths -- the Windows
+//! directory, Program Files, Users, and every drive root -- even when they fall
+//! within an allowed root. A misconfigured library_root (C:\\, C:\\Windows) must
+//! never open the system to deletion.
+//!
+//! 2026-11-24: Converted from `core/path_safety.py` to Rust in the Rust conversion
+//! (one file at a time, tracked on the `Rust-Conversion` branch).
+
+use std::env;
+use std::path::{Path, PathBuf};
+
+/// Raised when a destructive operation targets a path outside every allowed root
+/// or a protected system path that must never be deleted.
+#[derive(Debug)]
+pub struct PathOutsideAllowedRoot {
+    pub message: String,
+}
+
+impl PathOutsideAllowedRoot {
+    pub fn new(message: &str) -> Self {
+        PathOutsideAllowedRoot {
+            message: message.to_string(),
+        }
+    }
+}
+
+impl std::fmt::Display for PathOutsideAllowedRoot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for PathOutsideAllowedRoot {}
+
+impl From<String> for PathOutsideAllowedRoot {
+    fn from(s: String) -> Self {
+        PathOutsideAllowedRoot::new(&s)
+    }
+}
+
+/// Whether `path` resolves to `root` or somewhere beneath it.
+///
+/// Both sides are normalized so `..` segments are settled.
+/// Returns `false` (never raises) on an unresolvable path, because the answer a
+/// delete needs is "no".
+pub fn is_within(path: &Path, root: &Path) -> bool {
+    super::within::within(path, root)
+}
+
+/// Paths that must never be deleted, regardless of library-root config.
+///
+/// Includes the Windows directory, Program Files folders, the Users folder,
+/// and every existing drive root. A misconfigured library_root (e.g. C:\\ or
+/// C:\\Windows) must not open these to deletion.
+pub fn protected_roots() -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Ok(windir) = env::var("WINDIR").or_else(|_| env::var("SYSTEMROOT")) {
+        roots.push(PathBuf::from(windir));
+    }
+    if let Ok(pf) = env::var("PROGRAMFILES") {
+        roots.push(PathBuf::from(pf));
+    }
+    if let Ok(pf) = env::var("PROGRAMFILES(X86)") {
+        roots.push(PathBuf::from(pf));
+    }
+    if let Ok(sd) = env::var("SYSTEMDRIVE") {
+        roots.push(PathBuf::from(format!("{}\\Users", sd)));
+    }
+    // Every existing drive root: C:\, D:\, E:\, ...
+    for letter in b'A'..=b'Z' {
+        let drive = format!("{}:\\", letter as char);
+        if Path::new(&drive).exists() {
+            roots.push(PathBuf::from(drive));
+        }
+    }
+    roots
+}
+
+/// True when `path` resolves inside a protected system path.
+///
+/// Drive roots (C:\\, D:\\) protect only themselves - deleting the root is
+/// refused, but subdirectories are left to the allowed-root check. Windows,
+/// Program Files, and Users protect their entire subtree. Returns `true`
+/// (treat as protected) on an unresolvable path, because the answer a delete
+/// needs is "no".
+pub fn is_protected(path: &Path) -> bool {
+    let resolved = match path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return true,
+    };
+    for root in protected_roots() {
+        if resolved == root {
+            return true;
+        }
+        // Drive roots protect only themselves; other protected paths guard
+        // their entire subtree. A drive root's full string equals its anchor
+        // (e.g. "C:\"), so compare full string vs anchor substring.
+        let root_str = root.to_string_lossy().to_string();
+        let anchor_end = root_str.find('\\').map_or(root_str.len(), |i| i + 1);
+        let anchor = &root_str[..anchor_end];
+        if root_str != anchor && resolved.starts_with(&root) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Holds the roots this app is allowed to delete inside and validates targets.
+///
+/// A guard is built once per run with the library root and the app's own
+/// project root. Every `rmtree` / `unlink` / `remove` call site routes through
+/// `refuse_outside()` first, so a journal row naming `library\\..\\Windows` or a
+/// misconfigured root cannot reach `remove_dir_all` outside the library.
+///
+/// Protected system paths are refused even when they fall within an allowed
+/// root, so a misconfigured library_root can never open the system to deletion.
+pub struct DeletionGuard {
+    root_paths: Vec<PathBuf>,
+    roots: Vec<String>,
+}
+
+impl DeletionGuard {
+    pub fn new(roots: &[&str]) -> Result<Self, String> {
+        let root_paths: Vec<PathBuf> = roots
+            .iter()
+            .filter(|r| !r.is_empty())
+            .map(|r| {
+                let p = PathBuf::from(r);
+                if p.is_absolute() {
+                    p
+                } else {
+                    std::env::current_dir().unwrap_or_default().join(p)
+                }
+            })
+            .collect();
+        let roots: Vec<String> = root_paths
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        if root_paths.is_empty() {
+            return Err("DeletionGuard needs at least one allowed root".to_string());
+        }
+        Ok(Self { root_paths, roots })
+    }
+
+    /// True when `path` resolves inside one of the allowed roots.
+    pub fn allowed(&self, path: &Path) -> bool {
+        let resolved = match path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => return false,
+        };
+        self.root_paths
+            .iter()
+            .any(|root| resolved == *root || resolved.starts_with(root))
+    }
+
+    /// Raise `PathOutsideAllowedRoot` when `path` is unsafe to delete.
+    pub fn refuse_outside(
+        &self,
+        path: &Path,
+        operation: &str,
+    ) -> Result<PathBuf, PathOutsideAllowedRoot> {
+        if is_protected(path) {
+            return Err(PathOutsideAllowedRoot::new(&format!(
+                "{} refused: {:?} is a protected system path",
+                operation, path
+            )));
+        }
+        if !self.allowed(path) {
+            return Err(PathOutsideAllowedRoot::new(&format!(
+                "{} refused: {:?} is outside every allowed root ({})",
+                operation,
+                path,
+                self.roots.join(", ")
+            )));
+        }
+        path.canonicalize().map_err(|_| {
+            PathOutsideAllowedRoot::new(&format!(
+                "{} refused: {:?} cannot be resolved",
+                operation, path
+            ))
+        })
+    }
+
+    /// `remove_dir_all` guarded by the allowed-root check.
+    pub fn rmtree(
+        &self,
+        directory: &Path,
+        ignore_errors: bool,
+    ) -> Result<(), PathOutsideAllowedRoot> {
+        let resolved = self.refuse_outside(directory, "rmtree")?;
+        match std::fs::remove_dir_all(&resolved) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                if ignore_errors {
+                    Ok(())
+                } else {
+                    Err(PathOutsideAllowedRoot::new(&format!(
+                        "rmtree failed for {:?}: {}",
+                        resolved, e
+                    )))
+                }
+            }
+        }
+    }
+
+    /// `remove_file` guarded by the allowed-root check.
+    pub fn unlink(&self, path: &Path, missing_ok: bool) -> Result<(), PathOutsideAllowedRoot> {
+        let resolved = self.refuse_outside(path, "unlink")?;
+        match std::fs::remove_file(&resolved) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                if missing_ok {
+                    Ok(())
+                } else {
+                    Err(PathOutsideAllowedRoot::new(&format!(
+                        "unlink failed for {:?}: {}",
+                        resolved, e
+                    )))
+                }
+            }
+            Err(e) => {
+                if missing_ok {
+                    Ok(())
+                } else {
+                    Err(PathOutsideAllowedRoot::new(&format!(
+                        "unlink failed for {:?}: {}",
+                        resolved, e
+                    )))
+                }
+            }
+        }
+    }
+}
+
+/// One-shot guarded `remove_dir_all` for call sites without a persistent guard.
+pub fn safe_rmtree(
+    directory: &Path,
+    roots: &[&str],
+    ignore_errors: bool,
+) -> Result<(), PathOutsideAllowedRoot> {
+    let guard = DeletionGuard::new(roots)?;
+    guard.rmtree(directory, ignore_errors)
+}
+
+/// One-shot guarded `remove_file` for call sites without a persistent guard.
+pub fn safe_unlink(
+    path: &Path,
+    roots: &[&str],
+    missing_ok: bool,
+) -> Result<(), PathOutsideAllowedRoot> {
+    let guard = DeletionGuard::new(roots)?;
+    guard.unlink(path, missing_ok)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_within_same() {
+        assert!(is_within(Path::new("/a/b"), Path::new("/a/b")));
+    }
+
+    #[test]
+    fn test_is_within_child() {
+        assert!(is_within(Path::new("/a/b/c"), Path::new("/a/b")));
+    }
+
+    #[test]
+    fn test_is_within_not_parent() {
+        assert!(!is_within(Path::new("/a/b"), Path::new("/a/b/c")));
+    }
+}
