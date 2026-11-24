@@ -10,10 +10,8 @@
 /// A path box holds a path, and a path is neither a megabyte long nor full of newlines;
 /// the cap is what keeps a hostile link from stuffing something enormous into the
 /// wizard's fields.
-pub fn prefill(values: Option<Vec<&str>>) -> String {
-    let text = values
-        .and_then(|v| v.first().map(|s| s.to_string()))
-        .unwrap_or_default();
+pub fn prefill(values: Option<&str>) -> String {
+    let text = values.unwrap_or("");
     let text: String = text.chars().filter(|c| *c >= ' ').collect();
     text.trim().chars().take(1000).collect()
 }
@@ -29,22 +27,22 @@ mod tests {
 
     #[test]
     fn test_prefill_empty() {
-        assert_eq!(prefill(Some(vec![""])), "");
+        assert_eq!(prefill(Some("")), "");
     }
 
     #[test]
     fn test_prefill_control_chars_stripped() {
-        assert_eq!(prefill(Some(vec!["hello\x00world"])), "helloworld");
+        assert_eq!(prefill(Some("hello\x00world")), "helloworld");
     }
 
     #[test]
     fn test_prefill_capped() {
         let long = "a".repeat(2000);
-        assert_eq!(prefill(Some(vec![&long])).len(), 1000);
+        assert_eq!(prefill(Some(&long)).len(), 1000);
     }
 
     #[test]
     fn test_prefill_trimmed() {
-        assert_eq!(prefill(Some(vec!["  hello  "])), "hello");
+        assert_eq!(prefill(Some("  hello  ")), "hello");
     }
 }
