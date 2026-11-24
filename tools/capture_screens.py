@@ -725,6 +725,10 @@ def _capture_setup(app: application.Application, width: int, height: int) -> obj
 
     window = SetupWindow(app.root, app.config, app.logger)
     window.geometry(f"680x540+{max(40, width // 2 - 340)}+{max(40, height // 2 - 270)}")
+    window.wm_deiconify()
+    window.wm_attributes("-topmost", True)
+    window.update_idletasks()
+    window.update()
     app.root.update()
     return window
 
