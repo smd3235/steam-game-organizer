@@ -10,11 +10,10 @@ from __future__ import annotations
 
 from pathlib import Path
 import time
-import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from .custom_theme import CTk, CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkTextbox, CTkScrollbar, CTkCanvas, Theme, panel, tooltip
-from .theme import ACCENT_HI, BG, BORDER, MUTED, ORANGE, PANEL, PANEL2, PANEL3, RED, TEXT, CYAN
+from .custom_theme import CTk, CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkTextbox, CTkScrollbar, Theme, panel, tooltip
+from .theme import ACCENT, ACCENT_HI, ACCENT_HOVER, BG, MUTED, ORANGE, PANEL, PANEL2, PANEL3, TEXT
 from core.constants import APP_NAME
 from debug.diagnostics import Diagnostics
 from .scan_view import ScanView, SCAN_PHASES
@@ -22,6 +21,15 @@ from .review_view import ReviewView
 from .organize_view import OrganizeView
 from .artwork_view import ArtworkView
 from .done_view import DoneView
+
+
+# 2026-11-24: fixed bugs left by the CustomTkinter migration — diagnostics text scrollbar was wired to an
+# undefined `t` (now `text`), the setup-button pulse now animates border_width instead of computing an unused
+# `thick`, references to organize-view widgets that no longer exist (confirm_bar/confirm_label/
+# organize_button/detail_label) were guarded or removed, and the artwork-scan button attribute matches
+# ScanView's artwork_scan_btn.
+
+
 
 
 class MainWindow:
@@ -200,14 +208,14 @@ class MainWindow:
             if step < steps // 2:
                 thick = int(max_thick * (step / (steps // 2)))
                 try:
-                    glow.configure(fg_color=ACCENT_HI)
+                    glow.configure(fg_color=ACCENT_HI, border_width=thick)
                     self._pulse_id = self.root.after(25, lambda: _animate(step + 1))
                 except tk.TclError:
                     glow.destroy()
             elif step < steps:
                 thick = int(max_thick * (1 - (step - steps // 2) / (steps // 2)))
                 try:
-                    glow.configure(fg_color=ACCENT_HI)
+                    glow.configure(fg_color=ACCENT_HI, border_width=thick)
                     self._pulse_id = self.root.after(25, lambda: _animate(step + 1))
                 except tk.TclError:
                     glow.destroy()
@@ -308,19 +316,8 @@ class MainWindow:
         self._update_nav_summary()
 
     def _go_to_organize(self):
-        """Switch to the organize view and, if there are accepted games, open the confirmation
-        bar directly so the user only has one click ('Confirm & Organize') left instead of two
-        ('Organize Accepted Games' then 'Confirm & Organize')."""
+        """Switch to the organize view and render the current accept plan."""
         self.show("organize")
-        accepted = [a for a in self.state.get().scan_result.archives if a.decision.accepted]
-        if accepted:
-            ov = self.views["organize"]
-            ov.confirm_label.configure(
-                text=f"Organize {len(accepted)} accepted archive(s) into dated game folders? "
-                f"The newest version becomes active, older versions move to the library "
-                f"Archive folder, and artwork + Steam links are included.")
-            ov.confirm_bar.grid()
-            ov.organize_button.configure(state="disabled")
 
     def _update_nav_summary(self):
         archives = self.state.get().scan_result.archives
@@ -332,10 +329,16 @@ class MainWindow:
         self.nav_summary.configure(text=f"{len(archives)} archives  •  {verified} verified  •  {accepted} ready to organize")
 
     def _start(self, text):
+        # The scan button must be disabled while a run is in flight, otherwise a second press starts
+        # a scan on top of the current one. _end() re-enables it; previously only cancel_btn was
+        # touched here, so the scan button stayed live during a run and dead after it.
         self.busy = True
         self.started_at = time.monotonic()
         self.views["scan"].scanning = True
         self.views["scan"].cancel_btn.configure(state="normal")
+        self.views["scan"].scan_btn.configure(state="disabled")
+        if self.views["scan"].artwork_scan_btn:
+            self.views["scan"].artwork_scan_btn.configure(state="disabled")
         self.status.configure(text=text)
         self.runtime.configure(text="RUNNING  •  00:00")
 
@@ -343,6 +346,7 @@ class MainWindow:
         self.busy = False
         self.started_at = None
         scan = self.views["scan"]
+        scan.scanning = False
         scan.cancel_btn.configure(state="disabled")
         scan.scan_btn.configure(state="normal")
         if scan.artwork_scan_btn:
@@ -379,7 +383,9 @@ class MainWindow:
         if self.current == "scan":
             self.views["scan"].current.configure(text=message)
         if self.current == "organize":
-            self.views["organize"].detail_label.configure(text=message, fg=ORANGE)
+            label = getattr(self.views["organize"], "detail_label", None)
+            if label is not None:
+                label.configure(text=message, fg=ORANGE)
         self.status.configure(text="Cancel requested — no further files will be moved")
         self.runtime.configure(text="STOPPING  •  00:00")
 
@@ -617,7 +623,7 @@ class MainWindow:
         wrap = CTkFrame(outer, fg_color=PANEL)
         wrap.pack(fill="both", expand=True, padx=12, pady=12)
         text = CTkTextbox(wrap, fg_color=PANEL, text_color=TEXT, insert_color=TEXT, relief="flat", wrap="none")
-        sb = CTkScrollbar(wrap, orient="vertical", command=t.yview)
+        sb = CTkScrollbar(wrap, orient="vertical", command=text.yview)
         text.configure(yscrollcommand=sb.set)
         text.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")

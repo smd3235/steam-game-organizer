@@ -11,7 +11,7 @@ one thing this panel exists to prevent.
 from __future__ import annotations
 
 import customtkinter as ctk
-from ui.theme import ACCENT_HI, MUTED, ORANGE, PANEL, TEXT, Theme, CTkFrame, CTkLabel
+from ui.theme import ACCENT_HI, MUTED, ORANGE, PANEL, TEXT, CTkFrame, CTkLabel
 from core.constants import CategoryEvidence
 
 

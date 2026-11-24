@@ -25,10 +25,10 @@ from core.constants import ARCHIVE_EXTENSIONS
 # packaging rather than the game. The set is deliberately short and scene-specific: a tag only earns a place here
 # if no real game title is built around it, because a false positive here renames a game folder.
 RELEASE_TAG = re.compile(
-    r"[\s._\-]*[\(\[\{]?\s*(?:"
+    r"(?<![A-Za-z0-9])[\s._\-]*[\(\[\{]?\s*(?:"
     r"steam[\s._\-]*rip|steam[\s._\-]*rg|repack(?:ed|ing)?|reloaded|drm[\s._\-]*free"
     r"|fit[\s._\-]*girl|dodi|tenoke|el[\s._\-]*amigos|razor\s*1911"
-    r")\s*[\)\]\}]?(?:\s+by\s+\S+)?(?:\s*\.\s*[a-z]{2,4}\b)?\s*$",
+    r")\s*[\)\]\}]?(?:\s+by\s+\S+)?(?:\s*\.\s*[a-z]{2,4}\b)?.*$",
     re.I,
 )
 
@@ -76,18 +76,14 @@ def normalize_name(value: str) -> str:
     # group attribution that has nothing to do with the game title. Runs before RELEASE_TAG so that
     # "CRACK: TENOKE" is stripped as a whole rather than RELEASE_TAG eating "TENOKE" and leaving "CRACK:" behind.
     value = CRACK_TAG.sub(" ", value)
-    # A release-group tag is a separator-delimited word, and everything from it on is packaging rather than the
-    # game: "Stellar.Squirrel-SteamRIP.com" is Stellar Squirrel, and so is anything tagged -RELOADED or
-    # .REPACKED. Cutting at the first one is what makes the title matchable - the Steam query used to build its
-    # variants from the tagged string, so it searched for "Neon Overdrive-Steam" and never for "Neon Overdrive".
-    #
-    # Both halves of that matter. Requiring a separator before the tag is what catches the hyphen and dot forms,
-    # which the old \s+ anchor missed; requiring a word boundary after it is what stops it eating real titles,
-    # which it used to do - "Some Game Multiplayer" became "Some Game player" and "Game Properly Done" became
-    # "Game ly Done", because multi and proper were matched with no trailing boundary at all.
-    value = RELEASE_TAG.sub("", value)
-    # Release group at START of filename: "TENOKE-Game Title" → "Game Title"
+    # Release group at START of filename: "TENOKE-Game Title" → "Game Title". Runs before the inline tag rule so a
+    # leading tag only loses itself, never the title that follows it.
     value = re.sub(r"^(?:fitgirl|tenoke|dodi|repack(?:ed|ing)?|reloaded|razor\s*1911|steam[\s._\-]*rip|steam[\s._\-]*rg|drm[\s._\-]*free|el[\s._\-]*amigos)[\s._\-]+", "", value, flags=re.I)
+    # An inline release-group tag cuts the tag and everything after it: "Stellar.Squirrel-SteamRIP.com" is Stellar
+    # Squirrel, and "Some Game-TENOKE MULTI5" is Some Game. Everything from the tag on is packaging. The lookbehind
+    # stops the tag matching mid-word inside a real title (e.g. "unreloaded"), and the start-tag rule above already
+    # removed any tag that leads the filename, so a real title is never eaten.
+    value = RELEASE_TAG.sub("", value)
     # These four are ordinary English as well as tags, so they only count as a tag when they are the last word.
     # "multi", "proper", "portable", "iso" are release/packaging states, not title words.
     # Do not add genre words here - "incremental" is a real genre (idle/incremental games), and

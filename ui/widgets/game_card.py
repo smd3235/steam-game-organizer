@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 import tkinter as tk
-from ui.theme import PANEL, PANEL3, TEXT, MUTED, ACCENT, ACCENT_HI, GREEN, ORANGE, CYAN, BORDER, CHART_COLORS
+from ui.theme import PANEL, PANEL3, TEXT, MUTED, ACCENT, ACCENT_HI, GREEN, ORANGE, CYAN, BORDER, CHART_COLORS, CTkFrame, CTkLabel  # CTkFrame/CTkLabel were used but never imported, which raised NameError at widget build time
 from core.constants import DEFAULT_CATEGORIES
 
 # Category-to-color mapping for the left accent strip. Cycles through CHART_COLORS

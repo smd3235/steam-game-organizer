@@ -101,6 +101,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 2. **ruff** — `pip install ruff`
 3. **PyInstaller** — `runtime\python.exe -m pip install pyinstaller` (installed inside the bundled runtime)
 4. **7-Zip** — [7-zip.org](https://www.7-zip.org/download.html). Required for `runtime\7z.exe` and for building the frozen exe. Install to the default location (`C:\Program Files\7-Zip`) so `tools\bundle_runtime.py` can find it automatically.
+5. **customtkinter** — `pip install customtkinter`. Required to import `ui.*` modules (including `ui.theme`, `ui.main_window`, `ui.custom_theme`) and to run tests against system Python. The bundled `runtime\python.exe` already ships it; system Python does not.
 
 ### Verify your setup
 

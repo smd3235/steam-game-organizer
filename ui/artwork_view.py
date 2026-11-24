@@ -4,11 +4,10 @@ with a clickable card per game and an "Open Game Folder" button that launches th
 from __future__ import annotations
 
 import customtkinter as ctk
-import tkinter as tk
 from tkinter import ttk
-from ui.theme import ACCENT_HI, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, TEXT, Theme, panel, pin_bottom
+from ui.theme import ACCENT_HI, ACCENT_HOVER, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, PANEL3, TEXT, panel, pin_bottom
 from .widgets.artwork_panel import ArtworkPanel
-from ui.custom_theme import CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkCanvas
+from ui.custom_theme import CTkFrame, CTkLabel, CTkButton, CTkCanvas
 
 from services.organizer_service import OrganizerService
 
@@ -44,7 +43,7 @@ class ArtworkView(ctk.CTkFrame):
         shell.grid(row=2, column=0, sticky="nsew", pady=(18, 0))
         shell.columnconfigure(0, weight=1)
         shell.rowconfigure(0, weight=1)
-        self.canvas = CTkCanvas(shell, fg_color=PANEL, highlightthickness=0)
+        self.canvas = CTkCanvas(shell, highlightthickness=0)
         self.scroll = ttk.Scrollbar(shell, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.grid(row=0, column=0, sticky="nsew", padx=(12, 0), pady=12)
@@ -132,8 +131,11 @@ class ArtworkView(ctk.CTkFrame):
                      justify="left").grid(row=1, column=1, sticky="ew", padx=(0, 12), pady=2)
             prefix = _asset_prefix_for(archive)
             names = []
+            # The primary artwork is written to disk as '{prefix}_grid{suffix}' by OrganizerService.move()
+            # (services/organizer_service.py:1382), so the screen must list that same name - not just
+            # '{prefix}{suffix}', which names a file that does not exist.
             if archive.artwork.path and archive.artwork.path.is_file():
-                names.append(f"{prefix}_{archive.artwork.path.suffix}")
+                names.append(f"{prefix}_grid{archive.artwork.path.suffix}")
                 artwork_count += 1
             # The asset name is the dict KEY, exactly as LibraryService._audit_game writes it. It used to be
             # recovered from the cached file's stem with stem.split('_',1)[-1], which is a guess that holds only

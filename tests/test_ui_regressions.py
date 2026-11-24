@@ -89,8 +89,10 @@ class TestScanButtonComesBackAfterAScan(unittest.TestCase):
         self.window.verification_done([])
 
     def test_the_button_starts_enabled(self):
+        # CTkButton does not support tkinter dictionary-style ["state"] access - it raises
+        # TclError: unknown option "-state". Use .cget("state") instead.
         self.assertNotEqual(
-            str(self.scan.scan_btn["state"]),
+            str(self.scan.scan_btn.cget("state")),
             "disabled",
             "the scan button is dead on a freshly opened window",
         )
@@ -98,12 +100,12 @@ class TestScanButtonComesBackAfterAScan(unittest.TestCase):
     def test_a_finished_scan_leaves_the_button_usable(self):
         self.window.views["scan"].begin_scan()
         self.window._start("Scanning Games…")
-        self.assertEqual(str(self.scan.scan_btn["state"]), "disabled", "the button was live during a running scan")
+        self.assertEqual(str(self.scan.scan_btn.cget("state")), "disabled", "the button was live during a running scan")
         self._run_a_whole_scan()
         self.assertFalse(self.window.busy, "the window still believes a run is in progress")
         self.assertFalse(self.scan.scanning, "the view still believes a scan is running")
         self.assertNotEqual(
-            str(self.scan.scan_btn["state"]),
+            str(self.scan.scan_btn.cget("state")),
             "disabled",
             "the scan button is still disabled after the run finished, so the library cannot be "
             "scanned again without restarting the app",
@@ -112,9 +114,9 @@ class TestScanButtonComesBackAfterAScan(unittest.TestCase):
     def test_the_cancel_button_is_turned_off_when_the_run_ends(self):
         self.window.views["scan"].begin_scan()
         self.window._start("Scanning Games…")
-        self.assertEqual(str(self.scan.cancel_btn["state"]), "normal", "cancel was not live during a run")
+        self.assertEqual(str(self.scan.cancel_btn.cget("state")), "normal", "cancel was not live during a run")
         self._run_a_whole_scan()
-        self.assertEqual(str(self.scan.cancel_btn["state"]), "disabled", "the cancel button is still live after the run finished")
+        self.assertEqual(str(self.scan.cancel_btn.cget("state")), "disabled", "the cancel button is still live after the run finished")
 
 class TestTheSetupButtonIsInTheAppToolbar(unittest.TestCase):
     """A Setup button in the app's own toolbar.

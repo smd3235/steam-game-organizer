@@ -5,8 +5,8 @@ tags, source, publisher, archive path/size) beneath the game card."""
 from __future__ import annotations
 
 import customtkinter as ctk
-import tkinter as tk
-from ui.theme import ACCENT_HI, BG, BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL2, PANEL3, RED, TEXT, Theme, human_size, pill
+from ui.theme import ACCENT_HI, MUTED, PANEL, TEXT, human_size, pill
+from ui.custom_theme import CTkFrame, CTkLabel
 
 
 class MetadataPanel(ctk.CTkFrame):

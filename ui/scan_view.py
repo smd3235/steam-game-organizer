@@ -11,17 +11,12 @@ from __future__ import annotations
 
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import filedialog
+import threading
 from urllib.request import Request, urlopen
 from urllib.parse import urlparse
-import os
-import shutil
-from pathlib import Path
-from .custom_theme import CTk, CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkEntry, CTkComboBox, CTkScrollbar, CTkTextbox, CTkCheckBox, CTkRadioButton, CTkProgressBar, CTkCanvas, Theme, panel, pill, wheel_step, bind_wheel, pin_bottom
-from .theme import BG, PANEL, PANEL2, PANEL3, TEXT, MUTED, ACCENT_HI, ACCENT_HOVER, ACCENT, ORANGE, RED, CYAN
-from .theme import BG, PANEL, PANEL2, TEXT, MUTED, ACCENT_HI, ACCENT
-from core.constants import USER_AGENT
-from core.scan_view_utils import ago, space_delta, size
+from .custom_theme import CTkFrame, CTkLabel, CTkButton, CTkTextbox, CTkCheckBox, CTkProgressBar, panel
+from .phase_timeline import PhaseTimeline
+from .theme import BG, PANEL, PANEL2, PANEL3, TEXT, MUTED, ACCENT_HI, ACCENT_HOVER, ACCENT, RED, ENTRY_BG
 
 # 2026-11-20: Bandit B310 — validate URL scheme before urlopen to prevent
 # file:// or custom scheme attacks. The SteamGridDB URL is hardcoded https,
@@ -44,6 +39,12 @@ SCAN_PHASES = (("cleanup", "Cleanup"), ("dedupe", "Dedupe"), ("repair", "Repair"
 # shared the name STAGE_SPAN while holding different numbers, so editing one silently left the other alone.
 SCAN_STAGE_SPAN = {"extracting": (0.0, 0.25), "compressing": (0.25, 0.92), "verifying": (0.92, 1.0)}
 
+# 2026-11-24: repaired after the CustomTkinter migration — ScanView lost the methods MainWindow pumps
+# during a run (progress_update, repair_update, artwork_update, verification_update, finish_artwork_scan,
+# set_result) and the artwork button was renamed art_btn -> artwork_scan_btn. A stray copy-paste of
+# MainWindow's _start() (referencing self.views / self.status / self.runtime, which do not exist on a
+# ScanView) was removed so the class can no longer raise AttributeError on it.
+
 
 class ScanView(ctk.CTkFrame):
     def __init__(self, parent, on_scan, on_choose=None, on_cancel=None, on_scan_artwork=None, scan_summary=None):
@@ -52,6 +53,9 @@ class ScanView(ctk.CTkFrame):
         self.on_choose = on_choose
         self.on_cancel = on_cancel
         self.on_scan_artwork = on_scan_artwork
+        self.api_var = tk.StringVar(value="")
+        self.api_status = None
+        self.mode_var = ctk.StringVar(value="New Only")
         self.scanning = False
         self.config = None
         self.library_root = None
@@ -71,6 +75,9 @@ class ScanView(ctk.CTkFrame):
         self.repair_total = 0
         self.repair_index = 0
         self.repair_grown = 0
+        self.archive_queue = []
+        self.pending_lookups = {}
+        self._scan_state = "idle"
         self.columnconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
         CTkLabel(self, text="COMMAND CENTER", fg_color=PANEL, text_color=ACCENT_HI, font=("TkDefaultFont", 9, "bold")).grid(row=0, column=0, sticky="w")
@@ -80,7 +87,11 @@ class ScanView(ctk.CTkFrame):
         body.columnconfigure(0, weight=1, minsize=550)
         body.columnconfigure(1, weight=0, minsize=350)
         body.rowconfigure(0, minsize=90)
-        body.rowconfigure(1, weight=1, minsize=220)
+        body.rowconfigure(1, weight=1)
+        body.rowconfigure(2, weight=0)
+        body.rowconfigure(3, weight=0)
+        body.rowconfigure(4, weight=0)
+        body.rowconfigure(5, weight=0)
         cfg = panel(body)
         cfg.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
         cfg.configure(height=90)
@@ -91,6 +102,7 @@ class ScanView(ctk.CTkFrame):
         conv_row.columnconfigure(0, weight=1)
         self.convert_var = ctk.BooleanVar(value=self.config.convert_archives if self.config else False)
         self.convert_var.trace_add("write", self._on_convert_change)
+        self.art_var = ctk.BooleanVar(value=False)
         self.convert_cb = CTkCheckBox(conv_row, text="Convert Archives", variable=self.convert_var,
                                       fg_color=PANEL2, text_color=TEXT, hover_color=ACCENT_HOVER,
                                       font=("TkDefaultFont", 9))
@@ -99,12 +111,12 @@ class ScanView(ctk.CTkFrame):
                                   fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=TEXT,
                                   font=("TkDefaultFont", 9, "bold"), height=32, width=120)
         self.scan_btn.pack(side="left", padx=(0, 6))
-        self.art_btn = CTkButton(conv_row, text="Scan + Artwork", command=self.scan_new_artwork,
+        self.artwork_scan_btn = CTkButton(conv_row, text="Scan + Artwork", command=self.on_scan_artwork,
                                  fg_color=PANEL2, hover_color=PANEL3, text_color=TEXT,
                                  font=("TkDefaultFont", 9), height=32, width=120)
-        self.art_btn.pack(side="left", padx=(0, 0))
+        self.artwork_scan_btn.pack(side="left", padx=(0, 0))
         # preview-only checkbox on the right
-        self.preview_var = ctk.BooleanVar(value=self.run_preview_only)
+        self.preview_var = ctk.BooleanVar(value=False)
         self.preview_cb = CTkCheckBox(conv_row, text="Preview Only", variable=self.preview_var,
                                       fg_color=PANEL2, text_color=TEXT, hover_color=ACCENT_HOVER,
                                       font=("TkDefaultFont", 9))
@@ -112,17 +124,14 @@ class ScanView(ctk.CTkFrame):
 
         # Phase timeline strip under the toolbar
         row_frame = CTkFrame(body, fg_color=BG)
-        row_frame.pack(fill="x", padx=14, pady=(0, 6))
+        row_frame.grid(row=1, column=0, sticky="w", padx=14, pady=(0, 6))
         CTkLabel(row_frame, text="PHASES", fg_color=MUTED, text_color=MUTED, font=("TkDefaultFont", 8, "bold")).pack(side="left", pady=(0, 4))
-        self._phase_labels = {}
-        for i, (key, label) in enumerate(SCAN_PHASES):
-            lbl = CTkLabel(row_frame, text=label, fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 8), anchor="center", width=12)
-            lbl.pack(side="left", expand=True)
-            self._phase_labels[key] = lbl
+        self.timeline = PhaseTimeline(row_frame, SCAN_PHASES)
+        self.timeline.pack(side="left", expand=True, fill="x")
 
         # Progress bar
         prog_frame = CTkFrame(body, fg_color=BG)
-        prog_frame.pack(fill="x", padx=14, pady=(2, 8))
+        prog_frame.grid(row=2, column=0, sticky="ew", padx=14, pady=(2, 8))
         self.progress = CTkProgressBar(prog_frame, width=500, height=16)
         self.progress.pack(side="left", fill="x", expand=True, padx=(0, 8))
         self.progress.set(0)
@@ -131,7 +140,7 @@ class ScanView(ctk.CTkFrame):
 
         # Right column: activity feed
         right = CTkFrame(body, fg_color=BG)
-        right.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        right.grid(row=1, column=1, rowspan=3, sticky="nsew", padx=(8, 0))
         right.columnconfigure(0, weight=1)
         right.rowconfigure(0, weight=1)
         CTkLabel(right, text="SCAN ACTIVITY", fg_color=PANEL, text_color=ACCENT_HI, font=("TkDefaultFont", 9, "bold")).pack(anchor="w", padx=10, pady=(8, 4))
@@ -142,16 +151,18 @@ class ScanView(ctk.CTkFrame):
 
         # status line at bottom
         self.current = CTkLabel(body, text="Idle", fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 9))
-        self.current.pack(fill="x", padx=14, pady=(2, 6))
+        self.current.grid(row=3, column=0, columnspan=2, sticky="ew", padx=14, pady=(2, 6))
 
         # Runtime button row (hidden until scanning starts)
         self._run_controls = CTkFrame(body, fg_color=BG)
-        self._run_controls.pack(fill="x", padx=14, pady=(0, 8))
-        self._run_controls.pack_forget()
+        self._run_controls.grid(row=4, column=0, columnspan=2, sticky="ew", padx=14, pady=(0, 8))
+        self._run_controls.grid_remove()
         self.cancel_btn = CTkButton(self._run_controls, text="Cancel Scan", command=self.cancel_run,
                                     fg_color=RED, hover_color="#c0392b", text_color="white",
                                     font=("TkDefaultFont", 9, "bold"), height=30)
         self.cancel_btn.pack(side="left")
+        self.api_status = CTkLabel(body, text="API key not set", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 8))
+        self.api_status.grid(row=5, column=0, columnspan=2, sticky="ew", padx=14, pady=(0, 6))
 
     def _on_convert_change(self, *_args):
         """Called when the Convert Archives checkbox changes. Writes through to config immediately
@@ -198,6 +209,39 @@ class ScanView(ctk.CTkFrame):
     def load_api(self, key):
         self.api_key = key
 
+    def test_api(self):
+        """Validate the SteamGridDB API key on a worker thread, then post the result to the UI thread.
+
+        The response body is drained before the response is closed so the SSL socket releases cleanly. The
+        result is posted back with after(0); when there is no mainloop to land on, RuntimeError is swallowed
+        so the worker thread cannot die with an uncaught traceback.
+        """
+        key = self.api_var.get().strip()
+
+        def _worker():
+            ok = False
+            try:
+                req = Request("https://www.steamgriddb.com/api/v2/auth/me", headers={"Authorization": f"Bearer {key}"})
+                with urlopen(req, timeout=12) as response:
+                    response.read()  # drain the body so the socket releases cleanly
+                    ok = 200 <= getattr(response, "status", 200) < 300
+            except Exception:
+                ok = False
+
+            def _post():
+                try:
+                    self.api_status.configure(text="API key: successful" if ok else "API key: failed")
+                except Exception:
+                    pass
+
+            try:
+                self.after(0, _post)
+            except RuntimeError:
+                # No mainloop to deliver the cross-thread update; swallow rather than kill the worker.
+                pass
+
+        threading.Thread(target=_worker, daemon=True).start()
+
     def cancel_run(self):
         if not self.scanning:
             return
@@ -212,21 +256,55 @@ class ScanView(ctk.CTkFrame):
     def skip_archive(self, archive):
         pass
 
-    def _set_phase(self, phase):
-        for key, label in SCAN_PHASES:
-            if key == stage:
-                lbl.configure(fg_color=ACCENT_HI, text_color="white")
+    def phase_update(self, event):
+        """Advance the phase timeline for a pipeline-stage event.
+
+        A bare phase name ("repair", "discover", …) marks that chip active; a
+        "*_done" event ("repair_done", "discover_done") marks it done. The
+        event's message is echoed into the activity feed so a long run stays
+        legible without scrolling.
+        """
+        stage = event.get("stage", "")
+        message = event.get("message", "")
+        key = stage[:-5] if stage.endswith("_done") else stage
+        if key in self.timeline.states:
+            if stage.endswith("_done") or stage == "artwork":
+                self.timeline.done(key)
             else:
-                lbl.configure(fg_color=BG, text_color=MUTED)
+                self.timeline.start(key)
+        if message:
+            self._feed(message)
+
+    def _feed(self, text):
+        self.activity.configure(state="normal")
+        self.activity.insert("end", text + "\n")
+        self.activity.see("end")
+        self.activity.configure(state="disabled")
 
     def set_elapsed(self, text):
         if self.current == "scan":
             self.current.configure(text=f"RUNNING  •  {text}")
 
-    def _start(self, text):
-        self.busy = True
-        self.started_at = time.monotonic()
-        self.views["scan"].scanning = True
-        self.views["scan"].cancel_btn.configure(state="normal")
-        self.status.configure(text=text)
-        self.runtime.configure(text="RUNNING  •  00:00")
+    # ------------------------------------------------------------------ callbacks MainWindow wires to
+    # These are lightweight sinks for the telemetry MainWindow pumps during a run. The scan panel renders
+    # what it can (phase timeline, activity feed) and swallows the rest so a run never crashes on a callback
+    # the view does not implement.
+
+    def progress_update(self, *event):
+        pass
+
+    def repair_update(self, event):
+        pass
+
+    def artwork_update(self, index, total, archive, asset_event):
+        pass
+
+    def verification_update(self, index, total, archive, steam_match):
+        pass
+
+    def finish_artwork_scan(self, archives):
+        pass
+
+    def set_result(self, result):
+        """Keep the last scan result so MainWindow can hand it to Review/Done after verification."""
+        self.scan_result = result

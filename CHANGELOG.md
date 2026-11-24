@@ -24,6 +24,12 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — fix: Artwork screen names primary file that does not exist; scan button stays dead across runs
+- `ui/artwork_view.py`: Primary artwork is now listed as `{prefix}_grid{suffix}` to match what `OrganizerService.move()` writes to disk (`services/organizer_service.py:1382`). Previously `{prefix}{suffix}` named a file that was never created (e.g. `Settlements Legacy_.jpg` instead of `Settlements Legacy_grid.jpg`).
+- `tests/test_ui_regressions.py`: CTkButton does not support tkinter dictionary-style `["state"]` access (raises `TclError: unknown option "-state"`). Tests now use `.cget("state")`.
+- `ui/main_window.py`: `_start()` now disables `scan_btn` and `artwork_scan_btn` while a run is in flight, and `_end()` resets `scanning = False`. Previously the scan button stayed live during a run (allowing a second scan on top) and `scanning` never cleared after a run ended.
+- `AGENTS.md`: Added `customtkinter` to the development toolchain — required to import `ui.*` modules and run tests against system Python (the bundled `runtime\python.exe` already ships it).
+
 ### 2026-11-23 19:00:00 — fix: Tkinter test isolation improved on Windows
 - `tests/conftest.py`: New autouse pytest fixture `_tk_cleanup` cancels all pending Tk `after` callbacks and resets `tk._default_root` before and after each test, eliminating cross-test Tkinter state leaks. Roots are not destroyed between tests — on Windows, destroying and recreating `tk.Tk()` corrupts the Tcl interpreter ("couldn't read init.tcl"), so each test's `tk.Tk()` runs on the same persistent interpreter.
 - `tests/tk_support.py`: `close_root()` now withdraws roots instead of destroying them, keeping the Tcl interpreter alive across tests.

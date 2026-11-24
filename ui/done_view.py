@@ -8,13 +8,9 @@ run), Open Library, and Scan Again actions.
 from __future__ import annotations
 
 import customtkinter as ctk
-import tkinter as tk
-import datetime
-from pathlib import Path
 import shutil
-from .custom_theme import CTk, CTkToplevel, CTkFrame, CTkLabel, CTkButton, CTkEntry, CTkComboBox, CTkScrollbar, CTkTextbox, CTkCheckBox, CTkRadioButton, CTkProgressBar, CTkCanvas, Theme, panel, pill, wheel_step, bind_wheel, pin_bottom
-from .theme import ACCENT_HI, BG, BORDER, CYAN, GREEN, MUTED, ORANGE, PANEL, PANEL2, RED, TEXT, human_duration, human_size
-from core.constants import DEFAULT_CATEGORIES, SUPPLEMENTAL_CATEGORIES
+from .custom_theme import CTkLabel, panel
+from .theme import BG, CYAN, GREEN, MUTED, ORANGE, PANEL, RED, TEXT, human_size
 
 # Outcome styling for the run report. Failures are the loudest thing on the screen on purpose: they are the
 # only rows the user has to act on, so they must never be scrolled past unnoticed.
@@ -89,3 +85,42 @@ class DoneView(ctk.CTkFrame):
         CTkLabel(self, text="DONE", fg_color=PANEL, text_color=GREEN, font=("TkDefaultFont", 9, "bold")).grid(row=0, column=0, sticky="w")
         CTkLabel(self, text="Run complete", fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 24, "bold")).grid(row=1, column=0, sticky="nw")
         self.card = panel(self)
+        self.summary = CTkLabel(self, text="", fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 10))
+        self.summary.grid(row=2, column=0, sticky="w", padx=14, pady=(10, 0))
+
+    def show(self, games):
+        """Render the done summary: how many artwork files this run copied into game folders.
+
+        Artwork arrives either as a primary image or as downloaded assets (header_image, capsule_image,
+        ...). `ArtworkResult.files()` returns every image that is really on disk, so a game whose primary
+        is empty but whose assets were downloaded is still counted as having artwork.
+        """
+        count = 0
+        for game in games or []:
+            artwork = getattr(game, "artwork", None)
+            if artwork is not None:
+                count += len(artwork.files())
+        self.summary.configure(text=f"{count} artwork copied")
+
+    def _paint_facts(self, durations, copies, notes):
+        """Paint the RUN FACTS rail from the run's real outputs, never from a stale state snapshot."""
+        pending = 0
+        rollback = getattr(self, "rollback", None)
+        if rollback is not None and getattr(rollback, "pending_count", None) is not None:
+            try:
+                pending = int(rollback.pending_count())
+            except Exception:
+                pending = 0
+        self.facts["undo"].configure(text=f"{pending} move(s)")
+        self.undo_btn.configure(state="normal" if pending > 0 else "disabled")
+        config = getattr(self, "config", None)
+        library_root = getattr(config, "library_root", None) if config is not None else None
+        if library_root is not None:
+            self.facts["where"].configure(text=str(library_root))
+            try:
+                self.facts["free"].configure(text=human_size(shutil.disk_usage(str(library_root)).free))
+            except Exception:
+                self.facts["free"].configure(text="—")
+        else:
+            self.facts["where"].configure(text="—")
+            self.facts["free"].configure(text="—")

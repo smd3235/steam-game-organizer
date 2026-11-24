@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 import time
+from customtkinter import CTkFrame  # CTkLabel imported earlier but never used (dropped to clear ruff F401)
 from utils.formatting import human_duration
 from ui.palette import BORDER, GREEN, MUTED, ORANGE, PANEL, PANEL3, RED, ACCENT_HI
 
