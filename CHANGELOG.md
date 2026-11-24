@@ -23,6 +23,11 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — feat: convert core/setup_hint.py, core/uri_actions.py to Rust
+- `src/setup_hint.rs`: Converted from `core/setup_hint.py` — `setup_hint()` returns the fresh-PC setup pointer message.
+- `src/uri_actions.rs`: Converted from `core/uri_actions.py` — `ExtractRequest`, `PlayRequest`, `ExtractRootRequest`, `SetupRequest`, `BatchExtractRequest`, `MultiBatchRequest` dataclasses and `UriRefused` error type.
+- `core/setup_hint.py`, `core/uri_actions.py`: Removed after successful Rust conversion.
+
 ### 2026-11-24 — feat: convert core/within.py, safe_folder_name.py, configured_bases.py, system_paths.py to Rust
 - `src/within.rs`: Converted from `core/within.py` — path containment check (`within()`), normalizes `..`/`.` segments without requiring paths to exist on disk.
 - `src/safe_folder_name.rs`: Converted from `core/safe_folder_name.py` — `safe_folder_name()` strips forbidden Windows chars, reserved device names (CON, COM1-LPT9), trailing dots/spaces; caps at 120 chars.
