@@ -19,3 +19,6 @@ runtime/
 # python tools/build_frozen.py instead of committing it.
 # Scratch space for throwaway scripts, generated HTML and ad-hoc captures. AGENTS.md requires these to live in the project, never in %TEMP%\kilo.
 temp/
+
+# Rust build output
+target/

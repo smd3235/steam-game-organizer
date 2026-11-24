@@ -2,6 +2,7 @@
 
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
+[![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
 
@@ -38,6 +39,22 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 | **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
 **Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) in [`AGENTS.md`](AGENTS.md).
+
+---
+
+## 🦀 Rust Conversion (in progress)
+
+This project is being converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch.
+
+| Status | Meaning |
+|--------|---------|
+| `python` | File still exists as `.py` — not yet converted |
+| `rust` | File replaced by a `.rs` module in `src/` |
+| `both` | `.py` kept for frozen-exe compatibility while `.rs` is being validated |
+
+Conversion order (dependencies first): pure `core/` and `utils/` modules → `services/` → `app/` → `ui/` (GUI last, hardest). Each converted file keeps a comment explaining what changed and why, matching the Python comment rule.
+
+Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
 
 ---
 

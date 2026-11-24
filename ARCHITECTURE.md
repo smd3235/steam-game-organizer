@@ -2,6 +2,7 @@
 
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
+[![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
 
@@ -54,6 +55,22 @@ These come from [`AGENTS.md`](AGENTS.md) and apply here too:
 
 ---
 
+## 🦀 Rust Conversion (in progress)
+
+This project is being converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch.
+
+| Status | Meaning |
+|--------|---------|
+| `python` | File still exists as `.py` — not yet converted |
+| `rust` | File replaced by a `.rs` module in `src/` |
+| `both` | `.py` kept for frozen-exe compatibility while `.rs` is being validated |
+
+Conversion order (dependencies first): pure `core/` and `utils/` modules → `services/` → `app/` → `ui/` (GUI last, hardest). Each converted file keeps a comment explaining what changed and why, matching the Python comment rule.
+
+Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
+
+---
+
 ## 🗺️ Layer map
 
 The app is organized in four layers. Data flows from the entry point into `app/` composition, which owns the services; services talk to `core/` for config/constants/models/URI/logging; `ui/` owns the windows; `utils/` and `debug/` are helper modules; `tools/` are build/repair scripts.
@@ -66,6 +83,7 @@ The app is organized in four layers. Data flows from the entry point into `app/`
 | Business services | `services/` | `archive_service.py`, `batch_extract_service.py`, `catalog_service.py`, `catalog_status.py`, `extract_service.py`, `installer_detect.py`, `library_service.py`, `organizer_service.py`, `rollback_service.py`, `setup_service.py`, `steam_service.py`, `artwork_service.py`, `banner_art.py` |
 | UI | `ui/` | `main_window.py` (shell + nav rail), 5 views, `batch_extract_window.py`, `setup_window.py`, `theme.py`, `palette.py`, `widgets/` |
 | Utilities | `utils/` | `filename_utils.py`, `formatting.py`, `desktop.py`, `treewalk.py` |
+| Rust conversion | `src/` | Converted pure modules (`.rs`) replacing `core/`/`utils/` Python modules one at a time |
 | Diagnostics | `debug/` | `diagnostics.py` |
 | Build / repair scripts | `tools/` | `build_frozen.py`, `bundle_runtime.py`, `install_protocol_handler.py`, `overnight_repair.py`, visual audits, backup tools, misc |
 | Tests | `tests/` | guard, static, and runtime test modules |

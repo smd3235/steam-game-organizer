@@ -1,0 +1,24 @@
+[package]
+name = "steam-game-organizer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# JSON serialization for settings, rollback journal, scan state
+serde = { version = "1", features = ["derive"] }
+
+# Typed error types (OrganizerError, CancellationError)
+thiserror = "1"
+
+# Date parsing for Steam release dates (release_label)
+chrono = "0.4"
+
+# Lazy static for compiled regexes reused across calls
+lazy_static = "1"
+
+# Filename normalization tags (normalize_name)
+regex = "1"
+
+[dev-dependencies]
+
+[workspace]

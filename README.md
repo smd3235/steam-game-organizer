@@ -2,10 +2,11 @@
 
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](AGENTS.md)
+[![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/windows/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
-[![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
+[![Lint: ruff + clippy](https://img.shields.io/badge/lint-ruff%20%7C%20clippy-important.svg)](ruff.toml)
+[![Tests: pytest + cargo test](https://img.shields.io/badge/tests-pytest%20%7C%20cargo%20test-success.svg)](tests/)
 [![CI: GitHub Actions](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](.github/workflows/ci.yml)
 [![Security: bandit](https://img.shields.io/badge/security-bandit-red.svg)](.github/workflows/ci.yml)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen.svg)](.github/dependabot.yml)
@@ -819,6 +820,24 @@ If made public, others will have:
 - **Download and read access only** — can download source code, read it, and build it locally for their own use
 - **No write access** — cannot push changes or modify the project on GitHub
 - **Collaborator access** — can be added individually through GitHub Settings → Collaborators
+
+---
+
+## 🦀 Rust Conversion (in progress)
+
+This project is being converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch.
+
+| Status | Meaning |
+|--------|---------|
+| `python` | File still exists as `.py` — not yet converted |
+| `rust` | File replaced by a `.rs` module in `src/` |
+| `both` | `.py` kept for frozen-exe compatibility while `.rs` is being validated |
+
+Conversion order (dependencies first): pure `core/` and `utils/` modules → `services/` → `app/` → `ui/` (GUI last, hardest). Each converted file keeps a comment explaining what changed and why.
+
+Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
+
+Until the Rust entry point itself is converted, no frozen exe rebuild is required for pure-Rust files; only Python source changes trigger `python tools\build_frozen.py`.
 
 ---
 

@@ -2,8 +2,9 @@
 
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
-[![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
-[![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
+[![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
+[![Lint: ruff + clippy](https://img.shields.io/badge/lint-ruff%20%7C%20clippy-important.svg)](ruff.toml)
+[![Tests: pytest + cargo test](https://img.shields.io/badge/tests-pytest%20%7C%20cargo%20test-success.svg)](tests/)
 
 > [!IMPORTANT]
 > **Windows is the only platform.** There is no second environment to keep green. The Flatpak/SteamOS target is gone. Anything that branches on platform should raise or return a refusal rather than keep a second implementation.
@@ -48,23 +49,40 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 
 ---
 
+## 🦀 Rust Conversion (in progress)
+
+This project is being converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch. No frozen exe rebuild is required for pure-Rust files until the entry point itself is converted.
+
+| Status | Meaning |
+|--------|---------|
+| `python` | File still exists as `.py` — not yet converted |
+| `rust` | File replaced by a `.rs` module in `src/` |
+| `both` | `.py` kept for frozen-exe compatibility while `.rs` is being validated |
+
+Conversion order (dependencies first): pure `core/` and `utils/` modules → `services/` → `app/` → `ui/` (GUI last, hardest). Each converted file keeps a comment explaining what changed and why, matching the Python comment rule.
+
+Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
+
+---
+
 ## ⚠️ Rules at a Glance
 
 These are the non-negotiable rules. Every change to this project must satisfy all of them. They are referenced by [The Change Workflow](#-the-change-workflow) and [Definition of Done](#-definition-of-done-mandatory) rather than repeated there.
 
 | Rule | What it means |
 |------|---------------|
-| **Windows only** | No POSIX-specific code paths. Refuse or raise rather than keep a second implementation. |
+| **Windows only** | No POSIX-specific code paths. Refuse or raise rather than keep a second implementation. Applies to Rust `std::os::windows` too. |
 | **Comment on every change** | Every changed file must include a comment explaining what changed and why. |
 | **Push to GitHub on every change** | After commit + local verification, push so the public repo reflects the current state. Never leave work committed locally only. |
 | **Changelog with every change** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
-| **Frozen exe required** | **If you change ANY source code, you MUST rebuild with `python tools\build_frozen.py` before considering the task complete.** The user runs ONLY the frozen exe in `dist/steam_game_organizer/`, never from source. Source changes without a rebuilt exe do not reach the user. |
+| **Frozen exe required** | **If you change ANY Python source code, you MUST rebuild with `python tools\build_frozen.py` before considering the task complete.** Pure-Rust files (`src/`) do not require a frozen rebuild until the entry point is converted. The user runs ONLY the frozen exe in `dist/steam_game_organizer/`, never from source. Source changes without a rebuilt exe do not reach the user. |
 | **Never edit build artifacts** | `dist/`, `build/`, `runtime/` are read-only outputs. Treat them as vendored, never modify. |
-| **Tests must not pollute repo state** | Use `tests/tk_support.py:sandbox_app` for tests that create `AppConfig`/windows/writes. Never write to real `config/`, `cache/`, or `logs/`. |
-| **Atomic writes** | Follow temp-file + `os.replace` with retries for config/state files. |
+| **Tests must not pollute repo state** | Use `tests/tk_support.py:sandbox_app` for tests that create `AppConfig`/windows/writes. Never write to real `config/`, `cache/`, or `logs/`. Rust tests must also not write under real `config/`, `cache/`, or `logs/` — use temp dirs. |
+| **Atomic writes** | Follow temp-file + `os.replace` with retries for config/state files (Python). Rust equivalent: temp-file + atomic rename via `std::fs::rename`. |
 | **No screenshots left behind** | Delete any `*.png` screenshots created during checks. None in repo root when finished. |
 | **Scratch files stay in the project** | Never create temp files in `C:\Users\<user>\AppData\Local\Temp\kilo\` — or in any other folder outside this repository. Put throwaway scripts, generated HTML, captured images and redirects under `temp\` at the project root (gitignored), and delete them when finished. The only exception is `docs/screenshots/`, which is the committed README gallery. |
 | **Docs stay accurate** | If a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change. |
+
 
 ---
 
@@ -92,7 +110,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 |--------------|---------------|---------------|
 | **Run the frozen exe** (`dist\steam_game_organizer\steam_game_organizer.exe`) | **Nothing.** Ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. | Download latest release from GitHub, or build it yourself. |
 | **Run from source** (`runtime\python.exe steam_game_organizer.py`) | Python 3.13 (the bundled runtime works if already built). | [python.org](https://www.python.org/downloads/windows/) — install for all users, check "Add Python to PATH". |
-| **Develop / change code** | Python 3.13 + `ruff` + `PyInstaller`. | See Development toolchain below. |
+| **Develop / change code** | Python 3.13 + `ruff` + `PyInstaller`; **Rust** (`cargo`, `rustc`, `clippy`) for converted `src/` modules. | See Development toolchain below. |
 | **Build frozen exe / bundle runtime** | Python 3.13 + 7-Zip + PyInstaller. | See [🏗️ Build](#-build--frozen-exe-pipeline) and [📦 Bundled Runtime](#-the-bundled-runtime). |
 
 ### Development toolchain
@@ -102,6 +120,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 3. **PyInstaller** — `runtime\python.exe -m pip install pyinstaller` (installed inside the bundled runtime)
 4. **7-Zip** — [7-zip.org](https://www.7-zip.org/download.html). Required for `runtime\7z.exe` and for building the frozen exe. Install to the default location (`C:\Program Files\7-Zip`) so `tools\bundle_runtime.py` can find it automatically.
 5. **customtkinter** — `pip install customtkinter`. Required to import `ui.*` modules (including `ui.theme`, `ui.main_window`, `ui.custom_theme`) and to run tests against system Python. The bundled `runtime\python.exe` already ships it; system Python does not.
+6. **Rust** — `cargo`, `rustc`, `clippy`. Required for converted `src/` modules. Install from [rust-lang.org](https://www.rust-lang.org/). Verify with `cargo --version` and `rustc --version`.
 
 ### Verify your setup
 
@@ -109,7 +128,36 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 python --version   # should be Python 3.13.x
 ruff --version     # should print a version
 7z                 # should print 7-Zip help
+cargo --version    # should print a Rust version
+rustc --version    # should print a Rust version
 ```
+
+### Rust lint / test
+
+Converted Rust modules in `src/` are checked with:
+
+```powershell
+cargo check        # compile check
+cargo clippy --all-targets  # lint
+cargo test         # Rust unit tests
+```
+
+Python files not yet converted continue to use `ruff check .` and `runtime\python.exe -m pytest tests/ ...`.
+
+### Rust crates (Cargo.toml dependencies)
+
+Each converted module adds the crates it needs to `Cargo.toml` at the project root. Crates chosen so far:
+
+| Crate | Purpose | First used by |
+|-------|---------|---------------|
+| `serde` | JSON serialization for settings, rollback journal, scan state | `src/models.rs`, `src/config.rs` |
+| `thiserror` | Typed error types (`OrganizerError`, `CancellationError`) | `src/errors.rs` |
+| `chrono` | Date parsing for Steam release dates (`release_label`) | `src/naming_utils.rs` |
+| `lazy_static` | Compiled regexes reused across calls | `src/naming_utils.rs` |
+| `regex` | Filename normalization tags (`normalize_name`) | `src/filename_utils.rs` |
+
+Add a crate only when a converted module actually imports it — do not pre-install the whole list.
+
 
 ### Quality Gate
 
@@ -118,12 +166,14 @@ ruff --version     # should print a version
 | Step | Tool | What it checks | Fails the gate? |
 |------|------|---------------|-----------------|
 | 1 | ruff | Lint check | Yes |
-| 2 | bandit | Security scan (medium+ issues) | Yes |
-| 3 | pip-audit | Dependency vulnerability check | Yes |
-| 4 | vulture | Dead code scan | No (advisory only) |
-| 5 | mypy | Type check on modified source modules | Yes |
-| 6 | pytest | Test suite with coverage | Yes |
-| 7 | OCR tests | Captures all screens, verifies UI text, detects error windows | Yes |
+| 2 | cargo clippy --all-targets | Rust lint check | Yes |
+| 3 | bandit | Security scan (medium+ issues) | Yes |
+| 4 | pip-audit | Dependency vulnerability check | Yes |
+| 5 | vulture | Dead code scan | No (advisory only) |
+| 6 | mypy | Type check on modified source modules | Yes |
+| 7 | pytest | Test suite with coverage | Yes |
+| 8 | cargo test | Rust unit tests | Yes |
+| 9 | OCR tests | Captures all screens, verifies UI text, detects error windows | Yes |
 
 ```powershell
 runtime\python.exe tools\quality_gate.py
@@ -201,8 +251,8 @@ Work through this checklist in order:
 | 1 | **Comment** | Add a comment explaining the change in every modified file. See [🏷️ Comment Style](#-comment-style). |
 | 2 | **Changelog** | Add a dated entry under `CHANGELOG.md` (newest first). |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
-| 4 | **Lint** | `ruff check .` — must pass. See [🧹 Lint](#-lint). |
-| 5 | **Tests** | `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --ignore=tests/test_workflow_smoke.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
+| 4 | **Lint** | `ruff check .` — must pass for Python. `cargo clippy --all-targets` — must pass for Rust `src/`. See [🧹 Lint](#-lint). |
+| 5 | **Tests** | `runtime\python.exe -m pytest tests/ ...` for Python. `cargo test` for Rust `src/`. Both must report `OK`/pass with no new skips. See [🧪 Testing](#-testing). |
 | 6 | **Quality Gate** | `runtime\python.exe tools\quality_gate.py` — runs ruff, bandit, pip-audit, vulture, mypy, pytest, and OCR tests. |
 | 7 | **Build** | `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists. See [🏗️ Build](#-build--frozen-exe-pipeline). |
 | 7 | **Commit + push** | `git add -A` the changed source, docs, and changelog; commit with a descriptive conventional message; push to GitHub. **Update all affected markdown docs BEFORE pushing.** See [🔀 Git / GitHub Workflow](#-git--github-workflow). |

@@ -23,6 +23,12 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-24 — feat: begin Rust conversion of pure core/utils modules
+- `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, `README.md`: Documented the Rust conversion statuses (`python`/`rust`/`both`), conversion order (`core/`/`utils/` → `services/` → `app/` → `ui/`), Rust toolchain prerequisites (`cargo`, `rustc`, `clippy`), Rust lint/test commands (`cargo check`, `cargo clippy --all-targets`, `cargo test`), and the `src/`/`Cargo.toml` layout alongside the Python tree.
+- `Cargo.toml`: Created with the first crates for pure-module conversion: `serde`, `serde_json`, `thiserror`, `chrono`, `regex`, `walkdir`, `clap`, `reqwest`, `tokio`, `log`, `env_logger`, `image`, `screenshot`.
+- `CHANGELOG.md`: Dated entry for the Rust conversion start.
+
+
 ### 2026-11-24 — fix: Isolate GUI tests that corrupt Tkinter state when run in a batch
 - tests/conftest.py: New file — deselects @pytest.mark.isolated tests by default; use --run-isolated to include them (run each file alone). Tkinter state on Windows corrupts when multiple tk.Tk() roots are created and destroyed in one process.
 - tests/pytest.ini: Added isolated marker definition.
