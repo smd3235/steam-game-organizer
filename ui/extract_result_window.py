@@ -17,14 +17,14 @@ from __future__ import annotations
 import os
 import threading
 import time
+import customtkinter as ctk
 import tkinter as tk
 from pathlib import Path
-from tkinter import ttk
 
-from ui.theme import ACCENT, ACCENT_HOVER, BG, BORDER, GREEN, MUTED, ORANGE, PANEL2, PANEL3, RED, TEXT, Theme
+from ui.custom_theme import ACCENT, ACCENT_HOVER, BG, GREEN, MUTED, ORANGE, PANEL2, PANEL3, RED, TEXT, Theme, CTkFrame, CTkLabel, CTkButton, CTkProgressBar
 
 
-class ExtractProgressDialog(tk.Toplevel):
+class ExtractProgressDialog(ctk.CTkToplevel):
     """Shows a progress bar during extraction, then hands off to the result view."""
 
     def __init__(self, master, archive: Path, destination: Path, logger, password: str = "", needs_install: bool = False, on_done=None):
@@ -41,33 +41,33 @@ class ExtractProgressDialog(tk.Toplevel):
         self.transient(master)
 
         self.title("Extracting installer…" if needs_install else "Extracting")
-        self.configure(bg=BG)
+        self.configure(fg_color=BG)
         self.resizable(True, True)
         self.grab_set()
 
-        outer = tk.Frame(self, bg=BG)
+        outer = CTkFrame(self, fg_color=BG)
         outer.pack(fill="both", expand=True, padx=0, pady=0)
 
-        tk.Label(outer, text="Extracting installer" if needs_install else "Extracting", bg=BG, fg=MUTED, font=("TkDefaultFont", 8, "bold")).pack(anchor="w", padx=24, pady=(18, 8))
-        tk.Label(outer, text=str(archive.name), bg=BG, fg=TEXT, font=("TkDefaultFont", 12, "bold")).pack(anchor="w", padx=24)
+        CTkLabel(outer, text="Extracting installer" if needs_install else "Extracting", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 8, "bold")).pack(anchor="w", padx=24, pady=(18, 8))
+        CTkLabel(outer, text=str(archive.name), fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 12, "bold")).pack(anchor="w", padx=24)
 
-        self._file_label = tk.Label(outer, text="Starting...", bg=BG, fg=MUTED, font=("TkDefaultFont", 9))
+        self._file_label = CTkLabel(outer, text="Starting...", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 9))
         self._file_label.pack(anchor="w", padx=24, pady=(10, 4))
 
-        self._bar = ttk.Progressbar(outer, style="Dark.Horizontal.TProgressbar", mode="determinate", maximum=100)
+        self._bar = CTkProgressBar(outer, mode="determinate", maximum=100)
         self._bar.pack(fill="x", padx=24, pady=(0, 8))
-        self._bar["value"] = 0
+        self._bar.set(0)
 
-        self._elapsed = tk.Label(outer, text="", bg=BG, fg=MUTED, font=("TkDefaultFont", 8))
+        self._elapsed = CTkLabel(outer, text="", fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 8))
         self._elapsed.pack(anchor="w", padx=24, pady=(0, 16))
 
-        self._footer = tk.Frame(outer, bg=BG, height=50)
+        self._footer = CTkFrame(outer, fg_color=BG, height=50)
         self._footer.pack(fill="x", padx=24, pady=(0, 22))
         self._footer.pack_propagate(False)
 
-        self._cancel_btn = tk.Button(self._footer, text="Cancel", command=self._cancel, bg=PANEL3,
-            fg=TEXT, font=("TkDefaultFont", 9, "bold"), activebackground=BG, bd=0, padx=12,
-            pady=4, cursor="hand2")
+        self._cancel_btn = CTkButton(self._footer, text="Cancel", command=self._cancel, fg_color=PANEL3,
+            text_color=TEXT, font=("TkDefaultFont", 9, "bold"), hover_color=PANEL2, height=32, width=80,
+            cursor="hand2")
         self._cancel_btn.pack(side="right")
 
         self._start_time = time.monotonic()
@@ -89,9 +89,9 @@ class ExtractProgressDialog(tk.Toplevel):
         self.after(0, self._update_progress, percent, name)
 
     def _update_progress(self, percent, name):
-        self._bar["value"] = percent
+        self._bar.set(percent / 100.0)
         if name:
-            self._file_label.config(text=name)
+            self._file_label.configure(text=name)
 
     def _pump_stats(self):
         self._update_stats()
@@ -102,11 +102,11 @@ class ExtractProgressDialog(tk.Toplevel):
 
     def _update_stats(self):
         elapsed = int(time.monotonic() - self._start_time)
-        self._elapsed.config(text=f"{elapsed}s elapsed")
+        self._elapsed.configure(text=f"{elapsed}s elapsed")
 
     def _cancel(self):
         self._cancelled.set()
-        self._cancel_btn.config(text="Stopping...", state="disabled")
+        self._cancel_btn.configure(text="Stopping...", state="disabled")
 
     def _center_on_screen(self):
         self.update_idletasks()
@@ -140,7 +140,7 @@ class ExtractProgressDialog(tk.Toplevel):
         self.master.quit()
 
 
-class ExtractResultWindow(tk.Toplevel):
+class ExtractResultWindow(ctk.CTkToplevel):
     """Shows the outcome of a single extraction with a status icon, archive info, and actions."""
 
     def __init__(self, master, archive: Path, destination: Path, ok: bool, message: str, needs_install: bool = False):
@@ -152,11 +152,11 @@ class ExtractResultWindow(tk.Toplevel):
         self.transient(master)
 
         self.title("Extraction complete")
-        self.configure(bg=BG)
+        self.configure(fg_color=BG)
         self.resizable(True, True)
         self.grab_set()
 
-        outer = tk.Frame(self, bg=BG)
+        outer = CTkFrame(self, fg_color=BG)
         outer.pack(fill="both", expand=True, padx=0, pady=0)
 
         self._draw_header(outer, ok, needs_install)
@@ -172,62 +172,63 @@ class ExtractResultWindow(tk.Toplevel):
         self.wait_window(self)
 
     def _draw_header(self, parent, ok, needs_install):
-        header = tk.Frame(parent, bg=BG, height=90)
+        header = CTkFrame(parent, fg_color=BG)
         header.pack(fill="x", padx=24, pady=(22, 0))
-        header.pack_propagate(False)
 
         status_color = GREEN if ok else RED
         icon = "\u2713" if ok else "\u2717"
-        tk.Label(header, text=icon, bg=BG, fg=status_color, font=("TkDefaultFont", 32, "bold")).place(relx=0.5, rely=0.25, anchor="center")
+        CTkLabel(header, text=icon, fg_color=BG, text_color=status_color, font=("TkDefaultFont", 32, "bold")).place(relx=0.5, rely=0.25, anchor="center")
 
         title = "Extraction Succeeded" if ok else "Extraction Failed"
-        tk.Label(header, text=title, bg=BG, fg=TEXT, font=("TkDefaultFont", 14, "bold")).place(relx=0.5, rely=0.68, anchor="center")
+        CTkLabel(header, text=title, fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 14, "bold")).place(relx=0.5, rely=0.68, anchor="center")
 
         subtitle = (
             "Run the installer in the destination folder to finish installing this game"
             if needs_install and ok else
             "The game is ready to play" if ok else
             "The extraction did not complete. Check the log for details.")
-        tk.Label(header, text=subtitle, bg=BG, fg=MUTED, font=("TkDefaultFont", 9)).place(relx=0.5, rely=0.84, anchor="center")
+        CTkLabel(header, text=subtitle, fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 9)).place(relx=0.5, rely=0.84, anchor="center")
 
     def _draw_body(self, parent, archive, destination, message, needs_install):
-        body = tk.Frame(parent, bg=BG)
+        body = CTkFrame(parent, fg_color=BG)
         body.pack(fill="both", expand=True, padx=24, pady=(16, 22))
 
-        tk.Label(body, text=str(archive.name), bg=BG, fg=TEXT, font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 12))
+        CTkLabel(body, text=str(archive.name), fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 12))
 
         if needs_install and self.ok:
-            note = tk.Frame(body, bg=PANEL2, relief="flat", bd=0)
+            note = CTkFrame(body, fg_color=PANEL2, corner_radius=6)
             note.pack(fill="x", pady=(0, 12))
             note.columnconfigure(1, weight=1)
-            tk.Label(note, text="\u26a0", bg=PANEL2, fg=ORANGE, font=("TkDefaultFont", 14)).grid(row=0, column=0, padx=(12, 8), pady=10)
-            tk.Label(note, text="Installer archive detected. Run the setup program to install the game.",
-                bg=PANEL2, fg=TEXT, font=("TkDefaultFont", 9, "bold"), wraplength=380,
+            CTkLabel(note, text="\u26a0", fg_color=PANEL2, text_color=ORANGE, font=("TkDefaultFont", 14)).grid(row=0, column=0, padx=(12, 8), pady=10)
+            CTkLabel(note, text="Installer archive detected. Run the setup program to install the game.",
+                fg_color=PANEL2, text_color=TEXT, font=("TkDefaultFont", 9, "bold"), wraplength=380,
                 justify="left").grid(row=0, column=1, sticky="w")
 
-        msg_frame = tk.LabelFrame(body, text="Details", bg=BG, fg=MUTED, font=("TkDefaultFont", 8), bd=1, highlightbackground=BORDER, highlightthickness=1)
+        msg_frame = CTkFrame(body, fg_color=BG, corner_radius=6)
         msg_frame.pack(fill="x", pady=(0, 12), padx=(0, 0))
-        tk.Label(msg_frame, text=message, bg=BG, fg=MUTED, font=("TkDefaultFont", 9), wraplength=420, justify="left").pack(padx=12, pady=8)
+        CTkLabel(msg_frame, text=message, fg_color=BG, text_color=MUTED, font=("TkDefaultFont", 9), wraplength=420, justify="left").pack(padx=12, pady=8)
 
         if self.ok:
-            dest_frame = tk.LabelFrame(body, text="Extracted to", bg=BG, fg=MUTED, font=("TkDefaultFont", 8), bd=1, highlightbackground=BORDER, highlightthickness=1)
+            dest_frame = CTkFrame(msg_frame, fg_color=BG, corner_radius=6)
             dest_frame.pack(fill="x", pady=(0, 0))
-            dest_label = tk.Label(dest_frame, text=str(destination), bg=BG, fg=TEXT, font=("TkDefaultFont", 8), wraplength=420, justify="left")
-            dest_label.pack(padx=12, pady=8)
+            CTkLabel(dest_frame, text=str(destination), fg_color=BG, text_color=TEXT, font=("TkDefaultFont", 8), wraplength=420, justify="left").pack(padx=12, pady=8)
 
     def _draw_footer(self, parent, ok):
-        footer = tk.Frame(parent, bg=BG, height=50)
+        footer = CTkFrame(parent, fg_color=BG)
         footer.pack(fill="x", padx=24, pady=(0, 22))
-        footer.pack_propagate(False)
 
         if ok:
-            btn_open = tk.Button(footer, text="\u00a0Show in Explorer\u00a0", command=self._open_folder, bg=ACCENT, fg=TEXT, font=("TkDefaultFont", 9, "bold"), activebackground=ACCENT_HOVER, activeforeground=TEXT, bd=0, padx=14, pady=5, cursor="hand2")
+            btn_open = CTkButton(footer, text="\u00a0Show in Explorer\u00a0", command=self._open_folder,
+                fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=TEXT, font=("TkDefaultFont", 9, "bold"), height=32)
             btn_open.pack(side="left")
 
-            btn_copy = tk.Button(footer, text="Copy path", command=self._copy_path, bg=PANEL3, fg=TEXT, font=("TkDefaultFont", 9), activebackground=PANEL2, bd=0, padx=14, pady=5, cursor="hand2")
+            btn_copy = CTkButton(footer, text="Copy path", command=self._copy_path, fg_color=PANEL3, hover_color=PANEL2,
+                text_color=TEXT, font=("TkDefaultFont", 9, "bold"), height=32)
             btn_copy.pack(side="left", padx=(12, 0))
 
-        tk.Button(footer, text="Done", command=self.destroy, bg=ACCENT if ok else PANEL3, fg=TEXT, font=("TkDefaultFont", 9, "bold"), activebackground=ACCENT_HOVER if ok else PANEL2, activeforeground=TEXT, bd=0, padx=18, pady=5, cursor="hand2").pack(side="right")
+        btn_done = CTkButton(footer, text="Done", command=self.destroy, fg_color=ACCENT if ok else PANEL3,
+            hover_color=ACCENT_HOVER if ok else PANEL2, text_color=TEXT, font=("TkDefaultFont", 9, "bold"), height=32)
+        btn_done.pack(side="right")
 
     def _center_on_screen(self):
         self.update_idletasks()
