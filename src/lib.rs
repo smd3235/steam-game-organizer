@@ -15,3 +15,4 @@ pub mod suggest_category_with_evidence;
 pub mod models;
 pub mod naming_utils;
 pub mod library_summary;
+pub mod logger;
