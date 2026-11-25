@@ -49,5 +49,6 @@ pub mod suggest_category_with_evidence;
 pub mod system_paths;
 pub mod treewalk;
 pub mod typed_destination;
+pub mod update_extract_marker;
 pub mod uri_actions;
 pub mod within;
