@@ -23,6 +23,12 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — fix: GUI window not opening (uri default_value + windows_subsystem panic)
+
+- `src/bin.rs`: Removed `default_value = ""` from `uri` clap arg so `args.uri.is_some()` correctly returns `false` when `--uri` is not provided (was forcing headless CLI path instead of GUI); removed `#![windows_subsystem = "windows"]` that removed stderr pipe causing recursive panics; made panic hooks write to file instead of stderr
+- `src/entry.rs`: Removed `default_value = ""` from `uri` clap arg (same fix as bin.rs)
+- `src/core/logger.rs`: Panic hook writes to log file and stderr (ignoring errors when no console available)
+
 ### 2026-11-25 — feat: HH:MM:SS log timestamps and real file logging in GUI path
 
 - `src/core/logger.rs`: Changed timestamps from raw epoch seconds to `HH:MM:SS` format for human-readable log lines

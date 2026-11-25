@@ -23,67 +23,63 @@ pub fn discover_game_launchers(extracted_root: &Path) -> Vec<PathBuf> {
         return Vec::new();
     }
     let mut found: Vec<((i64, i64, String), PathBuf)> = Vec::new();
-    let result: Result<Vec<PathBuf>, std::io::Error> =
-        (|| -> Result<Vec<PathBuf>, std::io::Error> {
-            for entry in walkdir::WalkDir::new(&root)
-                .into_iter()
-                .filter_entry(|e| {
-                    !e.file_name().to_string_lossy().starts_with(".git")
-                        && !e.file_name().to_string_lossy().ends_with("__pycache__")
-                })
-                .filter_map(|e| e.ok())
-            {
-                let current_path = entry.path();
-                let rel = current_path.strip_prefix(&root).unwrap_or(Path::new("."));
-                let depth = if rel.as_os_str().is_empty() || rel == Path::new(".") {
-                    0
-                } else {
-                    rel.components().count() as i64
-                };
-                if depth >= LAUNCHER_MAX_DEPTH as i64 {
-                    continue;
-                }
-                let file_name = match current_path.file_name() {
-                    Some(n) => n.to_string_lossy().to_string(),
-                    None => continue,
-                };
-                if !file_name.to_lowercase().ends_with(".exe") {
-                    continue;
-                }
-                let low = file_name.to_lowercase();
-                if LAUNCHER_IGNORE_TOKENS.iter().any(|t| low.contains(*t)) {
-                    continue;
-                }
-                let mut score: i64 = 0;
-                if depth == 0 {
-                    score += 4;
-                } else if depth == 1 {
-                    score += 2;
-                }
-                if LAUNCHER_PREFER_TOKENS.iter().any(|t| low.contains(*t)) {
-                    score += 2;
-                }
-                if low.contains("launcher") {
-                    score -= 1;
-                }
-                let size = current_path.metadata().map_or(0, |m| m.len());
-                if size >= 1024 * 1024 {
-                    score += 1;
-                }
-                found.push((
-                    (-score, depth, low),
-                    current_path
-                        .canonicalize()
-                        .unwrap_or_else(|_| current_path.to_path_buf()),
-                ));
-                if found.len() >= LAUNCHER_MAX_CANDIDATES {
-                    break;
-                }
-            }
-            found.sort_by(|a, b| a.0.cmp(&b.0));
-            Ok(found.into_iter().map(|(_, p)| p).collect())
-        })();
-    result.unwrap_or_default()
+    for entry in walkdir::WalkDir::new(&root)
+        .into_iter()
+        .filter_entry(|e| {
+            !e.file_name().to_string_lossy().starts_with(".git")
+                && !e.file_name().to_string_lossy().ends_with("__pycache__")
+        })
+        .filter_map(|e| e.ok())
+    {
+        let current_path = entry.path();
+        let rel = current_path.strip_prefix(&root).unwrap_or(Path::new("."));
+        let depth = if rel.as_os_str().is_empty() || rel == Path::new(".") {
+            0
+        } else {
+            rel.components().count() as i64
+        };
+        if depth >= LAUNCHER_MAX_DEPTH as i64 {
+            continue;
+        }
+        let file_name = match current_path.file_name() {
+            Some(n) => n.to_string_lossy().to_string(),
+            None => continue,
+        };
+        if !file_name.to_lowercase().ends_with(".exe") {
+            continue;
+        }
+        let low = file_name.to_lowercase();
+        if LAUNCHER_IGNORE_TOKENS.iter().any(|t| low.contains(*t)) {
+            continue;
+        }
+        let mut score: i64 = 0;
+        if depth == 0 {
+            score += 4;
+        } else if depth == 1 {
+            score += 2;
+        }
+        if LAUNCHER_PREFER_TOKENS.iter().any(|t| low.contains(*t)) {
+            score += 2;
+        }
+        if low.contains("launcher") {
+            score -= 1;
+        }
+        let size = current_path.metadata().map_or(0, |m| m.len());
+        if size >= 1024 * 1024 {
+            score += 1;
+        }
+        found.push((
+            (-score, depth, low),
+            current_path
+                .canonicalize()
+                .unwrap_or_else(|_| current_path.to_path_buf()),
+        ));
+        if found.len() >= LAUNCHER_MAX_CANDIDATES {
+            break;
+        }
+    }
+    found.sort_by(|a, b| a.0.cmp(&b.0));
+    found.into_iter().map(|(_, p)| p).collect()
 }
 
 #[cfg(test)]

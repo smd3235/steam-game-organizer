@@ -35,7 +35,7 @@ winreg = "0.52"
 
 # egui GUI framework for the UI layer
 egui = "0.32"
-eframe = "0.32"
+eframe = { version = "0.32", features = ["glow"] }
 
 # CLI argument parsing for headless binary
 clap = { version = "4", features = ["derive"] }

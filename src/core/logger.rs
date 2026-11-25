@@ -200,28 +200,39 @@ impl AppLogger {
     }
 
     /// Route uncaught exceptions through this logger instead of a default traceback.
-    /// In Rust, panics are handled via `std::panic::set_hook`; this is a no-op
-    /// placeholder kept for API compatibility.
+    /// In Rust, panics are handled via `std::panic::set_hook`; this logs the panic
+    /// with HH:MM:SS timestamp, location, and message to the log file.
     pub fn install_excepthook(&self) {
-        // Rust uses panic hooks rather than sys.excepthook. Set a hook that logs
-        // through this logger if desired.
         let logger_path = self.path.clone();
         std::panic::set_hook(Box::new(move |info| {
+            let ts = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| {
+                    let secs = d.as_secs();
+                    let h = (secs / 3600) % 24;
+                    let m = (secs / 60) % 60;
+                    let s = secs % 60;
+                    format!("{h:02}:{m:02}:{s:02}")
+                })
+                .unwrap_or_default();
+            let payload = info.payload();
+            let msg = if let Some(s) = payload.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = payload.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "<non-string panic>".to_string()
+            };
+            let location = info.location().map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())).unwrap_or_else(|| "unknown".to_string());
+            let thread = std::thread::current().name().unwrap_or("<unnamed>").to_string();
+            let line = format!("[{}] [PANIC] [PANIC] [-         ] thread={} location={} message={}\n", ts, thread, location, msg);
             let _ = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(&logger_path)
-                .and_then(|mut f| {
-                    f.write_all(
-                        format!(
-                            "PANIC: {}\n",
-                            info.location()
-                                .map(|l| format!("{}", l))
-                                .unwrap_or_default()
-                        )
-                        .as_bytes(),
-                    )
-                });
+                .and_then(|mut f| f.write_all(line.as_bytes()));
+            // Also print to stderr if available (ignore errors when no console)
+            let _ = std::io::stderr().write_all(line.as_bytes());
         }));
     }
 }

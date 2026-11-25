@@ -43,6 +43,7 @@ impl MainWindow {
         _library_service: LibraryService,
         jobs: Arc<JobManager>,
     ) -> Self {
+        (logger)("DEBUG", "MainWindow::new called");
         let services_clone = Arc::clone(&services);
         let jobs_for_field = Arc::clone(&jobs);
         let jobs_for_scan = Arc::clone(&jobs);
@@ -95,6 +96,7 @@ impl MainWindow {
 
 impl eframe::App for MainWindow {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        (self.logger)("DEBUG", "MainWindow::update called");
         // Top bar: app title + current view
         egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {

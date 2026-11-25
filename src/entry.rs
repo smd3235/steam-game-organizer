@@ -191,7 +191,7 @@ pub fn main() -> i32 {
         version: bool,
 
         /// Handle a steamgameorganizer:// link. Empty means launch the GUI.
-        #[arg(long, num_args = 0..=1, default_value = "")]
+        #[arg(long, num_args = 0..=1)]
         uri: Option<String>,
 
         /// Extract an archive to the extract folder, then exit

@@ -2,8 +2,11 @@
 //! Handles both GUI mode (default) and CLI mode (--version, --diagnostics, --health, --uri, --extract, --setup, --mock).
 //!
 //! 2026-11-25: Wired real AppLogger (HH:MM:SS timestamps) into GUI path so every run writes to logs/.
+//! Added comprehensive panic hooks and error handling for end-to-end debugging.
+//! Fixed `uri` default_value bug that forced headless CLI path instead of GUI.
 
 use clap::Parser;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
@@ -31,7 +34,7 @@ struct Args {
     version: bool,
 
     /// Handle a steamgameorganizer:// link. Empty means launch the GUI.
-    #[arg(long, num_args = 0..=1, default_value = "")]
+    #[arg(long, num_args = 0..=1)]
     uri: Option<String>,
 
     /// Extract an archive to the extract folder, then exit
@@ -52,6 +55,27 @@ struct Args {
 }
 
 fn main() {
+    // Install panic hook early so any panic gets logged to file (stderr may not exist for GUI apps)
+    std::panic::set_hook(Box::new(|info| {
+        let msg = format!(
+            "PANIC at {}: {:?}\n",
+            info.location().map(|l| l.to_string()).unwrap_or_default(),
+            info.payload()
+        );
+        let log_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_default()
+            .join("logs");
+        let _ = std::fs::create_dir_all(&log_dir);
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_dir.join("panic.log"))
+            .and_then(|mut f| f.write_all(msg.as_bytes()));
+        let _ = std::io::stderr().write_all(msg.as_bytes());
+    }));
+
     let args = Args::parse();
 
     // If any headless flag is present, delegate to the CLI entry point
@@ -63,7 +87,8 @@ fn main() {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1400.0, 900.0])
-            .with_min_inner_size([1100.0, 680.0]),
+            .with_min_inner_size([1100.0, 680.0])
+            .with_visible(true),
         ..Default::default()
     };
 
@@ -74,48 +99,68 @@ fn main() {
     let _ = std::fs::create_dir_all(&log_dir);
     let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
     let log_path = log_dir.join(format!("organizer-{}.log", stamp));
-    let logger = Arc::new(
-        AppLogger::new(&log_path, "DEBUG", true, false)
-            .expect("failed to create log file"),
-    );
+
+    let logger = match AppLogger::new(&log_path, "DEBUG", true, false) {
+        Ok(l) => Arc::new(l),
+        Err(e) => {
+            eprintln!("[ERROR] Failed to create logger: {}", e);
+            return;
+        }
+    };
+
+    // Install panic hook that logs through our logger
+    logger.install_excepthook();
+
     logger.info("APPLICATION", "START gui_mode=true", "");
 
     let _app = Application::new(project_root.as_path(), args.mock, Arc::clone(&logger));
 
-    eframe::run_native(
-        "Steam Game Organizer",
-        options,
-        Box::new(|_cc| {
-            let logger_clone1 = Arc::clone(&logger);
-            let logger_clone2 = Arc::clone(&logger);
-            let logger_clone3 = Arc::clone(&logger);
-            Ok(Box::new(steam_game_organizer::ui::main_window::MainWindow::new(
-                std::sync::Arc::new(steam_game_organizer::app::controller::StateStore::new()),
-                std::sync::Arc::new(steam_game_organizer::app::events::EventBus::new()),
-                Arc::new(move |cat, msg| {
-                    logger_clone1.info(cat, msg, "");
-                }),
-                std::sync::Arc::new(steam_game_organizer::app::controller::Services {
-                    organizer: steam_game_organizer::services::organizer_service::OrganizerService::new(
-                        Arc::new(move |cat, msg| {
-                            logger_clone2.info(cat, msg, "");
-                        }),
-                        false,
-                    ),
-                }),
-                steam_game_organizer::services::library_service::LibraryService::new(
-                    Arc::new(move |cat, msg| {
-                        logger_clone3.info(cat, msg, "");
-                    }),
-                    None,
-                ),
-                std::sync::Arc::new(steam_game_organizer::app::jobs::JobManager::new(4)),
-            )))
-        }),
-    )
-    .unwrap();
+    let logger_for_ui = Arc::clone(&logger);
+    let logger_for_organizer = Arc::clone(&logger);
+    let logger_for_library = Arc::clone(&logger);
 
-    logger.info("APPLICATION", "SHUTDOWN", "");
+    let run_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        eframe::run_native(
+            "Steam Game Organizer",
+            options,
+            Box::new(move |_cc| {
+                Ok(Box::new(steam_game_organizer::ui::main_window::MainWindow::new(
+                    std::sync::Arc::new(steam_game_organizer::app::controller::StateStore::new()),
+                    std::sync::Arc::new(steam_game_organizer::app::events::EventBus::new()),
+                    Arc::new(move |cat, msg| {
+                        logger_for_ui.info(cat, msg, "");
+                    }),
+                    std::sync::Arc::new(steam_game_organizer::app::controller::Services {
+                        organizer: steam_game_organizer::services::organizer_service::OrganizerService::new(
+                            Arc::new(move |cat, msg| {
+                                logger_for_organizer.info(cat, msg, "");
+                            }),
+                            false,
+                        ),
+                    }),
+                    steam_game_organizer::services::library_service::LibraryService::new(
+                        Arc::new(move |cat, msg| {
+                            logger_for_library.info(cat, msg, "");
+                        }),
+                        None,
+                    ),
+                    std::sync::Arc::new(steam_game_organizer::app::jobs::JobManager::new(4)),
+                )))
+            }),
+        )
+    }));
+
+    match run_result {
+        Ok(Ok(())) => {
+            logger.info("APPLICATION", "SHUTDOWN", "");
+        }
+        Ok(Err(e)) => {
+            logger.error("APPLICATION", &format!("eframe::run_native error: {:?}", e), "");
+        }
+        Err(panic) => {
+            logger.error("APPLICATION", &format!("eframe::run_native panicked: {:?}", panic), "");
+        }
+    }
 }
 
 fn entry_main() -> i32 {

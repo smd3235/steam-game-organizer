@@ -477,7 +477,7 @@ impl AppConfig {
             }
         }
         let _ = fs::remove_file(&tmp_path);
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "failed to write file after retries"))
+        Err(std::io::Error::other("failed to write file after retries"))
     }
 }
 
