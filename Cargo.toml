@@ -27,6 +27,9 @@ walkdir = "2"
 # ZIP archive reading for encryption checks
 zip = "0.6"
 
+# HTTP client for Steam API calls (blocking client for connection pool)
+reqwest = { version = "0.11", features = ["blocking"] }
+
 [dev-dependencies]
 
 [workspace]

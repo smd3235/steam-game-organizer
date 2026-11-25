@@ -16,6 +16,7 @@ pub mod category_folder;
 pub mod clear_tool_cache;
 pub mod configured_bases;
 pub mod constants;
+pub mod connection_pool;
 pub mod controller_utils;
 pub mod desktop;
 pub mod destination_parent;

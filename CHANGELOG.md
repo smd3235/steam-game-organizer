@@ -23,6 +23,11 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: convert core/connection_pool.py to Rust
+- `src/connection_pool.rs`: Converted from `core/connection_pool.py` — `ConnectionPool` with reqwest blocking client, `SHARED_POOL` singleton
+- `core/connection_pool.py`: Removed after successful Rust conversion.
+- `Cargo.toml`: Added `reqwest` dependency with `blocking` feature.
+
 ### 2026-11-25 — feat: convert core/controller_utils.py to Rust
 - `src/controller_utils.rs`: Converted from `core/controller_utils.py` — `artwork_present`, `primary`, `needs_conversion`, `primary_size`, `prune_rolled_back_folder`
 - `src/models.rs`: Added `Default` derive to `GameArchive`
