@@ -102,8 +102,6 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    fn dummy_logger(_: &str, _: &str) {}
-
     fn test_logger() -> Arc<AppLogger> {
         let path = std::env::temp_dir().join(format!("test_app_{}.log", std::process::id()));
         Arc::new(AppLogger::new(&path, "INFO", false, false).unwrap())

@@ -70,27 +70,27 @@ impl MainWindow {
         }
     }
 
-    fn render_scan(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn render_scan(&mut self, ui: &mut egui::Ui) {
         separator(ui, &self.palette);
         self.scan_view.ui(ui);
     }
 
-    fn render_review(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn render_review(&mut self, ui: &mut egui::Ui) {
         separator(ui, &self.palette);
         self.review_view.ui(ui);
     }
 
-    fn render_organize(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn render_organize(&mut self, ui: &mut egui::Ui) {
         separator(ui, &self.palette);
         self.organize_view.ui(ui);
     }
 
-    fn render_artwork(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn render_artwork(&mut self, ui: &mut egui::Ui) {
         separator(ui, &self.palette);
         self.artwork_view.ui(ui);
     }
 
-    fn render_done(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn render_done(&mut self, ui: &mut egui::Ui) {
         separator(ui, &self.palette);
         self.done_view.ui(ui);
     }

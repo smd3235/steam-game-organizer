@@ -23,6 +23,15 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: automated UI integration tests for all 5 views
+
+- `src/ui/integration_tests.rs`: 52 tests covering every button and control across scan, review, organize, artwork, and done views
+- `src/ui/main_window.rs`: Made `render_*` methods `pub(crate)` for test access
+- `src/ui/mod.rs`: Registered `integration_tests` module
+- `Cargo.toml`: Added `tempfile` dev-dependency already present; no new runtime deps
+- `src/entry.rs`: Fixed unused `mut config` and `unused variable: config` in test
+- `src/app/application.rs`: Removed unused `dummy_logger` function
+
 ### 2026-11-25 — chore: zero clippy warnings, AGENTS.md Rust rules overhauled
 
 - All 140 clippy warnings resolved across 28 files: unused imports removed, dead code marked, `map_or`/`format!`/`?` simplifications applied, `#[allow(dead_code)]` on stub placeholders, `#![allow(clippy::all)]` on stub modules awaiting full implementation

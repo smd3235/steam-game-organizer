@@ -378,10 +378,9 @@ mod tests {
 
     #[test]
     fn test_needs_setup_no_settings() {
-        let config = AppConfig::new(std::path::Path::new("/tmp"));
         // After AppConfig::new, library_root is set to default which may exist.
         // Test with a manually constructed config where library_root is None.
-        let mut config = AppConfig {
+        let config = AppConfig {
             project_root: std::path::PathBuf::from("/tmp"),
             library_root: None,
             developer_mode: false,
