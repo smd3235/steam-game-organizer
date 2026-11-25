@@ -20,6 +20,7 @@ pub mod destination_parent;
 pub mod discover_game_launchers;
 pub mod errors;
 pub mod extract_result;
+pub mod extract_service;
 pub mod filename_utils;
 pub mod formatting;
 pub mod installer_detect;

@@ -10,7 +10,7 @@
 //! 2026-11-25: Converted from `services/banner_art.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 pub const WIDTH: u32 = 1200;
 pub const HEIGHT: u32 = 300;
@@ -24,7 +24,7 @@ const HUES: [u32; 24] = [
 /// Stable per category. Uses the name only, so renaming a category changes its art deliberately.
 fn seed(name: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
+    use std::hash::{Hash, Hasher};
     let mut hasher = DefaultHasher::new();
     name.trim().to_lowercase().hash(&mut hasher);
     hasher.finish()
