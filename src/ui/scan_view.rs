@@ -1,7 +1,7 @@
 //! Scan view: phases, progress bar, activity feed, Convert Archives toggle.
-//! Stub conversion of `ui/scan_view.py` — new egui layout, not a Tkinter port.
+//! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
 //!
-//! 2026-11-25: egui scan view in the Rust conversion.
+//! 2026-11-25: egui scan view with new theme.
 
 #![allow(clippy::all)]
 
@@ -11,7 +11,10 @@ use crate::services::library_service::LibraryService;
 use std::sync::Arc;
 
 use egui::RichText;
-use crate::ui::theme::{Palette, separator};
+use crate::ui::theme::{
+    card, danger_button, pill, primary_button, secondary_button, section_header, Palette,
+    separator,
+};
 
 /// Every phase a scan runs through, in order.
 pub const SCAN_PHASES: &[(&str, &str)] = &[
@@ -61,7 +64,7 @@ impl ScanViewState {
     }
 }
 
-/// Scan view — the first screen users see. New egui layout.
+/// Scan view — the first screen users see.
 pub struct ScanView {
     pub state: ScanViewState,
     pub services: Arc<Services>,
@@ -87,94 +90,88 @@ impl ScanView {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        separator(ui, &self.palette);
+        card(ui, &self.palette, |ui| {
+            // Header
+            ui.heading("Steam Game Organizer");
+            ui.label("Scan — Game Archive Scanner");
+            separator(ui, &self.palette);
 
-        // Header
-        ui.heading("Steam Game Organizer");
-        ui.label("Scan — Game Archive Scanner");
-        ui.separator();
+            // Config row
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut self.state.convert_archives, "Convert Archives");
+                ui.separator();
 
-        // Config row
-        ui.horizontal(|ui| {
-            ui.checkbox(&mut self.state.convert_archives, "Convert Archives");
+                if primary_button(ui, "Start Scan", &self.palette).clicked() {
+                    self.state.scanning = true;
+                    self.state.status = "Scan starting…".to_string();
+                }
+                if secondary_button(ui, "Scan + Artwork", &self.palette).clicked() {
+                    self.state.scanning = true;
+                    self.state.scan_with_artwork = true;
+                    self.state.status = "Scan + Artwork starting…".to_string();
+                }
+                ui.checkbox(&mut self.state.preview_only, "Preview Only");
+            });
+
             ui.separator();
 
-            if ui
-                .add(egui::Button::new("Start Scan").min_size(egui::vec2(100.0, 32.0)))
-                .clicked()
-            {
-                self.state.scanning = true;
-                self.state.status = "Scan starting…".to_string();
-            }
-            if ui
-                .add(egui::Button::new("Scan + Artwork").min_size(egui::vec2(120.0, 32.0)))
-                .clicked()
-            {
-                self.state.scanning = true;
-                self.state.scan_with_artwork = true;
-                self.state.status = "Scan + Artwork starting…".to_string();
-            }
-            ui.checkbox(&mut self.state.preview_only, "Preview Only");
-        });
-
-        ui.separator();
-
-        // Phase timeline
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("PHASES").small().color(self.palette.muted));
-            ui.separator();
-            for (i, (key, label)) in SCAN_PHASES.iter().enumerate() {
-                let done = self.state.phase_states[i];
-                let active = !done && i == self.state.current_phase;
-                let color = if done {
-                    self.palette.green
-                } else if active {
-                    self.palette.accent
-                } else {
-                    self.palette.muted
-                };
-                ui.label(RichText::new(format!("{} ({})", label, key)).color(color));
-                if i < SCAN_PHASES.len() - 1 {
-                    ui.label(" → ");
-                }
-            }
-        });
-
-        ui.separator();
-
-        // Progress bar + stage label
-        ui.horizontal(|ui| {
-            ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
-            ui.label(RichText::new(&self.state.stage).color(self.palette.muted).small());
-        });
-
-        ui.separator();
-
-        // Activity feed (scrollable)
-        egui::ScrollArea::vertical()
-            .id_salt("scan_activity_feed")
-            .max_height(300.0)
-            .show(ui, |ui| {
-                for line in &self.state.activity {
-                    ui.label(RichText::new(line).small().color(self.palette.text));
-                }
-                if self.state.scanning {
-                    ui.label("Scan in progress…");
+            // Phase timeline
+            section_header(ui, &self.palette, "PHASES");
+            ui.horizontal(|ui| {
+                for (i, (key, label)) in SCAN_PHASES.iter().enumerate() {
+                    let done = self.state.phase_states[i];
+                    let active = !done && i == self.state.current_phase;
+                    let kind = if done {
+                        "good"
+                    } else if active {
+                        "accent"
+                    } else {
+                        "muted"
+                    };
+                    pill(ui, &format!("{} ({})", label, key), kind, &self.palette);
+                    if i < SCAN_PHASES.len() - 1 {
+                        ui.label(" → ");
+                    }
                 }
             });
 
-        ui.separator();
+            ui.separator();
 
-        // Status line
-        ui.label(RichText::new(&self.state.status).color(self.palette.text));
+            // Progress bar + stage label
+            ui.horizontal(|ui| {
+                ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
+                ui.label(RichText::new(&self.state.stage).color(self.palette.muted).small());
+            });
 
-        // Cancel button (shown during scan)
-        if self.state.scanning {
-            if ui.button("Cancel Scan").clicked() {
-                self.state.scanning = false;
-                self.state.status = "Scan cancelled.".to_string();
+            ui.separator();
+
+            // Activity feed (scrollable)
+            section_header(ui, &self.palette, "ACTIVITY");
+            egui::ScrollArea::vertical()
+                .id_salt("scan_activity_feed")
+                .max_height(300.0)
+                .show(ui, |ui| {
+                    for line in &self.state.activity {
+                        ui.label(RichText::new(line).small().color(self.palette.text));
+                    }
+                    if self.state.scanning {
+                        ui.label("Scan in progress…");
+                    }
+                });
+
+            ui.separator();
+
+            // Status line
+            ui.label(RichText::new(&self.state.status).color(self.palette.text));
+
+            // Cancel button (shown during scan)
+            if self.state.scanning {
+                if danger_button(ui, "Cancel Scan", &self.palette).clicked() {
+                    self.state.scanning = false;
+                    self.state.status = "Scan cancelled.".to_string();
+                }
             }
-        }
+        });
     }
 
     /// Add a line to the activity feed.
@@ -256,4 +253,3 @@ mod tests {
         assert!(view.state.phase_states[0]);
     }
 }
-

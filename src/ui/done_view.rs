@@ -1,10 +1,10 @@
 //! Done screen: final run summary with per-archive conversion results and action buttons.
-//! Stub conversion of `ui/done_view.py` — new egui layout, not a Tkinter port.
+//! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
 //!
-//! 2026-11-25: egui done view in the Rust conversion.
+//! 2026-11-25: egui done view with new theme.
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{Palette, separator};
+use crate::ui::theme::{card, pill, primary_button, secondary_button, section_header, Palette, separator};
 
 #[derive(Default)]
 pub struct DoneViewState {
@@ -42,55 +42,54 @@ impl DoneView {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        separator(ui, &self.palette);
+        card(ui, &self.palette, |ui| {
+            // Header
+            ui.heading("Done");
+            ui.label("Organization Run Complete");
+            separator(ui, &self.palette);
 
-        // Header
-        ui.heading("Done");
-        ui.label("Organization Run Complete");
-        ui.separator();
+            // Summary counts
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(format!("Converted: {}", self.state.converted)).color(self.palette.green));
+                ui.separator();
+                ui.label(RichText::new(format!("Skipped: {}", self.state.skipped)).color(self.palette.orange));
+                ui.separator();
+                ui.label(RichText::new(format!("Failed: {}", self.state.failed)).color(self.palette.red));
+            });
+            separator(ui, &self.palette);
 
-        // Summary counts
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(format!("Converted: {}", self.state.converted)).color(self.palette.green));
-            ui.separator();
-            ui.label(RichText::new(format!("Skipped: {}", self.state.skipped)).color(self.palette.orange));
-            ui.separator();
-            ui.label(RichText::new(format!("Failed: {}", self.state.failed)).color(self.palette.red));
-        });
-        ui.separator();
-
-        // Per-archive results
-        ScrollArea::vertical().id_salt("done_results").show(ui, |ui| {
-            for name in &self.state.archives {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new(name).small());
+            // Per-archive results
+            section_header(ui, &self.palette, "RESULTS");
+            ScrollArea::vertical().id_salt("done_results").show(ui, |ui| {
+                for name in &self.state.archives {
+                    pill(ui, name, "muted", &self.palette);
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(RichText::new("converted").color(self.palette.green));
                     });
-                });
-            }
-            if self.state.archives.is_empty() {
-                ui.label(RichText::new("(no results yet)").color(self.palette.muted).italics());
-            }
+                }
+                if self.state.archives.is_empty() {
+                    ui.label(RichText::new("(no results yet)").color(self.palette.muted).italics());
+                }
+            });
+
+            separator(ui, &self.palette);
+
+            // Bottom actions
+            ui.horizontal(|ui| {
+                if secondary_button(ui, "Undo", &self.palette).clicked() {
+                    self.state.status = "Undo clicked".to_string();
+                }
+                if secondary_button(ui, "Open Library", &self.palette).clicked() {
+                    self.state.status = "Open Library clicked".to_string();
+                }
+                if primary_button(ui, "Scan Again", &self.palette).clicked() {
+                    self.state.status = "Scan Again clicked".to_string();
+                }
+            });
+
+            separator(ui, &self.palette);
+            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
         });
-
-        ui.separator();
-
-        // Bottom actions
-        ui.horizontal(|ui| {
-            if ui.button("Undo").clicked() {
-                self.state.status = "Undo clicked".to_string();
-            }
-            if ui.button("Open Library").clicked() {
-                self.state.status = "Open Library clicked".to_string();
-            }
-            if ui.button("Scan Again").clicked() {
-                self.state.status = "Scan Again clicked".to_string();
-            }
-        });
-
-        ui.separator();
-        ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
     }
 
     pub fn load(&mut self, archives: Vec<String>, converted: usize, skipped: usize, failed: usize) {

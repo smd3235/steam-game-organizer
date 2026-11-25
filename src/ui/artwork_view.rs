@@ -1,10 +1,10 @@
 //! Artwork review screen: shows each accepted game's downloaded artwork assets.
-//! Stub conversion of `ui/artwork_view.py` — new egui layout, not a Tkinter port.
+//! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
 //!
-//! 2026-11-25: egui artwork view in the Rust conversion.
+//! 2026-11-25: egui artwork view with new theme.
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{Palette, separator};
+use crate::ui::theme::{card, secondary_button, section_header, Palette, separator};
 
 #[derive(Default)]
 pub struct ArtworkViewState {
@@ -38,47 +38,48 @@ impl ArtworkView {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        separator(ui, &self.palette);
+        card(ui, &self.palette, |ui| {
+            // Header
+            ui.heading("Artwork & Steam Assets");
+            separator(ui, &self.palette);
 
-        // Header
-        ui.heading("Artwork & Steam Assets");
-        ui.separator();
+            // Summary
+            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
+            separator(ui, &self.palette);
 
-        // Summary
-        ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
-        ui.separator();
-
-        // Archive grid
-        ScrollArea::vertical().id_salt("artwork_grid").show(ui, |ui| {
-            egui::Grid::new("artwork_grid").num_columns(3).spacing([20.0, 20.0]).show(ui, |ui| {
-                for (i, name) in self.state.archives.iter().enumerate() {
-                    ui.vertical(|ui| {
-                        ui.label(RichText::new(name).small().strong());
-                        ui.separator();
-                        if ui.button("Open Folder").clicked() {
-                            self.state.status = format!("Opened folder for {}", name);
+            // Archive grid
+            section_header(ui, &self.palette, "ARCHIVES");
+            ScrollArea::vertical().id_salt("artwork_grid").show(ui, |ui| {
+                egui::Grid::new("artwork_grid").num_columns(3).spacing([20.0, 20.0]).show(ui, |ui| {
+                    for (i, name) in self.state.archives.iter().enumerate() {
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new(name).small().strong());
+                            separator(ui, &self.palette);
+                            if secondary_button(ui, "Open Folder", &self.palette).clicked() {
+                                self.state.status = format!("Opened folder for {}", name);
+                            }
+                        });
+                        if i < self.state.archives.len() - 1 {
+                            ui.end_row();
                         }
-                    });
-                    if i < self.state.archives.len() - 1 {
-                        ui.end_row();
                     }
+                    if self.state.archives.is_empty() {
+                        ui.label(RichText::new("(no artwork downloaded yet)").color(self.palette.muted).italics());
+                    }
+                });
+            });
+
+            separator(ui, &self.palette);
+
+            // Bottom actions
+            ui.horizontal(|ui| {
+                if secondary_button(ui, "Scan Again", &self.palette).clicked() {
+                    self.state.status = "Scan Again clicked".to_string();
                 }
-                if self.state.archives.is_empty() {
-                    ui.label(RichText::new("(no artwork downloaded yet)").color(self.palette.muted).italics());
+                if secondary_button(ui, "Review", &self.palette).clicked() {
+                    self.state.status = "Review clicked".to_string();
                 }
             });
-        });
-
-        ui.separator();
-
-        // Bottom actions
-        ui.horizontal(|ui| {
-            if ui.button("Scan Again").clicked() {
-                self.state.status = "Scan Again clicked".to_string();
-            }
-            if ui.button("Review").clicked() {
-                self.state.status = "Review clicked".to_string();
-            }
         });
     }
 

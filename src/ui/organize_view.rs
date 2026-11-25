@@ -1,10 +1,10 @@
 //! Organize view: convert ZIP/RAR to 7z, move into category folders, write artwork and catalog pages.
-//! Stub conversion of `ui/organize_view.py` — new egui layout, not a Tkinter port.
+//! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
 //!
-//! 2026-11-25: egui organize view in the Rust conversion.
+//! 2026-11-25: egui organize view with new theme.
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{Palette, separator};
+use crate::ui::theme::{card, danger_button, primary_button, Palette, separator};
 
 #[derive(Default)]
 pub struct OrganizeViewState {
@@ -48,79 +48,79 @@ impl OrganizeView {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        separator(ui, &self.palette);
+        card(ui, &self.palette, |ui| {
+            // Header
+            ui.heading("Organize");
+            ui.label("Ready to organize");
+            separator(ui, &self.palette);
 
-        // Header
-        ui.heading("Organize");
-        ui.label("Ready to organize");
-        ui.separator();
+            // Summary line
+            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
+            separator(ui, &self.palette);
 
-        // Summary line
-        ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
-        ui.separator();
+            // Progress bar + stage
+            ui.horizontal(|ui| {
+                ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
+                ui.label(RichText::new(&self.state.stage).color(self.palette.muted).small());
+            });
 
-        // Progress bar + stage
-        ui.horizontal(|ui| {
-            ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
-            ui.label(RichText::new(&self.state.stage).color(self.palette.muted).small());
-        });
+            separator(ui, &self.palette);
 
-        ui.separator();
+            // Config: preview only checkbox
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut self.state.preview_only, "Preview Only");
+                ui.separator();
+                if primary_button(ui, "Start Organize", &self.palette).clicked() {
+                    self.state.converting = true;
+                    self.state.status = "Organization starting…".to_string();
+                }
+                if self.state.converting && danger_button(ui, "Cancel", &self.palette).clicked() {
+                    self.state.converting = false;
+                    self.state.status = "Organization cancelled.".to_string();
+                }
+            });
 
-        // Config: preview only checkbox
-        ui.horizontal(|ui| {
-            ui.checkbox(&mut self.state.preview_only, "Preview Only");
-            ui.separator();
-            if ui.button("Start Organize").clicked() {
-                self.state.converting = true;
-                self.state.status = "Organization starting…".to_string();
-            }
-            if self.state.converting && ui.button("Cancel").clicked() {
-                self.state.converting = false;
-                self.state.status = "Organization cancelled.".to_string();
-            }
-        });
+            separator(ui, &self.palette);
 
-        ui.separator();
-
-        // Body: archive list left, activity feed right
-        ui.horizontal(|ui| {
-            // Left: archive list
-            ui.vertical(|ui| {
-                ui.label(RichText::new("Archives to Organize").strong().color(self.palette.muted));
-                ScrollArea::vertical().id_salt("organize_list").max_height(400.0).show(ui, |ui| {
-                    for (i, name) in self.state.archives.iter().enumerate() {
-                        let selected = self.state.selected_index == Some(i);
-                        if ui.selectable_label(selected, name).clicked() {
-                            self.state.selected_index = Some(i);
+            // Body: archive list left, activity feed right
+            ui.horizontal(|ui| {
+                // Left: archive list
+                ui.vertical(|ui| {
+                    ui.label(RichText::new("Archives to Organize").strong().color(self.palette.muted));
+                    ScrollArea::vertical().id_salt("organize_list").max_height(400.0).show(ui, |ui| {
+                        for (i, name) in self.state.archives.iter().enumerate() {
+                            let selected = self.state.selected_index == Some(i);
+                            if ui.selectable_label(selected, name).clicked() {
+                                self.state.selected_index = Some(i);
+                            }
                         }
-                    }
-                    if self.state.archives.is_empty() {
-                        ui.label(RichText::new("(no archives — accept games on Review first)").color(self.palette.muted).italics());
-                    }
+                        if self.state.archives.is_empty() {
+                            ui.label(RichText::new("(no archives — accept games on Review first)").color(self.palette.muted).italics());
+                        }
+                    });
+                });
+
+                ui.separator();
+
+                // Right: activity feed
+                ui.vertical(|ui| {
+                    ui.label(RichText::new("Activity").strong().color(self.palette.muted));
+                    ScrollArea::vertical().id_salt("organize_activity").max_height(400.0).show(ui, |ui| {
+                        for line in &self.state.activity {
+                            ui.label(RichText::new(line).small().color(self.palette.text));
+                        }
+                        if self.state.converting {
+                            ui.label("Organizing in progress…");
+                        }
+                    });
                 });
             });
 
-            ui.separator();
+            separator(ui, &self.palette);
 
-            // Right: activity feed
-            ui.vertical(|ui| {
-                ui.label(RichText::new("Activity").strong().color(self.palette.muted));
-                ScrollArea::vertical().id_salt("organize_activity").max_height(400.0).show(ui, |ui| {
-                    for line in &self.state.activity {
-                        ui.label(RichText::new(line).small().color(self.palette.text));
-                    }
-                    if self.state.converting {
-                        ui.label("Organizing in progress…");
-                    }
-                });
-            });
+            // Status line
+            ui.label(RichText::new(&self.state.status).color(self.palette.text));
         });
-
-        ui.separator();
-
-        // Status line
-        ui.label(RichText::new(&self.state.status).color(self.palette.text));
     }
 
     pub fn load(&mut self, archives: Vec<String>) {

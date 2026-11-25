@@ -23,6 +23,16 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: redesigned all 5 UI views with new theme system
+
+- `src/ui/theme.rs`: Modern dark theme with rounded corners, pill badges, section headers, primary/secondary/danger buttons, card containers
+- `src/ui/main_window.rs`: Left navigation sidebar, top bar, card-based content area
+- `src/ui/scan_view.rs`: Card-wrapped layout, pill phase indicators, styled buttons
+- `src/ui/review_view.rs`: Card-wrapped layout, styled action buttons, pill archive items
+- `src/ui/organize_view.rs`: Card-wrapped layout, styled buttons, progress bar
+- `src/ui/artwork_view.rs`: Card-wrapped layout, grid layout for artwork items
+- `src/ui/done_view.rs`: Card-wrapped layout, pill archive items, summary counts with color coding
+
 ### 2026-11-25 — feat: automated UI integration tests for all 5 views
 
 - `src/ui/integration_tests.rs`: 52 tests covering every button and control across scan, review, organize, artwork, and done views
