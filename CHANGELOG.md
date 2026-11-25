@@ -23,6 +23,10 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: convert core/config.py to Rust
+- `src/config.rs`: Converted from `core/config.py` — `AppConfig` with settings persistence, library root resolution, extract folders, log rotation, appdata sync
+- `core/config.py`: Removed after successful Rust conversion.
+
 ### 2026-11-25 — feat: convert core/handle_open_folder_uri.py to Rust
 - `src/handle_open_folder_uri.rs`: Converted from `core/handle_open_folder_uri.py` — `handle_open_folder_uri()` opens game folder in Explorer
 - `core/handle_open_folder_uri.py`: Removed after successful Rust conversion.
