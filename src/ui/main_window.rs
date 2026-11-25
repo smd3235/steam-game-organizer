@@ -31,7 +31,7 @@ const NAV_ITEMS: &[(&str, &str)] = &[
 pub struct MainWindow {
     pub state: Arc<StateStore>,
     pub bus: Arc<EventBus>,
-    pub logger: Arc<dyn Fn(&str, &str) + Send + Sync>,
+    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
     pub services: Arc<Services>,
     pub jobs: Arc<JobManager>,
     pub current: String,
@@ -47,12 +47,13 @@ impl MainWindow {
     pub fn new(
         state: Arc<StateStore>,
         bus: Arc<EventBus>,
-        logger: Arc<dyn Fn(&str, &str) + Send + Sync>,
+        logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
         services: Arc<Services>,
         _library_service: LibraryService,
         jobs: Arc<JobManager>,
     ) -> Self {
         (logger)("DEBUG", "MainWindow::new called");
+        let logger_clone = Arc::clone(&logger);
         let services_clone = Arc::clone(&services);
         let jobs_for_field = Arc::clone(&jobs);
         let jobs_for_scan = Arc::clone(&jobs);
@@ -69,6 +70,7 @@ impl MainWindow {
                 _library_service,
                 jobs_for_scan,
                 Palette::default(),
+                logger_clone,
             ),
             review_view: ReviewView::new(Palette::default()),
             organize_view: OrganizeView::new(Palette::default()),

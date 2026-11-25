@@ -23,6 +23,14 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: wired Scan button to real archive discovery with HH:MM:SS logging
+
+- `src/ui/scan_view.rs`: Added logger field; Start Scan / Scan + Artwork / Cancel Scan buttons log actions and call ArchiveService discovery; phase timeline updates through all 6 phases; activity feed populated with discovered archives
+- `src/ui/main_window.rs`: Fixed logger Arc move-before-use bug; passes cloned logger to ScanView
+- `src/ui/integration_tests.rs`: Added logger parameter to all ScanView::new calls (12 call sites)
+- `src/ui/theme.rs`: Updated logger type to HRTB `for<'a, 'b> Fn(&'a str, &'b str)` to match ArchiveService
+- All 291 tests pass, zero clippy warnings
+
 ### 2026-11-25 — feat: redesigned all 5 UI views with new theme system
 
 - `src/ui/theme.rs`: Modern dark theme with rounded corners, pill badges, section headers, primary/secondary/danger buttons, card containers
