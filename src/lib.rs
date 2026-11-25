@@ -10,6 +10,7 @@ pub mod archive_service;
 pub mod banner_art;
 pub mod batch_item;
 pub mod canonical_category;
+pub mod plan_batch;
 pub mod catalog_status;
 pub mod catalog_utils;
 pub mod category_evidence;

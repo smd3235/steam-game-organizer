@@ -23,6 +23,10 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: convert plan_batch to Rust
+- `src/plan_batch.rs`: Converted from `services/plan_batch.py` — `plan_batch()` plans batch extraction without unpacking, sorts by size smallest-first, handles installer archives with Needs Install dir, skips already-extracted games
+- `services/plan_batch.py`: Removed after successful Rust conversion.
+
 ### 2026-11-25 — feat: convert setup_service to Rust
 - `src/setup_service.rs`: Converted from `services/setup_service.py` — `SetupService` with checks(), apply(), default_register(), default_registered(), _library_has_games(), _writable_or_creatable(), _within()
 - `services/setup_service.py`: Removed after successful Rust conversion.
