@@ -40,28 +40,28 @@ pub fn open_folder(path: &str) -> bool {
 
 /// Hand `url` to the default browser. Returns whether anything was launched.
 pub fn open_url(url: &str) -> bool {
-    if url.trim().is_empty() {
+    if !open_url_validates(url) {
         return false;
     }
-    let lower = url.to_lowercase();
-    if !lower.starts_with("http://")
-        && !lower.starts_with("https://")
-        && !lower.starts_with("file://")
-        && !lower.starts_with("mailto:")
-    {
-        return false;
-    }
-
     // Use `start` command which invokes the shell association
-    if Command::new("cmd")
+    Command::new("cmd")
         .args(["/c", "start", "", url])
         .status()
         .map(|s| s.success())
         .unwrap_or(false)
-    {
-        return true;
+}
+
+/// Validate that `url` is a scheme we are willing to hand to the desktop.
+/// Never launches anything — safe to call in tests.
+pub fn open_url_validates(url: &str) -> bool {
+    if url.trim().is_empty() {
+        return false;
     }
-    false
+    let lower = url.to_lowercase();
+    lower.starts_with("http://")
+        || lower.starts_with("https://")
+        || lower.starts_with("file://")
+        || lower.starts_with("mailto:")
 }
 
 #[cfg(test)]
@@ -70,14 +70,14 @@ mod tests {
 
     #[test]
     fn test_open_url_invalid() {
-        assert!(!open_url(""));
-        assert!(!open_url("not-a-url"));
-        assert!(!open_url("ftp://example.com"));
+        assert!(!open_url_validates(""));
+        assert!(!open_url_validates("not-a-url"));
+        assert!(!open_url_validates("ftp://example.com"));
     }
 
     #[test]
     fn test_open_url_valid() {
-        assert!(open_url("http://example.com"));
-        assert!(open_url("https://example.com"));
+        assert!(open_url_validates("http://example.com"));
+        assert!(open_url_validates("https://example.com"));
     }
 }
