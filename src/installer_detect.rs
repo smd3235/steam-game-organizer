@@ -136,7 +136,10 @@ pub fn looks_like_installer(root: &Path) -> bool {
 /// A cheap directory-entry check rather than re-scanning for the setup.exe/.bin/.iso signature on every card.
 pub fn has_needs_install_mark(root: &Path) -> bool {
     if let Some(parent) = root.parent() {
-        if parent.file_name().is_some_and(|n| n == NEEDS_INSTALL_DIRNAME) {
+        if parent
+            .file_name()
+            .is_some_and(|n| n == NEEDS_INSTALL_DIRNAME)
+        {
             return true;
         }
     }

@@ -39,6 +39,8 @@ pub mod prefill;
 pub mod safe_folder_name;
 pub mod scan_view_utils;
 pub mod setup_hint;
+pub mod shape_name;
+pub mod sort_date;
 pub mod state;
 pub mod steam_query_utils;
 pub mod suggest_category_with_evidence;
