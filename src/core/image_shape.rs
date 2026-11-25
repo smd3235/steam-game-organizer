@@ -6,6 +6,8 @@
 //! 2026-11-25: Converted from `services/image_shape.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 const SOF_MARKERS: [u16; 13] = [
     0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF,
 ];

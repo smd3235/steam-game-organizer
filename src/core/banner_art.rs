@@ -164,7 +164,7 @@ pub fn banner_svg(name: &str) -> String {
     let mut svg = String::new();
     svg.push_str("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ");
     svg.push_str(&WIDTH.to_string());
-    svg.push_str(" ");
+    svg.push(' ');
     svg.push_str(&HEIGHT.to_string());
     svg.push_str("\" width=\"");
     svg.push_str(&WIDTH.to_string());

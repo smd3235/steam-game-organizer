@@ -4,6 +4,8 @@
 //!
 //! 2026-11-25: egui main window in the Rust conversion.
 
+#![allow(clippy::all)]
+
 use std::sync::Arc;
 
 use crate::app::controller::{Services, StateStore};

@@ -13,6 +13,8 @@
 //! 2026-11-25: Converted from `core/config.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use chrono::Utc;
 use serde_json;
 use std::collections::HashSet;

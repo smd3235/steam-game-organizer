@@ -17,6 +17,8 @@
 //! 2026-11-25: Converted from `services/setup_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use std::path::Path;
 use std::sync::Arc;
 

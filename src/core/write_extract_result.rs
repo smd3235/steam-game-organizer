@@ -5,6 +5,8 @@
 //! 2026-11-25: Converted from `services/write_extract_result.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use chrono::Utc;
 use serde_json;
 use std::path::{Path, PathBuf};

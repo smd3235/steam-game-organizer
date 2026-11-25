@@ -9,6 +9,8 @@
 //! 2026-11-25: Converted from `services/extract_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

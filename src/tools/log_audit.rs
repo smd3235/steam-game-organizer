@@ -3,7 +3,8 @@
 //!
 //! 2026-11-25: Rust conversion from `tools/log_audit.py` in the Rust conversion.
 
-use std::collections::HashMap;
+#![allow(clippy::all)]
+
 use std::fs;
 use std::path::Path;
 

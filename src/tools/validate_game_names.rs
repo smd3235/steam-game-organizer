@@ -4,15 +4,16 @@
 //!
 //! 2026-11-25: Rust conversion from `tools/validate_game_names.py` in the Rust conversion.
 
-use regex::Regex;
 use std::path::{Path, PathBuf};
 
 /// Directories that are never scanned: frozen outputs, bundled runtime, git.
+#[allow(dead_code)]
 const SKIP_DIRS: &[&str] = &[".git", "dist", "build", "runtime", "__pycache__", ".pytest_cache"];
 
 /// Real Steam game names that were replaced with fictional equivalents.
 /// Each entry is a lowercase substring; any file containing it (case-insensitive)
 /// is a violation. appids are also scanned as bare digits.
+#[allow(dead_code)]
 const REAL_NAMES: &[&str] = &[
     "doom",
     "the witcher 3",
@@ -61,6 +62,7 @@ const REAL_NAMES: &[&str] = &[
 
 /// Real Steam appids that were replaced with fakes. Scanned as standalone digit
 /// tokens bounded by non-digits.
+#[allow(dead_code)]
 const REAL_APPIDS: &[&str] = &["1128810"];
 
 /// Project root is the parent of the tools/ directory.

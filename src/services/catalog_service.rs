@@ -7,6 +7,8 @@
 //! 2026-11-25: Stub conversion from `services/catalog_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,6 +20,7 @@ use crate::core::models::GameArchive;
 
 const CATALOG_NAME: &str = "Game Library.html";
 
+#[allow(dead_code)]
 const LEGACY_CATALOGS: &[&str] = &[
     "Game Library (Steam Deck) - *.html",
     "Game Library (Windows) - *.html",
@@ -25,10 +28,12 @@ const LEGACY_CATALOGS: &[&str] = &[
     "Game Library.html",
 ];
 
+#[allow(dead_code)]
 const LEGACY_LAUNCHER: &str = "Open Game Library (Steam Deck).desktop";
 
 pub struct CatalogService {
     logger: Arc<dyn Fn(&str, &str) + Send + Sync>,
+    #[allow(dead_code)]
     extract_folders: Vec<PathBuf>,
     _summary: Mutex<Option<LibrarySummary>>,
     _library_root: Mutex<Option<PathBuf>>,

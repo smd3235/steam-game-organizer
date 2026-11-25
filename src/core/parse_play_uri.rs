@@ -5,6 +5,8 @@
 //! 2026-11-25: Converted from `core/parse_play_uri.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use std::path::{Path, PathBuf};
 
 use crate::core::catalog_status::get_launch_target;

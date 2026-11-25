@@ -68,7 +68,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 | **Windows only** | No POSIX-specific code paths. Refuse or raise rather than keep a second implementation. Applies to Rust `std::os::windows` too. |
 | **Comment on every change** | Every changed file must include a comment explaining what changed and why. |
 | **Push to GitHub on every change** | After commit + local verification, push so the public repo reflects the current state. Never leave work committed locally only. |
-| **Changelog with every change** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
+| **Clippy clean** | `cargo clippy --all-targets` must report zero new warnings. Fix warnings — do not add `#[allow]` to suppress them unless the code is a known stub awaiting future implementation. |
 | **Build artifacts** | `target/`, `dist/`, `cache/`, `logs/`, `config/` are build/test outputs — never commit them. |
 | **Tests must not pollute repo state** | Rust tests must not write under real `config/`, `cache/`, or `logs/` — use temp dirs. |
 | **Atomic writes** | Follow temp-file + atomic rename via `std::fs::rename` for config/state files. |
@@ -91,7 +91,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 ### Development toolchain
 
 1. **Rust** — `cargo`, `rustc`, `clippy`. Required for all source modules. Install from [rust-lang.org](https://www.rust-lang.org/). Verify with `cargo --version` and `rustc --version`.
-2. **Git Bash** — [git-scm.com](https://git-scm.com/download/win) (installed with Git). Recommended shell for running Rust commands on Windows because PowerShell interprets Rust's `<`/`>` generics as shell redirection, which breaks commands like `cargo check` and `cargo test`. Git Bash does not have this problem.
+2. **Git Bash** — [git-scm.com](https://git-scm.com/download/win) (installed with Git). **Required shell for running Rust commands on Windows.** PowerShell interprets Rust's `<`/`>` generics as shell redirection, which breaks commands like `cargo check` and `cargo test`. Git Bash does not have this problem. Do not use PowerShell for cargo commands.
 
 ### Verify your setup
 
@@ -167,7 +167,7 @@ Rust tests must not write under real `config/`, `cache/`, or `logs/` — use tem
 cargo clippy --all-targets
 ```
 
-`Cargo.toml` and clippy lints are the contract.
+`Cargo.toml` and clippy lints are the contract. All clippy warnings must be fixed — do not add `#[allow]` to suppress them unless the code is a known stub awaiting future implementation.
 
 ---
 
@@ -198,7 +198,7 @@ Work through this checklist in order:
 | 1 | **Comment** | Add a comment explaining the change in every modified file. See [🏷️ Comment Style](#-comment-style). |
 | 2 | **Changelog** | Add a dated entry under `CHANGELOG.md` (newest first). |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
-| 4 | **Lint** | `cargo clippy --all-targets` — must pass for Rust `src/`. See [🧹 Lint](#-lint). |
+| 4 | **Lint** | `cargo clippy --all-targets` — must pass for Rust `src/` with zero new warnings. See [🧹 Lint](#-lint). Run in Git Bash. |
 | 5 | **Tests** | `cargo test` for Rust `src/` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
 | 6 | **Build** | `cargo build --release` — verify `target/release/steam-game-organizer.exe` exists. See [🏗️ Build](#-build--release-exe). |
 | 7 | **Commit + push** | `git add -A` the changed source, docs, and changelog; commit with a descriptive conventional message; push to GitHub. **Update all affected markdown docs BEFORE pushing.** See [🔀 Git / GitHub Workflow](#-git--github-workflow). |

@@ -6,9 +6,7 @@
 //!
 //! 2026-11-25: Debug module added for production debugging and auditing.
 
-use std::collections::HashMap;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::logger::AppLogger;
@@ -73,6 +71,12 @@ impl AuditLog {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+
+impl Default for AuditLog {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -179,7 +183,7 @@ fn check_7zip() -> HealthCheck {
 }
 
 /// Check that the library root directory exists and is readable.
-fn check_library_root(logger: &AppLogger) -> HealthCheck {
+fn check_library_root(_logger: &AppLogger) -> HealthCheck {
     let config_dir = std::path::Path::new("config");
     if !config_dir.is_dir() {
         return HealthCheck {
@@ -196,7 +200,7 @@ fn check_library_root(logger: &AppLogger) -> HealthCheck {
 }
 
 /// Check that the config file is readable.
-fn check_config(logger: &AppLogger) -> HealthCheck {
+fn check_config(_logger: &AppLogger) -> HealthCheck {
     let settings = std::path::Path::new("config/settings.json");
     if settings.is_file() {
         HealthCheck {
@@ -214,7 +218,7 @@ fn check_config(logger: &AppLogger) -> HealthCheck {
 }
 
 /// Check that we can write to the library root.
-fn check_write_permission(logger: &AppLogger) -> HealthCheck {
+fn check_write_permission(_logger: &AppLogger) -> HealthCheck {
     let test_file = std::path::Path::new("config/.write_test");
     match std::fs::write(test_file, "test") {
         Ok(_) => {
@@ -299,13 +303,12 @@ mod tests {
         });
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("panicked"));
-        // Audit log should have recorded the panic
-        assert!(audit_log().len() > 0);
+        assert!(!audit_log().is_empty());
     }
 
     #[test]
     fn test_global_audit_log() {
         audit("test", "target", "ok", "detail");
-        assert!(audit_log().len() > 0);
+        assert!(!audit_log().is_empty());
     }
 }

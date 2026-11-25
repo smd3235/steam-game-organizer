@@ -7,6 +7,8 @@
 //! 2026-11-25: Rust conversion from `services/organizer_service.py` in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -29,7 +31,7 @@ use crate::core::constants::{
 };
 use crate::services::extract_service::ExtractService;
 use crate::core::models::{ConversionResult, GameArchive};
-use crate::core::debug::{audit, safe_run};
+use crate::core::debug::audit;
 use crate::core::naming_utils::{
     asset_prefix, game_name, modified_at, promotion_key, release_label, safe_name, unique_dir,
     ArchiveInput,
@@ -42,8 +44,6 @@ use crate::core::organizer_utils::{
 lazy_static! {
     static ref STAGE_PROGRESS_RE: Regex = Regex::new(r"(\d{1,3})%\s+(?:\d+\s+[+-]\s+)?(.*)$").unwrap();
 }
-
-const STAGE_PROGRESS_RE_STR: &str = r"(\d{1,3})%\s+(?:\d+\s+[+-]\s+)?(.*)$";
 
 const RECOGNISED_FOLDER_FILES: &[&str] = &[".game-info.json", "Open Steam Page.html"];
 

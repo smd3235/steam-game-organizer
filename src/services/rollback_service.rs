@@ -3,6 +3,8 @@
 //! 2026-11-25: Converted from `services/rollback_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json;

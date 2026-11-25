@@ -8,12 +8,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use chrono::Utc;
-
 use crate::app::application::Application;
 use crate::core::config::AppConfig;
 use crate::core::logger::AppLogger;
-use crate::core::debug::print_health_report;
 use crate::services::catalog_service::CatalogService;
 use crate::services::extract_service::ExtractService;
 use crate::services::setup_service::SetupService;
@@ -28,7 +25,7 @@ pub fn build_name_map(
     _logger: &AppLogger,
     _library_root: &Path,
 ) -> std::collections::HashMap<PathBuf, (String, String)> {
-    let mut name_map: std::collections::HashMap<PathBuf, (String, String)> =
+    let name_map: std::collections::HashMap<PathBuf, (String, String)> =
         std::collections::HashMap::new();
     // Stub: CatalogService::_collect not yet implemented
     name_map
@@ -37,7 +34,7 @@ pub fn build_name_map(
 /// Open the three-folder setup wizard. Returns None on success, 0 if cancelled.
 pub fn _open_setup(
     config: &AppConfig,
-    logger: &AppLogger,
+    _logger: &AppLogger,
     _prefill: Option<&str>,
 ) -> Option<i32> {
     let service = SetupService::new(Arc::new(noop_log), None, None);
@@ -61,7 +58,7 @@ pub fn _open_setup(
 /// Opens the extracted game/installer folder.
 pub fn _handle_open_extracted_uri(
     _uri: &str,
-    config: &AppConfig,
+    _config: &AppConfig,
     logger: &AppLogger,
 ) -> i32 {
     logger.warning(
@@ -73,7 +70,7 @@ pub fn _handle_open_extracted_uri(
 }
 
 /// Regenerate catalog after a state-changing action and open it (best-effort).
-pub fn _regenerate_catalog_and_open(config: &AppConfig, logger: &AppLogger) {
+pub fn _regenerate_catalog_and_open(config: &AppConfig, _logger: &AppLogger) {
     if let Some(library_root) = &config.library_root {
         let folders: Vec<PathBuf> = config.extract_folders();
         let extract_refs: Vec<&Path> = folders.iter().map(|p| p.as_path()).collect();
@@ -83,7 +80,7 @@ pub fn _regenerate_catalog_and_open(config: &AppConfig, logger: &AppLogger) {
 }
 
 /// Handles play URI - launches the game executable.
-pub fn _handle_play_uri(_uri: &str, config: &AppConfig, logger: &AppLogger) -> i32 {
+pub fn _handle_play_uri(_uri: &str, _config: &AppConfig, logger: &AppLogger) -> i32 {
     logger.warning(
         "PLAY",
         &format!("URI_REFUSED uri=[{}] reason=[not yet implemented]", _uri),
@@ -93,7 +90,7 @@ pub fn _handle_play_uri(_uri: &str, config: &AppConfig, logger: &AppLogger) -> i
 }
 
 /// Handles mark installed URI - marks a game as installed in catalog status.
-pub fn _handle_mark_installed_uri(_uri: &str, config: &AppConfig, logger: &AppLogger) -> i32 {
+pub fn _handle_mark_installed_uri(_uri: &str, _config: &AppConfig, logger: &AppLogger) -> i32 {
     logger.warning(
         "SETUP_DONE",
         &format!("URI_REFUSED uri=[{}] reason=[not yet implemented]", _uri),
@@ -112,7 +109,7 @@ pub fn _extract_to_disk(
     archive: &Path,
     dest: Option<PathBuf>,
     config: &AppConfig,
-    logger: &AppLogger,
+    _logger: &AppLogger,
     zip_password: &str,
 ) -> i32 {
     let destination = dest.unwrap_or_else(|| config.extract_folder());
@@ -135,7 +132,7 @@ pub fn _extract(
     archive: &Path,
     destination: &Path,
     config: &AppConfig,
-    logger: &AppLogger,
+    _logger: &AppLogger,
     args_password: &str,
 ) -> crate::core::extract_result::ExtractResult {
     let suffix = archive
@@ -291,14 +288,14 @@ pub fn main() -> i32 {
     }
 
     // First-run setup if needed
-    let needed_setup = config.library_root.is_none()
-        || config.library_root.as_ref().map_or(true, |p| !p.exists());
+    let needed_setup = config.library_root.as_ref().map(|p| !p.exists()).unwrap_or(true);
     if needed_setup {
-        let _ = config.save();
+        config.save();
         if let Some(library_root) = &config.library_root {
             let folders: Vec<PathBuf> = config.extract_folders();
             let extract_refs: Vec<&Path> = folders.iter().map(|p| p.as_path()).collect();
-            let noop_catalog: Arc<dyn Fn(&str, &str) + Send + Sync> = Arc::new(noop_log);
+            type NoopLogFn = Arc<dyn Fn(&str, &str) + Send + Sync>;
+            let noop_catalog: NoopLogFn = Arc::new(noop_log);
             let _ = CatalogService::new(noop_catalog, &extract_refs)
                 .generate(library_root, false);
         }

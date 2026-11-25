@@ -38,6 +38,7 @@ pub struct BatchItem {
 }
 
 impl BatchItem {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         archive: Option<PathBuf>,
         destination: Option<PathBuf>,

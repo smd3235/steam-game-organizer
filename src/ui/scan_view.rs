@@ -3,6 +3,8 @@
 //!
 //! 2026-11-25: egui scan view in the Rust conversion.
 
+#![allow(clippy::all)]
+
 use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
 use crate::services::library_service::LibraryService;

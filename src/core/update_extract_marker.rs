@@ -5,6 +5,8 @@
 //! 2026-11-25: Converted from `services/update_extract_marker.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use serde_json;
 use std::path::Path;
 

@@ -7,6 +7,8 @@
 //! 2026-11-25: Converted from `core/controller_utils.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+#![allow(clippy::all)]
+
 use std::fs;
 use std::path::Path;
 

@@ -3,8 +3,6 @@
 //!
 //! 2026-11-25: Rust conversion from `tools/layout_audit.py` in the Rust conversion.
 
-use std::path::Path;
-
 pub fn layout_audit(_window_size: (u32, u32)) -> Result<(), String> {
     Err("layout audit not yet implemented".to_string())
 }

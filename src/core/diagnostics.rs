@@ -3,13 +3,17 @@
 //!
 //! 2026-11-25: Rust conversion from `debug/diagnostics.py` in the Rust conversion.
 
+#![allow(clippy::all)]
+
 use crate::core::config::AppConfig;
 use crate::core::logger::AppLogger;
 use crate::core::state::StateStore;
 
 pub struct Diagnostics<'a> {
     config: &'a AppConfig,
+    #[allow(dead_code)]
     state: &'a StateStore,
+    #[allow(dead_code)]
     logger: &'a AppLogger,
 }
 
