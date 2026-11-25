@@ -23,6 +23,10 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: convert core/handle_open_folder_uri.py to Rust
+- `src/handle_open_folder_uri.rs`: Converted from `core/handle_open_folder_uri.py` — `handle_open_folder_uri()` opens game folder in Explorer
+- `core/handle_open_folder_uri.py`: Removed after successful Rust conversion.
+
 ### 2026-11-25 — feat: convert core/connection_pool.py to Rust
 - `src/connection_pool.rs`: Converted from `core/connection_pool.py` — `ConnectionPool` with reqwest blocking client, `SHARED_POOL` singleton
 - `core/connection_pool.py`: Removed after successful Rust conversion.
