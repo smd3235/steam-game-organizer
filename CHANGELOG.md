@@ -23,6 +23,10 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: convert archive_service to Rust
+- `src/archive_service.rs`: Converted from `services/archive_service.py` — `ArchiveService` with `discover()`, `archive_installer_kind()`, `_is_encrypted_zip()`, `_remove_zip_password()`, `_remove_zip_password_external()`, `_is_own_temp_artefact()`, `_is_managed()`, `_mock()`, `walk_changed_files()`, `_stale_build_dirs()`
+- `services/archive_service.py`: Removed after successful Rust conversion.
+
 ### 2026-11-25 — feat: convert core/config.py to Rust
 - `src/config.rs`: Converted from `core/config.py` — `AppConfig` with settings persistence, library root resolution, extract folders, log rotation, appdata sync
 - `core/config.py`: Removed after successful Rust conversion.
