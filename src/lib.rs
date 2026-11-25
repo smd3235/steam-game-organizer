@@ -6,6 +6,7 @@
 //! the source of truth until their Rust replacement passes `cargo test` and is
 //! lint-clean.
 
+pub mod banner_art;
 pub mod canonical_category;
 pub mod catalog_status;
 pub mod catalog_utils;
