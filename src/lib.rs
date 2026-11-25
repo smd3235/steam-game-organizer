@@ -16,6 +16,7 @@ pub mod configured_bases;
 pub mod constants;
 pub mod desktop;
 pub mod destination_parent;
+pub mod discover_game_launchers;
 pub mod errors;
 pub mod extract_result;
 pub mod filename_utils;

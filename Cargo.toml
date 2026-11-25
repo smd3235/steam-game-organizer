@@ -21,6 +21,9 @@ lazy_static = "1"
 # Filename normalization tags (normalize_name)
 regex = "1"
 
+# Junction-safe recursive directory walk
+walkdir = "2"
+
 # ZIP archive reading for encryption checks
 zip = "0.6"
 
