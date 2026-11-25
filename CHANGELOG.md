@@ -23,6 +23,10 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: convert setup_service to Rust
+- `src/setup_service.rs`: Converted from `services/setup_service.py` — `SetupService` with checks(), apply(), default_register(), default_registered(), _library_has_games(), _writable_or_creatable(), _within()
+- `services/setup_service.py`: Removed after successful Rust conversion.
+
 ### 2026-11-25 — feat: convert archive_service to Rust
 - `src/archive_service.rs`: Converted from `services/archive_service.py` — `ArchiveService` with `discover()`, `archive_installer_kind()`, `_is_encrypted_zip()`, `_remove_zip_password()`, `_remove_zip_password_external()`, `_is_own_temp_artefact()`, `_is_managed()`, `_mock()`, `walk_changed_files()`, `_stale_build_dirs()`
 - `services/archive_service.py`: Removed after successful Rust conversion.

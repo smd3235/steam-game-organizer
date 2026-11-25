@@ -53,6 +53,7 @@ pub mod rollback_service;
 pub mod safe_folder_name;
 pub mod scan_view_utils;
 pub mod setup_hint;
+pub mod setup_service;
 pub mod shape_name;
 pub mod sort_date;
 pub mod state;
