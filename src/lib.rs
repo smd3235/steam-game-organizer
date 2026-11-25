@@ -10,6 +10,7 @@ pub mod canonical_category;
 pub mod catalog_utils;
 pub mod category_evidence;
 pub mod category_folder;
+pub mod clear_tool_cache;
 pub mod configured_bases;
 pub mod constants;
 pub mod desktop;
