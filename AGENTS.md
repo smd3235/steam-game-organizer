@@ -110,7 +110,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 |--------------|---------------|---------------|
 | **Run the frozen exe** (`dist\steam_game_organizer\steam_game_organizer.exe`) | **Nothing.** Ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. | Download latest release from GitHub, or build it yourself. |
 | **Run from source** (`runtime\python.exe steam_game_organizer.py`) | Python 3.13 (the bundled runtime works if already built). | [python.org](https://www.python.org/downloads/windows/) — install for all users, check "Add Python to PATH". |
-| **Develop / change code** | Python 3.13 + `ruff` + `PyInstaller`; **Rust** (`cargo`, `rustc`, `clippy`) for converted `src/` modules. | See Development toolchain below. |
+| **Develop / change code** | Python 3.13 + `ruff` + `PyInstaller`; **Rust** (`cargo`, `rustc`, `clippy`) for converted `src/` modules; **Git Bash** recommended shell on Windows (PowerShell interprets Rust's `<`/`>` generics as redirection). | See Development toolchain below. |
 | **Build frozen exe / bundle runtime** | Python 3.13 + 7-Zip + PyInstaller. | See [🏗️ Build](#-build--frozen-exe-pipeline) and [📦 Bundled Runtime](#-the-bundled-runtime). |
 
 ### Development toolchain
@@ -121,10 +121,13 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 4. **7-Zip** — [7-zip.org](https://www.7-zip.org/download.html). Required for `runtime\7z.exe` and for building the frozen exe. Install to the default location (`C:\Program Files\7-Zip`) so `tools\bundle_runtime.py` can find it automatically.
 5. **customtkinter** — `pip install customtkinter`. Required to import `ui.*` modules (including `ui.theme`, `ui.main_window`, `ui.custom_theme`) and to run tests against system Python. The bundled `runtime\python.exe` already ships it; system Python does not.
 6. **Rust** — `cargo`, `rustc`, `clippy`. Required for converted `src/` modules. Install from [rust-lang.org](https://www.rust-lang.org/). Verify with `cargo --version` and `rustc --version`.
+7. **Git Bash** — [git-scm.com](https://git-scm.com/download/win) (installed with Git). Recommended shell for running Rust commands on Windows because PowerShell interprets Rust's `<`/`>` generics as shell redirection, which breaks commands like `cargo check` and `cargo test`. Git Bash does not have this problem.
 
 ### Verify your setup
 
-```powershell
+> Run verification commands in **Git Bash**, not PowerShell. PowerShell interprets Rust's `<` and `>` as redirection operators and will break commands like `cargo check`.
+
+```bash
 python --version   # should be Python 3.13.x
 ruff --version     # should print a version
 7z                 # should print 7-Zip help
@@ -136,7 +139,7 @@ rustc --version    # should print a Rust version
 
 Converted Rust modules in `src/` are checked with:
 
-```powershell
+```bash
 cargo check        # compile check
 cargo clippy --all-targets  # lint
 cargo test         # Rust unit tests
@@ -175,7 +178,7 @@ Add a crate only when a converted module actually imports it — do not pre-inst
 | 8 | cargo test | Rust unit tests | Yes |
 | 9 | OCR tests | Captures all screens, verifies UI text, detects error windows | Yes |
 
-```powershell
+```bash
 runtime\python.exe tools\quality_gate.py
 ```
 
@@ -183,27 +186,29 @@ runtime\python.exe tools\quality_gate.py
 
 **Bandit** scans Python source for security issues (B310 `urlopen` scheme validation, B103 permissive `chmod`, etc.):
 
-```powershell
+```bash
 python -m bandit -r core services ui app utils --severity-level medium --confidence-level medium
 ```
 
 **pip-audit** checks installed Python dependencies for known vulnerabilities:
 
-```powershell
+```bash
 python -m pip_audit
 ```
 
 **Pre-commit hooks** (`.pre-commit-config.yaml`) run ruff, mypy, bandit, pytest, and OCR tests on every commit. Install with:
 
-```powershell
+```bash
 runtime\Scripts\pre-commit install
 ```
+
+After that, every `git commit` runs the hooks automatically. If a hook fails, the commit is rejected.
 
 ### OCR Testing
 
 `tools\ocr_test.py` captures all app screens via `capture_screens.py`, runs Tesseract OCR with multiple PSM modes on each image, and verifies expected UI text is present. It also detects Python error dialogs / traceback windows via `pywinauto` UI Automation and analyzes UI layout via `OpenCV`.
 
-```powershell
+```bash
 # Capture and OCR-verify all screens
 runtime\python.exe tools\ocr_test.py --size 1600x1000
 
@@ -213,7 +218,7 @@ runtime\python.exe tools\ocr_test.py --no-capture --out temp/ocr-captures
 
 `tools\capture_screens.py` also supports `--ocr` to OCR-verify each screen immediately after capturing it:
 
-```powershell
+```bash
 runtime\python.exe tools\capture_screens.py --size 1600x1000 --ocr
 ```
 
@@ -221,7 +226,7 @@ runtime\python.exe tools\capture_screens.py --size 1600x1000 --ocr
 
 `tools\log_audit.py` scans `logs/` for Python tracebacks, repeated warnings, artwork failures, Steam lookup errors, and other anomalies:
 
-```powershell
+```bash
 # Audit all logs
 runtime\python.exe tools\log_audit.py
 
@@ -263,7 +268,7 @@ Work through this checklist in order:
 
 After any code change, rebuild the exe:
 
-```powershell
+```bash
 python tools\build_frozen.py
 ```
 
@@ -354,7 +359,7 @@ Some GUI tests must never run in the same process as other tests. On Windows, cr
 
 Run them **one file at a time**, never as a batch:
 
-```powershell
+```bash
 # Isolated tests are skipped by default; this shows them as skipped:
 runtime\python.exe -m pytest tests/test_ui_geometry.py -v
 
@@ -368,7 +373,7 @@ Never run two isolated test files in the same `pytest` invocation.
 
 ## 🧹 Lint
 
-```powershell
+```bash
 ruff check .
 ```
 
@@ -383,7 +388,7 @@ ruff check .
 
 Visual checks are real and useful, but a screenshot left on disk is a stale picture of a UI that has since changed. Always delete screenshots in the same step they are used. Capture, analyse, delete — never leave one for "later". There must be no `*.png` in the project root when work is finished.
 
-```powershell
+```bash
 runtime\python.exe tools\analyze_screenshot.py _shot_1.png   # palette + off-palette content analysis
 runtime\python.exe tools\layout_audit.py                     # clipping, off-window widgets, sibling overlap
 runtime\python.exe tools\capture_screens.py                  # one PNG per app screen into docs/screenshots/
@@ -492,7 +497,7 @@ Several GUI tests (`test_lifecycle.py`, `test_artwork_render.py`, `test_displaye
 
 **Reason:** On Windows, creating and destroying `tk.Tk()` windows repeatedly in the same process corrupts the Tcl interpreter ("couldn't read init.tcl"). These tests pass when run individually but crash when run together in the suite. Do **not** remove them from the ignore list — instead, run them individually if you need to verify them:
 
-```powershell
+```bash
 runtime\python.exe -m pytest tests/test_lifecycle.py -v
 ```
 
@@ -500,7 +505,7 @@ runtime\python.exe -m pytest tests/test_lifecycle.py -v
 
 `.pre-commit-config.yaml` is configured with hooks for **ruff**, **mypy**, **bandit**, **pytest**, and **OCR tests**. Install them once:
 
-```powershell
+```bash
 runtime\Scripts\pre-commit install
 ```
 

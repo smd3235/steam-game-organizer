@@ -24,6 +24,7 @@ pub mod extract_service;
 pub mod filename_utils;
 pub mod formatting;
 pub mod installer_detect;
+pub mod image_shape;
 pub mod library_summary;
 pub mod library_utils;
 pub mod logger;
