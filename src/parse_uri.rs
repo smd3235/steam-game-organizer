@@ -79,7 +79,7 @@ pub fn parse_uri(
         archive
             .extension()
             .and_then(|e| e.to_str())
-                .is_some_and(|e| e.eq_ignore_ascii_case(ext))
+            .is_some_and(|e| e.eq_ignore_ascii_case(ext))
     }) {
         return Err(UriRefused::new(&format!(
             "Not an archive this can unpack: {}",
