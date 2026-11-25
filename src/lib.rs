@@ -39,6 +39,7 @@ pub mod parse_setup_uri;
 pub mod parse_uri;
 pub mod path_safety;
 pub mod prefill;
+pub mod rollback_service;
 pub mod safe_folder_name;
 pub mod scan_view_utils;
 pub mod setup_hint;
