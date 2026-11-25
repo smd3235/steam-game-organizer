@@ -3,29 +3,14 @@
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](AGENTS.md)
 [![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
-[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/windows/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Lint: ruff + clippy](https://img.shields.io/badge/lint-ruff%20%7C%20clippy-important.svg)](ruff.toml)
-[![Tests: pytest + cargo test](https://img.shields.io/badge/tests-pytest%20%7C%20cargo%20test-success.svg)](tests/)
-[![CI: GitHub Actions](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](.github/workflows/ci.yml)
-[![Security: bandit](https://img.shields.io/badge/security-bandit-red.svg)](.github/workflows/ci.yml)
-[![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen.svg)](.github/dependabot.yml)
-[![CodeQL](https://img.shields.io/badge/codeql-enabled-blueviolet.svg)](.github/codeql.yml)
+[![Lint: clippy](https://img.shields.io/badge/lint-clippy-important.svg)](.cargo/config.toml)
+[![Tests: cargo test](https://img.shields.io/badge/tests-cargo%20test-success.svg)](src/)
+[![Security: cargo-audit](https://img.shields.io/badge/security-cargo--audit-red.svg)](.github/workflows/ci.yml)
+[![Dependency policy: cargo-deny](https://img.shields.io/badge/dependency--policy-cargo--deny-blueviolet.svg)](.cargo/deny.toml)
 
 > **Built for Windows.** One library, one catalog, one click to play.  
-> Scan `.zip`/`.rar`/`.7z` archives you downloaded from outside of Steam, match them to Steam's store metadata, convert to **7z** for better compression, organize into category folders, download artwork, and build a clickable HTML game catalog — all in one self-contained frozen exe. No Python, no 7-Zip, and no installation required on the machine that runs it.
-
-<!--
-README.md overhaul — Steam Game Organizer, 2026-11-12.
-Rewrote every user-facing section for depth and scanability:
-- "Running on your own machine" is now a numbered, end-to-end procedure (was 6 short lines).
-- Install & run, setup wizard, protocol handler, and CLI flags each got full step-by-step tables and copy-pasteable examples.
-- Catalog page mechanics, extraction markers, undo journal, and drive-letter resolution sections were expanded with exactly-what-happens detail.
-- Troubleshooting and FAQ tables grew from 5/6 rows to cover the real failure modes users hit (missing runtime/7z.exe, protocol handler, stale badges, drive letters, OneDrive locks, mock vs live Steam).
-- Added "Before you begin", "System requirements", "What it does not do", and "Moving the app to another PC" sections.
-- Kept all existing developer cross-links (ARCHITECTURE.md, AGENTS.md, project_overview.md) and the quick-links-to-code index.
-No behavior change — documentation only.
--->
+> Scan `.zip`/`.rar`/`.7z` archives you downloaded from outside of Steam, match them to Steam's store metadata, convert to **7z** for better compression, organize into category folders, download artwork, and build a clickable HTML game catalog — all in one self-contained application. Windows-only.
 
 ---
 
@@ -34,29 +19,18 @@ No behavior change — documentation only.
 | If you want to… | Go to section |
 |-----------------|---------------|
 | Get a quick summary | [🎯 Overview](#-overview) |
-| See every screen with an explanation | [📸 Screens](#-screens) |
 | System requirements | [💻 System requirements](#-system-requirements) |
-| Download or build the app | [📦 Get the app](#-get-the-app) |
+| Build the app | [📦 Get the app](#-get-the-app) |
 | Run on your own machine | [🖥️ Running on your own machine](#-running-on-your-own-machine) |
-| First launch — setup wizard | [🧭 First launch — setup wizard](#-first-launch--setup-wizard) |
-| Register protocol handler | [🔗 Register the protocol handler (one time)](#-register-the-protocol-handler-one-time) |
-| Command-line flags | [⌨️ Command-line flags](#-command-line-flags) |
 | App workflow — end to end | [🎯 App workflow — end to end](#-app-workflow--end-to-end) |
-| Catalog page mechanics | [📄 Game Library.html — what the catalog page does](#-game-libraryhtml--what-the-catalog-page-does) |
-| Extraction markers (.sgo-extract-info) | [🔍 Extraction markers (.sgo-extract-info)](#-extraction-markers--sgo-extract-info-) |
-| Undo journal | [↩️ Undo journal](#-undo-journal) |
-| Drive letter resolution / moving PCs | [🔁 Drive letter resolution & moving PCs](#-drive-letter-resolution--moving-pcs) |
 | Repository layout | [🏗️ Repository layout](#-repository-layout) |
 | Troubleshooting | [🔧 Troubleshooting](#-troubleshooting) |
 | FAQ | [❓ FAQ](#-faq) |
 | Project status & public readiness | [📊 Project status & public readiness](#-project-status--public-readiness) |
+| Rust Conversion | [🦀 Rust Conversion](#-rust-conversion) |
 | License | [⚖️ License](#-license) |
-| Bundled runtime (`runtime/`) | [📦 Bundled runtime components (`runtime/`)](#-bundled-runtime-components-runtime-) |
 | Quick links to key code | [🔗 Quick links to key code sections](#-quick-links-to-key-code-sections) |
 | Contributor documentation | [📚 Contributor documentation](#-contributor-documentation) |
-| &nbsp;&nbsp;&nbsp;&nbsp;└─ GitHub CI | [📊 GitHub CI](#github-ci) |
-| &nbsp;&nbsp;&nbsp;&nbsp;└─ Quality tools | [🛠️ Quality tools](#quality-tools-installed-in-the-bundled-runtime) |
-| &nbsp;&nbsp;&nbsp;&nbsp;└─ Pushing changes | [🚀 Pushing changes](#pushing-changes-to-github) |
 
 ---
 
@@ -64,182 +38,24 @@ No behavior change — documentation only.
 
 Steam Game Organizer is a comprehensive Windows application for games you have downloaded from outside of Steam. It walks your library folder, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork), converts archives to **7z** for better compression, sorts them into category folders, downloads artwork, and generates a beautiful, clickable HTML catalog you can open in your browser — packed with detail on every game.
 
-The result is a self-contained, browsable game library that works on any Windows 10+ machine — no Python, no 7-Zip, and no installation required on the machine that runs it.
+The result is a self-contained, browsable game library that works on any Windows 10+ machine — no installation required on the machine that runs it.
 
 ### What it does
 
 | Step | What happens |
 |------|--------------|
-| 🔍 **Scan** | `CatalogService._collect` walks every category folder under the library root, skipping anything without a `.zip`/`.rar`/`.7z`, skipping the app's own project folder, reading `.game-info.json` sidecars, and recording banner art and installer signature per game. Each archive is matched against Steam's store metadata (AppID, title, genres, tags, artwork URLs) via `services/steam_service.py`, with confidence scoring so a weak match never overrides a strong one. |
-| 📦 **Convert** | `services/organizer_service.py` rebuilds `.zip` and `.rar` archives as `.7z` using adaptive compression tuned to your free RAM — better compression, smaller on-disk footprint. The manifest cache keyed by `(path, size, mtime_ns)` avoids redundant `7z l -slt` calls per archive. Older copies and re-categorized leftovers are moved to `Archive/` with `(n)` collision suffixes for review before deleting. |
-| 🗂️ **Organize** | Each archive is filed into `Category / Game — release date` folders with metadata, Steam shortcuts, and artwork sidecars. Archives are grouped by identity key, the newest version is promoted, and duplicates are swept so two archives of the same game never compete. Writes happen atomically (temp-file + `os.replace` with retry on `PermissionError` for OneDrive locks). |
-| 🖼️ **Artwork** | `services/artwork_service.py` downloads Steam capsule, header, and grid images plus SteamGridDB portraits, keyed per AppID with a 10-day expiry cache. `services/banner_art.py` composes the card banner, falling back to a generated name-keyed banner so no card is ever a flat grey block. Stale cache entries are deleted on re-init. |
-| 📖 **Catalog** | `services/catalog_service.py` generates a self-contained `Game Library.html` — embedded CSS + vanilla JS, no build step, no external requests — plus `Game Library.status.js`. The page carries search, filters, category chips, sort orders, dynamic action cards (Play/Pick launcher/Mark installed/Extract/Re-extract/Open installer/Open extracted/Open source), and "already unpacked" badges decided at generation time against configured extract roots using `.sgo-extract-info` markers. |
-| ↩️ **Undo** | Every organize move is journaled to `config/last-organization.json` by `services/rollback_service.py`. One Undo restores each archived file to its source and prunes only folders this run created into `Archive/` — never deletes a folder it didn't make. Ownership gating via `created_game_dir` means pre-existing folders belong to the user whatever they hold. |
+| 🔍 **Scan** | Walks every category folder under the library root, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork URLs) with confidence scoring so a weak match never overrides a strong one. |
+| 📦 **Convert** | Rebuilds `.zip` and `.rar` archives as `.7z` using adaptive compression tuned to your free RAM — better compression, smaller on-disk footprint. Older copies and re-categorized leftovers are moved to `Archive/` with `(n)` collision suffixes for review before deleting. |
+| 🗂️ **Organize** | Each archive is filed into `Category / Game — release date` folders with metadata, Steam shortcuts, and artwork sidecars. Archives are grouped by identity key, the newest version is promoted, and duplicates are swept so two archives of the same game never compete. Writes happen atomically. |
+| 🖼️ **Artwork** | Downloads Steam capsule, header, and grid images plus SteamGridDB portraits, keyed per AppID with a cache. Composes card banners so no card is ever a flat grey block. |
+| 📖 **Catalog** | Generates a self-contained `Game Library.html` — embedded CSS + vanilla JS, no build step, no external requests — plus status data. The page carries search, filters, category chips, sort orders, dynamic action cards, and "already unpacked" badges. |
+| ↩️ **Undo** | Every organize move is journaled. One Undo restores each archived file to its source and prunes only folders this run created into `Archive/` — never deletes a folder it didn't make. |
 
 ### What it does not do
 
-- **Does not support piracy.** Use it only for games you own and have the right to organize. It does not provide — and does not explain — how to obtain games you do not own.
+- **Does not support piracy.** Use it only for games you own and have the right to organize.
 - **Does not need Steam installed.** It queries the Steam Store API at runtime for metadata — no Steam client required.
 - **Does not delete games.** The app never deletes anything it didn't create. Empty categories and re-categorized leftovers are moved to `Archive/` for review.
-
----
-
-## 📸 Screens
-
-Every screen below is a real capture of the app running, not a mock-up. They are produced by
-`tools\capture_screens.py`, which builds the actual windows against a throwaway library and writes one PNG per
-screen into [`docs/screenshots/`](docs/screenshots/). The catalog page is a browser document rather than a window,
-so it is rendered by headless Microsoft Edge and photographed from there. The library shown uses invented games and
-invented AppIDs — a public screenshot must never display someone's real collection.
-
-```powershell
-runtime\python.exe tools\capture_screens.py                    # all screens
-runtime\python.exe tools\capture_screens.py --only review done # two of them
-runtime\python.exe tools\capture_screens.py --size 1440x900    # another window size
-```
-
-The script needs an interactive Windows desktop (it grabs composited screen pixels), never writes your real
-`config/`, `cache/` or `logs/`, and refuses to save a blank capture — a flat image is reported as a failure rather
-than shipped as a screenshot.
-
-### 🔍 1. Scan — what is in the library, and what the next scan will do
-
-<img src="docs/screenshots/scan.png" width="900" alt="Scan screen: library path, folder/archive/free-space counters, scan options and the next-scan plan line">
-
-| On screen | What it tells you |
-|-----------|-------------------|
-| **Library path** | The folder the app walks. Change it from the setup wizard or the `--setup` flag; the line above the counters always shows the folder currently in use. |
-| **Counters** | Top-level folders, archives at the library root, and free space on that volume — read instantly with a single `scandir`, so a library of any size still answers without a walk. |
-| **Scan options** | *New Only* skips archives whose game folder already exists. *Convert ZIP/RAR to 7z* rebuilds archives for better compression (and unlocks password-`123` zips first). *Download artwork* refreshes cached Steam/SteamGridDB images. |
-| **Preview only** | Turns the whole run into a dry run: nothing is moved, converted or renamed, and the plan line turns orange so the mode cannot be mistaken for a live run. |
-| **Next scan line** | Spells out what the current combination of toggles will do, instead of leaving the user to discover it after pressing the button. |
-
-### ⏳ 2. Scan in progress — live telemetry, not a spinner
-
-<img src="docs/screenshots/scan-running.png" width="900" alt="Scan running: phase timeline, progress bar, current file and a live activity feed">
-
-The scan reports each phase (`cleanup_done`, `dedupe_done`, `repair_done`, `discover_done`) as it finishes and
-streams the archive currently being inspected. A long scan over a multi-terabyte library therefore shows what it
-is doing and how far it has got, and **CANCEL** unwinds the job through the same cancellation watcher that a
-conversion uses. The activity feed keeps the last messages with their timestamps so a stall can be told apart from
-slow work.
-
-### 🧾 3. Review — verify the match before anything is moved
-
-<img src="docs/screenshots/review.png" width="900" alt="Review screen: archive list on the left, artwork and Steam metadata for the selected game on the right">
-
-| Panel | What it is for |
-|-------|----------------|
-| **Archive list** | Every discovered archive, filtered by *All / Needs Review / Verified / New Only / Artwork*. The summary strip above it counts archives, logical games, archives collapsed into one game, verified matches and low-confidence guesses. |
-| **Artwork panel** | The banner the app will copy into the game folder. `header_image` is preferred over the primary cached file so the panel and the catalog card agree; a missing image says why (no decoder, no match, pruned cache) instead of showing an empty box. |
-| **Metadata panel** | Steam AppID, title, genres, categories, tags, release date, developer/publisher and the confidence that this archive is really that game. A low-confidence match is shown as a guess, never as fact. |
-| **Category and actions** | The target category, accept/skip, and the title override for archives whose filename matches nothing. The **CONTINUE TO ORGANIZATION** button stays disabled until something is accepted. |
-
-### 🏷️ 4. Picking a category — the suggestion is a proposal, not a verdict
-
-<img src="docs/screenshots/review-category.png" width="900" alt="Review screen with the category list posted: the game's suggested category plus the full list of categories to choose from">
-
-The **CATEGORY** list holds the app's canonical categories plus every genre Steam reported for the selected game.
-The line beside it reads `Suggested: <category>` and turns **green** when the current choice matches the suggestion
-and **orange** when it has been overridden, so a deliberate re-categorisation is visible rather than silent.
-
-| Control | Behaviour |
-|---------|-----------|
-| **Category list** | Read-only combo. Choosing a value applies it to the selected game and re-renders its card in the list. |
-| **Use Suggested** | Puts the suggested value back, for when the override was a mistake. |
-| **Remembered choice** | Every change is recorded against the game's identity key (its folder/archive identity, not just its name), so the same game keeps the category on later scans and after a rename. |
-| **ACCEPT & NEXT** | Accepts the selected game with the chosen category and advances to the next unverified archive. |
-| **CONTINUE TO ORGANIZATION** | Stays disabled until at least one game is accepted, so an empty run cannot be started by muscle memory. |
-
-### ➕ 5. Adding a category of your own
-
-<img src="docs/screenshots/add-category.png" width="320" alt="Add Category prompt with a text box for the new category name">
-
-**＋ Add Category** asks for a name, appends it to the list and selects it immediately. The name is then treated
-like any built-in category: it can be suggested, remembered per game, and it becomes a folder in the library.
-
-### ⚙️ 6. Organize — the run, stage by stage
-
-<img src="docs/screenshots/organize.png" width="900" alt="Organize screen: stage timeline, progress bar and a feed of extracting, compressing and converting events">
-
-Each accepted archive moves through *organizing → extracting → compressing → converted*, and the screen shows the
-active stage, the file it is working on, the byte counts it has seen, and a rolling feed of completed steps. On a
-run of 176 games and 244 GB this is the difference between a window that looks frozen and one that says which game
-is being compressed and how much disk it has written. **STOP** cancels through the archive tool; nothing partially
-built is left inside a game folder.
-
-### 🖼️ 7. Artwork — every image that will ship with the game
-
-<img src="docs/screenshots/artwork.png" width="900" alt="Artwork screen: one card per organized game with its banner and the asset files beside the folder">
-
-One card per accepted game, showing the cached banner, the folder it belongs to, and the exact asset filenames
-(`<prefix>_grid.jpg`, `<prefix>_hero.jpg`, `<prefix>_logo.jpg`, …) that were downloaded. The names come from the
-cache keys the catalog writes, so this panel is also how you check that a game's folder will hold the artwork the
-catalog page expects. Games whose download failed are named with the reason.
-
-### ✅ 8. Done — what actually happened, including the failures
-
-<img src="docs/screenshots/done.png" width="900" alt="Done screen: outcome banner, per-outcome sections and the run report">
-
-The Done screen does not report intent, it reports outcomes. Games are bucketed into *converted*, *already 7z*,
-*left as-is*, *filed under Archive/*, *failed* and *never converted*, and each bucket names the games in it. Failed
-conversions carry the archiver's own message and the free space at the moment of failure. **UNDO THE LAST RUN**
-restores every file the run moved, using the journal in `config/last-organization.json`.
-
-### 🌐 9. The catalog page — the library as a clickable HTML shelf
-
-<img src="docs/screenshots/catalog.png" width="900" alt="Game Library.html catalog page: hero statistics, category shelves and game cards with banner art and Extract buttons">
-
-`Game Library.html` is written into the library root after every scan and every organize run, beside
-`Game Library.status.js`. It is a single self-contained page with relative paths, so it keeps working when the whole
-library folder is copied to another drive or another PC, and it opens from a file share without a server.
-
-| On the page | What it gives you |
-|-------------|-------------------|
-| **Hero statistics** | Games, categories, how many have artwork, how many are missing it, and the total size on disk — each number is also a filter. |
-| **Category shelves** | One section per category with its own banner, so a 20-category library is navigable instead of one long list. |
-| **Game cards** | The banner the organizer copied into the folder, plus name, release date, developer, genres, tags and size. |
-| **Extract button** | Starts `steamgameorganizer://extract?src=…` for one game. The link names the archive; the app checks it is inside the configured library before unpacking anything. |
-| **Extract category / Extract remaining** | Batch links that open the batch window for a whole category, or only for games that are not unpacked yet. |
-| **Status badges** | Reflect the last run: unpacked, partly unpacked, needs install. `Game Library.status.js` is what carries that state, so the page itself never goes stale as a file. |
-| **Search and filters** | Client-side only — no network calls, so the page works offline. |
-
-### 🧭 10. Setup wizard — the three folders that make Extract work
-
-<img src="docs/screenshots/setup.png" width="560" alt="Setup wizard: library folder, app folder and extract folder boxes with live check results below them">
-
-Opens on first launch and from `steam_game_organizer.exe --setup`. The three boxes decide where games are read
-from, where the app lives, and where the catalog's **Extract** button is allowed to write. The checks below them
-describe the machine as it is *right now* — before saving — so a red row names a problem the save is about to fix.
-Saving registers the `sgo-extract://` link as well, which is what makes extraction startable from the HTML catalog.
-
-### 📦 11. Batch extract — a whole category at once, from one link
-
-<img src="docs/screenshots/batch-extract.png" width="700" alt="Batch extract window: per-game rows with size, state and detail; overall progress bar and speed metrics">
-
-Started by an `Extract category` link in the catalog. The header states the game count, the category and the exact
-destination before anything is unpacked; every game gets its own row with size, state and the current detail line,
-so a 40-game batch is readable while it runs. The metrics line shows bytes written, elapsed time, throughput and
-free space on the destination volume. Installer archives are routed to `Needs Install/` rather than treated as
-playable games.
-
-### ⏳ 12. Extraction progress — what is being unpacked, right now
-
-<img src="docs/screenshots/extract-progress.png" width="320" alt="Extraction progress dialog: archive name, current file, progress bar and elapsed time">
-
-A single-game extraction shows this dialog instead of freezing the window. It names the archive, the file currently
-being written, a determinate progress bar and the elapsed time, and **Cancel** asks the archiver to stop rather than
-killing the process. When it finishes the dialog hands over to the result below.
-
-### 🎉 13. Extract result — the outcome of a single game
-
-<img src="docs/screenshots/extract-result.png" width="420" alt="Extract result dialog: green success tick, archive name, destination and file counts">
-
-One dialog per extraction, stating whether it succeeded, which archive it came from, where the files landed, how
-many files and bytes were written, and how long it took. A failed extraction shows the red variant with the
-archiver's message. For an installer archive the subtitle tells you to run the installer in the destination folder
-instead of claiming the game is ready to play.
 
 ---
 
@@ -248,64 +64,40 @@ instead of claiming the game is ready to play.
 | Requirement | Detail |
 |-------------|--------|
 | **OS** | Windows 10 or later (64-bit). Windows-only — no POSIX, macOS, or Linux target. |
-| **To run the frozen exe** | Nothing. It bundles Python 3.13, Tcl/Tk, and 7-Zip inside `runtime/`. |
-| **To build from source** | Python 3.13 (Add to PATH), `ruff`, `pyinstaller`, and 7-Zip installed to `C:\Program Files\7-Zip`. |
+| **To build from source** | Rust toolchain (`cargo`, `rustc`, `clippy`), MinGW-w64 for the GNU target, 7-Zip installed to `C:\Program Files\7-Zip`. |
+| **To run the built app** | Nothing. The built executable is self-contained. |
 | **Display** | The app maximizes itself on start and runs full screen. |
 
 ---
 
 ## 📦 Get the app
 
-GitHub ships only source code. The `runtime/`, `dist/`, and `build/` folders are **gitignored** — they are not in the repository. To get a runnable app on a machine you have two choices: download a pre-built release (recommended) or build the frozen exe yourself from the source code. Either way, the folder you end up with is self-contained — it includes Python 3.13, Tcl/Tk, and 7-Zip inside `runtime/`, so nothing needs to be installed on the machine that runs it.
+The `target/` folder is **gitignored** — build artifacts are not in the repository. To get a runnable app you build it yourself from the source code. The resulting executable is self-contained.
 
----
+### Build from source
 
-### Option A: Download a release (recommended — nothing to build)
+Requires the Rust toolchain and 7-Zip on the machine doing the build.
 
-Use this if you just want to run the app on your PC or on a friend's PC. No Python, no 7-Zip, and no build tools are needed.
+#### Step 1 — Install the Rust toolchain
 
-1. **Open the releases page.**  
-   Go to https://github.com/smd3235/steam-game-organizer/releases in your browser.
-
-2. **Find the latest release.**  
-   Releases are listed newest first. Open the top release (the one at the top of the page).
-
-3. **Download the zip asset.**  
-   Under "Assets" on the release page, download the file named `steam-game-organizer-<version>.zip`. Save it somewhere easy to find, such as your Downloads folder.
-
-4. **Extract the zip.**  
-   Right-click the downloaded zip and choose **Extract All**, or open it in 7-Zip and extract it. Extract it to wherever you want the app to live — for example `E:\Games\Steam Game Organizer\`.  
-   The extraction creates a folder containing `steam_game_organizer.exe`, `runtime/`, `dist/`, and the other app files.
-
-5. **Launch the app.**  
-   Open the extracted folder, go into `dist\steam_game_organizer\`, and double-click `steam_game_organizer.exe`.  
-   The app launches full screen and opens the setup wizard on first run.
-
-That folder is fully self-contained: Python 3.13, Tcl/Tk, and 7-Zip all live inside its `runtime/` subfolder. You can copy the whole `steam-game-organizer` folder to another Windows 10+ machine, a USB drive, or a borrowed hard drive, and it runs the same way — nothing needs installing on the target machine.
-
----
-
-### Option B: Build the frozen exe from source
-
-Use this if you cloned the repository, want to rebuild after making a source change, or want to verify the build yourself. This requires Python 3.13, `ruff`, PyInstaller, and 7-Zip on the machine doing the build.
-
-#### Step 1 — Install Python 3.13
-
-1. Download Python 3.13 from https://www.python.org/downloads/windows/.
-2. Run the installer.
-3. **Important:** Check both "Add Python to PATH" and "Install for all users" during installation. Without these, the build commands will not be found.
-4. After installation, open a new PowerShell window and confirm it works:
+1. Install Rust from https://www.rust-lang.org/.
+2. Confirm it works:
 
    ```powershell
-   python --version
+   cargo --version
+   rustc --version
    ```
 
-   It should print something like `Python 3.13.x`.
+3. Install clippy:
+
+   ```powershell
+   rustup component add clippy
+   ```
 
 #### Step 2 — Install 7-Zip
 
 1. Download 7-Zip from https://www.7-zip.org/download.html.
-2. Install it to the default location, `C:\Program Files\7-Zip`. The build tool looks there automatically for `7z.exe` when bundling the runtime.
+2. Install it to the default location, `C:\Program Files\7-Zip`.
 3. Confirm it is available:
 
    ```powershell
@@ -314,87 +106,59 @@ Use this if you cloned the repository, want to rebuild after making a source cha
 
    It should print 7-Zip help text.
 
-#### Step 3 — Install the build tools
-
-In PowerShell, run:
-
-```powershell
-pip install ruff
-runtime\python.exe -m pip install pyinstaller
-```
-
-`ruff` is the linter; `pyinstaller` (installed into the bundled runtime) builds the frozen exe.
-
-#### Step 4 — Clone the repository
+#### Step 3 — Clone the repository
 
 ```powershell
 git clone https://github.com/smd3235/steam-game-organizer.git
 cd "steam-game-organizer"
 ```
 
-#### Step 5 — Build the frozen exe
+#### Step 4 — Build
 
 ```powershell
-python tools\build_frozen.py
+cargo build --release
 ```
 
-This runs PyInstaller, then lifts `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, and `runtime/` out of PyInstaller's `_internal/` folder into the bundle root. That lift is mandatory: `steam_game_organizer.py` resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings — left in `_internal/`, `runtime/7z.exe` is one folder out of reach and every extraction reports no archiver.
-
-Before wiping an old bundle it backs up `config/`, `cache/`, and `logs/` into a temp dir and restores them after, so your settings, artwork cache, and logs survive a rebuild. It retries `rmtree` up to 5 times (Windows Defender or an indexer can hold a DLL open) and verifies `runtime/7z.exe` exists before reporting success. The build is onedir (`console=False`, `exclude_binaries=True`) — do not change to onefile, which repacks the interpreter into a temp folder on every launch.
-
-When it finishes, the runnable app is at:
+The runnable app is at:
 
 ```
-dist\steam_game_organizer\steam_game_organizer.exe
+target\release\steam-game-organizer.exe
 ```
 
-#### Step 6 — Run it
+#### Step 5 — Run it
 
 ```powershell
-dist\steam_game_organizer\steam_game_organizer.exe
+target\release\steam-game-organizer.exe
 ```
 
 No Python, 7-Zip, or anything else is needed on the machine that runs it.
 
----
-
-### Option C: Run from source (development only)
-
-```powershell
-runtime\python.exe steam_game_organizer.py
-```
-
-Requires Python 3.13 installed. This is for developers iterating on code — end users should use the frozen exe from Option A or Option B.
-
----
-
-### Verify your build environment
+#### Verify your build environment
 
 Before building, confirm your machine has everything:
 
 ```powershell
-python --version            # should be Python 3.13.x
-ruff --version              # should print a version
-7z                          # should print 7-Zip help
-runtime\python.exe --version  # bundled interpreter version
+cargo --version         # should print a version
+clippy --version        # should print a version
+7z                      # should print 7-Zip help
 ```
 
 ---
 
 ## 🖥️ Running the app on your own machine
 
-This is the full, step-by-step procedure for getting the app running on any Windows 10+ machine — yours, a second PC, or a borrowed hard drive. Nothing needs to be installed on the machine that runs it; the frozen exe already contains Python 3.13, Tcl/Tk, and 7-Zip.
+This is the full, step-by-step procedure for getting the app running on any Windows 10+ machine — yours, a second PC, or a borrowed hard drive. Nothing needs to be installed on the machine that runs it; the built executable is self-contained.
 
-### Step 1 — Get the app folder onto the machine
+### Step 1 — Get the app onto the machine
 
-Either download a release zip from GitHub and extract it, or copy the `dist\steam_game_organizer\` folder you built on another machine. Place it somewhere permanent, for example `E:\Games\Steam Game Organizer\`.
+Copy the built `target\release\steam-game-organizer.exe` (or a pre-built release) to a permanent location, for example `E:\Games\Steam Game Organizer\`.
 
 ### Step 2 — Launch the app
 
 Open the folder and double-click:
 
 ```
-steam_game_organizer.exe
+steam-game-organizer.exe
 ```
 
 The app maximizes to full screen on start. On first launch it opens the setup wizard automatically — there is nothing to configure before this point.
@@ -405,33 +169,21 @@ The wizard asks for three folders. Fill in each one, then click **Save setup**.
 
 | Folder | What it is | Example |
 |--------|------------|---------|
-| 📁 **Game library** | The folder your `.zip`/`.rar`/`.7z` game archives live in. Point it at your existing game library folder. | `E:\Games\Steam Library` |
-| 📁 **App folder** | Where this copy of the app lives. The wizard pre-fills this automatically to the folder containing the running exe. | `E:\Games\Steam Game Organizer\dist\steam_game_organizer\` |
-| 📁 **Extract to** | Where games are unpacked to when you click Extract. Must be outside your game library so unpacked loose files are not mistaken for games. | `E:\Games\Extracted` |
-
-The wizard validates each folder before saving:
-- The game library must exist (or be creatable).
-- The app folder must contain `steam_game_organizer.exe` or `steam_game_organizer.py`.
-- The extract folder must be writable and must not sit inside the game library.
-- If no extraction tool (`7z.exe`) is found, a warning appears — Extract will not work until one is available (the frozen bundle already ships `runtime\7z.exe`, so this normally passes).
-- The `steamgameorganizer://` protocol handler is registered under `HKCU\Software\Classes` (per-user, no administrator elevation needed). This is what lets the catalog's Extract buttons launch the desktop app from your browser.
+| 📁 **Game library** | The folder your `.zip`/`.rar`/`.7z` game archives live in. | `E:\Games\Steam Library` |
+| 📁 **App folder** | Where this copy of the app lives. | `E:\Games\Steam Game Organizer\target\release\` |
+| 📁 **Extract to** | Where games are unpacked to when you click Extract. Must be outside your game library. | `E:\Games\Extracted` |
 
 ### Step 4 — Drive letters auto-resolve (borrowed drives)
 
-If you are running from a borrowed hard drive whose drive letter changed, the app detects that the stored library path no longer exists and auto-resolves `library_root` to the folder beside the app. The library always lives next to the app whatever drive letter the drive gets. Extract folders are kept as stored, so you choose where extraction goes through the wizard rather than having a path silently rewritten.
+If you are running from a borrowed hard drive whose drive letter changed, the app detects that the stored library path no longer exists and auto-resolves `library_root` to the folder beside the app.
 
 ### Step 5 — Scan your library
 
-Back in the main window, click **Scan**. The app walks every category folder under your library root, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork), and builds a list of detected games.
+Back in the main window, click **Scan**. The app walks every category folder under your library root, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata, and builds a list of detected games.
 
 ### Step 6 — Review the detected games
 
-Open the **Review** screen. Each detected game shows its suggested category, matched AppID, and confidence. You can:
-- **Accept** a game to file it under the suggested category.
-- **Override** the category or Steam match if the app guessed wrong.
-- **Skip** a game to leave it out of the catalog.
-
-The app never guesses — it only matches an archive to Steam when it is confident. Two archives of the same game never compete: duplicates are swept so the newest version is promoted and older copies move to `Archive/` for your review.
+Open the **Review** screen. Each detected game shows its suggested category, matched AppID, and confidence. You can accept, override, or skip each game.
 
 ### Step 7 — Organize the library
 
@@ -439,79 +191,11 @@ Click **Organize**. The app files each accepted archive into `Category / Game �
 
 ### Step 8 — Open your catalog
 
-Click **Open catalog** (or open `Game Library.html` in your browser directly). This is a single self-contained HTML file with embedded CSS and vanilla JavaScript — no build step, no external requests. Every game card shows artwork, release date, developer, archive size, genre and tag chips, and action buttons: Play, Open in Steam, Open folder, Copy path, and Extract.
+Click **Open catalog** (or open `Game Library.html` in your browser directly). This is a single self-contained HTML file with embedded CSS and vanilla JavaScript — no build step, no external requests.
 
 ### Step 9 — Extract games (optional)
 
-From any game card, click **Extract** to unpack the archive to your chosen extract folder. The browser hands the request to the desktop app through the `steamgameorganizer://` protocol handler you registered in setup. You can also extract whole categories or the entire library with **Extract all** / **Extract remaining** — these confirm on evidence (archive count, total size, destination) before starting, so a large run cannot silently fill a drive.
-
-### Step 10 — Refresh catalog after external changes
-
-If you add, remove, or rearrange archives outside the app, click **Refresh catalog** so the unpacked badges and game list re-check what is actually on disk now.
-
-> [!TIP]
-> The `runtime/` folder inside the app makes the copy self-contained — Python 3.13, Tcl/Tk, and 7-Zip included. Windows 10 or later is required. The only thing a fresh copy needs is the one-time setup wizard (run automatically on first launch) to point the app at your library and extract folder and to register the `steamgameorganizer://` link so Extract buttons work from your browser.
-
----
-
-## 🧭 First launch — setup wizard
-
-On first launch the setup wizard opens and asks you to pick three folders:
-
-| Folder | What it is | Example |
-|--------|------------|---------|
-| 📁 **Game library** | Where your `.zip`/`.rar`/`.7z` archives live | `E:\Games\Steam Library` |
-| 📁 **App folder** | Where the app itself lives (detected automatically) | Frozen exe: `dist\steam_game_organizer\`<br>Source: project root where `steam_game_organizer.py` sits |
-| 📁 **Extract to** | Where extracted games go (any folder outside your library) | `E:\Games\Extracted` |
-
-The wizard validates the three folders — a library with no games, an app with no entry point, or an extract folder inside the library are refused. After setup, click **Scan**, review the detected games, click **Organize**, then open `Game Library.html` in your browser. Every game card has Extract, Play, Open installer, Open extracted, and Open source links.
-
-You can re-run the wizard anytime from the catalog page (**Set up on this PC** → `steamgameorganizer://setup`) or with `python tools\install_protocol_handler.py` for the registry side.
-
----
-
-## 🔗 Register the protocol handler (one time)
-
-So the catalog's `Extract` links work from the browser:
-
-```powershell
-python tools\install_protocol_handler.py
-```
-
-This registers `steamgameorganizer://` under `HKCU\Software\Classes` (per user, no elevation needed). After this, clicking an Extract link in `Game Library.html` hands the request to the desktop app. URI parsing and validation live in [`core/uri_actions.py`](core/uri_actions.py). The handler reads the value back afterwards to confirm the write actually succeeded — it never reports success it didn't verify.
-
-A command-line fallback shows on the catalog page if the protocol never opened.
-
----
-
-## ⌨️ Command-line flags
-
-`steam_game_organizer.py` (and the frozen exe) accepts these flags. CLI mode runs without tkinter.
-
-| Flag | What it does |
-|------|--------------|
-| `--setup` | Opens the three-folder setup wizard (game library, app folder, extract-to folder). Also runs on first launch automatically when no `settings.json` exists. |
-| `--uri steamgameorganizer://...` | Parses a `steamgameorganizer://` link — extract, extract-all, extract-multi, setup, open-extracted, play, pick-launcher, mark-installed, refresh-catalog, open-folder. Validates against `core/uri_actions.py` safety rules before acting. Every field is treated as hostile input: source must resolve inside the configured library root, must exist with an archive extension, and destination must not sit inside a system folder or the library itself. |
-| `--version` | Prints the app name and exits. |
-| `--diagnostics` | Runs `debug/diagnostics.py` — prints environment diagnostics, Python version, 7-Zip availability, runtime paths. |
-| `--health` | Runs a health check — verifies `runtime/7z.exe` presence, bundle layout, and app integrity. |
-| `--mock` | Uses the bundled mock Steam backend instead of live Steam Store API calls. Used in tests only; never ships to users. |
-
-Examples:
-
-```powershell
-# Register protocol handler links from the catalog
-steam_game_organizer.exe --uri steamgameorganizer://refresh-catalog
-
-# Check the app is healthy
-steam_game_organizer.exe --health
-
-# Print version
-steam_game_organizer.exe --version
-
-# Open setup wizard
-steam_game_organizer.exe --setup
-```
+From any game card, click **Extract** to unpack the archive to your chosen extract folder. You can also extract whole categories or the entire library.
 
 ---
 
@@ -525,153 +209,11 @@ flowchart TD
     D --> E[💾 Done<br/>Undo journal]
     E --> F[📖 Catalog<br/>Game Library.html]
 
-    subgraph "Phase 1: Discovery"
-    B1[Walk category folders under library root]
-    B2[Skip app's own project folder]
-    B3[Read .game-info.json sidecars]
-    B4[Record banner art + installer signature per game]
-    end
-
-    subgraph "Phase 2: Organize"
-    D1[Group archives by identity key]
-    D2[Promote newest version]
-    D3[Archive older copies → Archive/]
-    D4[Repack zip/rar → 7z, adaptive compression]
-    D5[Write metadata + Steam shortcut + artwork]
-    end
-
-    subgraph "Phase 3: Catalog"
-    F1[Generate Game Library.html]
-    F2[Generate Game Library.status.js]
-    F3[Embed CSS + vanilla JS, no external requests]
-    F4[Cards with Extract / Play / Open links]
-    end
-
-    B --> B1
-    B --> B2
-    B --> B3
-    B --> B4
-    D --> D1
-    D --> D2
-    D --> D3
-    D --> D4
-    D --> D5
-    F --> F1
-    F --> F2
-    F --> F3
-    F --> F4
-
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style F fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
-Phases run in order: **Discover → Organize → Catalog → Done**. Undo and Batch extract are independent entry points (Undo reads `config/last-organization.json`; Batch extract is triggered from the catalog page via `steamgameorganizer://` URI).
-
-| Phase | What happens | Code |
-|-------|--------------|------|
-| 🔍 **Discover** | `CatalogService._collect` walks every category folder under the library root, skips anything without an archive, skips the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game. Each archive is matched against Steam's store metadata (AppID, title, genres, tags, artwork URLs) via `services/steam_service.py` with confidence scoring so a weak match never overrides a strong one. | [`services/catalog_service.py`](services/catalog_service.py) — [`services/steam_service.py`](services/steam_service.py) |
-| ✅ **Verify** | `services/extract_service.py` confirms archive integrity and extraction completeness — no silent data loss. `find_tool()` / `find_unrar()` checks `PATH` then real install folders (`C:\Program Files\7-Zip`, `%ProgramFiles%\WinRAR`) because 7-Zip isn't on `PATH` on a normal PC. | [`services/extract_service.py`](services/extract_service.py) |
-| ✅ **Review** | `ui/review_view.py` shows every detected game with its suggested category, AppID, and confidence. You accept, override, or skip each one. Two archives of the same game never compete — duplicates are swept so the newest version is promoted and older copies move to `Archive/`. | [`ui/review_view.py`](ui/review_view.py) |
-| 📦 **Organize** | `services/organizer_service.py` moves archives into `Category / Game — release date` folders with metadata, Steam shortcuts, and artwork sidecars. Rebuilds `.zip`/`.rar` as `.7z` with adaptive compression tuned to free RAM. Writes happen atomically (temp-file + `os.replace` with retry on `PermissionError` for OneDrive locks). | [`services/organizer_service.py`](services/organizer_service.py) |
-| 🖼️ **Artwork** | `services/artwork_service.py` downloads Steam capsule/header/grid images and SteamGridDB portraits, keyed per AppID with a 10-day expiry cache. `services/banner_art.py` composes the card banner, falling back to a generated name-keyed banner so no card is ever a flat grey block. Stale cache entries are deleted on re-init. | [`services/artwork_service.py`](services/artwork_service.py) — [`services/banner_art.py`](services/banner_art.py) |
-| 📖 **Done** | `services/catalog_service.py` generates `Game Library.html` — embedded CSS + vanilla JS, no build step, no external requests — plus `Game Library.status.js`. The page carries per-game Extract / Play / Open links, category filters, genre chips, and "already unpacked" badges decided at generation time against configured extract roots using `.sgo-extract-info` markers. | [`services/catalog_service.py`](services/catalog_service.py) |
-| ↩️ **Undo** | `services/rollback_service.py` reads/writes `config/last-organization.json` JSON transaction journal. One Undo restores each archived file to its source and prunes only folders this run created into `Archive/` — never deletes a folder it didn't make. Ownership gating via `created_game_dir` means pre-existing folders belong to the user whatever they hold. | [`services/rollback_service.py`](services/rollback_service.py) |
-
----
-
-## 📄 Game Library.html — what the catalog page does
-
-`CatalogService.generate` writes `Game Library.html` plus `Game Library.status.js` beside the library root. The page is a single self-contained HTML file (embedded CSS + vanilla JS, no build step, no external requests) that you open in a browser. It is shown in the gallery as [📸 9. The catalog page](#-9-the-catalog-page--the-library-as-a-clickable-html-shelf).
-
-### Browse and filter
-
-- **Category rail on the left** with category → release year → recently added (7/14/30 day) → genre → tag chips. Counts beside each chip are counted from what is actually on disk, not from a fixed vocabulary, so a rail never shows filters that match nothing.
-- **Search box** filters against a per-card `data-search` haystack (name, category, developer, publisher, archive, release date, archive created, description, genres, tags). Cards hide/show inline; category counts recount themselves as filters narrow (`data-toc-count`), and empty sections grey out instead of vanishing so the library shape stays visible.
-- **Sort by Name / Newest / Oldest / Largest / Smallest / Recently added / Longest owned**, reordering each category's own grid. "Newest" and "Oldest" use the Steam release date; "Recently added" and "Longest owned" use when the archive file landed on disk. Tie-breaks fall back to name so the order never reshuffles arbitrarily.
-- **Card-size preset** (small/medium/large) and **theme toggle** (dark/light), both saved to `localStorage` so they survive a reload.
-- **Keyboard**: `/` focuses search, `Escape` clears all filters and multi-select, `Home` goes to top, `Enter` commits a typed path box.
-
-### Know the state of each game
-
-- **Hero stats**: total games, categories, with artwork, on-disk bytes, plus "Missing art", "To extract", "New version", "Hide extracted" — the last three are real toggle buttons when there is something to filter, plain tiles when there is nothing to act on.
-- **Each card shows**: artwork (Steam banner, or a generated name-keyed banner so no card is a flat grey block), release date, developer, archive created, archive file name + size, genre + tag chips (tags capped at four, overflow shown as `+N`), description truncated at 220 chars.
-- **Status badges** drawn from the same predicate the batch planner skips on, so a badge never claims a game is done that Extract all would unpack again:
-  - 🟢 **Unpacked** — archive unpacked into the configured destination folder
-  - 🟡 **Needs install** — unpacked but still an installer repack (payload relocated to a `Needs Install` folder)
-  - 🔵 **New version** — unpacked but the archive on disk has changed size/mtime since extraction
-  - 🔴 **Installer** — archive is an installer repack not yet unpacked
-  - ⚪ **No Steam match** — no AppID found (card still shows artwork/archive/size/path buttons; only the two Steam actions are missing)
-
-> [!NOTE]
-> Because `file://` pages cannot stat any folder, these badges are decided against the default destination folder at generation time. Typing a different destination retracts them immediately (`syncUnpackedBadges`) — a claim about a folder you just changed is taken back rather than left standing.
-
-### Open games, folders, and Steam
-
-- **Card art link** → Steam store page (`store.steampowered.com/app/<appid>`), or opens nothing with a clear reason when there is no Steam match.
-- **Open in Steam** → `steam://run/<appid>` Steam client link.
-- **Open** → `steamgameorganizer://open-folder?path=<folder>` opens the game's folder in Explorer, path rebuilt from the typed game-folder root so it follows a moved library.
-- **Copy path** → copies the full archive path to the clipboard (`execCommand` fallback, since `file://` pages are not a secure context and `navigator.clipboard` is unavailable).
-
-### Extract games through the app (the page cannot unpack anything itself)
-
-`file://` pages cannot open folders or run programs — that boundary is the whole point of the sandbox. Every extract goes through a `steamgameorganizer://extract` link, which the browser hands to the desktop after a confirmation.
-
-- **Single `Extract` per card**: source percent-encoded (library names are full of spaces/ampersands/quotes), destination taken from the typed box at click time (falls back to the first configured folder). No confirmation prompt — one archive is small and reversible.
-- **`Extract all` / `Extract remaining`** per category or whole library: confirmed on evidence (count, archive size, destination) before the run starts — `Extract all` on a 176-game library is one click from filling a drive. Skip logic skips games already unpacked to the destination.
-- **Multi-select mode**: reveal checkboxes, pick two or more games, extract them together as one `extract-multi://` batch.
-- **The destination box** offers configured folders as datalist suggestions but starts on the first; paths are rebuilt from the typed root at click time so they follow a moved library rather than being frozen to the machine that ran the scan.
-
-### Setup and refresh
-
-- **Set up on this PC** → `steamgameorganizer://setup`, carrying the typed game folder and extract destination so the wizard starts on them. A command-line fallback shows if the protocol never opened.
-- **Refresh catalog** → `steamgameorganizer://refresh-catalog`: re-walks the library and rewrites the page so Unpacked badges match what is actually on disk now. Needed because an extraction done outside the app leaves stale badges until regenerated.
-- **run-status banner** shows the last batch run result (`Game Library.status.js`, rewritten by the app after every batch run), summarised as a one-line chip in the rail so it stays visible when scrolled past.
-
-### Why this is one HTML file with embedded JS
-
-- A `file://` page cannot `fetch`/`XHR` anything, so a classic `<script src>` beside itself is the one external load allowed — that is `Game Library.status.js`, loaded before the inline script so batch results are on `window` when the script reads them.
-- `localStorage` is wrapped in try/catch because it throws outright on `file://` in some browsers rather than returning null.
-- `color-scheme` is set explicitly as `dark`/`light` rather than relying on OS preference, because the generated banner art and card scrims are tuned for dark.
-
----
-
-## 🔍 Extraction markers (.sgo-extract-info)
-
-Every archive the app extracts gets a `.sgo-extract-info` sidecar file written next to the extracted content. It records:
-
-- Archive size and mtime at extraction time
-- Extracted root folder path
-- `needs_install` flag (true if the archive unpacked to a Windows installer layout)
-- `launch_target` — the resolved playable `.exe` path, if launcher discovery found one
-- `setup_done` / `installed_at` — persisted from prior marker candidates across re-extract while recomputing extraction facts
-
-These markers let the catalog badges and the batch planner skip games already unpacked, and let `play` actions launch the right executable without re-scanning. `services/catalog_status.py` owns the marker helpers: `read_extract_marker`, `resolve_extracted_root`, `archive_has_changed_since_extraction`, `get_launch_target`, `update_extract_marker`, `mark_setup_done`.
-
-Launcher discovery (`discover_game_launchers`) conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools, scoring by depth/name/size, and returns a ranked list for your choice via **Pick launcher**. The chosen `launch_target` persists to `.sgo-extract-info` and subsequent Play actions use it.
-
----
-
-## ↩️ Undo journal
-
-Every organize move is journaled to `config/last-organization.json`. One Undo:
-
-- Restores each archived file to its source folder
-- Prunes only folders this run created into `Archive/` (never deletes a folder it did not make)
-- Moves empty categories left behind by re-categorisation to `Archive/` for review rather than deleting them
-
-`services/rollback_service.py` reads/writes the JSON transaction journal. Ownership gating via `created_game_dir` means pre-existing folders belong to the user whatever they hold — Undo never touches them.
-
----
-
-## 🔁 Drive letter resolution & moving PCs
-
-When the stored library path doesn't exist on this machine (e.g., a borrowed HD got a different drive letter), `AppConfig.load()` auto-resolves `library_root` to the folder beside the app. The library always lives next to the app whatever drive letter a borrowed HD gets.
-
-Extract folders are kept as stored, so you choose where extraction goes through the Setup wizard rather than having a path silently rewritten. To fully re-point folders on a new machine:
-
-1. Launch the app — the library auto-resolves to the folder beside the app.
-2. Open `Game Library.html` and click **Set up on this PC** (`steamgameorganizer://setup`) to re-point game folder and extract destination.
-3. Click **Refresh catalog** so Unpacked badges re-check disk against the new layout.
+Phases run in order: **Discover → Organize → Catalog → Done**. Undo is an independent entry point.
 
 ---
 
@@ -685,20 +227,15 @@ flowchart TD
     S3[project_overview.md]
     S4[CHANGELOG.md]
     S5[README.md]
-    S6[steam_game_organizer.py]
-    S7[app/]
-    S8[core/]
-    S9[services/]
-    S10[ui/]
-    S11[utils/]
-    S12[tests/]
-    S13[tools/]
+    S6[Cargo.toml]
+    S7[src/]
+    S8[tests/]
+    S9[tools/]
+    S10[assets/]
     end
 
     subgraph "Built / runtime (gitignored)"
-    R1[dist/ - frozen exe output]
-    R2[build/ - intermediate files]
-    R3[runtime/ - Python 3.13 + 7-Zip]
+    R1[target/ - build output]
     end
 
     subgraph "User state (gitignored)"
@@ -720,30 +257,56 @@ steam-game-organizer/
 ├── project_overview.md    # App purpose, data flow, key decisions
 ├── CHANGELOG.md           # Dated change log
 ├── README.md              # This file
-├── steam_game_organizer.py# Entry point (CLI + GUI launcher)
-├── steam_game_organizer.spec  # PyInstaller spec
-├── ruff.toml              # Lint contract
-├── app/                   # GUI application layer
-├── core/                  # Config, constants, models, logger, state, URI actions
-├── services/              # 13 business services
-├── ui/                    # Tkinter windows, widgets, theme, palette
-├── utils/                 # Filename utils, formatting, treewalk, desktop
-├── debug/                 # Diagnostics
-├── tests/                 # 30+ test modules (739 tests)
-├── tools/                 # build_frozen.py, bundle_runtime.py, protocol handler, audits
+├── Cargo.toml             # Rust crate manifest
+├── .cargo/                # Rust config (deny.toml, config.toml)
+├── src/                   # Rust source (converted modules)
+│   ├── lib.rs             # Crate root
+│   ├── errors.rs          # OrganizerError, CancellationError
+│   ├── state.rs           # Thread-safe StateStore
+│   ├── models.rs          # Data models (GameArchive, SteamMatch, etc.)
+│   ├── naming_utils.rs    # safe_name, release_label, game_name, version_key
+│   ├── library_summary.rs # Library index
+│   ├── logger.rs          # AppLogger with rotation
+│   ├── within.rs          # Path containment
+│   ├── safe_folder_name.rs # Windows-safe folder names
+│   ├── configured_bases.rs # Approved extract folders
+│   ├── system_paths.rs    # Protected system folders
+│   ├── setup_hint.rs      # Fresh-PC setup message
+│   ├── uri_actions.rs     # URI request dataclasses
+│   ├── path_safety.rs     # DeletionGuard, protected roots
+│   ├── typed_destination.rs # User-typed destination validation
+│   ├── destination_parent.rs # Extract destination resolution
+│   ├── prefill.rs         # Query value cleaning
+│   ├── category_folder.rs # Batch category validation
+│   ├── catalog_utils.rs   # Catalog helpers (safe_name, anchor, etc.)
+│   ├── organizer_utils.rs # zip encryption, process management
+│   ├── scan_view_utils.rs # Scan telemetry helpers
+│   ├── steam_query_utils.rs # Steam name scoring
+│   ├── parse_uri.rs       # URI parser
+│   ├── parse_open_folder_uri.rs
+│   ├── parse_setup_uri.rs
+│   ├── parse_extract_root_action.rs
+│   ├── parse_multi_uri.rs
+│   ├── parse_pick_launcher_uri.rs
+│   ├── parse_open_extracted_uri.rs
+│   ├── parse_mark_installed_uri.rs
+│   ├── parse_batch_uri.rs
+│   ├── treewalk.rs        # Junction-safe directory walk
+│   ├── desktop.rs         # open_folder, open_url
+│   └── formatting.rs      # human_size, human_duration
+├── tests/                 # Rust unit tests
+├── tools/                 # Build and utility scripts
 ├── assets/                # icon.ico, icon.svg
 ├── config/                # User settings (excluded from git)
 ├── cache/                 # Artwork cache (excluded from git)
 ├── logs/                  # Timestamped run logs (excluded from git)
 ├── backup/                # Timestamped 7z backups (excluded from git)
-├── dist/                  # Frozen build output (excluded from git)
-├── build/                 # Intermediate build files (excluded from git)
-└── runtime/               # Vendored Python 3.13 + 7-Zip (excluded from git)
+└── target/                # Build output (excluded from git)
 ```
 
 ### What is not committed
 
-`runtime/`, `dist/`, `build/`, `cache/`, `logs/`, `config/`, and `backup/` are excluded by `.gitignore`. Rebuilding from source restores defaults; [`tools/build_frozen.py`](tools/build_frozen.py) preserves `config/`, `cache/`, and `logs/` across rebuilds. `runtime/` must ship — nothing a user's PC needs is installed, so a `.gitignore` entry or a build step that drops `runtime/` breaks every copied folder. `.gitignore` deliberately has no entry for it.
+`target/`, `config/`, `cache/`, `logs/`, and `backup/` are excluded by `.gitignore`.
 
 ---
 
@@ -751,16 +314,11 @@ steam-game-organizer/
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Frozen exe won't start | `runtime/7z.exe` missing from bundle | Rebuild with `python tools\build_frozen.py` — it verifies `runtime/7z.exe` before reporting success |
-| `Extract` links do nothing from browser | Protocol handler not registered | Run `python tools\install_protocol_handler.py` once |
-| Library path shows as missing | Drive letter changed on this machine | Auto-resolves on next launch; click **Set up on this PC** to re-point |
-| Game badge says "Unpacked" but folder is empty | Badge decided at generation time | Click **Refresh catalog** to re-scan disk |
-| Extract all fills the drive | No skip check before starting | `Extract all` confirms on evidence (count, archive size, destination) before starting |
-| Steam match not found | Archive title doesn't match store data | Override in Review; the app never guesses — it only matches when confident |
-| `runtime/` folder missing after clone | `runtime/` is gitignored | Build it once with `tools\bundle_runtime.py` then `tools\build_frozen.py` |
-| Write fails with `PermissionError` | OneDrive or indexer holding a settings file | Atomic writes retry on `PermissionError`; close OneDrive-synced folders and retry |
-| Stale artwork / missing banners | Artwork cache expired or stale entries | Stale cache entries delete on re-init; re-run artwork download |
-| Archive reports "no archiver" | `runtime/` lifted out of `_internal/` failed | Rebuild with `python tools\build_frozen.py`; the lift step puts `runtime/` beside the exe |
+| Build fails linking | MinGW-w64 not on PATH | Add `C:\tools\mingw64\mingw64\bin` to PATH |
+| `cargo-audit` finds vulns | Outdated dependency | Update crate in `Cargo.toml` |
+| `cargo-deny` blocks license | Non-permissive license | Review and add to `.cargo/deny.toml` |
+| Library path shows as missing | Drive letter changed | Auto-resolves on next launch |
+| Write fails with PermissionError | OneDrive or indexer lock | Atomic writes retry; close synced folders and retry |
 
 ---
 
@@ -772,14 +330,14 @@ A: No. The app does not support or condone piracy. Use it only for games you own
 **Q: Does it need Steam installed?**
 A: No. It queries the Steam Store API at runtime for metadata — no Steam client required.
 
-**Q: Can it run on a machine without Python?**
-A: Yes. The frozen exe bundles Python 3.13, Tcl/Tk, and 7-Zip inside `runtime/`.
+**Q: Can it run on a machine without Rust installed?**
+A: Yes. The built executable is self-contained.
 
 **Q: Will it delete my games?**
 A: No. The app never deletes anything it didn't create. Empty categories and re-categorized leftovers are moved to `Archive/` for review.
 
 **Q: Can I undo an organize run?**
-A: Yes. Every organize move is journaled to `config/last-organization.json`; one Undo restores archives to their sources.
+A: Yes. Every organize move is journaled; one Undo restores archives to their sources.
 
 **Q: Does it work on other drives/machines?**
 A: Yes. Drive letters auto-resolve when the stored library path doesn't exist on the current machine, and extract folders are re-pointed through the Setup wizard.
@@ -787,57 +345,22 @@ A: Yes. Drive letters auto-resolve when the stored library path doesn't exist on
 **Q: Is my data sent anywhere?**
 A: No. Steam metadata is queried from the live Steam Store API at runtime; nothing is uploaded or shared.
 
-**Q: What's in `runtime/`, and can I delete it?**
-A: `runtime/` is the vendored Python 3.13 + Tcl/Tk + 7-Zip that makes the frozen exe self-contained. Do not delete it — nothing a user's PC needs is installed, and without it extraction reports no archiver. It's rebuilt locally by `tools\bundle_runtime.py` and excluded from git.
-
 ---
 
 ## 📊 Project status & public readiness
 
-### Status: Ready for public release
+### Status: In Rust conversion
 
-This project is ready to be made public. Here's what's ready:
-
-- **Code quality**: 98 Python source files across 8 directories, clean lint (`ruff check .` passes), comprehensive test suite (739 tests, 0 functional failures). The only collection-time errors are 4 pre-existing `test_regressions.py` indentation bugs unrelated to this codebase's behavior. Every test module is a `TestCase` (not a script with a `main()`), so discovery actually runs its tests — `tests/test_contrast.py` was once a script that discovery ran zero tests from, and that class of bug is now guarded against by `tests/test_zero_skips.py` (AST scan, not grep, so comments and docstrings naming skip constructs don't trigger it).
-- **Build pipeline**: Frozen exe builds successfully with PyInstaller via [`tools/build_frozen.py`](tools/build_frozen.py) — an onedir build (`console=False`, `exclude_binaries=True`). The lift step moves `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, `runtime/` out of `_internal/` into the bundle root because `steam_game_organizer.py` resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings; leaving them in `_internal/` puts `runtime/7z.exe` one folder out of reach and every extraction reports no archiver. Before wiping the old bundle it backs up `config/`, `cache/`, `logs/` into a temp dir and restores them after. It retries `rmtree` up to 5 times (Windows Defender or an indexer can hold a DLL open) and verifies `runtime/7z.exe` exists before reporting success. PyInstaller is installed in the bundled runtime so the frozen-build layout check runs. `dist/` and `build/` are build artefacts excluded by `.gitignore`; a fresh build writes an `EXE-00.toc` whose XML declaration reads `<?xml version="1.0"` which the release-structure version scanner reports as a declared version, so [`tests/test_release_structure.py`](tests/test_release_structure.py) excludes both directories from its walk.
-- **Documentation**: Comprehensive README (this file, user-facing), AGENTS.md operating instructions (build/test/lint/run/commit-after-build checklist), ARCHITECTURE.md module map and service inventory (all 35 modules with safety invariants and wiring diagrams), project_overview.md data flow and key decisions (do-not-re-litigate section), CHANGELOG.md with detailed YYYY-MM-DD HH:MM:SS timestamps.
-- **Security & privacy**: No hardcoded Steam game data in production code — Steam Store API is queried at runtime only, test fixtures are fictional data isolated to `--mock` mode and never shipped to users. URI validation and path safety checks in [`core/uri_actions.py`](core/uri_actions.py): every field treated as hostile input, source must resolve inside the configured library root, must exist with an archive extension, destination must not sit inside a system folder or the library itself. Protocol handler registered under `HKCU` (per-user, no elevation). Path safety uses `.resolve()` and validates against allowed roots (library root, app root), rejects traversal. Atomic writes follow temp-file + `os.replace` with retries for config/state files.
-
-### Test data privacy
-
-The `/tests/` directory contains test fixtures with fictional Steam game names and AppIDs (e.g., "Alpha Forge" with AppID 100001). These are:
-
-- **Deterministic fixtures** used only in `--mock` offline test mode
-- **Never shipped to users** and never queried during normal operation
-- **Fictional data** that does not correspond to real Steam games
-
-The production code contains zero hardcoded Steam data.
-
-### Public access level
-
-If made public, others will have:
-
-- **Download and read access only** — can download source code, read it, and build it locally for their own use
-- **No write access** — cannot push changes or modify the project on GitHub
-- **Collaborator access** — can be added individually through GitHub Settings → Collaborators
-
----
-
-## 🦀 Rust Conversion (in progress)
-
-This project is being converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch.
+This project is being converted from Python to Rust, one file at a time. Pure `core/` and `utils/` modules have been converted to `src/`. Services, app layer, and UI remain to be converted.
 
 | Status | Meaning |
 |--------|---------|
 | `python` | File still exists as `.py` — not yet converted |
 | `rust` | File replaced by a `.rs` module in `src/` |
-| `both` | `.py` kept for frozen-exe compatibility while `.rs` is being validated |
-
-Conversion order (dependencies first): pure `core/` and `utils/` modules → `services/` → `app/` → `ui/` (GUI last, hardest). Each converted file keeps a comment explaining what changed and why.
 
 Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
 
-Until the Rust entry point itself is converted, no frozen exe rebuild is required for pure-Rust files; only Python source changes trigger `python tools\build_frozen.py`.
+Until the Rust entry point itself is converted, Python source changes still trigger the frozen-exe rebuild pipeline.
 
 ---
 
@@ -850,60 +373,24 @@ Add a license here if you want others to reuse or modify the code. Without one, 
 
 ---
 
-## 📦 Bundled runtime components (`runtime/`)
-
-`runtime/` is built locally by [`tools/bundle_runtime.py`](tools/bundle_runtime.py) and is **not committed to git** — it's rebuilt from your own machine when you set up or rebuild the frozen exe. It contains third-party software, each under its own license:
-
-| Component | License | Notes |
-|-----------|---------|-------|
-| 🐍 **Python 3.13 + Tcl/Tk** | PSF License v2 | Permissive. Copyright notice retained in `runtime\LICENSE.txt`. |
-| 🗜️ **7-Zip (`7z.exe`)** | GNU LGPL + unRAR restriction | Permissive for use; LGPL source-offer obligations apply if you redistribute modified binaries publicly. |
-| 🖼️ **Pillow** | HPND | Permissive. Copyright notice retained. |
-| 🪟 **Microsoft VC++ redistributable** | Microsoft | Windows only; don't alter notices or imply endorsement. |
-
-`tools\bundle_runtime.py` writes a `THIRD-PARTY-NOTICES.txt` into `runtime/` with attribution for Python, 7-Zip, and Pillow.
-
----
-
 ## 🔗 Quick links to key code sections
 
 | Area | File | What it does |
 |------|------|--------------|
-| **Entry point** | [`steam_game_organizer.py`](steam_game_organizer.py) | CLI + GUI launcher. Parses command-line flags (`--setup`, `--uri`, `--version`, `--diagnostics`, `--health`, `--mock`), starts the Tkinter application when no CLI flag is given, and serves as the `steamgameorganizer://` URI handler target. Owns the app project root resolution via `Path(__file__).resolve().parent`. |
-| **Config** | [`core/config.py`](core/config.py) | `AppConfig` dataclass — reads/writes `config/settings.json` atomically (temp-file + `os.replace` with retry on `PermissionError` for OneDrive locks). Derives every path it writes from its project root (library root, extract folders, config/cache/logs/backup roots). Performs drive-letter resolution when the stored library path doesn't exist on the current machine. Detects first-launch (missing `settings.json` or nonexistent library root) to open the setup wizard. |
-| **Constants** | [`core/constants.py`](core/constants.py) | `USER_AGENT`, archive extensions (`.zip`/`.rar`/`.7z`), category list, compression thresholds (`ARCHIVE_APPID_MIN_SCORE`, `MEMORY_HEADROOM` for adaptive 7z compression), artwork cache TTL (10 days), batch size limits, UI palette and theme constants. |
-| **Models** | [`core/models.py`](core/models.py) | Plain-data containers: `GameArchive` (archive path, identity_key, appid, name, category, release_date, metadata), `SteamMatch` (appid, name, score, found flag), `ScanResult` (moved/failed/skipped counts, per-file decisions), `CatalogSummary` (index for categories, genres, developers, archive sizes). |
-| **URI actions** | [`core/uri_actions.py`](core/uri_actions.py) | Owns `SCHEME` (`steamgameorganizer://`) and `SYSTEM_PATHS` (folders a typed destination may not sit inside). Parses all actions: `extract`, `extract-all`, `extract-multi`, `setup`, `open-extracted`, `play`, `pick-launcher`, `mark-installed`, `refresh-catalog`, `open-folder`. Validates every field as hostile input — source must resolve inside the configured library root, must exist with an archive extension, destination must not sit inside a system folder or the library itself. |
-| **Logger** | [`core/logger.py`](core/logger.py) | `AppLogger` — timestamped, component-tagged logging. Creates one timestamped log file per launch under `logs/` (`organizer-<YYYYMMDD>-<HHMMSS>.log`), rotates by size (`MAX_BYTES` = 5 MB keeping `.1` and `.2` rolled files), keeps last 10 rotated logs, thread-locked writes, failed writes swallowed so logging never kills the run. `set_level` threshold and optional console output for CLI mode. `install_excepthook()` routes uncaught exceptions through the logger instead of a default traceback. |
-| **Application** | [`app/application.py`](app/application.py) | Composition root and lifecycle owner. Builds `MainWindow`, wires all services together, owns the single-window workflow shell. Derives its project root from `Path(__file__).resolve().parents[1]` and walks it for sibling service directories. |
-| **Controller** | [`app/controller.py`](app/controller.py) | Owns scan phases (discover → verify → review → organize → done). Duplicate sweep groups archives by identity key, promotes the newest version, archives older copies to `Archive/`. Generates the catalog, manages the undo journal, and maintains the appid-based reverse index (`_build_appid_index`, `_get_category_by_appid`) so an archive's own AppID outranks a stale title-keyed cache hit. |
-| **Archive service** | [`services/archive_service.py`](services/archive_service.py) | Archive discovery via `CatalogService._collect` — walks category folders under the library root, skips non-archive folders and the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game. Scan telemetry records what was found per category folder. |
-| **Batch extract** | [`services/batch_extract_service.py`](services/batch_extract_service.py) | Queues hours of 7z work with a visible progress window (`ui/batch_extract_window.py`). Skip-if-already-extracted check skips games already unpacked to the destination. Smallest-first sort. Per-result status written beside the catalog (`Game Library.status.js`). Installer layouts relocated to a `Needs Install` subfolder. |
-| **Catalog service** | [`services/catalog_service.py`](services/catalog_service.py) | Generates `Game Library.html` plus `Game Library.status.js` beside the library root. Single self-contained HTML file (embedded CSS + vanilla JS, no build step, no external requests). Composes banner art via `services/banner_art.py`. Retains a `LibrarySummary` index (categories, genres, developers, archive sizes) so screens can ask placement questions without re-walking. |
-| **Catalog status** | [`services/catalog_status.py`](services/catalog_status.py) | `Game Library.status.js` rewritten by the app after every batch run — summarised as a one-line chip in the catalog rail. Marker helpers owned here: `read_extract_marker`, `resolve_extracted_root`, `archive_has_changed_since_extraction`, `get_launch_target`, `update_extract_marker`, `mark_setup_done`. Launcher discovery (`discover_game_launchers`) conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filters installers/uninstallers/crash handlers/redistributables/helper tools, scores by depth/name/size, returns a ranked list for user choice via Pick launcher. |
-| **Extract service** | [`services/extract_service.py`](services/extract_service.py) | Finds the archive tool (`7z.exe` from `runtime/`), performs extraction, writes `.sgo-extract-info` markers beside extracted content (size, mtime, needs_install flag, launch_target, setup_done/installed_at). Confirms archive integrity — no silent data loss. |
-| **Installer detect** | [`services/installer_detect.py`](services/installer_detect.py) | Detects Windows installer layouts (`setup.exe` + `.bin`, `.iso`). Archives that unpack to an installer repack are routed to a `Needs Install` subfolder with an amber badge so the user knows extraction isn't finished. |
-| **Library service** | [`services/library_service.py`](services/library_service.py) | Whole-library audit — Steam link normalization plus artwork refresh. Reports per folder as it goes so long-running audits show progress. |
-| **Organizer service** | [`services/organizer_service.py`](services/organizer_service.py) | Category moves — files each archive into `Category / Game — release date` folders with metadata, Steam shortcuts, and artwork sidecars. Rebuilds `.zip`/`.rar` as `.7z` with adaptive compression tuned to free RAM. Older copies and re-categorized leftovers go to `Archive/` (with `(n)` collision suffixes) for review before deleting. Never deletes — `rmtree` is only a fallback when `library_root` is unknown. |
-| **Rollback service** | [`services/rollback_service.py`](services/rollback_service.py) | Undo journal — reads/writes `config/last-organization.json` transaction journal. One Undo restores each archived file to its source and prunes only folders this run created into `Archive/` (never deletes a folder it didn't make). Ownership gating via `created_game_dir` — pre-existing folders belong to the user whatever they hold. |
-| **Setup service** | [`services/setup_service.py`](services/setup_service.py) | Three-folder setup wizard validation — game library, app folder, extract-to folder. Registers `steamgameorganizer://` under `HKCU\Software\Classes` (per user, no elevation needed). Reads the value back afterwards rather than reporting success it didn't verify. |
-| **Steam service** | [`services/steam_service.py`](services/steam_service.py) | Queries the live Steam Store API at runtime for metadata (AppID, title, genres, tags, artwork URLs). Mock backend (`_mock`) used only in `--mock` offline test mode with fictional game data — never ships to users. Confidence scoring on matches; filename_appid mismatch fallback when the archive's embedded AppID conflicts with the Steam title match. |
-| **Artwork service** | [`services/artwork_service.py`](services/artwork_service.py) | Cached Steam artwork retrieval — capsule, header, and grid images plus SteamGridDB portraits. Keyed per AppID with a 10-day expiry cache. Deletes stale cache entries on re-init. |
-| **Banner art** | [`services/banner_art.py`](services/banner_art.py) | Composes the banner image shown on each game card. Falls back to a generated name-keyed banner so no card is ever a flat grey block. |
-| **Main window** | [`ui/main_window.py`](ui/main_window.py) | Single-window workflow shell with left nav rail. Five main views (scan, review, organize, artwork, done). Maximizes itself on start (`state('zoomed')`) — full screen only. |
-| **Views** | [`ui/`](ui/) | Five view modules: `scan_view.py` (discover archives), `review_view.py` (accept/override/skip per detected game), `organize_view.py` (category moves), `artwork_view.py` (download artwork), `done_view.py` (moved/failed/skipped report with Open buttons). |
-| **Batch window** | [`ui/batch_extract_window.py`](ui/batch_extract_window.py) | Visible queue for hours of 7z work — Extract all / Extract remaining per category or whole library. Confirms on evidence (count, archive size, destination) before starting. Skip logic skips games already unpacked there. |
-| **Setup window** | [`ui/setup_window.py`](ui/setup_window.py) | Three-folder setup wizard — game library, app folder (detected automatically), extract-to. Prefills text boxes from `steamgameorganizer://setup` URI links. Runs on first launch before the GUI when no `settings.json` exists. |
-| **Theme** | [`ui/theme.py`](ui/theme.py) | ttk theme builder — shared widgets, palette re-export, dark/light theme toggle saved to `localStorage` in the catalog. |
-| **Palette** | [`ui/palette.py`](ui/palette.py) | Colours in one place — dark and light variants, WCAG contrast audited. All colour pairs audited by `tests/test_contrast.py`. |
-| **Filename utils** | [`utils/filename_utils.py`](utils/filename_utils.py) | `normalize_name()` — strips packaging words (release tags, dates, build stamps) from any string based on shape, not specific titles. `identity_key()` — grouping key for duplicate sweep. `version_key()` — version extraction. No aliasing of real titles — fictional names used in tests only. |
-| **Formatting** | [`utils/formatting.py`](utils/formatting.py) | Human-readable sizes and durations for the catalog and logs. |
-| **Desktop** | [`utils/desktop.py`](utils/desktop.py) | `os.startfile`-based folder/URL opening with `CREATE_NO_WINDOW`. Windows-only — no POSIX branches. |
-| **Treewalk** | [`utils/treewalk.py`](utils/treewalk.py) | Junction/symlink-safe recursive walk. Skips the app's own project folder so the app never sweeps itself. Path safety: resolves with `.resolve()` and validates against allowed roots, rejects traversal. |
-| **Diagnostics** | [`debug/diagnostics.py`](debug/diagnostics.py) | Diagnostics and health report output — environment info, Python version, 7-Zip availability, runtime paths. Backs the `--diagnostics` and `--health` CLI flags. |
-| **Build frozen** | [`tools/build_frozen.py`](tools/build_frozen.py) | PyInstaller pipeline (onedir build, `console=False`, `exclude_binaries=True`). Lift step moves `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, `runtime/` out of `_internal/` into the bundle root. Backs up `config/`, `cache/`, `logs/` to temp before wiping the old bundle and restores after. Retries `rmtree` up to 5 times (Windows Defender/indexer locks). Verifies `runtime/7z.exe` exists before reporting success. |
-| **Bundle runtime** | [`tools/bundle_runtime.py`](tools/bundle_runtime.py) | Copies Python 3.13 + Tcl/Tk and 7-Zip from the machine's installs into `runtime/`. Writes `python313._pth`, `THIRD-PARTY-NOTICES.txt`, `LICENSE.txt`. `runtime/` is vendored, not this project's code — excluded from lint/version scans. |
-| **Protocol handler** | [`tools/install_protocol_handler.py`](tools/install_protocol_handler.py) | Registers `steamgameorganizer://` under `HKCU\Software\Classes` (per user, no elevation needed). Reads the value back afterwards to confirm the write succeeded. No `.desktop`/`xdg-mime` path — Windows only. |
+| **Crate root** | [`src/lib.rs`](src/lib.rs) | Module declarations for all converted modules |
+| **Data models** | [`src/models.rs`](src/models.rs) | `GameArchive`, `SteamMatch`, `ScanResult`, `OrganizationDecision`, `ArtworkResult`, `ConversionResult`, `AppState` |
+| **Naming** | [`src/naming_utils.rs`](src/naming_utils.rs) | `safe_name`, `release_label`, `game_name`, `asset_prefix`, `modified_at`, `unique_dir`, `version_key` |
+| **Library index** | [`src/library_summary.rs`](src/library_summary.rs) | `LibrarySummary` with `categories_for_genres` and `precedent_for` |
+| **Logging** | [`src/logger.rs`](src/logger.rs) | `AppLogger` with size-based rotation, level thresholds, thread-safe writes |
+| **URI actions** | [`src/uri_actions.rs`](src/uri_actions.rs) | `ExtractRequest`, `BatchExtractRequest`, `MultiBatchRequest`, `UriRefused` |
+| **Path safety** | [`src/path_safety.rs`](src/path_safety.rs) | `DeletionGuard`, `is_within`, `protected_roots`, `safe_rmtree`, `safe_unlink` |
+| **URI parsing** | [`src/parse_uri.rs`](src/parse_uri.rs) | `parse_uri()` — `steamgameorganizer://extract` |
+| **Filename utils** | [`src/filename_utils.rs`](src/filename_utils.rs) | `normalize_name`, `identity_key`, `version_key` |
+| **Formatting** | [`src/formatting.rs`](src/formatting.rs) | `human_size`, `human_duration`, `clock_stamp` |
+| **Treewalk** | [`src/treewalk.rs`](src/treewalk.rs) | Junction-safe recursive directory walk |
+| **Desktop** | [`src/desktop.rs`](src/desktop.rs) | `open_folder`, `open_url` |
+| **Organizer utils** | [`src/organizer_utils.rs`](src/organizer_utils.rs) | `zip_is_encrypted`, `looks_like_resource_failure`, `defender_flagged`, `still_running`, `stop_tool`, `pid_is_alive` |
+| **Catalog utils** | [`src/catalog_utils.rs`](src/catalog_utils.rs) | `safe_name`, `clean_tags`, `archive_size`, `find_banner`, `store_url`, `anchor`, `batch_uri`, `batch_button` |
 
 ---
 
@@ -917,25 +404,29 @@ If you plan to modify code, read [`AGENTS.md`](AGENTS.md) first — it is the op
 | **ARCHITECTURE.md** | Module map, service inventory, wiring diagrams | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | **project_overview.md** | What the app does, data flow, key decisions, catalog mechanics | [`project_overview.md`](project_overview.md) |
 | **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
-| **CONTRIBUTING.md** | Contributing guide, change workflow, commit message conventions | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
 ### GitHub CI
 
-Every push and pull request runs [`tools/quality_gate.py`](tools/quality_gate.py) via GitHub Actions:
+Every push and pull request runs quality checks via GitHub Actions:
 
 | Step | Tool | Fails the gate? |
 |------|------|-----------------|
-| 1 | ruff lint check | Yes |
-| 2 | bandit security scan (medium+ issues) | Yes |
-| 3 | pip-audit dependency vulnerability check | Yes |
-| 4 | vulture dead code scan | No (advisory only) |
-| 5 | mypy type check | Yes |
-| 6 | pytest suite with coverage | Yes |
-| 7 | OCR UI tests (all screens, error windows) | Yes |
+| 1 | cargo clippy --all-targets | Yes |
+| 2 | cargo test | Yes |
+| 3 | cargo-audit | Yes |
+| 4 | cargo-deny | Yes |
 
-### Quality tools installed in the bundled runtime
+### Quality tools installed
 
-`pytesseract` + Tesseract OCR, `opencv-python-headless`, `pywinauto`, `pywin32`, `bandit`, `pip-audit`, `vulture`, `pytest-mock`, `freezegun`, `pytest-cov`.
+- `cargo-audit` — Rust dependency vulnerability scanning
+- `cargo-deny` — License and dependency policy checking
+- `cargo-expand` — Macro expansion for debugging
+- `cargo-llvm-cov` — Code coverage
+- `cargo-watch` — Auto-rebuild on file changes
+- `rustfmt` — Code formatting
+- `clippy` — Linting
+- MinGW-w64 — GNU target compilation (`dlltool.exe`)
+- Tesseract OCR — External tool for OCR UI verification
 
 ### Pushing changes to GitHub
 
@@ -944,15 +435,19 @@ Every change goes through the full quality gate before it lands on `main`. Push 
 ```powershell
 git checkout -b feature/your-change
 # ... edit files ...
+cargo fmt
+cargo clippy --all-targets
+cargo test
+cargo-audit
+cargo-deny check
 git add <changed-files>
 git commit -m "type(scope): short summary"
 git push origin feature/your-change
 ```
 
-CI runs `tools\quality_gate.py` on every push and pull request (ruff, bandit, pip-audit, vulture, mypy, pytest, OCR). All checks must pass before merging.
+CI runs cargo clippy, cargo test, cargo-audit, and cargo-deny on every push and pull request. All checks must pass before merging.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the complete contributor workflow, commit message conventions, and Definition of Done.
-
+See [`AGENTS.md`](AGENTS.md) for the complete contributor workflow, commit message conventions, and Definition of Done.
 
 ---
 

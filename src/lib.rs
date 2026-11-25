@@ -7,6 +7,7 @@
 //! lint-clean.
 
 pub mod canonical_category;
+pub mod catalog_utils;
 pub mod category_evidence;
 pub mod category_folder;
 pub mod configured_bases;

@@ -17,8 +17,3 @@ pub fn parse_mark_installed_uri(
 ) -> Result<PathBuf, UriRefused> {
     parse_extract_root_action(uri, extract_folders, "mark-installed", true)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-}

@@ -158,10 +158,7 @@ mod windows_api {
     }
 
     pub fn terminate_process(pid: u32) -> Result<(), u32> {
-        let handle = match open_process_query(pid) {
-            Ok(h) => h,
-            Err(e) => return Err(e),
-        };
+        let handle = open_process_query(pid)?;
         let result = unsafe { TerminateProcess(handle, 1) };
         let _ = close_handle(handle);
         if result != FALSE {

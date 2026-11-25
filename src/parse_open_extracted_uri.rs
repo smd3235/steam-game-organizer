@@ -5,7 +5,7 @@
 //! 2026-11-24: Converted from `core/parse_open_extracted_uri.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::configured_bases::configured_bases;
 use crate::setup_hint::setup_hint;

@@ -89,7 +89,7 @@ pub fn parse_multi_uri(
             archive
                 .extension()
                 .and_then(|e| e.to_str())
-                .map_or(false, |e| e.eq_ignore_ascii_case(ext))
+                .is_some_and(|e| e.eq_ignore_ascii_case(ext))
         }) {
             return Err(UriRefused::new(&format!(
                 "Not an archive this can unpack: {}",
@@ -97,7 +97,7 @@ pub fn parse_multi_uri(
             )));
         }
         let leaf = safe_folder_name(
-            &archive.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
+            archive.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
             "game",
         );
         archives.push((archive.clone(), parent.join(&leaf)));
