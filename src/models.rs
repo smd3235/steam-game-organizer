@@ -122,7 +122,7 @@ impl Default for OrganizationDecision {
 }
 
 /// One discovered archive, with its Steam match, artwork, decision, and conversion result.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GameArchive {
     pub path: PathBuf,
     pub display_name: String,

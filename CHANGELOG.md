@@ -23,6 +23,11 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: convert core/controller_utils.py to Rust
+- `src/controller_utils.rs`: Converted from `core/controller_utils.py` — `artwork_present`, `primary`, `needs_conversion`, `primary_size`, `prune_rolled_back_folder`
+- `src/models.rs`: Added `Default` derive to `GameArchive`
+- `core/controller_utils.py`: Removed after successful Rust conversion.
+
 ### 2026-11-24 — feat: convert core/prefill.py, core/category_folder.py to Rust
 - `src/prefill.rs`: Converted from `core/prefill.py` — `prefill()` cleans query values for text boxes.
 - `src/category_folder.rs`: Converted from `core/category_folder.py` — `category_folder()` validates batch category names.
