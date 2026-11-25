@@ -23,6 +23,37 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: HH:MM:SS log timestamps and real file logging in GUI path
+
+- `src/core/logger.rs`: Changed timestamps from raw epoch seconds to `HH:MM:SS` format for human-readable log lines
+- `src/bin.rs`: Wired real `AppLogger` writing to `logs/organizer-<timestamp>.log` with console output for GUI mode; resolve project root via `Cargo.toml` search
+- `src/app/application.rs`: `Application::new()` now accepts an `Arc<AppLogger>` and routes info-level logs through it instead of a noop closure
+- `src/entry.rs`: GUI path creates a timestamped log file under `logs/` and passes the logger to `Application::new()`; updated `resolve_project_root()` to search for `Cargo.toml`
+- `src/core/config.rs`: Import `chrono::Utc` for log filename timestamp generation (already a dependency)
+
+### 2026-11-25 — feat: add debugging, audit logging, and health checks
+
+- `src/core/debug.rs`: New module with `safe_run()` (panic recovery), `audit()` (audit trail), `health_check()` / `print_health_report()` (subsystem health checks)
+- `src/services/organizer_service.rs`: Added audit logging to `_repack_with_official_name()` (start, extraction, repack success/failure) and `move_archive()` (start, success, failure)
+- `src/services/library_service.rs`: Added audit logging to `convert_pending_archives()` (start, each archive conversion, end)
+- `src/entry.rs`: Wired `--health` CLI flag to `print_health_report()` for pre-flight diagnostics
+
+### 2026-11-25 — feat: implement archive repacking in organizer_service
+
+- `src/services/organizer_service.rs`: Implemented `_repack_with_official_name()` — extracts archives, renames content folders to official Steam names, repacks as .7z with adaptive compression, verifies integrity, and publishes the rebuilt archive
+- `src/services/library_service.rs`: Implemented `convert_pending_archives()` — iterates pending archives and calls organizer_service for conversion, with cancel support and progress reporting
+- Removed stub implementations for both methods
+
+### 2026-11-25 — feat: complete Rust conversion, remove Python source and tests
+
+- All Python source files converted to Rust: `core/`, `services/`, `app/`, `ui/`, `debug/`, `steam_game_organizer.py`, `fix_scan_view2.py`
+- All Python test files removed (`tests/`); Rust inline tests now cover all modules (213 passing, 0 failed)
+- `src/` organized into folders: `core/`, `services/`, `app/`, `ui/`, `tools/`
+- `src/bin.rs` and `src/entry.rs` replace `steam_game_organizer.py` as the CLI/GUI entry point
+- `steam_game_organizer.spec` and `tools/build_frozen.py` removed; `cargo build --release` produces the exe directly
+- `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, `README.md` updated to remove Python/Tkinter references
+- 7-Zip (`runtime/7z.exe`) is NOT bundled into the exe — must be provided separately alongside the exe
+
 ### 2026-11-25 — feat: convert plan_batch to Rust
 - `src/plan_batch.rs`: Converted from `services/plan_batch.py` — `plan_batch()` plans batch extraction without unpacking, sorts by size smallest-first, handles installer archives with Needs Install dir, skips already-extracted games
 - `services/plan_batch.py`: Removed after successful Rust conversion.

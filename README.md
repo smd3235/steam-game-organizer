@@ -259,42 +259,8 @@ steam-game-organizer/
 ├── README.md              # This file
 ├── Cargo.toml             # Rust crate manifest
 ├── .cargo/                # Rust config (deny.toml, config.toml)
-├── src/                   # Rust source (converted modules)
-│   ├── lib.rs             # Crate root
-│   ├── errors.rs          # OrganizerError, CancellationError
-│   ├── state.rs           # Thread-safe StateStore
-│   ├── models.rs          # Data models (GameArchive, SteamMatch, etc.)
-│   ├── naming_utils.rs    # safe_name, release_label, game_name, version_key
-│   ├── library_summary.rs # Library index
-│   ├── logger.rs          # AppLogger with rotation
-│   ├── within.rs          # Path containment
-│   ├── safe_folder_name.rs # Windows-safe folder names
-│   ├── configured_bases.rs # Approved extract folders
-│   ├── system_paths.rs    # Protected system folders
-│   ├── setup_hint.rs      # Fresh-PC setup message
-│   ├── uri_actions.rs     # URI request dataclasses
-│   ├── path_safety.rs     # DeletionGuard, protected roots
-│   ├── typed_destination.rs # User-typed destination validation
-│   ├── destination_parent.rs # Extract destination resolution
-│   ├── prefill.rs         # Query value cleaning
-│   ├── category_folder.rs # Batch category validation
-│   ├── catalog_utils.rs   # Catalog helpers (safe_name, anchor, etc.)
-│   ├── organizer_utils.rs # zip encryption, process management
-│   ├── scan_view_utils.rs # Scan telemetry helpers
-│   ├── steam_query_utils.rs # Steam name scoring
-│   ├── parse_uri.rs       # URI parser
-│   ├── parse_open_folder_uri.rs
-│   ├── parse_setup_uri.rs
-│   ├── parse_extract_root_action.rs
-│   ├── parse_multi_uri.rs
-│   ├── parse_pick_launcher_uri.rs
-│   ├── parse_open_extracted_uri.rs
-│   ├── parse_mark_installed_uri.rs
-│   ├── parse_batch_uri.rs
-│   ├── treewalk.rs        # Junction-safe directory walk
-│   ├── desktop.rs         # open_folder, open_url
-│   └── formatting.rs      # human_size, human_duration
-├── tests/                 # Rust unit tests
+├── src/                   # Rust source (all modules)
+│   ├── tools/                 # Build and utility scripts
 ├── tools/                 # Build and utility scripts
 ├── assets/                # icon.ico, icon.svg
 ├── config/                # User settings (excluded from git)
@@ -349,19 +315,9 @@ A: No. Steam metadata is queried from the live Steam Store API at runtime; nothi
 
 ## 📊 Project status & public readiness
 
-### Status: In Rust conversion
+### Status: Rust conversion complete
 
-This project is being converted from Python to Rust, one file at a time. Pure `core/` and `utils/` modules have been converted to `src/`. Services, app layer, and UI remain to be converted.
-
-| Status | Meaning |
-|--------|---------|
-| `python` | File still exists as `.py` — not yet converted |
-| `rust` | File replaced by a `.rs` module in `src/` |
-
-Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
-
-Until the Rust entry point itself is converted, Python source changes still trigger the frozen-exe rebuild pipeline.
-
+All application source code has been converted from Python to Rust. The app builds as a self-contained Windows executable via cargo build --release. No Python, PyInstaller, or Tcl/Tk is required to run the app.
 ---
 
 ## ⚖️ License
@@ -381,7 +337,7 @@ Add a license here if you want others to reuse or modify the code. Without one, 
 | **Data models** | [`src/models.rs`](src/models.rs) | `GameArchive`, `SteamMatch`, `ScanResult`, `OrganizationDecision`, `ArtworkResult`, `ConversionResult`, `AppState` |
 | **Naming** | [`src/naming_utils.rs`](src/naming_utils.rs) | `safe_name`, `release_label`, `game_name`, `asset_prefix`, `modified_at`, `unique_dir`, `version_key` |
 | **Library index** | [`src/library_summary.rs`](src/library_summary.rs) | `LibrarySummary` with `categories_for_genres` and `precedent_for` |
-| **Logging** | [`src/logger.rs`](src/logger.rs) | `AppLogger` with size-based rotation, level thresholds, thread-safe writes |
+| **Logging** | [`src/core/logger.rs`](src/core/logger.rs) | `AppLogger` with size-based rotation, level thresholds, thread-safe writes, `HH:MM:SS` timestamps |
 | **URI actions** | [`src/uri_actions.rs`](src/uri_actions.rs) | `ExtractRequest`, `BatchExtractRequest`, `MultiBatchRequest`, `UriRefused` |
 | **Path safety** | [`src/path_safety.rs`](src/path_safety.rs) | `DeletionGuard`, `is_within`, `protected_roots`, `safe_rmtree`, `safe_unlink` |
 | **URI parsing** | [`src/parse_uri.rs`](src/parse_uri.rs) | `parse_uri()` — `steamgameorganizer://extract` |

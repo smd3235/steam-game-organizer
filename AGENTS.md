@@ -3,11 +3,11 @@
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
 [![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
-[![Lint: ruff + clippy](https://img.shields.io/badge/lint-ruff%20%7C%20clippy-important.svg)](ruff.toml)
-[![Tests: pytest + cargo test](https://img.shields.io/badge/tests-pytest%20%7C%20cargo%20test-success.svg)](tests/)
+[![Lint: cargo clippy](https://img.shields.io/badge/lint-cargo%20clippy-important.svg)](Cargo.toml)
+[![Tests: cargo test](https://img.shields.io/badge/tests-cargo%20test-success.svg)](src/)
 
 > [!IMPORTANT]
-> **Windows is the only platform.** There is no second environment to keep green. The Flatpak/SteamOS target is gone. Anything that branches on platform should raise or return a refusal rather than keep a second implementation.
+> **Windows is the only platform.** There is no second environment to keep green. Anything that branches on platform should raise or return a refusal rather than keep a second implementation.
 
 ---
 
@@ -18,12 +18,10 @@
 | Read this doc first (start here) | [⚠️ Rules at a Glance](#-rules-at-a-glance) |
 | Set up the dev environment | [🛠️ Prerequisites & Setup](#-prerequisites--setup) |
 | Make a code change (step-by-step) | [🔄 The Change Workflow](#-the-change-workflow) |
-| Rebuild the frozen exe | [🏗️ Build — Frozen Exe Pipeline](#-build--frozen-exe-pipeline) |
-| Understand the bundled runtime | [📦 The Bundled Runtime](#-the-bundled-runtime) |
+| Build the release exe | [🏗️ Build — Release Exe](#-build--release-exe) |
 | Understand logging | [📝 Logging](#-logging) |
 | Understand test hygiene | [🧪 Testing](#-testing) |
 | Run lint checks | [🧹 Lint](#-lint) |
-| Capture/delete screenshots | [📸 Screenshots: capture, analyse, delete](#-screenshots-capture-analyse-delete) |
 | Run long-running commands | [⏱️ Long-Running Commands](#-long-running-commands) |
 | Git/GitHub workflow | [🔀 Git / GitHub Workflow](#-git--github-workflow) |
 | Keep docs accurate | [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) |
@@ -41,33 +39,29 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 |------|---------|------|
 | **AGENTS.md** | Operating manual: how to build, test, lint, run, commit, and push on Windows | [`AGENTS.md`](AGENTS.md) |
 | **ARCHITECTURE.md** | Module map and service inventory: what each module does and how they wire together | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
-| **project_overview.md** | What the app does, data flow, key decisions, catalog page mechanics | [`project_overview.md`](project_overview.md) |
+| **project_overview.md** | What the app does, its data flow, key decisions, and the catalog page mechanics | [`project_overview.md`](project_overview.md) |
 | **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
 | **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
-**Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate).
+**Rule:** when a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate).
 
 ---
 
-## 🦀 Rust Conversion (in progress)
+## 🦀 Rust Conversion
 
-This project is being converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch. No frozen exe rebuild is required for pure-Rust files until the entry point itself is converted.
+This project has been converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch. All source code is now in Rust under `src/`.
 
 | Status | Meaning |
 |--------|---------|
-| `python` | File still exists as `.py` — not yet converted |
-| `rust` | File replaced by a `.rs` module in `src/` |
-| `both` | `.py` kept for frozen-exe compatibility while `.rs` is being validated |
+| `rust` | File is a `.rs` module in `src/` |
 
-Conversion order (dependencies first): pure `core/` and `utils/` modules → `services/` → `app/` → `ui/` (GUI last, hardest). Each converted file keeps a comment explaining what changed and why, matching the Python comment rule.
-
-Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
+Rust source lives in `src/` alongside this doc. `Cargo.toml` is at the project root. `cargo build --release` produces a self-contained `.exe` at `target/release/steam-game-organizer.exe`.
 
 ---
 
 ## ⚠️ Rules at a Glance
 
-These are the non-negotiable rules. Every change to this project must satisfy all of them. They are referenced by [The Change Workflow](#-the-change-workflow) and [Definition of Done](#-definition-of-done-mandatory) rather than repeated there.
+These are the non-negotiable rules. Every change to this project must satisfy all of them.
 
 | Rule | What it means |
 |------|---------------|
@@ -75,30 +69,12 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 | **Comment on every change** | Every changed file must include a comment explaining what changed and why. |
 | **Push to GitHub on every change** | After commit + local verification, push so the public repo reflects the current state. Never leave work committed locally only. |
 | **Changelog with every change** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
-| **Frozen exe required** | **If you change ANY Python source code, you MUST rebuild with `python tools\build_frozen.py` before considering the task complete.** Pure-Rust files (`src/`) do not require a frozen rebuild until the entry point is converted. The user runs ONLY the frozen exe in `dist/steam_game_organizer/`, never from source. Source changes without a rebuilt exe do not reach the user. |
-| **Never edit build artifacts** | `dist/`, `build/`, `runtime/` are read-only outputs. Treat them as vendored, never modify. |
-| **Tests must not pollute repo state** | Use `tests/tk_support.py:sandbox_app` for tests that create `AppConfig`/windows/writes. Never write to real `config/`, `cache/`, or `logs/`. Rust tests must also not write under real `config/`, `cache/`, or `logs/` — use temp dirs. |
-| **Atomic writes** | Follow temp-file + `os.replace` with retries for config/state files (Python). Rust equivalent: temp-file + atomic rename via `std::fs::rename`. |
+| **Build artifacts** | `target/`, `dist/`, `cache/`, `logs/`, `config/` are build/test outputs — never commit them. |
+| **Tests must not pollute repo state** | Rust tests must not write under real `config/`, `cache/`, or `logs/` — use temp dirs. |
+| **Atomic writes** | Follow temp-file + atomic rename via `std::fs::rename` for config/state files. |
 | **No screenshots left behind** | Delete any `*.png` screenshots created during checks. None in repo root when finished. |
-| **Scratch files stay in the project** | Never create temp files in `C:\Users\<user>\AppData\Local\Temp\kilo\` — or in any other folder outside this repository. Put throwaway scripts, generated HTML, captured images and redirects under `temp\` at the project root (gitignored), and delete them when finished. The only exception is `docs/screenshots/`, which is the committed README gallery. |
-| **Docs stay accurate** | If a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change. |
-
-
----
-
-> [!IMPORTANT]
-> **Frozen exe required — MANDATORY.** If you change ANY source code, you MUST rebuild with `python tools\build_frozen.py` before considering the task complete. The user runs ONLY the frozen exe in `dist/steam_game_organizer/`, never from source. Source changes without a rebuilt exe do not reach the user. Source changes without a rebuilt exe do not reach the user.
-
----
-
-> [!IMPORTANT]
-> **Push the full project to GitHub — MANDATORY.** After ANY change (source, docs, tools, changelog), you MUST:
-> 1. **Update ALL affected markdown docs** (`AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, `README.md`, `CHANGELOG.md`) BEFORE pushing. Docs that describe behavior must match the code — if behavior changed, docs changed too, in the same commit.
-> 2. **`git add -A`** the entire project — source, docs, changelog, everything. Never push only selected files.
-> 3. **Commit** with a descriptive conventional message.
-> 4. **`git push origin main`** so GitHub always reflects the current state.
-> 
-> Never leave work committed locally only. Never push source changes without updated docs. Never push docs without source changes. The public repository must always match what runs on your machine.
+| **Scratch files stay in the project** | Never create temp files outside this repository. Put throwaway scripts under `temp\` at the project root (gitignored), and delete them when finished. The only exception is `docs/screenshots/`, which is the committed README gallery. |
+| **Docs stay accurate** | If a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change. |
 
 ---
 
@@ -108,36 +84,27 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 
 | You want to… | What you need | How to get it |
 |--------------|---------------|---------------|
-| **Run the frozen exe** (`dist\steam_game_organizer\steam_game_organizer.exe`) | **Nothing.** Ships with Python 3.13, Tcl/Tk, and 7-Zip bundled inside `runtime/`. | Download latest release from GitHub, or build it yourself. |
-| **Run from source** (`runtime\python.exe steam_game_organizer.py`) | Python 3.13 (the bundled runtime works if already built). | [python.org](https://www.python.org/downloads/windows/) — install for all users, check "Add Python to PATH". |
-| **Develop / change code** | Python 3.13 + `ruff` + `PyInstaller`; **Rust** (`cargo`, `rustc`, `clippy`) for converted `src/` modules; **Git Bash** recommended shell on Windows (PowerShell interprets Rust's `<`/`>` generics as redirection). | See Development toolchain below. |
-| **Build frozen exe / bundle runtime** | Python 3.13 + 7-Zip + PyInstaller. | See [🏗️ Build](#-build--frozen-exe-pipeline) and [📦 Bundled Runtime](#-the-bundled-runtime). |
+| **Run the release exe** (`target/release/steam-game-organizer.exe`) | **Nothing.** Self-contained — ships with Rust runtime embedded. | Download latest release from GitHub, or build it yourself. |
+| **Run from source** (`cargo run`) | Rust toolchain. | [rust-lang.org](https://www.rust-lang.org/). |
+| **Develop / change code** | Rust (`cargo`, `rustc`, `clippy`). | See Development toolchain below. |
 
 ### Development toolchain
 
-1. **Python 3.13** — [python.org](https://www.python.org/downloads/windows/). During install, check **"Add Python to PATH"** and **"Install for all users"**.
-2. **ruff** — `pip install ruff`
-3. **PyInstaller** — `runtime\python.exe -m pip install pyinstaller` (installed inside the bundled runtime)
-4. **7-Zip** — [7-zip.org](https://www.7-zip.org/download.html). Required for `runtime\7z.exe` and for building the frozen exe. Install to the default location (`C:\Program Files\7-Zip`) so `tools\bundle_runtime.py` can find it automatically.
-5. **customtkinter** — `pip install customtkinter`. Required to import `ui.*` modules (including `ui.theme`, `ui.main_window`, `ui.custom_theme`) and to run tests against system Python. The bundled `runtime\python.exe` already ships it; system Python does not.
-6. **Rust** — `cargo`, `rustc`, `clippy`. Required for converted `src/` modules. Install from [rust-lang.org](https://www.rust-lang.org/). Verify with `cargo --version` and `rustc --version`.
-7. **Git Bash** — [git-scm.com](https://git-scm.com/download/win) (installed with Git). Recommended shell for running Rust commands on Windows because PowerShell interprets Rust's `<`/`>` generics as shell redirection, which breaks commands like `cargo check` and `cargo test`. Git Bash does not have this problem.
+1. **Rust** — `cargo`, `rustc`, `clippy`. Required for all source modules. Install from [rust-lang.org](https://www.rust-lang.org/). Verify with `cargo --version` and `rustc --version`.
+2. **Git Bash** — [git-scm.com](https://git-scm.com/download/win) (installed with Git). Recommended shell for running Rust commands on Windows because PowerShell interprets Rust's `<`/`>` generics as shell redirection, which breaks commands like `cargo check` and `cargo test`. Git Bash does not have this problem.
 
 ### Verify your setup
 
 > Run verification commands in **Git Bash**, not PowerShell. PowerShell interprets Rust's `<` and `>` as redirection operators and will break commands like `cargo check`.
 
 ```bash
-python --version   # should be Python 3.13.x
-ruff --version     # should print a version
-7z                 # should print 7-Zip help
-cargo --version    # should print a Rust version
-rustc --version    # should print a Rust version
+cargo --version   # should print a Rust version
+rustc --version   # should print a Rust version
 ```
 
 ### Rust lint / test
 
-Converted Rust modules in `src/` are checked with:
+All Rust modules in `src/` are checked with:
 
 ```bash
 cargo check        # compile check
@@ -145,109 +112,84 @@ cargo clippy --all-targets  # lint
 cargo test         # Rust unit tests
 ```
 
-Python files not yet converted continue to use `ruff check .` and `runtime\python.exe -m pytest tests/ ...`.
-
 ### Rust crates (Cargo.toml dependencies)
 
-Each converted module adds the crates it needs to `Cargo.toml` at the project root. Crates chosen so far:
+Each module adds the crates it needs to `Cargo.toml` at the project root. Crates chosen so far:
 
 | Crate | Purpose | First used by |
 |-------|---------|---------------|
-| `serde` | JSON serialization for settings, rollback journal, scan state | `src/models.rs`, `src/config.rs` |
-| `thiserror` | Typed error types (`OrganizerError`, `CancellationError`) | `src/errors.rs` |
-| `chrono` | Date parsing for Steam release dates (`release_label`) | `src/naming_utils.rs` |
-| `lazy_static` | Compiled regexes reused across calls | `src/naming_utils.rs` |
-| `regex` | Filename normalization tags (`normalize_name`) | `src/filename_utils.rs` |
+| `serde` | JSON serialization for settings, rollback journal, scan state | `src/core/models.rs`, `src/core/config.rs` |
+| `thiserror` | Typed error types (`OrganizerError`, `CancellationError`) | `src/core/errors.rs` |
+| `chrono` | Date parsing for Steam release dates (`release_label`) | `src/core/naming_utils.rs` |
+| `lazy_static` | Compiled regexes reused across calls | `src/core/naming_utils.rs` |
+| `regex` | Filename normalization tags (`normalize_name`) | `src/core/filename_utils.rs` |
+| `walkdir` | Junction-safe recursive directory walk | `src/core/treewalk.rs` |
+| `zip` | ZIP archive reading for encryption checks | `src/services/archive_service.rs` |
+| `reqwest` | HTTP client for Steam API calls (blocking client for connection pool) | `src/services/extract_service.rs` |
+| `winreg` | Windows registry access for .html handler check | `src/services/organizer_service.rs` |
+| `egui` + `eframe` | GUI framework for the UI layer | `src/ui/main_window.rs` |
+| `clap` | CLI argument parsing for headless binary | `src/bin.rs` |
 
 Add a crate only when a converted module actually imports it — do not pre-install the whole list.
 
+---
 
-### Quality Gate
+## ⚡ Testing
 
-`tools\quality_gate.py` runs every verification tool in one pass:
-
-| Step | Tool | What it checks | Fails the gate? |
-|------|------|---------------|-----------------|
-| 1 | ruff | Lint check | Yes |
-| 2 | cargo clippy --all-targets | Rust lint check | Yes |
-| 3 | bandit | Security scan (medium+ issues) | Yes |
-| 4 | pip-audit | Dependency vulnerability check | Yes |
-| 5 | vulture | Dead code scan | No (advisory only) |
-| 6 | mypy | Type check on modified source modules | Yes |
-| 7 | pytest | Test suite with coverage | Yes |
-| 8 | cargo test | Rust unit tests | Yes |
-| 9 | OCR tests | Captures all screens, verifies UI text, detects error windows | Yes |
+All tests are Rust unit tests under `src/`, run with:
 
 ```bash
-runtime\python.exe tools\quality_gate.py
+cargo test
 ```
 
-### Security Scanning
+### Test result
 
-**Bandit** scans Python source for security issues (B310 `urlopen` scheme validation, B103 permissive `chmod`, etc.):
+> [!IMPORTANT]
+> **Expected:** `OK` with no failures. A skip that is *not* expected is a bug.
 
-```bash
-python -m bandit -r core services ui app utils --severity-level medium --confidence-level medium
-```
+### Test hygiene
 
-**pip-audit** checks installed Python dependencies for known vulnerabilities:
+#### A test must be able to fail
 
-```bash
-python -m pip_audit
-```
+A safety net that is collected but not executed is worse than none, because it is reported as present. When adding a check, confirm it actually ran — `Ran 0 tests` in a module you just wrote is a bug. Every regression is proved by reverting its fix and watching the test fail, then restoring and watching it pass. Record the failure count, not just that it failed.
 
-**Pre-commit hooks** (`.pre-commit-config.yaml`) run ruff, mypy, bandit, pytest, and OCR tests on every commit. Install with:
+#### The suite must not write this project's own state
 
-```bash
-runtime\Scripts\pre-commit install
-```
+`AppConfig` derives every path it writes from its project root, and `Application` builds one from `Path(__file__).resolve().parents[1]` — this repository. A test that constructs either one the ordinary way inherits the developer's own `config/`, `cache/` and `logs/`. Build windows and configs through temp dirs. Do **not** snapshot the real files and restore them afterwards: two concurrent runs restore each other's writes, which is the defect itself rather than a fix for it.
 
-After that, every `git commit` runs the hooks automatically. If a hook fails, the commit is rejected.
-
-### OCR Testing
-
-`tools\ocr_test.py` captures all app screens via `capture_screens.py`, runs Tesseract OCR with multiple PSM modes on each image, and verifies expected UI text is present. It also detects Python error dialogs / traceback windows via `pywinauto` UI Automation and analyzes UI layout via `OpenCV`.
-
-```bash
-# Capture and OCR-verify all screens
-runtime\python.exe tools\ocr_test.py --size 1600x1000
-
-# OCR-verify existing captures without re-capturing
-runtime\python.exe tools\ocr_test.py --no-capture --out temp/ocr-captures
-```
-
-`tools\capture_screens.py` also supports `--ocr` to OCR-verify each screen immediately after capturing it:
-
-```bash
-runtime\python.exe tools\capture_screens.py --size 1600x1000 --ocr
-```
-
-### Log Auditing
-
-`tools\log_audit.py` scans `logs/` for Python tracebacks, repeated warnings, artwork failures, Steam lookup errors, and other anomalies:
-
-```bash
-# Audit all logs
-runtime\python.exe tools\log_audit.py
-
-# Audit only logs from a specific date onward
-runtime\python.exe tools\log_audit.py --since 2026-11-20
-
-# Only show WARN and above
-runtime\python.exe tools\log_audit.py --level WARN
-
-# JSON output
-runtime\python.exe tools\log_audit.py --report json
-```
+Rust tests must not write under real `config/`, `cache/`, or `logs/` — use temp dirs.
 
 ---
 
+## 🧹 Lint
+
+```bash
+cargo clippy --all-targets
+```
+
+`Cargo.toml` and clippy lints are the contract.
+
+---
+
+## 📝 Logging
+
+Each launch writes its own timestamped log file under `logs/` (`organizer-<YYYYMMDD>-<HHMMSS>.log`), so old runs are never overwritten. The last `ROTATED_LOGS` (10) run logs are kept; older ones are removed. Each file rotates by size (`AppLogger.MAX_BYTES` = 5 MB, keeping `.1` and `.2` rolled files).
+
+`core/logger.rs` `AppLogger` supports a level threshold (`set_level`) and optional console output (`console=True`, used for headless CLI mode). `install_excepthook()` routes uncaught exceptions through the logger. All writes are thread-locked and a failed write is swallowed so logging never kills the run.
+
+---
+
+## 🪟 Platform
+
+**Full screen only.** The app maximizes itself on start (`MainWindow._maximize()` uses egui's viewport), and the user runs it full screen.
+
+There is no second environment to keep green. Anything that branches on platform should now raise or return a refusal rather than keep a second implementation.
 
 ---
 
 ## 🔄 The Change Workflow
 
-Before modifying any module, read `AGENTS.md`, `ARCHITECTURE.md`, and `project_overview.md` for relevant context. Understand the frozen build, logging, and test hygiene rules first.
+Before modifying any module, read `AGENTS.md`, `ARCHITECTURE.md`, and `project_overview.md` for relevant context. Understand the build, logging, and test rules first.
 
 Work through this checklist in order:
 
@@ -256,163 +198,46 @@ Work through this checklist in order:
 | 1 | **Comment** | Add a comment explaining the change in every modified file. See [🏷️ Comment Style](#-comment-style). |
 | 2 | **Changelog** | Add a dated entry under `CHANGELOG.md` (newest first). |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
-| 4 | **Lint** | `ruff check .` — must pass for Python. `cargo clippy --all-targets` — must pass for Rust `src/`. See [🧹 Lint](#-lint). |
-| 5 | **Tests** | `runtime\python.exe -m pytest tests/ ...` for Python. `cargo test` for Rust `src/`. Both must report `OK`/pass with no new skips. See [🧪 Testing](#-testing). |
-| 6 | **Quality Gate** | `runtime\python.exe tools\quality_gate.py` — runs ruff, bandit, pip-audit, vulture, mypy, pytest, and OCR tests. |
-| 7 | **Build** | `python tools\build_frozen.py` — verify `dist/steam_game_organizer/runtime/7z.exe` exists. See [🏗️ Build](#-build--frozen-exe-pipeline). |
+| 4 | **Lint** | `cargo clippy --all-targets` — must pass for Rust `src/`. See [🧹 Lint](#-lint). |
+| 5 | **Tests** | `cargo test` for Rust `src/` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
+| 6 | **Build** | `cargo build --release` — verify `target/release/steam-game-organizer.exe` exists. See [🏗️ Build](#-build--release-exe). |
 | 7 | **Commit + push** | `git add -A` the changed source, docs, and changelog; commit with a descriptive conventional message; push to GitHub. **Update all affected markdown docs BEFORE pushing.** See [🔀 Git / GitHub Workflow](#-git--github-workflow). |
 
 ---
 
-## 🏗️ Build — Frozen Exe Pipeline
+## 🏗️ Build — Release Exe
 
-After any code change, rebuild the exe:
-
-```bash
-python tools\build_frozen.py
-```
-
-> [!IMPORTANT]
-> **MANDATORY:** Always rebuild the exe after any code change. The user runs only the frozen exe in `dist/steam_game_organizer/`, never from source.
-
-`tools\build_frozen.py` runs PyInstaller on `steam_game_organizer.spec`, then moves `core/`, `services/`, `ui/`, `utils/`, `app/`, `debug/`, `tools/`, `assets/`, `runtime/` out of `_internal/` into the bundle root — because `steam_game_organizer.py` resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings. Leaving them in `_internal/` puts `runtime/7z.exe` one folder out of reach and every extraction reports no archiver.
-
-- Before wiping the old bundle it backs up `config/`, `cache/`, `logs/` into a temp dir and restores them after, so user settings, artwork cache, and logs survive a rebuild. If there was no previous bundle it seeds `config/settings.json` from the source tree.
-- It retries `rmtree` up to 5 times because Windows Defender or an indexer can hold a DLL open long enough to fail the first pass, and clears read-only attributes on locked files. It verifies `runtime/7z.exe` exists in the bundle before reporting success.
-- The spec is a **onedir** build (`console=False`, `exclude_binaries=True`). Do not change to onefile — a onefile build repacks the interpreter into a temp folder on every launch.
-
----
-
-## 📦 The Bundled Runtime
-
-`runtime/` at the project root is a **vendored product, not this project's code**: `tools\bundle_runtime.py` copies Python 3.13 (with Tcl/Tk) and a 7-Zip into it from the machine's own installs. The same tree ships inside the frozen bundle as `dist/steam_game_organizer/runtime/`.
-
-> [!TIP]
-> **It must ship.** Nothing a user's PC needs is installed, so a `.gitignore` entry or a build step that drops `runtime/` breaks every copied folder. `.gitignore` deliberately has no entry for it.
-
-| Item | Requirement |
-|------|-------------|
-| `runtime/7z.exe` | Required. `build_frozen.py` verifies it exists before reporting success. |
-| Lint / version scan | Excluded (`runtime` and `dist`). `ruff.toml` excludes them; they declare Python's and 7-Zip's versions — findings that are not this app's to fix. |
-| Interpreter path | The bundled `python313._pth` makes `sys.path` exactly what the file says. Any new entry point or tool meant to run under the bundled interpreter must insert its own folder into `sys.path`, or it dies with `ModuleNotFoundError`. |
-
----
-
-## 📝 Logging
-
-Each launch writes its own timestamped log file under `logs/` (`organizer-<YYYYMMDD>-<HHMMSS>.log`), so old runs are never overwritten. The last `ROTATED_LOGS` (10) run logs are kept; older ones are removed. Each file rotates by size (`AppLogger.MAX_BYTES` = 5 MB, keeping `.1` and `.2` rolled files).
-
-`core/logger.py` `AppLogger` supports a level threshold (`set_level`) and optional console output (`console=True`, used for headless CLI mode). `install_excepthook()` routes uncaught exceptions through the logger. All writes are thread-locked and a failed write is swallowed so logging never kills the run.
-
----
-
-## 🪟 Platform
-
-**Full screen only.** The app maximizes itself on start (`MainWindow._maximize()` uses `state('zoomed')`), and the user runs it full screen.
-
-The geometry tests intentionally run at fixed non-fullscreen sizes (`1280x800`, `1100x680`) — that is how they verify the app works at `minsize()`, which is reachable. They unzoom the window first (`root.state('normal')`) because on Windows the zoomed state sticks and `geometry()` is otherwise ignored. **Do not remove those fixed sizes from the geometry tests; they are the point.** The "full screen only" rule is about production behavior, not about the geometry tests.
-
-There is no second environment to keep green. Anything that branches on platform should now raise or return a refusal rather than keep a second implementation.
-
----
-
-## 🧪 Testing
-
-### Test result
-
-> [!IMPORTANT]
-> **Expected:** `OK` with no skips. PyInstaller is installed in the bundled runtime (`runtime\Lib\site-packages`) so the frozen-build layout check runs. A skip that is *not* expected is a bug: find the dependency it cannot satisfy and make it report the condition deterministically, or fail with a message naming the cause. A missing tkinter is a broken install and `tests/test_ui_geometry.py` raises rather than skips.
-
-### Test hygiene
-
-#### A test must be able to fail
-
-A safety net that is collected but not executed is worse than none, because it is reported as present. When adding a check, confirm it actually ran — `Ran 0 tests` in a module you just wrote is a bug. Every regression is proved by reverting its fix and watching the test fail, then restoring and watching it pass. Record the failure count, not just that it failed.
-
-Two traps this project has hit:
-
-- **A colour option that the widget never paints.** Tk leaves every widget carrying `SystemButtonFace` for `highlightbackground` and `SystemDisabledText` for `disabledforeground`. Read `highlightthickness` before flagging a highlight, and skip state colours on a widget class that has no such state.
-- **A check that reads the wrong thing.** Asserting on a widget's text when the value lives in a tag will never see it. `tag_names()` is where a Tk colour lives.
-
-Assert on the parsed code (`ast`), not the file text: comments are not in the AST, which is the point.
-
-#### Test doubles must be runnable on the host
-
-A fake `7z` written as a shebang script with no extension is invisible to `shutil.which()` on Windows and cannot be started if found. Use `tests/test_services.py:_write_stub` rather than writing scripts directly.
-
-#### The suite must not write this project's own state
-
-`AppConfig` derives every path it writes from its project root, and `Application` builds one from `Path(__file__).resolve().parents[1]` — this repository. A test that constructs either one the ordinary way inherits the developer's own `config/`, `cache/` and `logs/`. Build windows and configs through `tests/tk_support.py:sandbox_app`, which roots the `AppConfig` in a temporary tree. Do **not** snapshot the real files and restore them afterwards: two concurrent runs restore each other's writes, which is the defect itself rather than a fix for it.
-
-`tests/test_project_state_guard.py` snapshots every file under `config/`, exercises `AppConfig`, `save()`, `remember_category()`, the scan summary, the undo journal and a real window against a temporary tree, and fails if any byte or mtime moved.
-
-#### Test logs never touch the real logs directory
-
-`tests/__init__.py` sets `STEAM_GAME_ORGANIZER_TEST_LOG` to `<project root>/logs/test/organizer-TEST-<timestamp>.log` so every `AppConfig` created during a test run writes there instead of the real `logs/` directory. Test runs never pollute the user's log history, and real runs are easy to tell apart. The env var is set with `setdefault` so an explicit export still takes precedence.
-
-#### Isolated GUI tests
-
-Some GUI tests must never run in the same process as other tests. On Windows, creating and destroying multiple `tk.Tk()` roots in one process corrupts the Tcl interpreter ("couldn't read init.tcl" or "invalid command name `tcl_findLibrary`"). These tests are marked `@pytest.mark.isolated` and are **deselected by default**:
-
-- `tests/test_ui_geometry.py` — window geometry and layout measurements (references CustomTkinter view attributes lost during migration)
-- `tests/test_real_workflow.py` / `tests/test_workflow_smoke.py` — full workflow through real Tk and MainWindow
-
-Run them **one file at a time**, never as a batch:
+After any code change, build the release exe:
 
 ```bash
-# Isolated tests are skipped by default; this shows them as skipped:
-runtime\python.exe -m pytest tests/test_ui_geometry.py -v
-
-# To actually run isolated tests, use --run-isolated (then run each file alone):
-runtime\python.exe -m pytest tests/test_ui_geometry.py --run-isolated -v
+cargo build --release
 ```
 
-Never run two isolated test files in the same `pytest` invocation.
+This produces `target/release/steam-game-organizer.exe` — a self-contained Windows executable with no Python, no PyInstaller, and no external runtime dependencies.
+
+**Distribution:** The exe expects these siblings at runtime:
+
+| Item | Location | Purpose |
+|------|----------|---------|
+| `steam-game-organizer.exe` | bundle root | The application itself |
+| `runtime/7z.exe` | `runtime/` beside exe | 7-Zip for archive extraction (must be provided separately) |
+| `assets/` | bundle root | Icon and other assets |
+| `config/`, `cache/`, `logs/` | bundle root | Created at runtime by the app |
+
+The exe resolves its project root as `Path(__file__).resolve().parent` and walks it for sibling folders — same layout as a source checkout.
 
 ---
 
-## 🧹 Lint
+## 📦 Release Process (Summary)
 
-```bash
-ruff check .
-```
+When you're ready to cut a release:
 
-`ruff.toml` is the contract, and each ignored rule carries its reason in the file.
+1. **Update `CHANGELOG.md`** — move all unreleased entries under a new release heading with a date.
+2. **Build the release exe** — `cargo build --release`.
+3. **Create a GitHub Release** — tag the release, paste the changelog notes, upload the release exe zip.
+4. **Start a fresh `## Unreleased` section** in `CHANGELOG.md` for new changes.
 
-- E701/E702 are not selected. Semicolons are this codebase's house style; enabling them reported 2456 sites that are the style rather than a fault.
-- The `match` identifier parser bug (ruff 0.16.10) was cleared in 9.10 by renaming locals to `steam_match`; `ruff.toml` documents the ignore as historical. Do not reintroduce a bare `match=` assignment expecting the six phantom reports to vanish.
-
----
-
-## 📸 Screenshots: capture, analyse, delete
-
-Visual checks are real and useful, but a screenshot left on disk is a stale picture of a UI that has since changed. Always delete screenshots in the same step they are used. Capture, analyse, delete — never leave one for "later". There must be no `*.png` in the project root when work is finished.
-
-```bash
-runtime\python.exe tools\analyze_screenshot.py _shot_1.png   # palette + off-palette content analysis
-runtime\python.exe tools\layout_audit.py                     # clipping, off-window widgets, sibling overlap
-runtime\python.exe tools\capture_screens.py                  # one PNG per app screen into docs/screenshots/
-```
-
-`tools\capture_screens.py` is the exception to the delete rule: its output is the README's screen gallery, so those PNGs are kept under `docs/screenshots/` and committed. It builds the real windows over a temp library (under `temp/`, never `%TEMP%`), so it never writes the developer's `config/`, `cache/` or `logs/`, refuses to save a flat/blank capture, and needs an interactive desktop because `ImageGrab` reads composited pixels. The catalog page is HTML, so that one screenshot is rendered by headless Microsoft Edge (`--screenshot`), which every Windows 10/11 machine already has. Re-run it whenever a screen changes; a stale gallery is the same defect as a stale screenshot, only published.
-
-Run both at every window size the app permits — the minimum included, because `minsize()` makes small sizes reachable. `tests/test_contrast.py` reports WCAG contrast ratios for every colour pair the app paints; run it after any theme change.
-
-Hard-coded widget heights are the usual cause of off-window controls at short window heights. Prefer flexible rows with a smaller floor over fixed heights.
-
----
-
-## ⏱️ Long-Running Commands
-
-A foreground shell call blocks until it finishes. Anything whose duration is not known in advance must be a tracked background process, not a bigger timeout — a raised timeout only decides who gives up first.
-
-> [!WARNING]
-> **Never sweep the real library in the foreground.** The real library holds multi-gigabyte archives, and `tools\verify_archives.py` runs `7z t` over every one of them — hours of work.
-
-- Is this one archive intact? Pass one path.
-- Does the library hold up? A background job, started deliberately.
-
-Scope the work before starting it. The full suite is ~80s — short enough to run in the foreground deliberately, long enough to be a background job once several are queued, but not both at once, and not as one giant chained command that also does unrelated work afterwards. Keep verification separate from reporting so a completed check is visible before the next one starts.
+Note: version numbers (`9.33` etc.) have been removed from the codebase; releases are identified by date tag only.
 
 ---
 
@@ -437,11 +262,11 @@ This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer
 | Rule | What it means |
 |------|---------------|
 | **Branch before you change** | Create a branch from `main` for each body of work (`git checkout -b <name>`). Never commit directly to `main` unless it is a trivial docs-only fix. |
-| **Commit messages** | Use conventional style: `type(scope): short summary`. Types: `feat`, `fix`, `docs`, `build`, `refactor`, `test`, `chore`. Example: `build: rebuild frozen exe after archive cache changes`. |
+| **Commit messages** | Use conventional style: `type(scope): short summary`. Types: `feat`, `fix`, `docs`, `build`, `refactor`, `test`, `chore`. Example: `build: release exe after archive cache changes`. |
 | **Changelog with every commit** | Add a dated entry to the top of `CHANGELOG.md` at the same time as the code change. Never defer. |
 | **Push regularly** | `git push origin <branch>` so your work is backed up on GitHub. Do not force-push `main`. |
-| **Pull requests** | Open a PR from your branch to `main`. Tests must pass (`OK`, no skips) and lint must be clean (`ruff check .`) before merging. |
-| **Do not commit build artifacts** | `runtime/`, `dist/`, `build/`, `cache/`, `logs/`, `config/`, `backup/` are excluded by `.gitignore`. Never add them. |
+| **Pull requests** | Open a PR from your branch to `main`. Tests must pass (`OK`, no skips) and lint must be clean (`cargo clippy --all-targets`) before merging. |
+| **Do not commit build artifacts** | `target/`, `dist/`, `build/`, `runtime/`, `cache/`, `logs/`, `config/`, `backup/` are excluded by `.gitignore`. Never add them. |
 
 ---
 
@@ -449,15 +274,16 @@ This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer
 
 These four files are the project's map of itself. If a reader acts on them, they must match the code:
 
-| File | Purpose |
-|------|---------|
-| `AGENTS.md` | How to build, test, lint, and run on Windows (the operating instructions) |
-| `ARCHITECTURE.md` | What each module does and how they wire together (the service inventory) |
-| `project_overview.md` | What the app does, its data flow, key decisions, and the catalog page mechanics |
-| `README.md` | User-facing run, workflow, other-PC, and development-check instructions |
+| File | Purpose | Link |
+|------|---------|------|
+| `AGENTS.md` | How to build, test, lint, and run on Windows (the operating instructions) | [`AGENTS.md`](AGENTS.md) |
+| `ARCHITECTURE.md` | What each module does and how they wire together (the service inventory) | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| `project_overview.md` | What the app does, its data flow, key decisions, and the catalog page mechanics | [`project_overview.md`](project_overview.md) |
+| `README.md` | User-facing run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
+| **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
 > [!IMPORTANT]
-> **Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later.
+> **Rule:** when a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change — not later.
 
 > [!IMPORTANT]
 > **MANDATORY — add a changelog note for every change.** `CHANGELOG.md` is the project's record of what changed and when. Every change to code, config, tools, or docs gets a dated entry under `CHANGELOG.md`, formatted as:
@@ -476,14 +302,14 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 
 - [ ] All source files changed have a comment explaining what changed and why.
 - [ ] `CHANGELOG.md` has a new dated entry under `CHANGELOG.md` (newest first).
-- [ ] `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` updated if behavior, architecture, commands, test counts, or frozen build layout changed.
-- [ ] `ruff check .` passes.
-- [ ] `runtime\python.exe -m pytest tests/ -q -p no:xdist` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs).
-- [ ] If any source code changed, rebuilt the exe with `python tools\build_frozen.py`.
-- [ ] No `*.png` screenshots left in repo root; no writes to real `config/`, `cache/`, or `logs/` (use `tests/tk_support.py:sandbox_app` in tests).
+- [ ] `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` updated if behavior, architecture, commands, test counts, or build layout changed.
+- [ ] `cargo clippy --all-targets` passes.
+- [ ] `cargo test` reports `OK` with no new skips.
+- [ ] `cargo build --release` produces `target/release/steam-game-organizer.exe`.
+- [ ] No `*.png` screenshots left in repo root; no writes to real `config/`, `cache/`, or `logs/` (use temp dirs in tests).
 - [ ] Committed and pushed to GitHub so the public repository reflects the change.
 
-**Quick verification after any change:** `ruff check .` passes, `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py` reports `OK` with no new skips (PyInstaller is installed in the bundled runtime so the frozen-build test runs), each doc still describes what the code actually does, and `CHANGELOG.md` has a new dated entry for the change.
+**Quick verification after any change:** `cargo clippy --all-targets` passes, `cargo test` reports `OK` with no new skips, each doc still describes what the code actually does, and `CHANGELOG.md` has a new dated entry for the change.
 
 ---
 
@@ -491,54 +317,30 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 
 These are details that trip up new contributors. Read them before your first change.
 
-### Tkinter tests excluded from the quality gate
-
-Several GUI tests (`test_lifecycle.py`, `test_artwork_render.py`, `test_displayed_data.py`, `test_category_evidence_panel_tests.py`, `test_review_context_panels.py`, `test_render_integrity.py`, `test_real_workflow.py`, `test_artwork_arriving_as_assets_is_still_artwork.py`, `test_ui_geometry.py`, `test_worker_updates_reach_the_ui_thread.py`) are **intentionally excluded** from the quality gate's pytest step (`--ignore=...` in `tools\quality_gate.py` and the CI workflow).
-
-**Reason:** On Windows, creating and destroying `tk.Tk()` windows repeatedly in the same process corrupts the Tcl interpreter ("couldn't read init.tcl"). These tests pass when run individually but crash when run together in the suite. Do **not** remove them from the ignore list — instead, run them individually if you need to verify them:
-
-```bash
-runtime\python.exe -m pytest tests/test_lifecycle.py -v
-```
-
-### Pre-commit hooks
-
-`.pre-commit-config.yaml` is configured with hooks for **ruff**, **mypy**, **bandit**, **pytest**, and **OCR tests**. Install them once:
-
-```bash
-runtime\Scripts\pre-commit install
-```
-
-After that, every `git commit` runs the hooks automatically. If a hook fails, the commit is rejected.
-
-### OCR testing
-
-`tools\ocr_test.py` captures every application screen via `capture_screens.py`, runs Tesseract OCR with multiple PSM modes on each image, and verifies expected UI text is present. It also detects Python error dialogs / traceback windows via `pywinauto` UI Automation and analyzes UI layout via `OpenCV`. It's part of the quality gate — if OCR finds missing button text or a Python error window, the gate fails.
-
 ### Comment examples
 
 **Good** (explains *why*, not *what*):
 
-```python
-# 2026-11-20: Removed '.*$' from RELEASE_TAG — it ate everything after the tag name,
-# so 'tenoke-ball.x.pit.risen.ballbylon' lost its game title and returned empty.
-value = RELEASE_TAG.sub("", value)
+```rust
+// 2026-11-25: Removed '.*$' from RELEASE_TAG — it ate everything after the tag name,
+// so 'tenoke-ball.x.pit.risen.ballbylon' lost its game title and returned empty.
+value = RELEASE_TAG.sub("", value);
 ```
 
 **Bad** (just restates the code):
 
-```python
-# Add 1 to i
-i = i + 1
+```rust
+// Add 1 to i
+i = i + 1;
 ```
 
 ---
 
 ## 🏷️ Comment Style
 
-- **Docstrings** (`"""`) state *what* a module/class/function does and its contract.
-- **`#` comments** state *why* a specific line does something (bug, edge case, platform quirk) — inline with implementation.
-- Do not convert `#` comments into docstrings; they are not interchangeable.
+- **Docstrings** (`///`) state *what* a module/class/function does and its contract.
+- **`#` comments** (Rust `//`) state *why* a specific line does something (bug, edge case, platform quirk) — inline with implementation.
+- Do not convert `//` comments into docstrings; they are not interchangeable.
 - Every changed file must include at least one comment explaining what changed and why.
 
 ---
@@ -547,39 +349,12 @@ i = i + 1
 
 Adding a screen means four things:
 
-1. **Create the view class** in `ui/` (e.g., `ui/my_view.py`), subclassing `CTkFrame`.
-2. **Register it in `app/application.py`** — add it to the screen registry and wire its navigation button.
-3. **Wire navigation** in `ui/main_window.py` — add a tab/button that switches to the new screen.
-4. **Add OCR expectations** in `tools/ocr_test.py` (`SCREEN_EXPECTATIONS`) so the screen's header text is verified in CI.
+1. **Create the view class** in `src/ui/` (e.g., `src/ui/my_view.rs`), implementing `eframe::App`.
+2. **Register it in `src/ui/main_window.rs`** — add it to the view stack and wire its navigation button.
+3. **Wire navigation** in `src/ui/main_window.rs` — add a tab/button that switches to the new screen.
+4. **Add test coverage** in `src/ui/my_view.rs` (`#[cfg(test)] mod tests`) so the screen's behavior is verified in CI.
 
 Before adding a new screen, check whether an existing screen can absorb the feature. The app already has scan, review, organize, artwork, catalog, done, setup, batch-extract, and extract-result screens.
-
----
-
-## 🎨 CustomTkinter Widget Rules
-
-All UI widgets must use CustomTkinter (`customtkinter` / `CTk*`) instead of tkinter/ttk widgets. CustomTkinter does not accept geometry-manager arguments (`padx`, `pady`, `ipadx`, `ipady`) in widget constructors — set padding through `pack/grid/place` options instead.
-
-| tkinter/ttk widget | CustomTkinter replacement | Notes |
-|---|---|---|
-| `tk.Frame` | `CTkFrame` | Uses `fg_color` instead of `bg` |
-| `tk.Label` | `CTkLabel` | Uses `text_color` instead of `fg` |
-| `tk.Button` | `CTkButton` | Uses `fg_color`, `text_color`, `hover_color` |
-| `tk.Entry` | `CTkEntry` | Uses `fg_color`, `text_color`, `border_color` |
-| `tk.Text` | `CTkTextbox` | Use `.get("1.0", "end-1c")` for text; no `.widget` attribute |
-| `tk.Canvas` | `CTkCanvas` | From `ui.custom_theme` |
-| `ttk.Scrollbar` | `CTkScrollbar` | Uses `orientation=` instead of `orient=` |
-| `ttk.Treeview` | (keep) | No CustomTkinter equivalent yet |
-| `tk.StringVar` | (keep) | Works with CTk widgets |
-| `tk.Toplevel` | `CTkToplevel` | For dialog windows |
-
-**`cget()` restrictions:** CTk widgets do not support `cget("bg")`, `cget("fg")`, `cget("background")`, or `cget("foreground")`. Use `cget("fg_color")` and `cget("text_color")` instead. `configure(fg=...)` is invalid — use `configure(text_color=...)`.
-
-**`winfo_children()` recursion:** When recursing through widget children, skip CustomTkinter widgets (`type(widget).__module__.startswith("customtkinter")`) when calling tkinter-only `cget()` options.
-
-**Image handling:** `CTkImage` has no `.width()` method — use `._size[0]` / `._size[1]` instead.
-
-**`pin_bottom()` helper:** `ui/theme.py:pin_bottom()` accepts `tk.Text`, `tk.Entry`, `ctk.CTkTextbox`, and `ctk.CTkEntry` — call `.see("end")` for text-like widgets, `.yview_moveto(1.0)` for canvases.
 
 ---
 
@@ -609,8 +384,42 @@ Common naming patterns that match:
 When you're ready to cut a release:
 
 1. **Update `CHANGELOG.md`** — move all unreleased entries under a new release heading with a date.
-2. **Update the frozen exe** — `python tools\build_frozen.py`.
-3. **Create a GitHub Release** — tag the release, paste the changelog notes, upload the frozen exe zip.
+2. **Build the release exe** — `cargo build --release`.
+3. **Create a GitHub Release** — tag the release, paste the changelog notes, upload the release exe zip.
+4. **Start a fresh `## Unreleased` section** in `CHANGELOG.md` for new changes.
+
+Note: version numbers (`9.33` etc.) have been removed from the codebase; releases are identified by date tag only.
+
+---
+
+## 🔍 Steam Match Troubleshooting
+
+When an archive doesn't match a Steam game:
+
+1. **Check the archive filename** — `normalize_name()` strips release groups (tenoke, dodi, fitgirl, etc.) from both start and end. If the game title isn't recognized, the match will fail.
+2. **Check the Steam search** — the app queries Steam's storesearch API with multiple name variants (original, "X, The", leading-article stripped, edition words stripped, subtitle stripped).
+3. **Check for an internal AppID** — archives with `steam_settings/steam_appid.txt` or `appmanifest_*.acf` are matched by AppID first, before any text search.
+4. **Use the "Wrong Match" button** on the review screen if Steam identified the wrong game — this clears the Steam match and lets you re-search.
+5. **Use "Search Again"** to retry with a different search term.
+6. **Check the logs** — `logs/` shows every Steam API call and its result. Look for `Steam identification required` warnings.
+
+Common naming patterns that match:
+- `Game Name - 12345.zip` (AppID in filename)
+- `Game.Name.12345.rar` (AppID in filename)
+- `Game [12345].7z` (AppID in filename)
+- `tenoke-ball.x.pit.risen.ballbylon.zip` (release group stripped from start)
+- `Ultimate Edition: Game Name.zip` (leading edition words stripped)
+- `Game Name - Subtitle.zip` (subtitle stripped)
+
+---
+
+## 📦 Release Process (Summary)
+
+When you're ready to cut a release:
+
+1. **Update `CHANGELOG.md`** — move all unreleased entries under a new release heading with a date.
+2. **Build the release exe** — `cargo build --release`.
+3. **Create a GitHub Release** — tag the release, paste the changelog notes, upload the release exe zip.
 4. **Start a fresh `## Unreleased` section** in `CHANGELOG.md` for new changes.
 
 Note: version numbers (`9.33` etc.) have been removed from the codebase; releases are identified by date tag only.

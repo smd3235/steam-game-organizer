@@ -5,6 +5,8 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [ published ]
 
 jobs:
   test:
@@ -14,50 +16,84 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: "3.13"
-          cache: "pip"
+          components: clippy
 
-      - name: Install dependencies
+      - name: Run cargo check
+        run: cargo check
+
+      - name: Run clippy lint
+        run: cargo clippy --all-targets
+
+      - name: Run cargo test
+        run: cargo test
+
+      - name: Build release exe
+        run: cargo build --release
+
+      - name: Verify exe exists
         run: |
-          pip install --upgrade pip
-          pip install ruff bandit pip-audit vulture pytest pytest-cov pytest-mock pytest-xdist pytesseract opencv-python-headless numpy pywinauto pillow pyinstaller
-          pip install -e . 2>/dev/null || true
+          if (!(Test-Path "target/release/steam-game-organizer.exe")) {
+            Write-Error "Release exe not found!"
+            exit 1
+          }
 
-      - name: Install Tesseract OCR
+  release:
+    needs: test
+    runs-on: windows-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release exe
+        run: cargo build --release
+
+      - name: Copy 7-Zip license
         run: |
-          winget install UB-Mannheim.TesseractOCR
-          echo "TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe" >> $GITHUB_ENV
+          if (!(Test-Path "tools/7z-license.txt")) {
+            Write-Error "7z-license.txt not found! 7-Zip cannot be legally bundled without its license."
+            exit 1
+          }
 
-      - name: Set up bundled runtime TCL library
+      - name: Create release bundle
         run: |
-          echo "TCL_LIBRARY=$PWD/runtime/tcl/tcl8.6" >> $GITHUB_ENV
+          $bundle = "steam-game-organizer-release"
+          New-Item -ItemType Directory -Path $bundle -Force
+          
+          # Copy the Rust exe
+          Copy-Item "target/release/steam-game-organizer.exe" -Destination "$bundle/"
+          
+          # Copy 7-Zip for archive extraction (LGPL - see tools/7z-license.txt)
+          if (!(Test-Path "tools/7z.exe")) {
+            Write-Error "tools/7z.exe not found! Required for archive extraction."
+            exit 1
+          }
+          New-Item -ItemType Directory -Path "$bundle/runtime" -Force
+          Copy-Item "tools/7z.exe" -Destination "$bundle/runtime/"
+          Copy-Item "tools/7z-license.txt" -Destination "$bundle/runtime/"
+          
+          # Copy assets
+          Copy-Item "assets" -Destination "$bundle/" -Recurse
+          
+          # Copy docs
+          Copy-Item "AGENTS.md", "ARCHITECTURE.md", "README.md", "CHANGELOG.md", "LICENSE" -Destination "$bundle/"
+          
+          # Zip the bundle
+          Compress-Archive -Path "$bundle/*" -DestinationPath "steam-game-organizer-release.zip" -Force
 
-      - name: Run ruff lint check
-        run: ruff check .
-
-      - name: Run bandit security scan (medium+ issues fail the gate)
-        run: python -m bandit -r core services ui app utils --severity-level medium --confidence-level medium
-
-      - name: Run pip-audit dependency vulnerability check
-        run: python -m pip_audit
-
-      - name: Run mypy type check on modified source modules
-        run: python -m mypy ui/review_view.py core/models.py --ignore-missing-imports --follow-imports=skip
-
-      - name: Run pytest suite with coverage
-        run: python -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils --cov-report=term-missing
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
         env:
-          TCL_LIBRARY: ${{ github.workspace }}/runtime/tcl/tcl8.6
-          TK_LIBRARY: ${{ github.workspace }}/runtime/tcl/tk8.6
-
-      - name: Run OCR UI tests across all screens
-        run: python tools/ocr_test.py --size 1600x1000
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: coverage-report
-          path: htmlcov/
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: steam-game-organizer-release.zip
+          asset_name: steam-game-organizer-release.zip
+          asset_content_type: application/zip

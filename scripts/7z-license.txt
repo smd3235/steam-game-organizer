@@ -1,0 +1,70 @@
+==============================================================================
+ 7-Zip license information for bundled 7z.exe
+==============================================================================
+
+The file 7z.exe bundled in the runtime/ directory is 7-Zip, distributed
+under the GNU LGPL license.
+
+7-Zip Copyright (C) 1999-2024 Igor Pavlov.
+
+Licenses for files in 7-Zip:
+
+1) 7z.dll: GNU LGPL + unRAR restriction
+2) All other files: GNU LGPL
+
+The unRAR restriction applies to some parts of the code related to
+decompression of RAR archives.
+
+------------------------------------------------------------------------------
+   GNU LGPL + unRAR restriction
+------------------------------------------------------------------------------
+
+You must follow both GNU LGPL rules and unRAR restriction rules.
+
+Note:
+You can use 7-Zip on any computer, including a computer in a commercial
+organization. You don't need to register or pay for 7-Zip.
+
+GNU LGPL information
+
+-------------------------------------------------------------------------------
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+Lesser General Public License for more details.
+
+You can receive a copy of the GNU Lesser General Public License
+from http://www.gnu.org/
+
+-------------------------------------------------------------------------------
+   unRAR restriction
+-------------------------------------------------------------------------------
+
+The decompression engine for RAR archives was developed using source
+code of unRAR program. All copyrights to original unRAR code are owned by
+Alexander Roshal.
+
+The license for original unRAR code has the following restriction:
+
+The unRAR code cannot be used to re-create the RAR archiver format,
+without the written permission of the author.
+
+-------------------------------------------------------------------------------
+
+The Steam Game Organizer app bundles 7z.exe for archive extraction (zip/rar
+to .7z conversion). 7z.exe is used as an external tool and is not modified,
+linked, or combined with this application's source code. It is invoked as
+a separate process at runtime.
+
+Steam Game Organizer is licensed under the MIT License (see LICENSE file at
+the project root).
+
+Source code for 7-Zip can be obtained from https://www.7-zip.org/
+
+==============================================================================

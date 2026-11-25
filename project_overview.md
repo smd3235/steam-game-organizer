@@ -3,8 +3,8 @@
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](README.md)
 [![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
-[![Lint: ruff](https://img.shields.io/badge/lint-ruff-important.svg)](ruff.toml)
-[![Tests: pytest](https://img.shields.io/badge/tests-pytest-success.svg)](tests/)
+[![Lint: cargo clippy](https://img.shields.io/badge/lint-cargo%20clippy-important.svg)](Cargo.toml)
+[![Tests: cargo test](https://img.shields.io/badge/tests-cargo%20test-success.svg)](src/)
 
 ---
 
@@ -21,7 +21,7 @@
 | Run tests / lint / build | [🖥️ Commands](#-commands) |
 | Read the testing rules | [🧪 Testing conventions](#-testing-conventions) |
 | Module inventory + service wiring | [🏗️ ARCHITECTURE.md](ARCHITECTURE.md) |
-| Platform and comment rules | [📋 AGENTS.md](AGENTS.md) (Windows only, comment style, frozen-exe rebuild) |
+| Platform and comment rules | [📋 AGENTS.md](AGENTS.md) (Windows only, comment style) |
 | User-facing install / run / workflow | [📘 README.md](README.md) |
 
 ---
@@ -34,27 +34,23 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 |------|---------|------|
 | **AGENTS.md** | Operating manual: how to build, test, lint, run, commit, and push on Windows | [`AGENTS.md`](AGENTS.md) |
 | **ARCHITECTURE.md** | Module map and service inventory: what each module does and how they wire together | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
-| **project_overview.md** | What the app does, data flow, key decisions, catalog page mechanics | [`project_overview.md`](project_overview.md) |
+| **project_overview.md** | What the app does, its data flow, key decisions, catalog page mechanics | [`project_overview.md`](project_overview.md) |
 | **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
 | **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
-**Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) in [`AGENTS.md`](AGENTS.md).
+**Rule:** when a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) in [`AGENTS.md`](AGENTS.md).
 
 ---
 
-## 🦀 Rust Conversion (in progress)
+## 🦀 Rust Conversion (complete)
 
-This project is being converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch.
+This project has been converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch. All source code is now in Rust under `src/`.
 
 | Status | Meaning |
 |--------|---------|
-| `python` | File still exists as `.py` — not yet converted |
-| `rust` | File replaced by a `.rs` module in `src/` |
-| `both` | `.py` kept for frozen-exe compatibility while `.rs` is being validated |
+| `rust` | File is a `.rs` module in `src/` |
 
-Conversion order (dependencies first): pure `core/` and `utils/` modules → `services/` → `app/` → `ui/` (GUI last, hardest). Each converted file keeps a comment explaining what changed and why, matching the Python comment rule.
-
-Rust source lives in `src/` alongside the Python tree. `Cargo.toml` is at the project root. Python files that have not yet been converted remain the source of truth until their Rust replacement passes `cargo test` and is lint-clean.
+Rust source lives in `src/` alongside this doc. `Cargo.toml` is at the project root. `cargo build --release` produces a self-contained `.exe` at `target/release/steam-game-organizer.exe`.
 
 ---
 
@@ -69,7 +65,7 @@ This file describes what the app does, how a run flows through its six phases, h
 Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized into category folders), matches each archive against Steam's store API, files the archive into the right category alongside Steam links, metadata, and artwork, generates a clickable HTML catalog, and offers Undo for the whole run.
 
 > [!IMPORTANT]
-> The app runs full-screen on Windows only, from a frozen PyInstaller exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`. The app name (`USER_AGENT`) identifies itself to Steam's Store API on every request.
+> The app runs full-screen on Windows only, from a self-contained Rust exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`. The app name (`USER_AGENT`) identifies itself to Steam's Store API on every request.
 
 ### What it does not do
 
@@ -85,12 +81,12 @@ A run walks the library through six phases:
 
 | Phase | What happens | Code |
 |-------|--------------|------|
-| **1. Discover** | [`CatalogService._collect`](services/catalog_service.py) walks category folders under the library root, skips anything without an archive, skips the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game. | [`services/catalog_service.py`](services/catalog_service.py) |
-| **2. Organize** | [`AppController.organize`](app/controller.py) / [`OrganizerService.move`](services/organizer_service.py) groups archives by identity key, promotes the newest version, archives older copies and re-categorized leftovers to `Archive/`, repacks `.zip/.rar` → `.7z` (adaptive compression level against real memory headroom), writes metadata + Steam shortcut + artwork into each game folder. | [`services/organizer_service.py`](services/organizer_service.py) — [`app/controller.py`](app/controller.py) |
-| **3. Catalog** | [`CatalogService.generate`](services/catalog_service.py) writes `Game Library.html` plus `Game Library.status.js` beside the library root; retains a `LibrarySummary` index (categories, genres, developers, archive sizes) so screens can ask placement questions without re-walking. | [`services/catalog_service.py`](services/catalog_service.py) — [`services/catalog_status.py`](services/catalog_status.py) |
-| **4. Done screen** | Reports what a run moved/failed/skipped; buttons open library folder or game folder. | [`ui/done_view.py`](ui/done_view.py) |
-| **5. Undo** | [`RollbackService`](services/rollback_service.py) reads `config/last-organization.json`, restores each archived file to its source, prunes emptied folders this run created into `Archive/` (never deletes a folder it didn't make). | [`services/rollback_service.py`](services/rollback_service.py) |
-| **6. Batch extract** | [`services/batch_extract_service.py`](services/batch_extract_service.py) unpacks archives to user-chosen folders outside the library, relocates installer layouts to `Needs Install`, writes per-result status next to the catalog. | [`services/batch_extract_service.py`](services/batch_extract_service.py) — [`ui/batch_extract_window.py`](ui/batch_extract_window.py) |
+| **1. Discover** | `services/library_service.rs` walks category folders under the library root, skips anything without an archive, skips the app's own project folder, reads `.game-info.json` sidecars, records banner art and installer signature per game. | [`src/services/library_service.rs`](src/services/library_service.rs) |
+| **2. Organize** | `app/controller.rs` / `services/organizer_service.rs` groups archives by identity key, promotes the newest version, archives older copies and re-categorized leftovers to `Archive/`, repacks `.zip/.rar` → `.7z` (adaptive compression level against real memory headroom), writes metadata + Steam shortcut + artwork into each game folder. | [`src/services/organizer_service.rs`](src/services/organizer_service.rs) — [`src/app/controller.rs`](src/app/controller.rs) |
+| **3. Catalog** | `services/catalog_service.rs` writes `Game Library.html` plus `Game Library.status.js` beside the library root; retains a `LibrarySummary` index (categories, genres, developers, archive sizes) so screens can ask placement questions without re-walking. | [`src/services/catalog_service.rs`](src/services/catalog_service.rs) — [`src/services/catalog_status.rs`](src/services/catalog_status.rs) |
+| **4. Done screen** | Reports what a run moved/failed/skipped; buttons open library folder or game folder. | [`src/ui/done_view.rs`](src/ui/done_view.rs) |
+| **5. Undo** | `rollback_service.rs` reads `config/last-organization.json`, restores each archived file to its source, prunes emptied folders this run created into `Archive/` (never deletes a folder it didn't make). | [`src/services/rollback_service.rs`](src/services/rollback_service.rs) |
+| **6. Batch extract** | `services/batch_extract_service.rs` unpacks archives to user-chosen folders outside the library, relocates installer layouts to `Needs Install`, writes per-result status next to the catalog. | [`src/services/batch_extract_service.rs`](src/services/batch_extract_service.rs) — [`src/ui/batch_extract_window.rs`](src/ui/batch_extract_window.rs) |
 
 Phases run in order: Discover → Organize → Catalog → Done. Undo and Batch extract are independent entry points (Undo reads `last-organization.json`; Batch extract is triggered from the catalog page via `steamgameorganizer://` URI).
 
@@ -105,24 +101,24 @@ The app registers `steamgameorganizer://` under `HKCU\Software\Classes` (per use
 
 | Action | Behavior | Code |
 |--------|----------|------|
-| `extract` | Parse into an `ExtractRequest` via `core/uri_actions.py` (owns `SCHEME` and `SYSTEM_PATHS`, the folders a typed destination may not sit inside) | [`core/uri_actions.py`](core/uri_actions.py) |
-| `extract-all` / `extract-multi` | Category or whole library / hand-picked selection → opens `BatchExtractWindow` (hours of 7z needs a visible queue) | [`services/batch_extract_service.py`](services/batch_extract_service.py) — [`ui/batch_extract_window.py`](ui/batch_extract_window.py) |
-| `setup` | Prefill the three-folder setup wizard text boxes | [`services/setup_service.py`](services/setup_service.py) — [`ui/setup_window.py`](ui/setup_window.py) |
-| `open-extracted` | `steamgameorganizer://open-extracted?path=<folder>` — opens an extracted/installer folder; path must resolve under a configured extract folder (validated/normalized by the handler) | [`core/uri_actions.py`](core/uri_actions.py) |
-| `play` | `steamgameorganizer://play?exe=<file>&path=<marker-folder>` or `?path=<marker-folder>` — launches a validated `.exe` under configured extract folders; when `exe` is omitted, the handler uses the marker's persisted `launch_target` | [`core/uri_actions.py`](core/uri_actions.py) — [`services/catalog_status.py`](services/catalog_status.py) |
-| `pick-launcher` | `steamgameorganizer://pick-launcher?path=<marker-folder>` — opens a file picker constrained to the resolved extracted root, validates the chosen `.exe`, persists `launch_target` in `.sgo-extract-info`, then regenerates/opens the catalog | [`services/catalog_status.py`](services/catalog_status.py) |
-| `mark-installed` | `steamgameorganizer://mark-installed?path=<marker-folder>` — persists setup completion (`setup_done`, `installed_at`, `needs_install=false`) and regenerates/opens the catalog | [`services/catalog_status.py`](services/catalog_status.py) |
-| `refresh-catalog` | Regenerate `Game Library.html` against the live library and re-open it (the page's Unpacked badges are decided at generation time; a `file://` page cannot re-scan the folder itself) | [`services/catalog_service.py`](services/catalog_service.py) |
-| `open-folder` | `steamgameorganizer://open-folder?path=<folder>` — opens the game/library source folder in Explorer; path validated against the library root | [`core/uri_actions.py`](core/uri_actions.py) — [`utils/desktop.py`](utils/desktop.py) |
+| `extract` | Parse into an `ExtractRequest` via `src/core/uri_actions.rs` (owns `SCHEME` and `SYSTEM_PATHS`, the folders a typed destination may not sit inside) | [`src/core/uri_actions.rs`](src/core/uri_actions.rs) |
+| `extract-all` / `extract-multi` | Category or whole library / hand-picked selection → opens `BatchExtractWindow` (hours of 7z needs a visible queue) | [`src/services/batch_extract_service.rs`](src/services/batch_extract_service.rs) — [`src/ui/batch_extract_window.rs`](src/ui/batch_extract_window.rs) |
+| `setup` | Prefill the three-folder setup wizard text boxes | [`src/services/setup_service.rs`](src/services/setup_service.rs) — [`src/ui/setup_window.rs`](src/ui/setup_window.rs) |
+| `open-extracted` | `steamgameorganizer://open-extracted?path=<folder>` — opens an extracted/installer folder; path must resolve under a configured extract folder (validated/normalized by the handler) | [`src/core/uri_actions.rs`](src/core/uri_actions.rs) |
+| `play` | `steamgameorganizer://play?exe=<file>&path=<marker-folder>` or `?path=<marker-folder>` — launches a validated `.exe` under configured extract folders; when `exe` is omitted, the handler uses the marker's persisted `launch_target` | [`src/core/uri_actions.rs`](src/core/uri_actions.rs) — [`src/services/catalog_status.rs`](src/services/catalog_status.rs) |
+| `pick-launcher` | `steamgameorganizer://pick-launcher?path=<marker-folder>` — opens a file picker constrained to the resolved extracted root, validates the chosen `.exe`, persists `launch_target` in `.sgo-extract-info`, then regenerates/opens the catalog | [`src/services/catalog_status.rs`](src/services/catalog_status.rs) |
+| `mark-installed` | `steamgameorganizer://mark-installed?path=<marker-folder>` — persists setup completion (`setup_done`, `installed_at`, `needs_install=false`) and regenerates/opens the catalog | [`src/services/catalog_status.rs`](src/services/catalog_status.rs) |
+| `refresh-catalog` | Regenerate `Game Library.html` against the live library and re-open it (the page's Unpacked badges are decided at generation time; a `file://` page cannot re-scan the folder itself) | [`src/services/catalog_service.rs`](src/services/catalog_service.rs) |
+| `open-folder` | `steamgameorganizer://open-folder?path=<folder>` — opens the game/library source folder in Explorer; path validated against the library root | [`src/core/uri_actions.rs`](src/core/uri_actions.rs) |
 
-On a first run with no settings, `_needs_setup` detects a missing `settings.json` / nonexistent library root and opens `setup_window.py` before the GUI — the catalog's own setup button cannot install the protocol handler, so the wizard is the first-run fallback.
+On a first run with no settings, `_needs_setup` detects a missing `settings.json` / nonexistent library root and opens `setup_window.rs` before the GUI — the catalog's own setup button cannot install the protocol handler, so the wizard is the first-run fallback.
 
 > [!WARNING]
 > URI actions treat every field as hostile input — a link can be crafted by any page, so the source must resolve inside the configured library root, must exist with an archive extension, and the destination must not sit inside a system folder or the library itself.
 
 ### Launcher discovery
 
-[`services/catalog_status.py`](services/catalog_status.py)`discover_game_launchers` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size; returns a ranked list for user choice via Pick launcher. The chosen `launch_target` persists to `.sgo-extract-info` and subsequent Play actions use it.
+`src/services/catalog_status.rs` `discover_game_launchers` conservatively scans the extracted root (max depth 3, 250 candidates) for playable `.exe` files, filtering installers/uninstallers/crash handlers/redistributables/helper tools (Unity crash handlers, `BugReporter`, `elevate`, `createdump`, `UEPrereqSetup`, `QuickSFV`, `ffmpeg`, `Spatial Media Metadata Injector`, full JRE toolchain) and scoring by depth/name/size; returns a ranked list for user choice via Pick launcher. The chosen `launch_target` persists to `.sgo-extract-info` and subsequent Play actions use it.
 
 ---
 
@@ -157,7 +153,7 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 - **Card art link** → Steam store page (`store.steampowered.com/app/<appid>`), or opens nothing with a clear reason when there is no Steam match.
 - **Open in Steam** → `steam://run/<appid>` Steam client link.
 - **Open** → `steamgameorganizer://open-folder?path=<folder>` opens the game's folder in Explorer, path rebuilt from the typed game-folder root so it follows a moved library.
-- **Copy path** → copies the full archive path to the clipboard (`execCommand` fallback, since `file://` pages are not a secure context and `navigator.clipboard` is unavailable).
+- **Copy path** → copies the full archive path to the clipboard.
 
 ### Extract games through the app (the page cannot unpack anything itself)
 
@@ -186,13 +182,12 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 | Decision | Rationale | Code |
 |----------|-----------|------|
-| **Move to `Archive/`, never delete.** | Empty game folders, empty categories, re-categorized source folders, and rollback-emptied folders are moved into `Archive/` (with `(n)` collision suffixes) so the user can review before deleting. `rmtree` is only a fallback when `library_root` is unknown. | [`services/organizer_service.py`](services/organizer_service.py) — [`services/rollback_service.py`](services/rollback_service.py) |
-| **Two folder rules.** | `_folder_is_disposable` (download folder, any image OK) and `_folder_is_prunable` (organized game folder, app-shaped artwork only) are deliberately different. Never merge them. | [`services/organizer_service.py`](services/organizer_service.py) |
-| **Ownership gating.** | Undo only prunes folders `created_game_dir` says this run made. A folder already there belongs to the user whatever it holds. | [`services/rollback_service.py`](services/rollback_service.py) |
-| **Reserved dirs.** | `Archive` and `Processing` under the library root are never treated as categories. The app's own project folder is never swept. | [`services/catalog_service.py`](services/catalog_service.py) |
-| **Frozen exe rebuild required.** | After any code change: `python tools\build_frozen.py`. The user runs only the frozen exe. | [`tools/build_frozen.py`](tools/build_frozen.py) |
-| **Atomic writes.** | `settings.json`, `scan-state.json`, and the rollback journal all use temp-file + `os.replace` with retry on `PermissionError` (OneDrive locks). | [`core/config.py`](core/config.py) |
-| **`runtime/` ships with the exe** | and is excluded from lint/version scans; it is not this project's code. See [**ARCHITECTURE.md → Bundled runtime**](ARCHITECTURE.md#-bundled-runtime) for how it ships inside the frozen bundle. | [`tools/bundle_runtime.py`](tools/bundle_runtime.py) |
+| **Move to `Archive/`, never delete.** | Empty game folders, empty categories, re-categorized source folders, and rollback-emptied folders are moved into `Archive/` (with `(n)` collision suffixes) so the user can review before deleting. `rmtree` is only a fallback when `library_root` is unknown. | [`src/services/organizer_service.rs`](src/services/organizer_service.rs) — [`src/services/rollback_service.rs`](src/services/rollback_service.rs) |
+| **Two folder rules.** | `_folder_is_disposable` (download folder, any image OK) and `_folder_is_prunable` (organized game folder, app-shaped artwork only) are deliberately different. Never merge them. | [`src/services/organizer_service.rs`](src/services/organizer_service.rs) |
+| **Ownership gating.** | Undo only prunes folders `created_game_dir` says this run made. A folder already there belongs to the user whatever it holds. | [`src/services/rollback_service.rs`](src/services/rollback_service.rs) |
+| **Reserved dirs.** | `Archive` and `Processing` under the library root are never treated as categories. The app's own project folder is never swept. | [`src/services/catalog_service.rs`](src/services/catalog_service.rs) |
+| **Atomic writes.** | `settings.json`, `scan-state.json`, and the rollback journal all use temp-file + `std::fs::rename` with retry on `PermissionError` (OneDrive locks). | [`src/core/config.rs`](src/core/config.rs) |
+| **Release builds via `cargo build --release`.** | Produces a self-contained `.exe` at `target/release/steam-game-organizer.exe`. The user runs this exe directly — no PyInstaller, no frozen bundle. | `Cargo.toml` |
 
 ---
 
@@ -200,15 +195,10 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 | Command | Purpose | Code |
 |---------|---------|------|
-| `runtime\python.exe -m pytest tests/ -q -p no:xdist --ignore=tests/test_frozen_build.py --ignore=tests/test_lifecycle.py --ignore=tests/test_artwork_render.py --ignore=tests/test_displayed_data.py --ignore=tests/test_category_evidence_panel_tests.py --ignore=tests/test_review_context_panels.py --ignore=tests/test_render_integrity.py --ignore=tests/test_real_workflow.py --ignore=tests/test_artwork_arriving_as_assets_is_still_artwork.py --ignore=tests/test_ui_geometry.py --ignore=tests/test_worker_updates_reach_the_ui_thread.py --cov=core --cov=services --cov=ui --cov=app --cov=utils` | Tests — expect `OK` with no new skips | [`tests/`](tests/) |
-| `ruff check .` | Lint | [`ruff.toml`](ruff.toml) |
-| `python tools\build_frozen.py` | Rebuild frozen exe — see [**ARCHITECTURE.md → Frozen build**](ARCHITECTURE.md#-frozen-build) for the build pipeline and why it's mandatory | [`tools/build_frozen.py`](tools/build_frozen.py) |
-| `runtime\python.exe tools\quality_gate.py` | Combined quality gate: ruff → bandit → pip-audit → vulture → mypy → pytest → OCR tests | [`tools/quality_gate.py`](tools/quality_gate.py) |
-| `runtime\python.exe tools\ocr_test.py --size 1600x1000` | OCR-verify all app screens: expected UI text, no Python error windows, layout analysis | [`tools/ocr_test.py`](tools/ocr_test.py) |
-| `runtime\python.exe tools\log_audit.py` | Scan `logs/` for tracebacks, warnings, artwork failures, Steam lookup errors | [`tools/log_audit.py`](tools/log_audit.py) |
-| `runtime\python.exe tools\layout_audit.py` | Layout audit (clipping, off-window widgets, sibling overlap) | [`tools/layout_audit.py`](tools/layout_audit.py) |
-| `runtime\python.exe tools\analyze_screenshot.py <shot.png>` | Contrast audit (after theme changes) | [`tools/analyze_screenshot.py`](tools/analyze_screenshot.py) |
-| `runtime\python.exe tools\capture_screens.py --ocr` | Capture one PNG per screen into `docs/screenshots/` for the README gallery; `--ocr` OCR-verifies each screen immediately | [`tools/capture_screens.py`](tools/capture_screens.py) |
+| `cargo check` | Compile check | — |
+| `cargo clippy --all-targets` | Lint | [`Cargo.toml`](Cargo.toml) |
+| `cargo test` | Rust unit tests — expect `OK` with no new skips | `src/` |
+| `cargo build --release` | Build release exe — produces `target/release/steam-game-organizer.exe` | [`Cargo.toml`](Cargo.toml) |
 
 ---
 
@@ -216,17 +206,11 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 | Convention | Rule | Code |
 |------------|------|------|
-| **No test may skip.** | `tests/test_zero_skips.py` parses every test file with `ast` and fails on any `unittest.skip`, `skipIf`, `skipUnless`, `expectedFailure`, `SkipTest`, or `self.skipTest`. The only exemption is `tests/test_frozen_build.py`'s `@unittest.skipUnless(HAS_PYINSTALLER)` build test — PyInstaller is installed in the bundled runtime so it runs rather than skips. Expected result: `OK`. A skip that is not that one is a bug. | [`tests/test_zero_skips.py`](tests/test_zero_skips.py) |
-| **Tests must not write this project's own state.** | `tests/test_project_state_guard.py` snapshots every file under `config/`, exercises `AppConfig.save()`, `remember_category()`, the scan summary, the undo journal, and a real window, and fails if any byte or mtime moved under the real `config/`. `PROJECT_UNDER_TEST = None` aims writes at a temp tree; point it at `ROOT` to watch both tests fail and prove the guard works. | [`tests/test_project_state_guard.py`](tests/test_project_state_guard.py) |
-| **Every check must actually run.** | `Ran 0 tests` from a collected module is a bug — `tests/test_contrast.py` was once a script with a `main()` that discovery ran zero tests from. | [`tests/test_contrast.py`](tests/test_contrast.py) |
-| **Archiver stubs are cross-platform.** | `tests/test_services.py:_write_stub` writes each fake 7-Zip/unrar stub in whatever form the platform can execute (a shebang script with no extension is invisible to `shutil.which()` on Windows). The conversion pipeline is exercised against a tar-backed fake rather than real 7-Zip, so tests behave identically with or without 7-Zip installed, and a stub can be made to fail in one specific place. | [`tests/test_services.py`](tests/test_services.py) |
-| **No POSIX absolute paths aimed at writing constructors.** | `tests/test_platform.py` scans code strings (not comments/docstrings) for `AppConfig(Path('/tmp/...'))`, `AppLogger(Path('/tmp')/...)`, `ArtworkService(...)`, `RollbackService(...)` — on Windows a leading slash resolves against the current drive, so each writes outside the repository. Test code is scanned too. | [`tests/test_platform.py`](tests/test_platform.py) |
-| **Windows-only platform.** | `tests/test_platform.py` bans `xdg-open`, `xdg-mime`/`mimeapps.list`, `flatpak`, `/proc/meminfo`, `/home/`, `/root/`, `/usr/bin`, and Linux browser package names from production code strings. Legacy cleanup lists (`.desktop` links, old catalog launchers) are deliberately not banned — they are the names this app deletes. | [`tests/test_platform.py`](tests/test_platform.py) |
-| **No version structure scan.** | `tests/test_release_structure.py` was removed — version enforcement is no longer part of the project. |
-| **No dead code.** | `tests/test_dead_code.py` asserts superseded names (`wait_for_cancel`, `CATEGORY_GENRES`, `ConfigurationError`, `ServiceError`, `_steam_link`, `STAGE_COST`, `_activity_wheel`) are gone — each entry documents what replaced it. | [`tests/test_dead_code.py`](tests/test_dead_code.py) |
-| **No zero-skips evasion.** | `tests/test_zero_skips.py` uses AST (not grep) so comments and docstrings naming skip constructs don't trigger it — this repository documents its own removals at length. | [`tests/test_zero_skips.py`](tests/test_zero_skips.py) |
-| **The frozen build is tested.** | `tests/test_frozen_build.py` runs `build_frozen.main()` against a scratch tree and asserts the exe lands inside the bundle with `core/`, `services/`, `runtime/`, `runtime/7z.exe` present — because the app resolves its project root as `Path(__file__).resolve().parent` and walks it for those siblings. | [`tests/test_frozen_build.py`](tests/test_frozen_build.py) |
-
-Use [`tests/tk_support.py:sandbox_app`](tests/tk_support.py) to root `AppConfig` in a temp tree — never construct the real app against the real `config/` in tests (tests race on `settings.json`; `test_project_state_guard.py` enforces this). `sandbox_app` patches `app.application.AppConfig` to point at a temporary tree; `close_root` cancels pending Tk `after` callbacks before `destroy()` so geometry tests don't leave `invalid command name _tick` noise on stderr.
+| **No test may skip.** | `cargo test` reports `OK` with no new skips. A skip that is not expected is a bug. | `src/` |
+| **Every check must actually run.** | `Ran 0 tests` from a collected module is a bug. | `src/` |
+| **Tests must not write this project's own state.** | Rust tests must not write under real `config/`, `cache/`, or `logs/` — use temp dirs. | `src/` |
+| **Every regression is proved by reverting its fix.** | Watch the test fail, then restore and watch it pass. Record the failure count, not just that it failed. | `src/` |
+| **Windows-only platform.** | Anything branching on platform should raise or return a refusal rather than keep a second implementation. | `src/` |
+| **No dead code.** | `#[allow(dead_code)]` only when intentionally leaving a stub for future implementation. | `src/` |
 
 ---

@@ -30,6 +30,20 @@ zip = "0.6"
 # HTTP client for Steam API calls (blocking client for connection pool)
 reqwest = { version = "0.11", features = ["blocking"] }
 
-[dev-dependencies]
+# Windows registry access for .html handler check (organizer_service)
+winreg = "0.52"
 
+# egui GUI framework for the UI layer
+egui = "0.32"
+eframe = "0.32"
+
+# CLI argument parsing for headless binary
+clap = { version = "4", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3"
 [workspace]
+
+[[bin]]
+name = "steam-game-organizer"
+path = "src/bin.rs"
