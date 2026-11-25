@@ -49,7 +49,9 @@ pub fn image_shape(path: &std::path::Path) -> Option<bool> {
         if SOF_MARKERS.contains(&(marker as u16)) {
             let height = u16::from_be_bytes([data[index + 5], data[index + 6]]) as u32;
             let width = u16::from_be_bytes([data[index + 7], data[index + 8]]) as u32;
-            return Some(width > 0 && height > 0 && height > width && width as f64 / (height as f64) < 0.85);
+            return Some(
+                width > 0 && height > 0 && height > width && width as f64 / (height as f64) < 0.85,
+            );
         }
         index += 2 + length;
     }
@@ -62,7 +64,10 @@ mod tests {
 
     #[test]
     fn test_image_shape_nonexistent() {
-        assert_eq!(image_shape(std::path::Path::new("/nonexistent/path.jpg")), None);
+        assert_eq!(
+            image_shape(std::path::Path::new("/nonexistent/path.jpg")),
+            None
+        );
     }
 
     #[test]

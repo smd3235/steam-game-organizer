@@ -7,6 +7,7 @@
 //! lint-clean.
 
 pub mod banner_art;
+pub mod batch_item;
 pub mod canonical_category;
 pub mod catalog_status;
 pub mod catalog_utils;
@@ -23,8 +24,8 @@ pub mod extract_result;
 pub mod extract_service;
 pub mod filename_utils;
 pub mod formatting;
-pub mod installer_detect;
 pub mod image_shape;
+pub mod installer_detect;
 pub mod library_summary;
 pub mod library_utils;
 pub mod logger;
