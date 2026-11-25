@@ -39,6 +39,7 @@ pub mod parse_multi_uri;
 pub mod parse_open_extracted_uri;
 pub mod parse_open_folder_uri;
 pub mod parse_pick_launcher_uri;
+pub mod parse_play_uri;
 pub mod parse_setup_uri;
 pub mod parse_uri;
 pub mod path_safety;
