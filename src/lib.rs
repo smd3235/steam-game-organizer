@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 //! Steam Game Organizer — Rust conversion (one file at a time).
 //!
 //! Pure `core/` and `utils/` modules are ported here first, then `services/`,

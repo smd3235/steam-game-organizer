@@ -112,6 +112,7 @@ impl AppController {
         // Stub: no-op until category persistence is wired up.
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn scan(
         &self,
         _root: &Path,

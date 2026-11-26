@@ -136,6 +136,7 @@ impl ArchiveService {
         (files, updated)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn discover(
         &self,
         root: &Path,
@@ -652,6 +653,6 @@ mod tests {
         let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> =
             Arc::new(dummy_logger);
         let _service = ArchiveService::new(logger, false, None);
-        assert!(true);
+        // Service creation succeeds without panic
     }
 }

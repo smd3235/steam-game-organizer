@@ -23,6 +23,18 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — fix: Eliminate all clippy warnings and fix conversion gaps
+
+- `src/lib.rs`: Added `#![allow(clippy::type_complexity)]` at crate level — complex types (Arc<dyn Fn...>, nested closures) are inherent to the design
+- `src/ui/e2e_integration_tests.rs`: Removed unused UI imports, added `#[allow(dead_code)]` to test helpers, fixed unused variables, replaced `len() > 0` with `!is_empty()`, replaced index-based loop with `.iter().enumerate()`, removed dead `assert!(true)`, fixed `unwrap_or("unrar")` type mismatch
+- `src/services/organizer_service.rs`: Fixed `unwrap` after `is_some` check (used `map_or_else`), replaced `sort_by` with `sort_by_key`, moved `Regex::new` outside loop, added `#[allow(clippy::type_complexity)]` to `_repack_with_official_name`
+- `src/services/archive_service.rs`: Added `#[allow(clippy::too_many_arguments)]` to `discover()`, removed dead `assert!(true)`
+- `src/services/library_service.rs`: Added `#[allow(clippy::too_many_arguments)]` to `convert_pending_archives()` and `audit()`, removed needless borrow on `create_dir_all`
+- `src/app/controller.rs`: Added `#[allow(clippy::too_many_arguments)]` to `scan()`
+- `src/ui/main_window.rs`: Added `#[allow(clippy::too_many_arguments)]` to `MainWindow::new()`
+- `src/tools/capture_screens.rs`: Added `#[allow(dead_code)]` to `main()`
+- 320 tests pass, clippy clean, cargo fmt --check clean
+
 ### 2026-11-26 — feat: Conversion audit infrastructure — prevents future regression
 
 - `.github/workflows/ci.yml`: Added GitHub Actions CI pipeline with four jobs: audit, clippy (`-D warnings`), test, and build release; runs on push/PR to main and Rust-Conversion

@@ -265,6 +265,7 @@ impl LibraryService {
         found
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn convert_pending_archives(
         &self,
         library_root: &Path,
@@ -834,6 +835,7 @@ impl LibraryService {
     }
 
     // STUB: audit() with parallel artwork downloads depends on artwork_service (not yet converted).
+    #[allow(clippy::too_many_arguments)]
     pub fn audit(
         &self,
         _library_root: &Path,
@@ -983,7 +985,7 @@ mod tests {
     fn test_library_service_is_own_temp_dir() {
         let service = LibraryService::new(Arc::new(dummy_logger), None);
         let temp = std::env::temp_dir().join(format!("test_is_own_temp_{}", std::process::id()));
-        let _ = fs::create_dir_all(&temp.join(".organizer-repack-abc"));
+        let _ = fs::create_dir_all(temp.join(".organizer-repack-abc"));
         assert!(service._is_own_temp(&temp.join(".organizer-repack-abc")));
         assert!(!service._is_own_temp(&temp.join("Game.zip")));
         let _ = fs::remove_dir_all(&temp);

@@ -517,7 +517,7 @@ impl OrganizerService {
             let children = match fs::read_dir(&current) {
                 Ok(e) => e
                     .flatten()
-                    .filter_map(|i| Some(i.path()))
+                    .map(|i| i.path())
                     .filter(|p| p.is_dir())
                     .collect::<Vec<_>>(),
                 Err(_) => continue,
@@ -721,22 +721,22 @@ impl OrganizerService {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let mut files = 0u64;
         let mut total = 0u64;
+        let folder_re = Regex::new(r"^Folder = \+$").unwrap();
+        let attributes_re = Regex::new(r"^Attributes = (.*)$").unwrap();
+        let size_re = Regex::new(r"^Size = (\d+)$").unwrap();
         for block in stdout.split("\n\n") {
             if !block.contains("Path = ") {
                 continue;
             }
-            let folder_re = Regex::new(r"^Folder = \+$").unwrap();
             if folder_re.is_match(block) {
                 continue;
             }
-            let attributes_re = Regex::new(r"^Attributes = (.*)$").unwrap();
             if let Some(caps) = attributes_re.captures(block) {
                 let attrs = caps.get(1).map_or("", |m| m.as_str());
                 if attrs.split_whitespace().any(|a| a == "D") {
                     continue;
                 }
             }
-            let size_re = Regex::new(r"^Size = (\d+)$").unwrap();
             if let Some(caps) = size_re.captures(block) {
                 if let Ok(size) = caps.get(1).unwrap().as_str().parse::<u64>() {
                     files += 1;
@@ -1000,7 +1000,7 @@ impl OrganizerService {
         for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
             children.push(entry.path().to_path_buf());
         }
-        children.sort_by(|a, b| b.components().count().cmp(&a.components().count()));
+        children.sort_by_key(|a| std::cmp::Reverse(a.components().count()));
         for child in children {
             let _ = if child.is_file() || child.is_symlink() {
                 fs::remove_file(&child)
@@ -1032,7 +1032,7 @@ impl OrganizerService {
         let candidates: Vec<PathBuf> = match processing.read_dir() {
             Ok(e) => e
                 .flatten()
-                .filter_map(|i| Some(i.path()))
+                .map(|i| i.path())
                 .filter(|p| p.is_dir())
                 .filter(|p| {
                     p.file_name()
@@ -1206,6 +1206,7 @@ impl OrganizerService {
     ///
     /// Converts a zip/rar/7z archive to a .7z with the official Steam content folder name.
     /// Steps: validate integrity → extract → rename content folder → repack as .7z → verify → publish.
+    #[allow(clippy::type_complexity)]
     pub fn _repack_with_official_name(
         &self,
         archive: &GameArchive,
@@ -1357,7 +1358,7 @@ impl OrganizerService {
             let unrar = ExtractService::find_unrar();
             let (extractor, args): (&str, Vec<String>) = if suffix == "rar" && unrar.is_some() {
                 let mut a = vec![
-                    unrar.unwrap(),
+                    unrar.map_or_else(|| "unrar".to_string(), |s| s.to_string()),
                     "x".to_string(),
                     "-y".to_string(),
                     "-o+".to_string(),

@@ -328,6 +328,7 @@ pub fn capture_and_verify(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let mut view_name = None;

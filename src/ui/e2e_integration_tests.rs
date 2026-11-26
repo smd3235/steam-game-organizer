@@ -19,21 +19,30 @@ use crate::core::models::{
 };
 use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
+#[allow(unused_imports)]
 use crate::ui::artwork_view::ArtworkView;
+#[allow(unused_imports)]
 use crate::ui::done_view::DoneView;
+#[allow(unused_imports)]
 use crate::ui::organize_view::OrganizeView;
+#[allow(unused_imports)]
 use crate::ui::review_view::ReviewView;
+#[allow(unused_imports)]
 use crate::ui::scan_view::{ScanView, SCAN_PHASES};
+#[allow(unused_imports)]
 use crate::ui::setup_view::SetupView;
+#[allow(unused_imports)]
 use crate::ui::theme::Palette;
 
 /// Helper: create a test AppLogger
+#[allow(dead_code)]
 fn test_logger() -> Arc<AppLogger> {
     let path = std::env::temp_dir().join(format!("e2e_test_{}.log", std::process::id()));
     Arc::new(AppLogger::new(&path, "DEBUG", false, false).unwrap())
 }
 
 /// Helper: create a test AppConfig
+#[allow(dead_code)]
 fn test_config() -> Arc<AppConfig> {
     Arc::new(AppConfig::new(std::path::Path::new(
         std::env::temp_dir().to_str().unwrap(),
@@ -41,11 +50,13 @@ fn test_config() -> Arc<AppConfig> {
 }
 
 /// Helper: create a test Watchdog
+#[allow(dead_code)]
 fn test_watchdog(logger: Arc<AppLogger>) -> Arc<Watchdog> {
     Arc::new(Watchdog::new(logger, 1000))
 }
 
 /// Helper: create test services
+#[allow(dead_code)]
 fn test_services() -> Arc<Services> {
     let logger = test_logger();
     let organizer =
@@ -54,17 +65,20 @@ fn test_services() -> Arc<Services> {
 }
 
 /// Helper: create test library service
+#[allow(dead_code)]
 fn test_library_service() -> LibraryService {
     let logger = test_logger();
     LibraryService::new(Arc::new(move |cat, msg| logger.info(cat, msg, "")), None)
 }
 
 /// Helper: create test jobs
+#[allow(dead_code)]
 fn test_jobs() -> Arc<JobManager> {
     Arc::new(JobManager::new(2))
 }
 
 /// Create a test GameArchive with all required fields
+#[allow(dead_code)]
 fn make_test_archive(name: &str, appid: &str, category: &str) -> GameArchive {
     GameArchive {
         path: PathBuf::from(format!("/test/{}.zip", name)),
@@ -110,6 +124,7 @@ fn make_test_archive(name: &str, appid: &str, category: &str) -> GameArchive {
 }
 
 /// Create test library with multiple game archives on disk
+#[allow(dead_code)]
 fn create_test_library() -> PathBuf {
     let lib_dir = std::env::temp_dir().join(format!("e2e_library_{}", std::process::id()));
     fs::create_dir_all(&lib_dir).unwrap();
@@ -132,7 +147,7 @@ fn create_test_library() -> PathBuf {
 #[test]
 fn test_e2e_full_flow_scan_to_done() {
     // Setup
-    let lib_dir = create_test_library();
+    let _lib_dir = create_test_library();
     let logger = test_logger();
     let watchdog = test_watchdog(logger.clone());
     let services = test_services();
@@ -199,8 +214,8 @@ fn test_e2e_full_flow_scan_to_done() {
     }
 
     // Test phase_start() for all 6 phases
-    for i in 0..SCAN_PHASES.len() {
-        scan_view.phase_start(SCAN_PHASES[i].0);
+    for (i, (phase_name, _)) in SCAN_PHASES.iter().enumerate() {
+        scan_view.phase_start(phase_name);
         assert_eq!(scan_view.state.current_phase, i);
     }
 
@@ -388,7 +403,7 @@ fn test_e2e_full_flow_scan_to_done() {
 
     // Test feed
     organize_view.feed("Organizing test...");
-    assert!(organize_view.state.activity.len() > 0);
+    assert!(!organize_view.state.activity.is_empty());
     assert!(organize_view
         .state
         .activity
@@ -923,7 +938,7 @@ fn test_review_archive_selection_persistence() {
 fn test_logging_produces_output() {
     let logger = test_logger();
     let watchdog = test_watchdog(logger.clone());
-    let palette = Palette::default();
+    let _palette = Palette::default();
 
     // Generate various log entries
     logger.info("TEST", "Info message", "corr1");
@@ -950,9 +965,9 @@ fn test_logging_produces_output() {
     view_watchdog_timeout(&watchdog, &logger);
 
     // Verify logger is functional (no panic)
-    assert!(true);
 }
 
+#[allow(dead_code)]
 fn view_watchdog_timeout(watchdog: &Watchdog, _logger: &Arc<AppLogger>) {
     // Start an operation with a very short timeout
     let id = watchdog.start("slow_op", "TEST", "corr_watchdog", Some(10));

@@ -56,6 +56,7 @@ pub struct MainWindow {
 }
 
 impl MainWindow {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         state: Arc<StateStore>,
         bus: Arc<EventBus>,
