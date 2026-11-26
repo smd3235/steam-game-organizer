@@ -185,7 +185,7 @@ impl SetupView {
         });
     }
 
-    fn validate_config(&mut self) {
+    pub fn validate_config(&mut self) {
         let corr = self.logger.correlation_id();
         self.state.validation_messages.clear();
         let mut all_ok = true;
@@ -238,7 +238,7 @@ impl SetupView {
         self.logger.log("SETUP", &format!("Validation complete: {} messages", self.state.validation_messages.len()), &corr);
     }
 
-    fn save_config(&mut self) {
+    pub fn save_config(&mut self) {
         let corr = self.logger.correlation_id();
         self.validate_config();
         if self.state.validation_messages.iter().any(|m| m.starts_with("✗")) {

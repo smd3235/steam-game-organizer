@@ -18,6 +18,7 @@ pub mod setup_view;
 pub mod setup_window;
 pub mod theme;
 pub mod widgets;
+pub mod e2e_integration_tests;
 
 #[cfg(test)]
 mod integration_tests;

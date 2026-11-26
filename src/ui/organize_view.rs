@@ -178,7 +178,7 @@ impl OrganizeView {
         });
     }
 
-    fn run_organize(&mut self) {
+    pub fn run_organize(&mut self) {
         let corr = self.logger.correlation_id();
         let op_id = self.logger.op_start("run_organize", &corr);
         self.watchdog.start("run_organize", "ORGANIZE", &corr, Some(600000)); // 10 minute timeout

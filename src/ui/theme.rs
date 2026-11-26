@@ -6,6 +6,7 @@
 use egui::{Color32, RichText, Stroke, Vec2};
 
 /// Palette colors — modern dark theme with vibrant accent.
+#[derive(Clone)]
 pub struct Palette {
     /// Background (darkest)
     pub bg: Color32,

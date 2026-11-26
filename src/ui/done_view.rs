@@ -150,7 +150,7 @@ impl DoneView {
         });
     }
 
-    fn undo_last_run(&mut self) {
+    pub fn undo_last_run(&mut self) {
         let corr = self.logger.correlation_id();
         self.logger.log("DONE", "Undo last organization run", &corr);
         self.state.archives.clear();
@@ -160,7 +160,7 @@ impl DoneView {
         self.state.status = "Organization run undone.".to_string();
     }
 
-    fn open_library(&mut self) {
+    pub fn open_library(&mut self) {
         let corr = self.logger.correlation_id();
         self.logger.log("DONE", "Open library folder requested", &corr);
         self.state.status = "Opening library folder…".to_string();

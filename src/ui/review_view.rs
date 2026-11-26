@@ -295,7 +295,7 @@ impl ReviewView {
         });
     }
 
-    fn approve_all_verified(&mut self) {
+    pub fn approve_all_verified(&mut self) {
         let corr = self.logger.correlation_id();
         for archive in &mut self.state.archives {
             if !archive.decision.skipped {
@@ -306,7 +306,7 @@ impl ReviewView {
         self.state.status = "All verified archives approved".to_string();
     }
 
-    fn use_all_suggestions(&mut self) {
+    pub fn use_all_suggestions(&mut self) {
         let corr = self.logger.correlation_id();
         for archive in &mut self.state.archives {
             archive.decision.category = archive.decision.suggested_category.clone();
@@ -315,13 +315,13 @@ impl ReviewView {
         self.state.status = "All suggestions applied".to_string();
     }
 
-    fn retry_failed(&mut self) {
+    pub fn retry_failed(&mut self) {
         let corr = self.logger.correlation_id();
         self.logger.log("REVIEW", "Retry failed archives", &corr);
         self.state.status = "Failed archives retried".to_string();
     }
 
-    fn accept_and_next(&mut self) {
+    pub fn accept_and_next(&mut self) {
         if let Some(i) = self.state.selected_index {
             self.accept_archive(i);
             if i + 1 < self.state.archives.len() {
@@ -330,7 +330,7 @@ impl ReviewView {
         }
     }
 
-    fn skip_current(&mut self) {
+    pub fn skip_current(&mut self) {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.skipped = true;
             self.state.archives[i].decision.accepted = false;
@@ -339,7 +339,7 @@ impl ReviewView {
         }
     }
 
-    fn wrong_match(&mut self) {
+    pub fn wrong_match(&mut self) {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.accepted = false;
             self.state.archives[i].steam.found = false;
@@ -348,14 +348,14 @@ impl ReviewView {
         }
     }
 
-    fn accept_archive(&mut self, index: usize) {
+    pub fn accept_archive(&mut self, index: usize) {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = true;
             self.logger.log("REVIEW", &format!("Accepted: {}", self.state.archives[index].display_name), "");
         }
     }
 
-    fn reject_archive(&mut self, index: usize) {
+    pub fn reject_archive(&mut self, index: usize) {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = false;
             self.state.archives[index].decision.skipped = true;
