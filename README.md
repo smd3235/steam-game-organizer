@@ -217,7 +217,125 @@ Phases run in order: **Discover → Organize → Catalog → Done**. Undo is an 
 
 ---
 
-## 🏗️ Repository layout
+## 📸 UI View Reference
+
+The app renders all views in a single window. To capture individual screenshots for documentation or review, use the `--view` flag to launch any view in isolation, then run the `capture_screens` tool:
+
+```powershell
+# Build both executables
+cargo build --release
+
+# Launch a single view in isolation (no sidebar or top bar)
+.\target\release\steam-game-organizer.exe --view scan
+.\target\release\steam-game-organizer.exe --view review
+.\target\release\steam-game-organizer.exe --view organize
+.\target\release\steam-game-organizer.exe --view artwork
+.\target\release\steam-game-organizer.exe --view done
+.\target\release\steam-game-organizer.exe --view setup
+
+# While the view window is open, capture it
+.\target\release\capture_screens.exe
+```
+
+Screenshots are saved as timestamped PNGs to `docs/screenshots/`. Valid `--view` values: `scan`, `review`, `organize`, `artwork`, `done`, `setup`.
+
+### Scan View (`--view scan`)
+
+![Scan View](docs/screenshots/scan-view.png)
+
+**Purpose:** Discover game archives in your library and match them to Steam store metadata.
+
+**What it contains:**
+- **Header** — "Scan Game Archives" with description
+- **Stat cards** — Archives Found count, Phases Complete count
+- **Config row** — Checkboxes for "Convert Archives", "Preview Only", "Scan + Artwork"
+- **Action buttons** — "Start Scan" (primary), "Scan with Artwork" (secondary), "Cancel Scan" (danger, shown while scanning)
+- **Phase timeline** — Pill badges for each scan phase (Discover → Dedupe → Repair → etc.) color-coded by state (green = done, blue = active, muted = pending)
+- **Progress bar + stage label** — Current scan progress and stage text
+- **Activity feed** — Scrollable log of scan events and discovered archives
+- **Discovered Archives card** — List of found archives with size, each row clickable to select
+
+**Empty state:** Shows an icon and message prompting you to run Scan first when no archives exist.
+
+### Review View (`--view review`)
+
+![Review View](docs/screenshots/review-view.png)
+
+**Purpose:** Verify Steam matches, pick categories, accept or reject games before organization.
+
+**What it contains:**
+- **Stat cards** — Total archives, Accepted count (green), Skipped count (orange)
+- **Controls** — Search text field, Filter dropdown (All / Needs Review / Verified / New Only / Artwork)
+- **Archive list** — Left panel with clickable rows; each row shows archive name + size, highlight on hover, click to select
+- **Detail panel** — Right panel showing the selected archive's APPID, Category (color-coded pill), Identity Key, Release Group, Size, Accepted/Skipped status
+- **Bottom actions** — "Accept & Next" (primary), "Skip", "Wrong Match" (danger), "Extract Selected" (secondary)
+- **Inline actions** — When an archive is selected: "Accept" and "Reject" buttons specific to that item
+
+**Empty state:** Shows "No archives yet — Run Scan first to discover game archives."
+
+### Organize View (`--view organize`)
+
+![Organize View](docs/screenshots/organize-view.png)
+
+**Purpose:** Convert archives to 7z, move into category folders, write metadata and artwork.
+
+**What it contains:**
+- **Stat cards** — Converted count (green), Skipped count (orange), Failed count (red)
+- **Loading card** — Spinner + "Organizing archives…" shown while conversion is in progress
+- **Progress bar + stage label** — Current organize progress and stage text
+- **Config** — "Preview Only" checkbox, "Start Organize" button (primary), "Cancel" button (danger, shown while converting)
+- **Archive list** — Left panel with clickable rows showing name + size
+- **Activity feed** — Right panel with scrollable log of organize events
+
+**Empty state:** Shows "No archives to organize — Accept games on the Review page first."
+
+### Artwork View (`--view artwork`)
+
+![Artwork View](docs/screenshots/artwork-view.png)
+
+**Purpose:** Review downloaded Steam artwork assets for accepted games.
+
+**What it contains:**
+- **Header** — "Artwork & Steam Assets"
+- **Status line** — Current artwork status
+- **Archive grid** — 3-column grid of game cards, each with game name + "Open Folder", "View Artwork", "Re-download Missing" buttons
+- **Bottom actions** — "Scan Again", "Review", "Re-download Missing" buttons
+- **Artwork detail panel** — Shown when an archive is selected, with Identity Key, Artwork Status, Artwork Source, Asset Count
+
+**Empty state:** Shows icon and message "No artwork downloaded yet — Scan and organize games first, then download artwork."
+
+### Done View (`--view done`)
+
+![Done View](docs/screenshots/done-view.png)
+
+**Purpose:** Show organize run results with color-coded status per archive.
+
+**What it contains:**
+- **Stat cards** — Converted (green), Skipped (orange), Failed (red)
+- **Results list** — Each archive shown with name + status badge color-coded by outcome
+- **Bottom actions** — "Undo" (secondary), "Open Library" (secondary), "Scan Again" (primary)
+- **Loading/Empty states** — Shows appropriate message when no results exist yet
+
+**Undo:** Restores archived files to their sources and prunes only folders created by this run.
+
+### Setup View (`--view setup`)
+
+![Setup View](docs/screenshots/setup-view.png)
+
+**Purpose:** One-time wizard to configure library root, extract folder, and 7-Zip path.
+
+**What it contains:**
+- **Library Root** — Text field + "Browse Library" button + description
+- **Extract Folder** — Text field + "Browse Extract" button + description
+- **7-Zip Path** — Text field + "Browse 7-Zip" button + description
+- **Developer Mode** — Checkbox for debug logging
+- **Validation** — "Validate Configuration" button (primary), "Clear" button (secondary), validation messages with color-coded status
+- **Footer** — "Save & Finish Setup" button (primary), "Skip Setup" button (secondary)
+
+**Navigation:** Also accessible from the main sidebar as "Setup Wizard" and from the top bar.
+
+---
+
 
 ```mermaid
 flowchart TD
@@ -276,7 +394,9 @@ steam-game-organizer/
 
 ---
 
-## 🔧 Troubleshooting
+## 🏗️ Repository layout
+
+```mermaid
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|

@@ -23,6 +23,12 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — fix: capture_screens targets app window, not full desktop
+
+- `src/tools/capture_screens.rs`: PowerShell script now finds the "Steam Game Organizer" window by title, gets its rect via Win32 `GetWindowRect`, and captures only the window's client area — matching the old Python Tkinter `ImageGrab` approach instead of grabbing the entire primary monitor
+- Six view screenshots captured and saved to `docs/screenshots/`: scan-view.png, review-view.png, organize-view.png, artwork-view.png, done-view.png, setup-view.png
+- README updated with embedded screenshot images for each view
+
 ### 2026-11-26 — feat: --view CLI flag for single-view UI testing
 
 - `src/bin.rs`: Added `--view` CLI argument (scan, review, organize, artwork, done, setup) to launch a single UI view in isolation without running the full application
