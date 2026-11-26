@@ -23,6 +23,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::core::constants::APP_NAME;
+use crate::core::path_safety::safe_create_dir_all;
 
 pub const ROTATED_LOGS: u32 = 10;
 
@@ -203,7 +204,8 @@ impl AppConfig {
             return;
         }
 
-        let _ = fs::create_dir_all(&self.config_dir);
+        let project_root_str = self.project_root.to_str().unwrap_or("");
+        let _ = safe_create_dir_all(&self.config_dir, &[project_root_str]);
         if let Ok(entries) = fs::read_dir(&appdata) {
             for item in entries.filter_map(|e| e.ok()) {
                 if item.path().is_file() {
@@ -220,7 +222,8 @@ impl AppConfig {
             return;
         }
         let appdata = appdata.unwrap();
-        let _ = fs::create_dir_all(&appdata);
+        let appdata_root = appdata.parent().unwrap_or(&appdata).to_str().unwrap_or("");
+        let _ = safe_create_dir_all(&appdata, &[appdata_root]);
         if self.config_dir.is_dir() {
             if let Ok(entries) = fs::read_dir(&self.config_dir) {
                 for item in entries.filter_map(|e| e.ok()) {
@@ -328,7 +331,8 @@ impl AppConfig {
                 }
                 let _ = fs::rename(p, &backup);
             }
-            let _ = fs::create_dir_all(p);
+            let project_root_str = self.project_root.to_str().unwrap_or("");
+            let _ = safe_create_dir_all(p, &[project_root_str]);
         }
     }
 

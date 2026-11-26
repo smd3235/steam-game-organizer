@@ -8,6 +8,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::core::path_safety::safe_create_dir_all;
 use crate::ui::theme::{
     card, heading, primary_button, secondary_button, section_header, separator, Palette,
 };
@@ -317,7 +318,8 @@ impl SetupView {
         if !self.state.extract_folder.is_empty() {
             let path = PathBuf::from(&self.state.extract_folder);
             if !path.exists() {
-                match std::fs::create_dir_all(&path) {
+                let parent_root = path.parent().unwrap_or(&path).to_str().unwrap_or("");
+                match safe_create_dir_all(&path, &[parent_root]) {
                     Ok(()) => {
                         self.state.validation_messages.push(format!(
                             "✓ Created extract folder: {}",

@@ -261,6 +261,131 @@ pub fn safe_unlink(
     guard.unlink(path, missing_ok)
 }
 
+/// Holds the roots this app is allowed to CREATE directories and files inside.
+///
+/// Mirrors `DeletionGuard` but for creation operations (`create_dir_all`, `write`,
+/// `File::create`). Refuses to create anything at a drive root (C:\, D:\) or inside
+/// a protected system path (Windows, Program Files, Users), and refuses anything
+/// outside the configured allowed roots.
+pub struct CreationGuard {
+    root_paths: Vec<PathBuf>,
+    roots: Vec<String>,
+}
+
+impl CreationGuard {
+    pub fn new(roots: &[&str]) -> Result<Self, String> {
+        let root_paths: Vec<PathBuf> = roots
+            .iter()
+            .filter(|r| !r.is_empty())
+            .map(|r| {
+                let p = PathBuf::from(r);
+                if p.is_absolute() {
+                    p
+                } else {
+                    std::env::current_dir().unwrap_or_default().join(p)
+                }
+            })
+            .collect();
+        let roots: Vec<String> = root_paths
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        if root_paths.is_empty() {
+            return Err("CreationGuard needs at least one allowed root".to_string());
+        }
+        Ok(Self { root_paths, roots })
+    }
+
+    /// True when `path` resolves inside one of the allowed roots.
+    pub fn allowed(&self, path: &Path) -> bool {
+        let resolved = match path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => {
+                // Path doesn't exist yet — check against string prefixes of allowed roots
+                return self.root_paths.iter().any(|root| {
+                    path.to_string_lossy().starts_with(&*root.to_string_lossy())
+                });
+            }
+        };
+        self.root_paths.iter().any(|root| {
+            let root_resolved = root.canonicalize().unwrap_or_else(|_| root.clone());
+            resolved == root_resolved || resolved.starts_with(&root_resolved)
+        })
+    }
+
+    /// Refuse to create `path` if it is a protected system path, a drive root,
+    /// or outside every allowed root.
+    pub fn refuse_outside_create(
+        &self,
+        path: &Path,
+        operation: &str,
+    ) -> Result<PathBuf, PathOutsideAllowedRoot> {
+        if is_protected(path) {
+            return Err(PathOutsideAllowedRoot::new(&format!(
+                "{} refused: {:?} is a protected system path",
+                operation, path
+            )));
+        }
+        // Refuse drive roots (C:\, D:\, E:\) — they have no parent to create under
+        let path_str = path.to_string_lossy().to_string();
+        if path_str.len() <= 3 && path_str.ends_with('\\') {
+            return Err(PathOutsideAllowedRoot::new(&format!(
+                "{} refused: {:?} is a drive root — directory creation at drive root is prohibited",
+                operation, path
+            )));
+        }
+        if !self.allowed(path) {
+            return Err(PathOutsideAllowedRoot::new(&format!(
+                "{} refused: {:?} is outside every allowed root ({})",
+                operation,
+                path,
+                self.roots.join(", ")
+            )));
+        }
+        path.canonicalize().map_err(|_| {
+            PathOutsideAllowedRoot::new(&format!(
+                "{} refused: {:?} cannot be resolved",
+                operation, path
+            ))
+        })
+    }
+}
+
+/// Guarded `create_dir_all` — refuses to create directories at drive roots,
+/// protected system paths, or outside every allowed root.
+pub fn safe_create_dir_all(
+    path: &Path,
+    roots: &[&str],
+) -> Result<(), PathOutsideAllowedRoot> {
+    let guard = CreationGuard::new(roots)?;
+    guard.refuse_outside_create(path, "create_dir_all")?;
+    match std::fs::create_dir_all(path) {
+        Ok(()) => Ok(()),
+        Err(e) => Err(PathOutsideAllowedRoot::new(&format!(
+            "create_dir_all failed for {:?}: {}",
+            path, e
+        ))),
+    }
+}
+
+/// Guarded `File::create` / `std::fs::write` — refuses to write files outside
+/// every allowed root or at protected system paths.
+pub fn safe_write(
+    path: &Path,
+    contents: &[u8],
+    roots: &[&str],
+) -> Result<(), PathOutsideAllowedRoot> {
+    let guard = CreationGuard::new(roots)?;
+    guard.refuse_outside_create(path, "write")?;
+    match std::fs::write(path, contents) {
+        Ok(()) => Ok(()),
+        Err(e) => Err(PathOutsideAllowedRoot::new(&format!(
+            "write failed for {:?}: {}",
+            path, e
+        ))),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,5 +403,64 @@ mod tests {
     #[test]
     fn test_is_within_not_parent() {
         assert!(!is_within(Path::new("/a/b"), Path::new("/a/b/c")));
+    }
+
+    #[test]
+    fn test_creation_guard_allowed_within_root() {
+        let tmp = std::env::temp_dir();
+        let root = tmp.join("creation_guard_test_root");
+        let _ = std::fs::create_dir_all(&root);
+        let guard = CreationGuard::new(&[root.to_string_lossy().as_ref()]).unwrap();
+        let child = root.join("subdir");
+        assert!(guard.allowed(&child));
+        assert!(guard.allowed(&root));
+        let outside = tmp.join("other_root");
+        assert!(!guard.allowed(&outside));
+    }
+
+    #[test]
+    fn test_creation_guard_refuses_drive_root() {
+        let guard = CreationGuard::new(&["C:\\allowed\\root"]).unwrap();
+        let result = guard.refuse_outside_create(Path::new("C:\\"), "create_dir_all");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("drive root"));
+    }
+
+    #[test]
+    fn test_creation_guard_refuses_outside_root() {
+        let tmp = std::env::temp_dir();
+        let root = tmp.join("creation_guard_test_root2");
+        let _ = std::fs::create_dir_all(&root);
+        let guard = CreationGuard::new(&[root.to_string_lossy().as_ref()]).unwrap();
+        let outside = tmp.join("outside_root").join("file.txt");
+        let result = guard.refuse_outside_create(&outside, "create_dir_all");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("outside every allowed root")
+                || err_msg.contains("protected system path"),
+            "unexpected error message: {}",
+            err_msg
+        );
+    }
+
+    #[test]
+    fn test_creation_guard_refuses_protected_path() {
+        let guard = CreationGuard::new(&["C:\\allowed\\root"]).unwrap();
+        // On Windows, C:\ is a protected drive root
+        let result = guard.refuse_outside_create(Path::new("C:\\"), "create_dir_all");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_safe_create_dir_all_refuses_drive_root() {
+        let result = safe_create_dir_all(Path::new("C:\\"), &["C:\\allowed\\root"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_safe_write_refuses_drive_root() {
+        let result = safe_write(Path::new("C:\\test.txt"), b"hello", &["C:\\allowed\\root"]);
+        assert!(result.is_err());
     }
 }

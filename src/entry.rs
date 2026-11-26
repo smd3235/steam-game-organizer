@@ -11,6 +11,7 @@ use std::sync::Arc;
 use crate::app::application::Application;
 use crate::core::config::AppConfig;
 use crate::core::logger::AppLogger;
+use crate::core::path_safety::safe_create_dir_all;
 use crate::services::catalog_service::CatalogService;
 use crate::services::extract_service::ExtractService;
 use crate::services::setup_service::SetupService;
@@ -304,7 +305,8 @@ pub fn main() -> i32 {
 
     // Launch GUI (egui)
     let log_dir = root_path.join("logs");
-    let _ = std::fs::create_dir_all(&log_dir);
+    let root_path_str = root_path.to_str().unwrap_or("");
+    let _ = safe_create_dir_all(&log_dir, &[root_path_str]);
     let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
     let log_path = log_dir.join(format!("organizer-{}.log", stamp));
     let logger = Arc::new(

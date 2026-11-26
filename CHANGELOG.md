@@ -23,6 +23,19 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — fix: CreationGuard — prevent directory creation at drive roots and outside allowed roots
+
+- `src/core/path_safety.rs`: Added `CreationGuard` — mirrors `DeletionGuard` but for creation operations (`create_dir_all`, `write`, `File::create`). Refuses to create directories at drive roots (C:\, D:\) or inside protected system paths (Windows, Program Files, Users), and refuses anything outside configured allowed roots. Adds `safe_create_dir_all()` and `safe_write()` one-shot functions.
+- `src/core/config.rs`: `ensure_directories()` and `_migrate_from_appdata()` now use `safe_create_dir_all()` with `project_root` as allowed root — prevents creating `config/`, `cache/`, `logs/`, `debug/` at drive root if `resolve_project_root()` returns `E:\`
+- `src/core/config.rs`: `sync_to_appdata()` uses `safe_create_dir_all()` with `%LOCALAPPDATA%` as allowed root — intended appdata sync location
+- `src/ui\setup_view.rs`: `save_config()` uses `safe_create_dir_all()` with extract folder's parent as allowed root — prevents creating user-configured extract folders outside allowed roots
+- `src/services\setup_service.rs`: `apply()` uses `safe_create_dir_all()` with library's parent as allowed root — prevents creating user-configured library roots outside allowed roots
+- `src\bin.rs`: Sandbox and GUI log dir creation use `safe_create_dir_all()` with `project_root` as allowed root
+- `src\entry.rs`: GUI log dir creation uses `safe_create_dir_all()` with `root_path` as allowed root
+- `src\core\logger.rs`: Log file parent dir creation uses `safe_create_dir_all()` with log's grandparent as allowed root
+- `src\bin.rs`: `resolve_project_root()` refuses to return a drive root — falls back to `exe_dir.parent()` if resolution would land on `C:\`, `E:\`, etc.
+- `CHANGELOG.md`: Documented all safety guard changes
+
 ### 2026-11-26 — feat: Sandbox mode — mega-test covers all sections, buttons, zip conversion, category sorting
 
 - `src/tools/sandbox.rs`: Sandbox test environment lives under `<project_root>/sandbox/` with `config/`, `cache/`, `logs/`, `extracted/`, `library/` subdirs — not temp dirs — config points to sandbox paths for library root, extract folder, and logs

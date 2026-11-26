@@ -13,6 +13,7 @@ use std::sync::Arc;
 use steam_game_organizer::app::application::Application;
 use steam_game_organizer::core::config::AppConfig;
 use steam_game_organizer::core::logger::AppLogger;
+use steam_game_organizer::core::path_safety::safe_create_dir_all;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Steam Game Organizer", long_about = None)]
@@ -79,10 +80,11 @@ fn main() {
     // Sandbox mode: simulate UI interactions end-to-end, read logs, report issues
     if args.sandbox {
         let project_root = resolve_project_root();
+        let project_root_str = project_root.to_str().unwrap_or("");
         let output_dir = project_root.join("docs/screenshots");
-        let _ = std::fs::create_dir_all(&output_dir);
+        let _ = safe_create_dir_all(&output_dir, &[project_root_str]);
         let log_dir = project_root.join("logs");
-        let _ = std::fs::create_dir_all(&log_dir);
+        let _ = safe_create_dir_all(&log_dir, &[project_root_str]);
 
         let timestamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
         let sandbox_log_name = format!("sandbox-{}.log", timestamp);
@@ -117,7 +119,8 @@ fn main() {
 
     // Create a timestamped log file under logs/ with HH:MM:SS timestamps
     let log_dir = project_root.join("logs");
-    let _ = std::fs::create_dir_all(&log_dir);
+    let project_root_str = project_root.to_str().unwrap_or("");
+    let _ = safe_create_dir_all(&log_dir, &[project_root_str]);
     let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
     let log_path = log_dir.join(format!("organizer-{}.log", stamp));
 
@@ -215,6 +218,13 @@ fn resolve_project_root() -> PathBuf {
             root = candidate.to_path_buf();
             break;
         }
+    }
+
+    // Refuse to resolve to a drive root (e.g. C:\, E:\) — creating config/logs there
+    // would pollute the drive root instead of the project directory.
+    let root_str = root.to_string_lossy().to_string();
+    if root_str.len() <= 3 && root_str.ends_with('\\') {
+        return exe_dir.parent().unwrap_or(&std::env::current_dir().unwrap_or_default()).to_path_buf();
     }
     root
 }

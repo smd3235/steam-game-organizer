@@ -23,6 +23,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::core::constants::{ENTRY_POINT, LIBRARY_RESERVED_DIRS};
+use crate::core::path_safety::safe_create_dir_all;
 use crate::services::extract_service::ExtractService;
 
 /// The three-path setup a fresh PC needs, and the one place those paths are saved.
@@ -187,7 +188,8 @@ impl SetupService {
         let app = Path::new(app_or_empty(app));
         let _extract = Path::new(extract_or_empty(extract));
         // config.library_root = library;
-        std::fs::create_dir_all(library).unwrap_or_default();
+        let library_parent = library.parent().unwrap_or(&library).to_str().unwrap_or("");
+        let _ = safe_create_dir_all(library, &[library_parent]);
         // config.save();
         let entry = app.join(ENTRY_POINT);
         if !entry.is_file() {

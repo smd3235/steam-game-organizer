@@ -18,6 +18,8 @@ use std::fs::{remove_file, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+
+use crate::core::path_safety::safe_create_dir_all;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const LEVEL_DEBUG: i32 = 0;
@@ -73,7 +75,8 @@ impl AppLogger {
     ) -> std::io::Result<Self> {
         let path = path.as_ref();
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+            let parent_root = parent.parent().unwrap_or(parent).to_str().unwrap_or("");
+            let _ = safe_create_dir_all(parent, &[parent_root]);
         }
         Ok(AppLogger {
             path: path.to_path_buf(),
