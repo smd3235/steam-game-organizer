@@ -7,8 +7,6 @@
 //! 2026-11-25: Converted from `app/events.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

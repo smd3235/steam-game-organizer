@@ -7,8 +7,6 @@
 //! 2026-11-25: Rust conversion from `services/organizer_service.py` in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -81,6 +79,12 @@ impl CancelContext {
 
     pub fn checkpoint(&self) {
         let _ = self.cancelled();
+    }
+}
+
+impl Default for CancelContext {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -233,7 +237,7 @@ impl OrganizerService {
         self._clean_old_links(game_dir);
         let link = game_dir.join(LINK_NAME);
         let display_name = name
-            .map(|n| escape_html(n))
+            .map(escape_html)
             .unwrap_or_else(|| game_dir.file_name().unwrap_or_default().to_string_lossy().to_string());
         let html = format!(
             "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{display_name} — Steam</title><meta http-equiv=\"refresh\" content=\"0; url={url}\"></head><body><h1>{display_name}</h1><p>Opening the Steam store page…</p><p><a href=\"{url}\">Open on Steam</a></p></body></html>"
@@ -326,10 +330,10 @@ impl OrganizerService {
                 return false;
             }
             let name = item.file_name().unwrap_or_default().to_string_lossy().to_string();
-            if RECOGNISED_FOLDER_FILES.iter().any(|&m| m == name.as_str()) {
+            if RECOGNISED_FOLDER_FILES.contains(&name.as_str()) {
                 continue;
             }
-            if item.extension().map_or(false, |ext| {
+            if item.extension().is_some_and(|ext| {
                 RECOGNISED_IMAGE_SUFFIXES.contains(&ext.to_string_lossy().to_lowercase().as_str())
             }) {
                 continue;
@@ -376,12 +380,12 @@ impl OrganizerService {
                 return false;
             }
             let name = item.file_name().unwrap_or_default().to_string_lossy().to_string();
-            if RECOGNISED_FOLDER_FILES.iter().any(|&m| m == name.as_str()) {
+            if RECOGNISED_FOLDER_FILES.contains(&name.as_str()) {
                 continue;
             }
-            if item.extension().map_or(false, |ext| {
+            if item.extension().is_some_and(|ext| {
                 RECOGNISED_IMAGE_SUFFIXES.contains(&ext.to_string_lossy().to_lowercase().as_str())
-            }) && item.file_stem().map_or(false, |s| s.to_string_lossy().contains('_')) {
+            }) && item.file_stem().is_some_and(|s| s.to_string_lossy().contains('_')) {
                 continue;
             }
             (self.logger)(
@@ -417,7 +421,7 @@ impl OrganizerService {
                     && item
                         .path()
                         .extension()
-                        .map_or(false, |e| crate::core::constants::ARCHIVE_EXTENSIONS.contains(&e.to_string_lossy().to_lowercase().as_str()))
+                        .is_some_and(|e| crate::core::constants::ARCHIVE_EXTENSIONS.contains(&e.to_string_lossy().to_lowercase().as_str()))
             });
         if has_archive {
             return false;
@@ -435,7 +439,7 @@ impl OrganizerService {
             Err(_) => return false,
         };
         let archive_dir = destination.join("Archive");
-        if let Err(_) = fs::create_dir_all(&archive_dir) {
+        if fs::create_dir_all(&archive_dir).is_err() {
             return false;
         }
         let mut target = archive_dir.join(folder.file_name().unwrap_or_default());
@@ -493,7 +497,7 @@ impl OrganizerService {
             for child in children {
                 if let Some(name) = child.file_name() {
                     let name_str = name.to_string_lossy().to_lowercase();
-                    if GENERIC_CONTENT_FOLDER_NAMES.iter().any(|&n| n == name_str.as_str()) {
+                    if GENERIC_CONTENT_FOLDER_NAMES.contains(&name_str.as_str()) {
                         return Some(child);
                     }
                 }
@@ -507,10 +511,7 @@ impl OrganizerService {
 
     fn _content_folder_name(&self, path: &Path) -> Option<String> {
         let (sevenzip_opt, _reason_opt) = ExtractService::find_tool();
-        let sevenzip = match sevenzip_opt {
-            Some(sz) => sz,
-            None => return None,
-        };
+        let sevenzip = sevenzip_opt?;
         let stat = match fs::metadata(path) {
             Ok(s) => s,
             Err(_) => return None,
@@ -634,7 +635,7 @@ impl OrganizerService {
             }
         }
         if let Some(sf) = swap_free {
-            if sf < RAM_HEADROOM_BYTES as u64 {
+            if sf < RAM_HEADROOM_BYTES {
                 level = level.max(MIN_COMPRESSION_LEVEL).saturating_sub(1);
             }
         }
@@ -645,10 +646,7 @@ impl OrganizerService {
 
     fn _archive_manifest(&self, path: &Path) -> Option<(u64, u64)> {
         let (sevenzip_opt, _reason_opt) = ExtractService::find_tool();
-        let sevenzip = match sevenzip_opt {
-            Some(sz) => sz,
-            None => return None,
-        };
+        let sevenzip = sevenzip_opt?;
         let stat = match fs::metadata(path) {
             Ok(s) => s,
             Err(_) => return None,
@@ -658,7 +656,7 @@ impl OrganizerService {
             let cache = self.manifest_cache.lock().unwrap();
             if let Some((size, mtime, result)) = cache.get(&cache_key) {
                 if *size == stat.len() && *mtime == 0 {
-                    return result.clone();
+                    return *result;
                 }
             }
         }
@@ -784,7 +782,7 @@ impl OrganizerService {
             Some(sz) => sz,
             None => return true,
         };
-        if path.extension().map_or(false, |e| e == "zip") && self._zip_is_encrypted(path) {
+        if path.extension().is_some_and(|e| e == "zip") && self._zip_is_encrypted(path) {
             return true;
         }
         let stat = match fs::metadata(path) {
@@ -930,7 +928,7 @@ impl OrganizerService {
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
-            if path.file_name().map_or(false, |n| n != LOCK_MARKER)
+            if path.file_name().is_some_and(|n| n != LOCK_MARKER)
                 && path.is_file()
                 && !path.is_symlink()
             {
@@ -987,7 +985,7 @@ impl OrganizerService {
                 .flatten()
                 .filter_map(|i| Some(i.path()))
                 .filter(|p| p.is_dir())
-                .filter(|p| p.file_name().map_or(false, |n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX)))
+                .filter(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX)))
                 .collect(),
             Err(_) => return (0, 0),
         };
@@ -1070,14 +1068,14 @@ impl OrganizerService {
     // --- staging dir ---
 
     fn _staging_dir(&self, archive_path: &Path, library_root: Option<&Path>) -> Option<PathBuf> {
-        let library_root = match library_root {
-            Some(r) => r.to_path_buf(),
-            None => return None,
+        let library_root = {
+            let r = library_root?;
+            r.to_path_buf()
         };
         match library_root.canonicalize() {
             Ok(root) => {
                 let processing = root.join(PROCESSING_DIRNAME);
-                if let Err(_) = fs::create_dir_all(&processing) {
+                if fs::create_dir_all(&processing).is_err() {
                     (self.logger)(
                         "ORGANIZER",
                         &format!(
@@ -1163,7 +1161,7 @@ impl OrganizerService {
     ) -> PathBuf {
         let path = &archive.path;
         let suffix = path.extension()
-            .map_or_else(|| String::new(), |e| e.to_string_lossy().to_lowercase());
+            .map_or_else(String::new, |e| e.to_string_lossy().to_lowercase());
 
         audit(
             "archive_repack_start",
@@ -1226,8 +1224,8 @@ impl OrganizerService {
             return path.to_path_buf();
         }
 
-        if suffix == "zip" && self.convert_archives() {
-            if !self._unlock_zip(path, ctx) {
+        if suffix == "zip" && self.convert_archives()
+            && !self._unlock_zip(path, ctx) {
                 (self.logger)(
                     "ORGANIZER",
                     &format!(
@@ -1236,7 +1234,6 @@ impl OrganizerService {
                     ),
                 );
             }
-        }
 
         if suffix == "7z" && !(archive.steam.found && !archive.steam.name.is_empty()) {
             if let Some(on_progress) = on_progress {
@@ -1417,13 +1414,13 @@ impl OrganizerService {
 
             let has_iso = game_files
                 .iter()
-                .any(|item| item.extension().map_or(false, |e| e == "iso"));
+                .any(|item| item.extension().is_some_and(|e| e == "iso"));
             let mut renamed = false;
             if !has_iso && archive.steam.found && !archive.steam.name.is_empty() {
                 if let Some(content_folder) = self._find_generic_content_folder(&temp_dir_path, 3) {
                     let new_folder = content_folder.with_file_name(safe_name(&archive.steam.name));
                     if new_folder != content_folder && !new_folder.exists() {
-                        if let Err(_) = fs::rename(&content_folder, &new_folder) {
+                        if fs::rename(&content_folder, &new_folder).is_err() {
                             // ignore
                         } else {
                             renamed = true;
@@ -1850,11 +1847,10 @@ impl OrganizerService {
                 );
             }
             Err(_) => {
-                if let Err(_) = fs::copy(&source, &target) {
-                    if target.exists() && source.exists() {
+                if fs::copy(&source, &target).is_err()
+                    && target.exists() && source.exists() {
                         let _ = fs::remove_file(&target);
                     }
-                }
                 if created_dir {
                     let _ = fs::remove_dir_all(&game_dir);
                 }
@@ -1880,10 +1876,10 @@ impl OrganizerService {
                 if p.is_file() {
                     let _ = fs::copy(
                         p,
-                        &game_dir.join(format!(
+                        game_dir.join(format!(
                             "{}_grid{}",
                             prefix,
-                            p.extension().map_or("", |e| e.to_str().unwrap_or("")).to_string()
+                            p.extension().map_or("", |e| e.to_str().unwrap_or(""))
                         )),
                     );
                 }
@@ -1892,11 +1888,11 @@ impl OrganizerService {
                 if path.is_file() {
                     let _ = fs::copy(
                         path,
-                        &game_dir.join(format!(
+                        game_dir.join(format!(
                             "{}_{}{}",
                             prefix,
                             name,
-                            path.extension().map_or("", |e| e.to_str().unwrap_or("")).to_string()
+                            path.extension().map_or("", |e| e.to_str().unwrap_or(""))
                         )),
                     );
                 }
@@ -1938,7 +1934,7 @@ impl OrganizerService {
                 "{} ({}){}",
                 source.file_stem().unwrap_or_default().to_string_lossy(),
                 n,
-                source.extension().map_or("", |e| e.to_str().unwrap_or("")).to_string()
+                source.extension().map_or("", |e| e.to_str().unwrap_or(""))
             ));
             n += 1;
         }

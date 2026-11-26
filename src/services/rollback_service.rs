@@ -3,8 +3,6 @@
 //! 2026-11-25: Converted from `services/rollback_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json;
@@ -293,10 +291,10 @@ impl RollbackService {
         if !game_dir.is_dir() {
             return false;
         }
-        if game_dir.read_dir().map_or(false, |mut entries| {
+        if game_dir.read_dir().is_ok_and(|mut entries| {
             entries.any(|e| {
-                e.map_or(false, |entry| {
-                    entry.path().extension().map_or(false, |ext| {
+                e.is_ok_and(|entry| {
+                    entry.path().extension().is_some_and(|ext| {
                         ARCHIVE_EXTENSIONS
                             .iter()
                             .any(|ae| ext.eq_ignore_ascii_case(ae))

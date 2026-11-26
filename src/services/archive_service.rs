@@ -3,8 +3,6 @@
 //! 2026-11-25: Converted from `services/archive_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json;
@@ -166,7 +164,7 @@ impl ArchiveService {
                 .strip_prefix(&root)
                 .unwrap_or(path)
                 .ancestors()
-                .any(|p| p.file_name().map_or(false, |n| n.to_string_lossy().starts_with('.')))
+                .any(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.')))
             {
                 skipped += 1;
                 continue;
@@ -179,7 +177,7 @@ impl ArchiveService {
             }
             if path
                 .ancestors()
-                .any(|p| p != root && is_app_folder(&p))
+                .any(|p| p != root && is_app_folder(p))
             {
                 skipped += 1;
                 continue;
@@ -443,16 +441,16 @@ impl ArchiveService {
     }
 
     fn _is_own_temp_artefact(&self, path: &Path) -> bool {
-        if path.file_name().map_or(false, |n| n.to_string_lossy().contains(TEMP_FILE_TAG)) {
+        if path.file_name().is_some_and(|n| n.to_string_lossy().contains(TEMP_FILE_TAG)) {
             return true;
         }
         path.ancestors()
-            .any(|p| p.file_name().map_or(false, |n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX)))
+            .any(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX)))
     }
 
     fn _is_managed(&self, path: &Path) -> bool {
         let parent = path.parent();
-        parent.map_or(false, |p| {
+        parent.is_some_and(|p| {
             [
                 "Open Steam Page.html",
                 "Open Steam Page.desktop",
@@ -555,7 +553,7 @@ fn try_save_discovery_cache(library_root: &Path, dir_mtimes: &HashMap<String, u1
         match fs::rename(&tmp_path, &state_file) {
             Ok(()) => break,
             Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
-                let _ = std::thread::sleep(std::time::Duration::from_millis(50));
+                std::thread::sleep(std::time::Duration::from_millis(50));
             }
             Err(_e) => {
                 let _ = fs::remove_file(&tmp_path);

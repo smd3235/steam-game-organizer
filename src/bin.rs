@@ -5,12 +5,12 @@
 //! Fixed `uri` default_value bug that forced headless CLI path instead of GUI.
 
 use clap::Parser;
-use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
 
 use steam_game_organizer::app::application::Application;
+use steam_game_organizer::core::config::AppConfig;
 use steam_game_organizer::core::logger::AppLogger;
 
 #[derive(Parser, Debug)]
@@ -58,27 +58,6 @@ struct Args {
 }
 
 fn main() {
-    // Install panic hook early so any panic gets logged to file (stderr may not exist for GUI apps)
-    std::panic::set_hook(Box::new(|info| {
-        let msg = format!(
-            "PANIC at {}: {:?}\n",
-            info.location().map(|l| l.to_string()).unwrap_or_default(),
-            info.payload()
-        );
-        let log_dir = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-            .unwrap_or_default()
-            .join("logs");
-        let _ = std::fs::create_dir_all(&log_dir);
-        let _ = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(log_dir.join("panic.log"))
-            .and_then(|mut f| f.write_all(msg.as_bytes()));
-        let _ = std::io::stderr().write_all(msg.as_bytes());
-    }));
-
     let args = Args::parse();
 
     // If any headless flag is present, delegate to the CLI entry point
@@ -96,6 +75,9 @@ fn main() {
     };
 
     let project_root = resolve_project_root();
+
+    // Create config from project root
+    let config = Arc::new(AppConfig::new(project_root.as_path()));
 
     // Create a timestamped log file under logs/ with HH:MM:SS timestamps
     let log_dir = project_root.join("logs");
@@ -116,7 +98,9 @@ fn main() {
 
     logger.info("APPLICATION", "START gui_mode=true", "");
 
-    let _app = Application::new(project_root.as_path(), args.mock, Arc::clone(&logger));
+    // Create Application and wire its controller's config
+    let mut app = Application::new(project_root.as_path(), args.mock, Arc::clone(&logger));
+    app.controller.set_config(Arc::clone(&config));
 
     let logger_for_shutdown = Arc::clone(&logger);
 
@@ -137,9 +121,10 @@ fn main() {
                                     logger.info(cat, msg, "");
                                 }
                             }),
-                            false,
+                            config.convert_archives(),
                         ),
                     }),
+                    Arc::clone(&config),
                     steam_game_organizer::services::library_service::LibraryService::new(
                         Arc::new({
                             let logger = Arc::clone(&logger);

@@ -5,21 +5,21 @@
 //! Tests simulate button clicks by directly calling view handlers and verifying state transitions.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::fs;
 
 use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
+use crate::core::config::AppConfig;
 use crate::core::logger::AppLogger;
 use crate::core::models::{
-    ArtworkResult, ConversionResult, GameArchive, OrganizationDecision, ScanResult, SteamMatch,
+    ArtworkResult, ConversionResult, GameArchive, OrganizationDecision, SteamMatch,
 };
 use crate::core::errors::Watchdog;
 use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
 use crate::ui::theme::Palette;
-
 use crate::ui::artwork_view::ArtworkView;
 use crate::ui::done_view::DoneView;
 use crate::ui::organize_view::OrganizeView;
@@ -27,10 +27,16 @@ use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::{ScanView, SCAN_PHASES};
 use crate::ui::setup_view::SetupView;
 
+
 /// Helper: create a test AppLogger
 fn test_logger() -> Arc<AppLogger> {
     let path = std::env::temp_dir().join(format!("e2e_test_{}.log", std::process::id()));
     Arc::new(AppLogger::new(&path, "DEBUG", false, false).unwrap())
+}
+
+/// Helper: create a test AppConfig
+fn test_config() -> Arc<AppConfig> {
+    Arc::new(AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())))
 }
 
 /// Helper: create a test Watchdog
@@ -143,6 +149,7 @@ fn test_e2e_full_flow_scan_to_done() {
         Arc::clone(&services),
         library_service,
         Arc::clone(&jobs),
+        test_config(),
         palette.clone(),
         Arc::clone(&logger),
         Arc::clone(&watchdog),
@@ -566,6 +573,7 @@ fn test_scan_with_no_library_root() {
         Arc::clone(&services),
         library_service,
         Arc::clone(&jobs),
+        test_config(),
         palette,
         Arc::clone(&logger),
         Arc::clone(&watchdog),
@@ -729,6 +737,7 @@ fn test_state_persistence_across_views() {
         Arc::clone(&services),
         library_service,
         Arc::clone(&jobs),
+        test_config(),
         palette.clone(),
         Arc::clone(&logger),
         Arc::clone(&watchdog),
@@ -778,6 +787,7 @@ fn test_scan_phase_progression() {
         Arc::clone(&services),
         library_service,
         Arc::clone(&jobs),
+        test_config(),
         palette,
         Arc::clone(&logger),
         Arc::clone(&watchdog),
@@ -868,7 +878,7 @@ fn test_logging_produces_output() {
     assert!(true);
 }
 
-fn view_watchdog_timeout(watchdog: &Watchdog, logger: &Arc<AppLogger>) {
+fn view_watchdog_timeout(watchdog: &Watchdog, _logger: &Arc<AppLogger>) {
     // Start an operation with a very short timeout
     let id = watchdog.start("slow_op", "TEST", "corr_watchdog", Some(10));
     std::thread::sleep(std::time::Duration::from_millis(50));

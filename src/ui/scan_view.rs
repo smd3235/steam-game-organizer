@@ -6,13 +6,12 @@
 //! 2026-11-26: egui scan view with new theme and wired button actions.
 //! v5 - redesigned layout with better visual hierarchy and modern styling.
 
-#![allow(clippy::all)]
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
+use crate::core::config::AppConfig;
 use crate::services::library_service::LibraryService;
 use crate::core::models::GameArchive;
 use crate::core::errors::Watchdog;
@@ -82,6 +81,7 @@ pub struct ScanView {
     pub services: Arc<Services>,
     pub library_service: LibraryService,
     pub jobs: Arc<JobManager>,
+    pub config: Arc<AppConfig>,
     pub palette: Palette,
     pub logger: Arc<crate::core::logger::AppLogger>,
     pub watchdog: Arc<Watchdog>,
@@ -92,6 +92,7 @@ impl ScanView {
         services: Arc<Services>,
         library_service: LibraryService,
         jobs: Arc<JobManager>,
+        config: Arc<AppConfig>,
         palette: Palette,
         logger: Arc<crate::core::logger::AppLogger>,
         watchdog: Arc<Watchdog>,
@@ -101,6 +102,7 @@ impl ScanView {
             services,
             library_service,
             jobs,
+            config,
             palette,
             logger,
             watchdog,
@@ -353,7 +355,15 @@ impl ScanView {
 
     /// Get the library root from config.
     fn get_library_root(&self) -> Option<PathBuf> {
-        // Check for common Steam library locations
+        // Use configured library root first
+        if let Some(root) = self.config.library_root.as_ref() {
+            if root.is_dir() {
+                self.logger.log("SCAN", &format!("Using configured library root: {}", root.display()), "");
+                return Some(root.clone());
+            }
+        }
+
+        // Fall back to checking for common Steam library locations
         let candidates = [
             PathBuf::from("C:/SteamLibrary"),
             PathBuf::from("D:/SteamLibrary"),
@@ -442,7 +452,8 @@ mod tests {
             ).unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let _view = ScanView::new(services, library_service, jobs, palette, logger, watchdog);
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())));
+        let _view = ScanView::new(services, library_service, jobs, Arc::clone(&config), palette, logger, watchdog);
     }
 
     #[test]
@@ -467,7 +478,8 @@ mod tests {
             ).unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = ScanView::new(services, library_service, jobs, palette, logger, watchdog);
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())));
+        let mut view = ScanView::new(services, library_service, jobs, Arc::clone(&config), palette, logger, watchdog);
         view.feed("test message");
         assert_eq!(view.state.activity.len(), 1);
     }
@@ -494,7 +506,8 @@ mod tests {
             ).unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = ScanView::new(services, library_service, jobs, palette, logger, watchdog);
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())));
+        let mut view = ScanView::new(services, library_service, jobs, Arc::clone(&config), palette, logger, watchdog);
         view.phase_done("cleanup");
         assert!(view.state.phase_states[0]);
     }

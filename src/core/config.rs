@@ -13,8 +13,6 @@
 //! 2026-11-25: Converted from `core/config.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use chrono::Utc;
 use serde_json;
 use std::collections::HashSet;
@@ -148,11 +146,11 @@ impl AppConfig {
                 .filter(|p| {
                     p.file_name()
                         .and_then(|n| n.to_str())
-                        .map_or(false, |s| s.starts_with("organizer-"))
+                        .is_some_and(|s| s.starts_with("organizer-"))
                 })
                 .filter(|p| {
                     p.extension()
-                        .map_or(false, |ext| ext == "log")
+                        .is_some_and(|ext| ext == "log")
                 })
                 .collect(),
             Err(_) => Vec::new(),
@@ -240,7 +238,7 @@ impl AppConfig {
         if let Some(obj) = self.settings.as_object_mut() {
             obj.insert("convert_archives".to_string(), serde_json::Value::Bool(value));
         }
-        let _ = self.save();
+        self.save();
     }
 
     pub fn extract_folders(&self) -> Vec<PathBuf> {
@@ -282,7 +280,7 @@ impl AppConfig {
             obj.insert("extract_folders".to_string(), serde_json::Value::Array(arr));
         }
         self.settings.as_object_mut().and_then(|o| o.remove("extract_folder"));
-        let _ = self.save();
+        self.save();
     }
 
     pub fn extract_folder(&self) -> PathBuf {
@@ -422,7 +420,7 @@ impl AppConfig {
                         let _ = fs::rename(&tmp_path, &self.settings_file);
                         break;
                     }
-                    let _ = std::thread::sleep(std::time::Duration::from_millis(50 * attempt as u64));
+                    std::thread::sleep(std::time::Duration::from_millis(50 * attempt as u64));
                 }
                 Err(_e) => {
                     let _ = fs::rename(&tmp_path, &self.settings_file);
@@ -473,7 +471,7 @@ impl AppConfig {
             match fs::rename(&tmp_path, path) {
                 Ok(()) => return Ok(()),
                 Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
-                    let _ = std::thread::sleep(std::time::Duration::from_millis(50));
+                    std::thread::sleep(std::time::Duration::from_millis(50));
                 }
                 Err(e) => return Err(e),
             }

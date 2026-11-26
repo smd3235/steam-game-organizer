@@ -7,8 +7,6 @@
 //! 2026-11-25: Stub conversion from `services/catalog_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -100,9 +98,7 @@ impl CatalogService {
         *self._summary.lock().unwrap() = Some(LibrarySummary::default());
         (self.logger)(
             "CATALOG",
-            &format!(
-                "INDEX_BUILT categories=0 games=0 developers=0"
-            ),
+            "INDEX_BUILT categories=0 games=0 developers=0",
         );
     }
 

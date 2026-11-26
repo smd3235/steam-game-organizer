@@ -14,8 +14,6 @@
 //! 2026-11-24: Converted from `utils/filename_utils.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::path::Path;
@@ -54,7 +52,7 @@ pub fn normalize_name(value: &str) -> String {
     // Split consecutive capitals before a capital+lowercase word: XMLParser → XML Parser, AGame → A Game.
     let value = Regex::new(r"([A-Z]+)([A-Z][a-z])")
         .unwrap()
-        .replace_all(&value, "$1 $2");
+        .replace_all(value, "$1 $2");
     let value = Regex::new(r"([a-z0-9])([A-Z])")
         .unwrap()
         .replace_all(&value, "$1 $2");

@@ -85,12 +85,12 @@ pub fn capture_screens(output_dir: &Path, view_name: &str) -> Result<(), String>
     script.push_str("using System;\n");
     script.push_str("using System.Drawing;\n");
     script.push_str("using System.Runtime.InteropServices;\n");
-    script.push_str("\n");
+    script.push('\n');
     script.push_str("public class WindowCapture {\n");
     script.push_str("    [DllImport(\"user32.dll\", SetLastError = true)]\n");
     script.push_str("    [return: MarshalAs(UnmanagedType.Bool)]\n");
     script.push_str("    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);\n");
-    script.push_str("\n");
+    script.push('\n');
     script.push_str("    [StructLayout(LayoutKind.Sequential)]\n");
     script.push_str("    public struct RECT {\n");
     script.push_str("        public int Left;\n");
@@ -98,7 +98,7 @@ pub fn capture_screens(output_dir: &Path, view_name: &str) -> Result<(), String>
     script.push_str("        public int Right;\n");
     script.push_str("        public int Bottom;\n");
     script.push_str("    }\n");
-    script.push_str("\n");
+    script.push('\n');
     script.push_str("    public static Rectangle GetWindowRectangle(IntPtr hWnd) {\n");
     script.push_str("        RECT rect;\n");
     script.push_str("        if (GetWindowRect(hWnd, out rect)) {\n");
@@ -110,10 +110,10 @@ pub fn capture_screens(output_dir: &Path, view_name: &str) -> Result<(), String>
     script.push_str("\"@\n");
     script.push_str("Add-Type -AssemblyName System.Drawing\n");
     script.push_str("Add-Type -AssemblyName System.Windows.Forms\n");
-    script.push_str("\n");
+    script.push('\n');
     script.push_str("$windowTitle = \"Steam Game Organizer\"\n");
     script.push_str("$process = Get-Process | Where-Object { $_.MainWindowTitle -eq $windowTitle } | Select-Object -First 1\n");
-    script.push_str("\n");
+    script.push('\n');
     script.push_str("if (-not $process) {\n");
     script.push_str("    Write-Output \"No Steam Game Organizer window found; capturing primary monitor instead.\"\n");
     script.push_str("    $screen = [System.Windows.Forms.Screen]::PrimaryScreen\n");
@@ -137,7 +137,7 @@ pub fn capture_screens(output_dir: &Path, view_name: &str) -> Result<(), String>
     script.push_str("        $height = $rect.Height\n");
     script.push_str("    }\n");
     script.push_str("}\n");
-    script.push_str("\n");
+    script.push('\n');
     script.push_str("$bmp = New-Object System.Drawing.Bitmap($width, $height)\n");
     script.push_str("$gfx = [System.Drawing.Graphics]::FromImage($bmp)\n");
     script.push_str("$gfx.CopyFromScreen($left, $top, 0, 0, [System.Drawing.Size]::new($width, $height))\n");
@@ -257,14 +257,14 @@ pub fn capture_and_verify(output_dir: &Path, view_name: &str, enable_ocr: bool) 
         let mut latest: Option<(std::path::PathBuf, std::time::SystemTime)> = None;
         for entry in files.flatten() {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "png")
+            if path.extension().is_some_and(|e| e == "png")
                 && path
                     .file_name()
-                    .map_or(false, |n| n.to_string_lossy().starts_with(view_name))
+                    .is_some_and(|n| n.to_string_lossy().starts_with(view_name))
             {
                 if let Ok(metadata) = entry.metadata() {
                     if let Ok(modified) = metadata.modified() {
-                        if latest.as_ref().map_or(true, |(_, t)| modified > *t) {
+                        if latest.as_ref().is_none_or(|(_, t)| modified > *t) {
                             latest = Some((path, modified));
                         }
                     }

@@ -23,6 +23,22 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — fix: Remove #![allow(clippy::all)] from 13 files, fix double panic hook, wire AppController config
+
+- `src/core/config.rs`, `src/core/filename_utils.rs`, `src/core/controller_utils.rs`: Removed `#![allow(clippy::all)]` — all clippy lints now active
+- `src/app/application.rs`, `src/app/events.rs`: Removed `#![allow(clippy::all)]` — all clippy lints now active
+- `src/services/organizer_service.rs`, `src/services/extract_service.rs`, `src/services/archive_service.rs`: Removed `#![allow(clippy::all)]` — all clippy lints now active
+- `src/services/library_service.rs`, `src/services/catalog_service.rs`, `src/services/rollback_service.rs`: Removed `#![allow(clippy::all)]` — all clippy lints now active
+- `src/services/batch_extract_service.rs`: Removed `#![allow(clippy::all)]` — all clippy lints now active
+- `src/ui/scan_view.rs`: Removed `#![allow(clippy::all)]` — all clippy lints now active
+- `src/bin.rs`: Removed duplicate inline panic hook (lines 62-80) that conflicted with `logger.install_panic_hook()`; only the logger's panic hook is now active
+- `src/bin.rs`: Wired `AppConfig` to `Application.controller.set_config()` and `MainWindow`; passes `config.convert_archives()` to `OrganizerService` instead of hardcoded `false`
+- `src/ui/main_window.rs`: Added `config: Arc<AppConfig>` field; passes config to `ScanView`
+- `src/ui/scan_view.rs`: Added `config: Arc<AppConfig>` field; `get_library_root()` now checks `config.library_root` first before falling back to hardcoded paths; accepts config in constructor
+- `src/ui/integration_tests.rs`, `src/ui/e2e_integration_tests.rs`, `src/ui/scan_view.rs`: Updated all `ScanView::new()` test call sites to pass `Arc<AppConfig>`
+- `src/bin.rs`: Removed unused `std::io::Write` import
+- 320 tests pass, clippy clean
+
 ### 2026-11-26 — fix: UI layout max-width constraint to fix empty space on maximized screens
 
 - `src/ui/theme.rs`: Added `constrained_content()` helper that wraps view content in a centered max-width (1200px) container; removed `card_centered()` (unused); simplified `stat_card()` with `set_min_width(150.0)` for uniform stat card sizing

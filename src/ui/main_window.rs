@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::app::controller::{Services, StateStore};
 use crate::app::events::EventBus;
 use crate::app::jobs::JobManager;
+use crate::core::config::AppConfig;
 use crate::services::library_service::LibraryService;
 
 use crate::ui::artwork_view::ArtworkView;
@@ -40,6 +41,7 @@ pub struct MainWindow {
     pub logger: Arc<crate::core::logger::AppLogger>,
     pub services: Arc<Services>,
     pub jobs: Arc<JobManager>,
+    pub config: Arc<AppConfig>,
     pub current: String,
     pub palette: Palette,
     pub scan_view: ScanView,
@@ -59,6 +61,7 @@ impl MainWindow {
         bus: Arc<EventBus>,
         logger: Arc<crate::core::logger::AppLogger>,
         services: Arc<Services>,
+        config: Arc<AppConfig>,
         _library_service: LibraryService,
         jobs: Arc<JobManager>,
         single_view: Option<String>,
@@ -79,6 +82,7 @@ impl MainWindow {
         let services_clone = Arc::clone(&services);
         let jobs_for_field = Arc::clone(&jobs);
         let jobs_for_scan = Arc::clone(&jobs);
+        let config_for_scan = Arc::clone(&config);
         let initial_view = single_view.as_deref().unwrap_or("scan").to_string();
         MainWindow {
             state,
@@ -86,12 +90,14 @@ impl MainWindow {
             logger,
             services,
             jobs: jobs_for_field,
+            config: config_for_scan,
             current: initial_view,
             palette: Palette::default(),
             scan_view: ScanView::new(
                 services_clone,
                 _library_service,
                 jobs_for_scan,
+                Arc::clone(&config),
                 Palette::default(),
                 logger_for_scan,
                 watchdog_for_scan,

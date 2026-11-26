@@ -7,8 +7,6 @@
 //! 2026-11-25: Stub conversion from `services/library_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-#![allow(clippy::all)]
-
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -121,7 +119,7 @@ impl LibraryService {
                 serde_json::to_value(SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()).unwrap(),
             );
         }
-        if let Err(_) = fs::create_dir_all(&config_dir) {
+        if fs::create_dir_all(&config_dir).is_err() {
             return;
         }
         let _ = fs::write(&state_file, serde_json::to_string_pretty(&existing).unwrap());
@@ -231,7 +229,7 @@ impl LibraryService {
                 }
             }
         }
-        found.sort_by(|a, b| a.2.cmp(&b.2));
+        found.sort_by_key(|a| a.2);
         found
     }
 
@@ -435,11 +433,10 @@ impl LibraryService {
                     let path = entry.path();
                     if path.is_dir() {
                         if let Some(name) = path.file_name() {
-                            if name.to_string_lossy().starts_with(TEMP_DIR_PREFIX) {
-                                if !self._temp_is_stale(&path) {
+                            if name.to_string_lossy().starts_with(TEMP_DIR_PREFIX)
+                                && !self._temp_is_stale(&path) {
                                     return true;
                                 }
-                            }
                         }
                     } else if path.is_file() {
                         if let Some(name) = path.file_name() {
@@ -461,7 +458,7 @@ impl LibraryService {
             return false;
         }
         SYNC_FILE_PATTERNS.iter().any(|p| {
-            name.contains(&p.replace('*', "").replace('?', ""))
+            name.contains(&p.replace(['*', '?'], ""))
         })
     }
 
@@ -729,7 +726,7 @@ impl LibraryService {
 
     fn _audit_text(&self, outcome: &str) -> String {
         let base = outcome.split(':').next().unwrap_or(outcome);
-        let detail = outcome.splitn(2, ':').nth(1).map(|s| s.trim()).unwrap_or("");
+        let detail = outcome.split_once(':').map(|x| x.1).map(|s| s.trim()).unwrap_or("");
         let text = match base {
             audit_outcome::NO_APPID => "no Steam AppID — nothing to refresh",
             audit_outcome::WRITTEN => "artwork refreshed",
@@ -791,7 +788,7 @@ impl LibraryService {
             if let Ok(entries) = fs::read_dir(game_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().map_or(false, |e| e == *ext) {
+                    if path.extension().is_some_and(|e| e == *ext) {
                         if let Ok(text) = fs::read_to_string(&path) {
                             if let Some(caps) = APPID_PATTERN.captures(&text) {
                                 return caps.get(1).map_or("", |m| m.as_str()).to_string();
@@ -822,6 +819,12 @@ pub struct ArtworkServiceStub;
 impl ArtworkServiceStub {
     pub fn new() -> Self {
         ArtworkServiceStub
+    }
+}
+
+impl Default for ArtworkServiceStub {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

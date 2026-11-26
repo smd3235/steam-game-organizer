@@ -49,6 +49,12 @@ impl StateStore {
     }
 }
 
+impl Default for StateStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct AppController {
     pub state: Arc<StateStore>,
     pub bus: Arc<EventBus>,
