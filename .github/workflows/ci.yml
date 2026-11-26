@@ -2,98 +2,78 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, Rust-Conversion ]
   pull_request:
-    branches: [ main ]
-  release:
-    types: [ published ]
+    branches: [ main, Rust-Conversion ]
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  test:
+  audit:
+    name: Conversion Audit
     runs-on: windows-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          components: clippy
+          toolchain: stable
+          components: clippy, rustfmt
+          override: true
 
-      - name: Run cargo check
-        run: cargo check
+      - name: Run conversion audit script
+        run: pwsh scripts\audit_conversion.ps1
 
-      - name: Run clippy lint
-        run: cargo clippy --all-targets
+      - name: Check formatting
+        run: cargo fmt --check
 
-      - name: Run cargo test
+  clippy:
+    name: Clippy Lint
+    runs-on: windows-latest
+    needs: audit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+          override: true
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: Run Tests
+    runs-on: windows-latest
+    needs: audit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Run tests
         run: cargo test
 
-      - name: Build release exe
-        run: cargo build --release
-
-      - name: Verify exe exists
-        run: |
-          if (!(Test-Path "target/release/steam-game-organizer.exe")) {
-            Write-Error "Release exe not found!"
-            exit 1
-          }
-
-  release:
-    needs: test
+  build:
+    name: Build Release
     runs-on: windows-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
-
+    needs: [ clippy, test ]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build release exe
-        run: cargo build --release
-
-      - name: Copy 7-Zip license
-        run: |
-          if (!(Test-Path "tools/7z-license.txt")) {
-            Write-Error "7z-license.txt not found! 7-Zip cannot be legally bundled without its license."
-            exit 1
-          }
-
-      - name: Create release bundle
-        run: |
-          $bundle = "steam-game-organizer-release"
-          New-Item -ItemType Directory -Path $bundle -Force
-          
-          # Copy the Rust exe
-          Copy-Item "target/release/steam-game-organizer.exe" -Destination "$bundle/"
-          
-          # Copy 7-Zip for archive extraction (LGPL - see tools/7z-license.txt)
-          if (!(Test-Path "tools/7z.exe")) {
-            Write-Error "tools/7z.exe not found! Required for archive extraction."
-            exit 1
-          }
-          New-Item -ItemType Directory -Path "$bundle/runtime" -Force
-          Copy-Item "tools/7z.exe" -Destination "$bundle/runtime/"
-          Copy-Item "tools/7z-license.txt" -Destination "$bundle/runtime/"
-          
-          # Copy assets
-          Copy-Item "assets" -Destination "$bundle/" -Recurse
-          
-          # Copy docs
-          Copy-Item "AGENTS.md", "ARCHITECTURE.md", "README.md", "CHANGELOG.md", "LICENSE" -Destination "$bundle/"
-          
-          # Zip the bundle
-          Compress-Archive -Path "$bundle/*" -DestinationPath "steam-game-organizer-release.zip" -Force
-
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: steam-game-organizer-release.zip
-          asset_name: steam-game-organizer-release.zip
-          asset_content_type: application/zip
+          toolchain: stable
+          override: true
+
+      - name: Build release
+        run: cargo build --release

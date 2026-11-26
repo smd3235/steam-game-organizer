@@ -3,8 +3,8 @@
 //!
 //! 2026-11-25: egui metadata panel stub in the Rust conversion.
 
-use egui::{RichText, Ui};
 use crate::ui::theme::Palette;
+use egui::{RichText, Ui};
 
 #[derive(Default)]
 pub struct MetadataPanelState {
@@ -38,11 +38,19 @@ impl MetadataPanel {
 
     pub fn ui(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
-            ui.label(RichText::new("Steam Details").strong().color(self.palette.accent_hi));
+            ui.label(
+                RichText::new("Steam Details")
+                    .strong()
+                    .color(self.palette.accent_hi),
+            );
             ui.separator();
 
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Steam Title:").small().color(self.palette.muted));
+                ui.label(
+                    RichText::new("Steam Title:")
+                        .small()
+                        .color(self.palette.muted),
+                );
                 ui.label(&self.state.steam_title);
             });
             ui.horizontal(|ui| {
@@ -54,7 +62,11 @@ impl MetadataPanel {
                 ui.label(&self.state.release);
             });
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Confidence:").small().color(self.palette.muted));
+                ui.label(
+                    RichText::new("Confidence:")
+                        .small()
+                        .color(self.palette.muted),
+                );
                 ui.label(&self.state.confidence);
             });
             ui.horizontal(|ui| {
@@ -62,7 +74,11 @@ impl MetadataPanel {
                 ui.label(&self.state.score);
             });
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Suggested:").small().color(self.palette.muted));
+                ui.label(
+                    RichText::new("Suggested:")
+                        .small()
+                        .color(self.palette.muted),
+                );
                 ui.label(&self.state.suggested);
             });
             ui.separator();
@@ -71,7 +87,11 @@ impl MetadataPanel {
                 ui.label(&self.state.genres);
             });
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Categories:").small().color(self.palette.muted));
+                ui.label(
+                    RichText::new("Categories:")
+                        .small()
+                        .color(self.palette.muted),
+                );
                 ui.label(&self.state.categories);
             });
             if !self.state.tags.is_empty() {
@@ -81,11 +101,19 @@ impl MetadataPanel {
                 });
             }
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Developer:").small().color(self.palette.muted));
+                ui.label(
+                    RichText::new("Developer:")
+                        .small()
+                        .color(self.palette.muted),
+                );
                 ui.label(&self.state.developer);
             });
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Publisher:").small().color(self.palette.muted));
+                ui.label(
+                    RichText::new("Publisher:")
+                        .small()
+                        .color(self.palette.muted),
+                );
                 ui.label(&self.state.publisher);
             });
             ui.separator();

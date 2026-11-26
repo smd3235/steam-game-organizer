@@ -3,8 +3,8 @@
 //!
 //! 2026-11-25: egui batch extract window stub in the Rust conversion.
 
+use crate::ui::theme::{ghost_button, primary_button, separator, Palette};
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{ghost_button, primary_button, Palette, separator};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BatchItemState {
@@ -62,7 +62,11 @@ impl BatchExtractWindow {
         separator(ui);
 
         ui.heading("Batch Extraction");
-        ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
+        ui.label(
+            RichText::new(&self.state.status)
+                .small()
+                .color(self.palette.muted),
+        );
         separator(ui);
 
         ui.horizontal(|ui| {
@@ -79,36 +83,49 @@ impl BatchExtractWindow {
 
         separator(ui);
 
-        ScrollArea::vertical().id_salt("batch_items").show(ui, |ui| {
-            egui::Grid::new("batch_grid").num_columns(4).spacing([10.0, 4.0]).show(ui, |ui| {
-                ui.label(RichText::new("Game").strong().color(self.palette.muted));
-                ui.label(RichText::new("State").strong().color(self.palette.muted));
-                ui.label(RichText::new("Progress").strong().color(self.palette.muted));
-                ui.label(RichText::new("Detail").strong().color(self.palette.muted));
-                ui.end_row();
-
-                if self.state.items.is_empty() {
-                    ui.label(RichText::new("(no items — start a batch to see games)").color(self.palette.muted).italics());
-                    ui.end_row();
-                } else {
-                    for item in &self.state.items {
-                        let (color, label) = match item.state {
-                            BatchItemState::Queued => (self.palette.muted, "Waiting"),
-                            BatchItemState::Extracting => (self.palette.accent, "Extracting"),
-                            BatchItemState::Done => (self.palette.green, "Done"),
-                            BatchItemState::Failed => (self.palette.red, "Failed"),
-                            BatchItemState::Skipped => (self.palette.orange, "Already there"),
-                            BatchItemState::Cancelled => (self.palette.red, "Not done"),
-                        };
-                        ui.label(&item.name);
-                        ui.colored_label(color, label);
-                        ui.add(egui::ProgressBar::new(item.progress).desired_width(100.0));
-                        ui.label(&item.detail);
+        ScrollArea::vertical()
+            .id_salt("batch_items")
+            .show(ui, |ui| {
+                egui::Grid::new("batch_grid")
+                    .num_columns(4)
+                    .spacing([10.0, 4.0])
+                    .show(ui, |ui| {
+                        ui.label(RichText::new("Game").strong().color(self.palette.muted));
+                        ui.label(RichText::new("State").strong().color(self.palette.muted));
+                        ui.label(RichText::new("Progress").strong().color(self.palette.muted));
+                        ui.label(RichText::new("Detail").strong().color(self.palette.muted));
                         ui.end_row();
-                    }
-                }
+
+                        if self.state.items.is_empty() {
+                            ui.label(
+                                RichText::new("(no items — start a batch to see games)")
+                                    .color(self.palette.muted)
+                                    .italics(),
+                            );
+                            ui.end_row();
+                        } else {
+                            for item in &self.state.items {
+                                let (color, label) = match item.state {
+                                    BatchItemState::Queued => (self.palette.muted, "Waiting"),
+                                    BatchItemState::Extracting => {
+                                        (self.palette.accent, "Extracting")
+                                    }
+                                    BatchItemState::Done => (self.palette.green, "Done"),
+                                    BatchItemState::Failed => (self.palette.red, "Failed"),
+                                    BatchItemState::Skipped => {
+                                        (self.palette.orange, "Already there")
+                                    }
+                                    BatchItemState::Cancelled => (self.palette.red, "Not done"),
+                                };
+                                ui.label(&item.name);
+                                ui.colored_label(color, label);
+                                ui.add(egui::ProgressBar::new(item.progress).desired_width(100.0));
+                                ui.label(&item.detail);
+                                ui.end_row();
+                            }
+                        }
+                    });
             });
-        });
 
         separator(ui);
 

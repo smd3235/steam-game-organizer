@@ -7,13 +7,13 @@
 
 use std::sync::Arc;
 
-use crate::core::models::GameArchive;
 use crate::core::errors::Watchdog;
+use crate::core::models::GameArchive;
 
-use egui::{RichText, ScrollArea};
 use crate::ui::theme::{
-    card, empty_state, heading, info_card, secondary_button, section_header, Palette, separator,
+    card, empty_state, heading, info_card, secondary_button, section_header, separator, Palette,
 };
+use egui::{RichText, ScrollArea};
 
 #[derive(Default, Clone)]
 pub struct ArtworkViewState {
@@ -61,41 +61,75 @@ impl ArtworkView {
             separator(ui);
 
             // Summary
-            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
+            ui.label(
+                RichText::new(&self.state.status)
+                    .color(self.palette.muted)
+                    .small(),
+            );
             separator(ui);
 
             // Archive grid
             section_header(ui, &self.palette, "ARCHIVES");
-            ScrollArea::vertical().id_salt("artwork_grid").show(ui, |ui| {
-                if self.state.archives.is_empty() {
-                    empty_state(ui, &self.palette, "🖼️", "No artwork downloaded yet", "Scan and organize games first, then download artwork.");
-                } else {
-                    egui::Grid::new("artwork_grid").num_columns(3).spacing([20.0, 20.0]).show(ui, |ui| {
-                        for (i, archive) in self.state.archives.iter().enumerate() {
-                        let name = if archive.display_name.is_empty() {
-                            archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
-                        } else {
-                            archive.display_name.clone()
-                        };
-                        ui.vertical(|ui| {
-                            ui.label(RichText::new(&name).small().strong());
-                            separator(ui);
-                            if secondary_button(ui, "Open Folder", &self.palette, true).clicked() {
-                                self.logger.log("ARTWORK", &format!("Open Folder: {}", name), "");
-                                self.state.status = format!("Opened folder for {}", name);
-                            }
-                            if secondary_button(ui, "View Artwork", &self.palette, true).clicked() {
-                                self.logger.log("ARTWORK", &format!("View Artwork: {}", name), "");
-                                self.state.status = format!("Viewing artwork for {}", name);
-                            }
-                        });
-                        if i < self.state.archives.len() - 1 {
-                            ui.end_row();
-                        }
+            ScrollArea::vertical()
+                .id_salt("artwork_grid")
+                .show(ui, |ui| {
+                    if self.state.archives.is_empty() {
+                        empty_state(
+                            ui,
+                            &self.palette,
+                            "🖼️",
+                            "No artwork downloaded yet",
+                            "Scan and organize games first, then download artwork.",
+                        );
+                    } else {
+                        egui::Grid::new("artwork_grid")
+                            .num_columns(3)
+                            .spacing([20.0, 20.0])
+                            .show(ui, |ui| {
+                                for (i, archive) in self.state.archives.iter().enumerate() {
+                                    let name = if archive.display_name.is_empty() {
+                                        archive
+                                            .path
+                                            .file_name()
+                                            .unwrap_or_default()
+                                            .to_string_lossy()
+                                            .to_string()
+                                    } else {
+                                        archive.display_name.clone()
+                                    };
+                                    ui.vertical(|ui| {
+                                        ui.label(RichText::new(&name).small().strong());
+                                        separator(ui);
+                                        if secondary_button(ui, "Open Folder", &self.palette, true)
+                                            .clicked()
+                                        {
+                                            self.logger.log(
+                                                "ARTWORK",
+                                                &format!("Open Folder: {}", name),
+                                                "",
+                                            );
+                                            self.state.status =
+                                                format!("Opened folder for {}", name);
+                                        }
+                                        if secondary_button(ui, "View Artwork", &self.palette, true)
+                                            .clicked()
+                                        {
+                                            self.logger.log(
+                                                "ARTWORK",
+                                                &format!("View Artwork: {}", name),
+                                                "",
+                                            );
+                                            self.state.status =
+                                                format!("Viewing artwork for {}", name);
+                                        }
+                                    });
+                                    if i < self.state.archives.len() - 1 {
+                                        ui.end_row();
+                                    }
+                                }
+                            });
                     }
                 });
-            }
-        });
 
             separator(ui);
 
@@ -110,7 +144,8 @@ impl ArtworkView {
                     self.state.status = "Review clicked".to_string();
                 }
                 if secondary_button(ui, "Re-download Missing", &self.palette, true).clicked() {
-                    self.logger.log("ARTWORK", "Re-download Missing button clicked", "");
+                    self.logger
+                        .log("ARTWORK", "Re-download Missing button clicked", "");
                     self.state.status = "Re-downloading missing artwork…".to_string();
                 }
             });
@@ -120,11 +155,30 @@ impl ArtworkView {
             // Artwork detail panel
             if let Some(i) = self.state.selected_index {
                 let archive = &self.state.archives[i];
-                section_header(ui, &self.palette, &format!("Artwork Details: {}", archive.display_name));
+                section_header(
+                    ui,
+                    &self.palette,
+                    &format!("Artwork Details: {}", archive.display_name),
+                );
                 info_card(ui, &self.palette, "Identity Key:", &archive.identity_key);
-                info_card(ui, &self.palette, "Artwork Status:", &archive.artwork.status);
-                info_card(ui, &self.palette, "Artwork Source:", &archive.artwork.source);
-                info_card(ui, &self.palette, "Asset Count:", &format!("{}", archive.artwork.assets.len()));
+                info_card(
+                    ui,
+                    &self.palette,
+                    "Artwork Status:",
+                    &archive.artwork.status,
+                );
+                info_card(
+                    ui,
+                    &self.palette,
+                    "Artwork Source:",
+                    &archive.artwork.source,
+                );
+                info_card(
+                    ui,
+                    &self.palette,
+                    "Asset Count:",
+                    &format!("{}", archive.artwork.assets.len()),
+                );
                 separator(ui);
             }
         });
@@ -133,8 +187,15 @@ impl ArtworkView {
     pub fn load(&mut self, archives: Vec<GameArchive>) {
         let corr = self.logger.correlation_id();
         self.state.archives = archives;
-        self.state.selected_index = if !self.state.archives.is_empty() { Some(0) } else { None };
-        self.state.status = format!("Loaded {} archives for artwork review", self.state.archives.len());
+        self.state.selected_index = if !self.state.archives.is_empty() {
+            Some(0)
+        } else {
+            None
+        };
+        self.state.status = format!(
+            "Loaded {} archives for artwork review",
+            self.state.archives.len()
+        );
         self.logger.log("ARTWORK", &self.state.status, &corr);
     }
 }
@@ -152,7 +213,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let _view = ArtworkView::new(palette, logger, watchdog);
@@ -167,7 +229,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = ArtworkView::new(palette, logger, watchdog);

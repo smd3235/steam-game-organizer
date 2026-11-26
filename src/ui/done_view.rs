@@ -7,15 +7,15 @@
 
 use std::sync::Arc;
 
-use crate::core::models::GameArchive;
 use crate::core::errors::Watchdog;
+use crate::core::models::GameArchive;
 
-use egui::{RichText, ScrollArea};
 use crate::ui::theme;
 use crate::ui::theme::{
-    card, empty_state, heading, pill, primary_button, secondary_button, section_header, Palette,
-    separator, stat_card,
+    card, empty_state, heading, pill, primary_button, secondary_button, section_header, separator,
+    stat_card, Palette,
 };
+use egui::{RichText, ScrollArea};
 
 #[derive(Default, Clone)]
 pub struct DoneViewState {
@@ -82,47 +82,81 @@ impl DoneView {
 
             // Summary counts
             ui.horizontal(|ui| {
-                stat_card(ui, &self.palette, &self.state.converted.to_string(), "Converted", self.palette.green);
-                stat_card(ui, &self.palette, &self.state.skipped.to_string(), "Skipped", self.palette.orange);
-                stat_card(ui, &self.palette, &self.state.failed.to_string(), "Failed", self.palette.red);
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &self.state.converted.to_string(),
+                    "Converted",
+                    self.palette.green,
+                );
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &self.state.skipped.to_string(),
+                    "Skipped",
+                    self.palette.orange,
+                );
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &self.state.failed.to_string(),
+                    "Failed",
+                    self.palette.red,
+                );
             });
             ui.add_space(theme::SPACING);
 
             // Per-archive results
             section_header(ui, &self.palette, "RESULTS");
-            ScrollArea::vertical().id_salt("done_results").show(ui, |ui| {
-                if self.state.archives.is_empty() {
-                    empty_state(ui, &self.palette, "✅", "No results yet", "Run Scan → Review → Organize to see results here.");
-                } else {
-                    for archive in &self.state.archives {
-                        let name = if archive.display_name.is_empty() {
-                            archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
-                        } else {
-                            archive.display_name.clone()
-                        };
-                        ui.horizontal(|ui| {
-                            pill(ui, &name, "muted", &self.palette);
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                let status = if archive.decision.accepted {
-                                    "converted".to_string()
-                                } else if archive.decision.skipped {
-                                    "skipped".to_string()
-                                } else {
-                                    "failed".to_string()
-                                };
-                                let color = if archive.decision.accepted {
-                                    self.palette.green
-                                } else if archive.decision.skipped {
-                                    self.palette.orange
-                                } else {
-                                    self.palette.red
-                                };
-                                ui.label(RichText::new(status).color(color));
+            ScrollArea::vertical()
+                .id_salt("done_results")
+                .show(ui, |ui| {
+                    if self.state.archives.is_empty() {
+                        empty_state(
+                            ui,
+                            &self.palette,
+                            "✅",
+                            "No results yet",
+                            "Run Scan → Review → Organize to see results here.",
+                        );
+                    } else {
+                        for archive in &self.state.archives {
+                            let name = if archive.display_name.is_empty() {
+                                archive
+                                    .path
+                                    .file_name()
+                                    .unwrap_or_default()
+                                    .to_string_lossy()
+                                    .to_string()
+                            } else {
+                                archive.display_name.clone()
+                            };
+                            ui.horizontal(|ui| {
+                                pill(ui, &name, "muted", &self.palette);
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        let status = if archive.decision.accepted {
+                                            "converted".to_string()
+                                        } else if archive.decision.skipped {
+                                            "skipped".to_string()
+                                        } else {
+                                            "failed".to_string()
+                                        };
+                                        let color = if archive.decision.accepted {
+                                            self.palette.green
+                                        } else if archive.decision.skipped {
+                                            self.palette.orange
+                                        } else {
+                                            self.palette.red
+                                        };
+                                        ui.label(RichText::new(status).color(color));
+                                    },
+                                );
                             });
-                        });
+                        }
                     }
-                }
-            });
+                });
 
             separator(ui);
 
@@ -145,7 +179,11 @@ impl DoneView {
             });
 
             separator(ui);
-            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
+            ui.label(
+                RichText::new(&self.state.status)
+                    .color(self.palette.muted)
+                    .small(),
+            );
         });
     }
 
@@ -161,17 +199,27 @@ impl DoneView {
 
     pub(crate) fn open_library(&mut self) {
         let corr = self.logger.correlation_id();
-        self.logger.log("DONE", "Open library folder requested", &corr);
+        self.logger
+            .log("DONE", "Open library folder requested", &corr);
         self.state.status = "Opening library folder…".to_string();
     }
 
-    pub fn load(&mut self, archives: Vec<GameArchive>, converted: usize, skipped: usize, failed: usize) {
+    pub fn load(
+        &mut self,
+        archives: Vec<GameArchive>,
+        converted: usize,
+        skipped: usize,
+        failed: usize,
+    ) {
         let corr = self.logger.correlation_id();
         self.state.archives = archives;
         self.state.converted = converted;
         self.state.skipped = skipped;
         self.state.failed = failed;
-        self.state.status = format!("Run complete — {} converted, {} skipped, {} failed.", converted, skipped, failed);
+        self.state.status = format!(
+            "Run complete — {} converted, {} skipped, {} failed.",
+            converted, skipped, failed
+        );
         self.logger.log("DONE", &self.state.status, &corr);
     }
 }
@@ -189,7 +237,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let _view = DoneView::new(palette, logger, watchdog);
@@ -204,7 +253,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = DoneView::new(palette, logger, watchdog);
@@ -225,7 +275,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = DoneView::new(palette, logger, watchdog);

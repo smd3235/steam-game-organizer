@@ -3,8 +3,8 @@
 //!
 //! 2026-11-25: egui setup window stub in the Rust conversion.
 
+use crate::ui::theme::{primary_button, secondary_button, separator, Palette};
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{primary_button, secondary_button, Palette, separator};
 
 #[derive(Default)]
 pub struct SetupWindowState {
@@ -53,15 +53,32 @@ impl SetupWindow {
         // Three folder fields
         ui.vertical(|ui| {
             for (label, path_var, hint) in [
-                ("Game library", &mut self.state.library_path, "The folder the games are in - the whole library, categories and all"),
-                ("App folder", &mut self.state.app_path, "Where the app itself lives"),
-                ("Extract to", &mut self.state.extract_path, "Where games are unpacked"),
+                (
+                    "Game library",
+                    &mut self.state.library_path,
+                    "The folder the games are in - the whole library, categories and all",
+                ),
+                (
+                    "App folder",
+                    &mut self.state.app_path,
+                    "Where the app itself lives",
+                ),
+                (
+                    "Extract to",
+                    &mut self.state.extract_path,
+                    "Where games are unpacked",
+                ),
             ] {
                 ui.group(|ui| {
                     ui.vertical(|ui| {
                         ui.label(RichText::new(label).strong().color(self.palette.accent_hi));
                         ui.text_edit_singleline(path_var);
-                        ui.label(RichText::new(hint).small().color(self.palette.muted).italics());
+                        ui.label(
+                            RichText::new(hint)
+                                .small()
+                                .color(self.palette.muted)
+                                .italics(),
+                        );
                     });
                 });
                 separator(ui);
@@ -84,25 +101,36 @@ impl SetupWindow {
         separator(ui);
 
         // Checks section
-        ui.label(RichText::new("Checks").strong().color(self.palette.accent_hi));
-        ScrollArea::vertical().id_salt("setup_checks").max_height(150.0).show(ui, |ui| {
-            if self.state.checks.is_empty() {
-                ui.label(RichText::new("(no checks run yet)").color(self.palette.muted).italics());
-            } else {
-                for (level, message) in &self.state.checks {
-                    let color = match level.as_str() {
-                        "error" => self.palette.red,
-                        "warn" => self.palette.orange,
-                        "ok" => self.palette.green,
-                        _ => self.palette.text,
-                    };
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(format!("[{}]", level)).color(color).small());
-                        ui.label(RichText::new(message).small().color(self.palette.text));
-                    });
+        ui.label(
+            RichText::new("Checks")
+                .strong()
+                .color(self.palette.accent_hi),
+        );
+        ScrollArea::vertical()
+            .id_salt("setup_checks")
+            .max_height(150.0)
+            .show(ui, |ui| {
+                if self.state.checks.is_empty() {
+                    ui.label(
+                        RichText::new("(no checks run yet)")
+                            .color(self.palette.muted)
+                            .italics(),
+                    );
+                } else {
+                    for (level, message) in &self.state.checks {
+                        let color = match level.as_str() {
+                            "error" => self.palette.red,
+                            "warn" => self.palette.orange,
+                            "ok" => self.palette.green,
+                            _ => self.palette.text,
+                        };
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new(format!("[{}]", level)).color(color).small());
+                            ui.label(RichText::new(message).small().color(self.palette.text));
+                        });
+                    }
                 }
-            }
-        });
+            });
 
         separator(ui);
 
@@ -112,14 +140,20 @@ impl SetupWindow {
                 self.state.saved = true;
                 self.state.status = "Setup saved.".to_string();
             }
-            if self.state.saved && primary_button(ui, "Launch Steam Game Organizer", &self.palette, true).clicked() {
+            if self.state.saved
+                && primary_button(ui, "Launch Steam Game Organizer", &self.palette, true).clicked()
+            {
                 self.state.status = "Launch clicked".to_string();
             }
         });
 
         if !self.state.status.is_empty() {
             separator(ui);
-            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
+            ui.label(
+                RichText::new(&self.state.status)
+                    .color(self.palette.muted)
+                    .small(),
+            );
         }
     }
 

@@ -221,12 +221,7 @@ impl AppLogger {
     }
 
     pub fn exception(&self, c: &str, m: &str, exc: &str, i: &str) {
-        self.write(
-            "ERROR",
-            c,
-            &format!("{} type=Unknown: {}", m, exc),
-            i,
-        );
+        self.write("ERROR", c, &format!("{} type=Unknown: {}", m, exc), i);
     }
 
     /// Log an OrganizerError with full context.
@@ -277,8 +272,14 @@ impl AppLogger {
             } else {
                 "<non-string panic>".to_string()
             };
-            let location = info.location().map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())).unwrap_or_else(|| "unknown".to_string());
-            let thread = std::thread::current().name().unwrap_or("<unnamed>").to_string();
+            let location = info
+                .location()
+                .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+                .unwrap_or_else(|| "unknown".to_string());
+            let thread = std::thread::current()
+                .name()
+                .unwrap_or("<unnamed>")
+                .to_string();
             let backtrace = format!("{:?}", Backtrace::capture());
             let line = format!(
                 "[{}] [PANIC] [PANIC] [-         ] thread={} location={} message={}\n  backtrace: {}\n",
@@ -303,25 +304,44 @@ impl AppLogger {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos() as u64;
-        self._op_times.lock().unwrap().push((format!("{}:{}", operation, correlation_id), std::time::Instant::now()));
-        self.write("INFO", "OP_TIMING", &format!("OP_START {} corr={}", operation, correlation_id), correlation_id);
+        self._op_times.lock().unwrap().push((
+            format!("{}:{}", operation, correlation_id),
+            std::time::Instant::now(),
+        ));
+        self.write(
+            "INFO",
+            "OP_TIMING",
+            &format!("OP_START {} corr={}", operation, correlation_id),
+            correlation_id,
+        );
         _id
     }
 
     /// End tracking an operation and log elapsed time.
     pub fn op_end(&self, _id: u64, operation: &str, correlation_id: &str) {
         let mut times = self._op_times.lock().unwrap();
-        if let Some(pos) = times.iter().position(|(label, _)| {
-            label.contains(operation) && label.contains(correlation_id)
-        }) {
+        if let Some(pos) = times
+            .iter()
+            .position(|(label, _)| label.contains(operation) && label.contains(correlation_id))
+        {
             let (_, start) = times.remove(pos);
             let elapsed = start.elapsed();
-            self.write("INFO", "OP_TIMING", &format!("OP_END {} corr={} elapsed_ms={}", operation, correlation_id, elapsed.as_millis()), correlation_id);
+            self.write(
+                "INFO",
+                "OP_TIMING",
+                &format!(
+                    "OP_END {} corr={} elapsed_ms={}",
+                    operation,
+                    correlation_id,
+                    elapsed.as_millis()
+                ),
+                correlation_id,
+            );
         }
     }
 
     /// Convenience method: log a message at INFO level.
-    /// Allows call sites to use `logger.log("component", "message", "corr")` 
+    /// Allows call sites to use `logger.log("component", "message", "corr")`
     /// instead of `logger.info("component", "message", "corr")`.
     pub fn log(&self, category: &str, message: &str, correlation_id: &str) {
         self.info(category, message, correlation_id);

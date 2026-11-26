@@ -11,11 +11,11 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use crate::core::config::AppConfig;
-use crate::core::logger::AppLogger;
 use crate::app::controller::{AppController, Services};
 use crate::app::events::EventBus;
 use crate::app::jobs::JobManager;
+use crate::core::config::AppConfig;
+use crate::core::logger::AppLogger;
 use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
 
@@ -90,7 +90,10 @@ impl Application {
     /// Sweep stale build directories (stub: delegates to organizer service).
     pub fn sweep_stale_build_dirs(&self) {
         if let Some(root) = self.config.library_root.as_ref() {
-            let _removed = self.services.organizer.sweep_stale_build_dirs(Some(root), 900);
+            let _removed = self
+                .services
+                .organizer
+                .sweep_stale_build_dirs(Some(root), 900);
         }
     }
 }
@@ -138,4 +141,3 @@ mod tests {
         let _ = app.config.library_root;
     }
 }
-

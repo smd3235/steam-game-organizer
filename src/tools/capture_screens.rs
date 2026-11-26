@@ -124,7 +124,9 @@ pub fn capture_screens(output_dir: &Path, view_name: &str) -> Result<(), String>
     script.push_str("} else {\n");
     script.push_str("    $rect = [WindowCapture]::GetWindowRectangle($process.MainWindowHandle)\n");
     script.push_str("    if ($rect.IsEmpty) {\n");
-    script.push_str("        Write-Output \"Failed to get window rect; capturing primary monitor instead.\"\n");
+    script.push_str(
+        "        Write-Output \"Failed to get window rect; capturing primary monitor instead.\"\n",
+    );
     script.push_str("        $screen = [System.Windows.Forms.Screen]::PrimaryScreen\n");
     script.push_str("        $left = $screen.Bounds.Left\n");
     script.push_str("        $top = $screen.Bounds.Top\n");
@@ -140,17 +142,28 @@ pub fn capture_screens(output_dir: &Path, view_name: &str) -> Result<(), String>
     script.push('\n');
     script.push_str("$bmp = New-Object System.Drawing.Bitmap($width, $height)\n");
     script.push_str("$gfx = [System.Drawing.Graphics]::FromImage($bmp)\n");
-    script.push_str("$gfx.CopyFromScreen($left, $top, 0, 0, [System.Drawing.Size]::new($width, $height))\n");
+    script.push_str(
+        "$gfx.CopyFromScreen($left, $top, 0, 0, [System.Drawing.Size]::new($width, $height))\n",
+    );
     script.push_str(&format!("$bmp.Save('{}')\n", output_path_str));
     script.push_str("$gfx.Dispose()\n");
     script.push_str("$bmp.Dispose()\n");
-    script.push_str(&format!("Write-Output \"Saved to {} ($width x $height)\"\n", output_path_str));
+    script.push_str(&format!(
+        "Write-Output \"Saved to {} ($width x $height)\"\n",
+        output_path_str
+    ));
 
     std::fs::write(&ps_script_path, &script)
         .map_err(|e| format!("Failed to write PowerShell script: {}", e))?;
 
     let output = Command::new("powershell")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps_script_path.to_str().ok_or("Invalid script path")?])
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            ps_script_path.to_str().ok_or("Invalid script path")?,
+        ])
         .output()
         .map_err(|e| format!("Failed to launch PowerShell: {}", e))?;
 
@@ -188,10 +201,7 @@ fn ocr_image(image_path: &Path) -> Result<String, String> {
 
 /// Verify OCR text against expected headers and forbidden text.
 /// Returns (found_required, missing_required, found_forbidden).
-fn verify_ocr(
-    ocr_text: &str,
-    view_name: &str,
-) -> (Vec<String>, Vec<String>, Vec<String>) {
+fn verify_ocr(ocr_text: &str, view_name: &str) -> (Vec<String>, Vec<String>, Vec<String>) {
     let text_lower = ocr_text.to_lowercase();
 
     let expected = OCR_SCREEN_HEADERS
@@ -247,7 +257,11 @@ fn verify_ocr(
 }
 
 /// Capture a single view and optionally run OCR verification.
-pub fn capture_and_verify(output_dir: &Path, view_name: &str, enable_ocr: bool) -> Result<(), String> {
+pub fn capture_and_verify(
+    output_dir: &Path,
+    view_name: &str,
+    enable_ocr: bool,
+) -> Result<(), String> {
     capture_screens(output_dir, view_name)?;
 
     if enable_ocr {
@@ -304,7 +318,10 @@ pub fn capture_and_verify(output_dir: &Path, view_name: &str, enable_ocr: bool) 
                 expected_count
             );
         } else {
-            return Err(format!("No screenshot found for view {} after capture", view_name));
+            return Err(format!(
+                "No screenshot found for view {} after capture",
+                view_name
+            ));
         }
     }
 
@@ -407,10 +424,8 @@ mod tests {
 
     #[test]
     fn test_verify_ocr_missing_required() {
-        let (_found, missing, _forbidden) = verify_ocr(
-            "Something completely unrelated here.",
-            "review",
-        );
+        let (_found, missing, _forbidden) =
+            verify_ocr("Something completely unrelated here.", "review");
         assert!(missing.iter().any(|f| f == "Game Review"));
         assert!(missing.iter().any(|f| f == "Archives"));
     }
@@ -430,9 +445,19 @@ mod tests {
     fn test_ocr_screen_headers_coverage() {
         // All view names should have expected headers defined
         let view_names = [
-            "scan", "scan-running", "review", "review-category", "add-category",
-            "organize", "artwork", "catalog", "done", "setup",
-            "batch-extract", "extract-progress", "extract-result",
+            "scan",
+            "scan-running",
+            "review",
+            "review-category",
+            "add-category",
+            "organize",
+            "artwork",
+            "catalog",
+            "done",
+            "setup",
+            "batch-extract",
+            "extract-progress",
+            "extract-result",
         ];
         for name in &view_names {
             assert!(

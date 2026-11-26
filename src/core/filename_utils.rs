@@ -207,4 +207,3 @@ mod tests {
         assert_eq!(key, vec![0]);
     }
 }
-

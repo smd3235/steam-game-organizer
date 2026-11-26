@@ -93,7 +93,9 @@ impl AppConfig {
     }
 
     pub fn new(project_root: &Path) -> Self {
-        let project_root = project_root.canonicalize().unwrap_or_else(|_| project_root.to_path_buf());
+        let project_root = project_root
+            .canonicalize()
+            .unwrap_or_else(|_| project_root.to_path_buf());
         let config_dir = project_root.join("config");
         let cache_dir = project_root.join("cache");
         let artwork_dir = cache_dir.join("artwork");
@@ -148,16 +150,19 @@ impl AppConfig {
                         .and_then(|n| n.to_str())
                         .is_some_and(|s| s.starts_with("organizer-"))
                 })
-                .filter(|p| {
-                    p.extension()
-                        .is_some_and(|ext| ext == "log")
-                })
+                .filter(|p| p.extension().is_some_and(|ext| ext == "log"))
                 .collect(),
             Err(_) => Vec::new(),
         };
         logs.sort_by(|a, b| {
-            let ma = a.metadata().and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
-            let mb = b.metadata().and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
+            let ma = a
+                .metadata()
+                .and_then(|m| m.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH);
+            let mb = b
+                .metadata()
+                .and_then(|m| m.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH);
             mb.cmp(&ma)
         });
         for old in logs.iter().skip(ROTATED_LOGS as usize) {
@@ -187,7 +192,7 @@ impl AppConfig {
                         }
                     }
                     Err(_) => false,
-                }
+                },
                 Err(_) => false,
             }
         } else {
@@ -236,7 +241,10 @@ impl AppConfig {
 
     pub fn set_convert_archives(&mut self, value: bool) {
         if let Some(obj) = self.settings.as_object_mut() {
-            obj.insert("convert_archives".to_string(), serde_json::Value::Bool(value));
+            obj.insert(
+                "convert_archives".to_string(),
+                serde_json::Value::Bool(value),
+            );
         }
         self.save();
     }
@@ -279,13 +287,18 @@ impl AppConfig {
                 .collect();
             obj.insert("extract_folders".to_string(), serde_json::Value::Array(arr));
         }
-        self.settings.as_object_mut().and_then(|o| o.remove("extract_folder"));
+        self.settings
+            .as_object_mut()
+            .and_then(|o| o.remove("extract_folder"));
         self.save();
     }
 
     pub fn extract_folder(&self) -> PathBuf {
         let folders = self.extract_folders();
-        folders.into_iter().next().unwrap_or_else(|| home_dir().join("Downloads/Extracted"))
+        folders
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| home_dir().join("Downloads/Extracted"))
     }
 
     pub fn set_extract_folder(&mut self, value: PathBuf) {
@@ -293,13 +306,24 @@ impl AppConfig {
     }
 
     pub fn ensure_directories(&self) {
-        for p in [&self.config_dir, &self.cache_dir, &self.artwork_dir, &self.log_dir, &self.debug_dir] {
+        for p in [
+            &self.config_dir,
+            &self.cache_dir,
+            &self.artwork_dir,
+            &self.log_dir,
+            &self.debug_dir,
+        ] {
             if p.exists() && !p.is_dir() {
-                let file_name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                let file_name = p
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
                 let mut backup = p.with_file_name(format!("{}.invalid-file-backup", file_name));
                 let mut suffix = 1;
                 while backup.exists() {
-                    backup = p.with_file_name(format!("{}.invalid-file-backup-{suffix}", file_name));
+                    backup =
+                        p.with_file_name(format!("{}.invalid-file-backup-{suffix}", file_name));
                     suffix += 1;
                 }
                 let _ = fs::rename(p, &backup);
@@ -324,7 +348,10 @@ impl AppConfig {
                             self.library_root = Some(self._resolve_library(value));
                         }
                     }
-                    self.developer_mode = data.get("developer_mode").and_then(|v| v.as_bool()).unwrap_or(false);
+                    self.developer_mode = data
+                        .get("developer_mode")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
                     self.settings = data;
                     if self.library_root.is_none() {
                         self.library_root = Some(config_default_library_root());
@@ -384,7 +411,10 @@ impl AppConfig {
                         .map_or("".to_string(), |p| p.to_string_lossy().to_string()),
                 ),
             );
-            obj.insert("developer_mode".to_string(), serde_json::Value::Bool(self.developer_mode));
+            obj.insert(
+                "developer_mode".to_string(),
+                serde_json::Value::Bool(self.developer_mode),
+            );
         }
         if let Some(root_str) = data.get("library_root").and_then(|v| v.as_str()) {
             if !root_str.is_empty() && !PathBuf::from(root_str).is_dir() {
@@ -393,11 +423,17 @@ impl AppConfig {
                         "warning: not saving library root {root_str} - the directory does not exist; keeping {previous}"
                     );
                     if let Some(obj) = data.as_object_mut() {
-                        obj.insert("library_root".to_string(), serde_json::Value::String(previous));
+                        obj.insert(
+                            "library_root".to_string(),
+                            serde_json::Value::String(previous),
+                        );
                     }
                 } else {
                     if let Some(obj) = data.as_object_mut() {
-                        obj.insert("library_root".to_string(), serde_json::Value::String("".to_string()));
+                        obj.insert(
+                            "library_root".to_string(),
+                            serde_json::Value::String("".to_string()),
+                        );
                     }
                 }
             }
@@ -432,7 +468,10 @@ impl AppConfig {
         self.sync_to_appdata();
     }
 
-    pub fn save_scan_summary(&mut self, summary: Option<&serde_json::Value>) -> Option<serde_json::Value> {
+    pub fn save_scan_summary(
+        &mut self,
+        summary: Option<&serde_json::Value>,
+    ) -> Option<serde_json::Value> {
         let mut payload = summary.cloned().unwrap_or(serde_json::json!({}));
         payload["recorded_at"] = serde_json::Value::Number(Utc::now().timestamp_millis().into());
         match self.save_json_to_file(&self.state_file, &payload) {
@@ -457,7 +496,11 @@ impl AppConfig {
         }
     }
 
-    fn save_json_to_file(&self, path: &Path, data: &serde_json::Value) -> Result<(), std::io::Error> {
+    fn save_json_to_file(
+        &self,
+        path: &Path,
+        data: &serde_json::Value,
+    ) -> Result<(), std::io::Error> {
         self.ensure_directories();
         let parent = path.parent().unwrap_or(&self.config_dir);
         let tmp_name = format!("scan-state.{}.tmp", std::process::id());
@@ -502,4 +545,3 @@ mod tests {
         assert!(config.convert_archives());
     }
 }
-

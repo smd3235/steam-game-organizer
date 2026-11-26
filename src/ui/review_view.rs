@@ -7,15 +7,15 @@
 
 use std::sync::Arc;
 
-use crate::core::models::GameArchive;
 use crate::core::errors::Watchdog;
+use crate::core::models::GameArchive;
 
 use egui::{RichText, ScrollArea};
 
 use crate::ui::theme;
 use crate::ui::theme::{
     archive_row, card, category_pill, danger_button, empty_state, heading, primary_button,
-    secondary_button, Palette, separator, stat_card,
+    secondary_button, separator, stat_card, Palette,
 };
 
 #[derive(Default, Clone)]
@@ -120,22 +120,58 @@ impl ReviewView {
         card(ui, &self.palette, |ui| {
             // Header
             heading(ui, &self.palette, "Game Review");
-            ui.label(RichText::new("Verify Steam matches, pick categories, accept games").color(self.palette.muted).small());
+            ui.label(
+                RichText::new("Verify Steam matches, pick categories, accept games")
+                    .color(self.palette.muted)
+                    .small(),
+            );
             separator(ui);
 
             // Summary counts
-            let accepted = self.state.archives.iter().filter(|a| a.decision.accepted).count();
-            let skipped = self.state.archives.iter().filter(|a| a.decision.skipped).count();
+            let accepted = self
+                .state
+                .archives
+                .iter()
+                .filter(|a| a.decision.accepted)
+                .count();
+            let skipped = self
+                .state
+                .archives
+                .iter()
+                .filter(|a| a.decision.skipped)
+                .count();
             let total = self.state.archives.len();
             ui.horizontal(|ui| {
-                stat_card(ui, &self.palette, &total.to_string(), "Total", self.palette.text_secondary);
-                stat_card(ui, &self.palette, &accepted.to_string(), "Accepted", self.palette.green);
-                stat_card(ui, &self.palette, &skipped.to_string(), "Skipped", self.palette.orange);
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &total.to_string(),
+                    "Total",
+                    self.palette.text_secondary,
+                );
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &accepted.to_string(),
+                    "Accepted",
+                    self.palette.green,
+                );
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &skipped.to_string(),
+                    "Skipped",
+                    self.palette.orange,
+                );
             });
             ui.add_space(theme::SPACING);
 
             // Status line
-            ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
+            ui.label(
+                RichText::new(&self.state.status)
+                    .small()
+                    .color(self.palette.muted),
+            );
             separator(ui);
 
             // Controls row: search + filter + actions
@@ -148,10 +184,26 @@ impl ReviewView {
                     .selected_text(&self.state.filter)
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.state.filter, "All".to_string(), "All");
-                        ui.selectable_value(&mut self.state.filter, "Needs Review".to_string(), "Needs Review");
-                        ui.selectable_value(&mut self.state.filter, "Verified".to_string(), "Verified");
-                        ui.selectable_value(&mut self.state.filter, "New Only".to_string(), "New Only");
-                        ui.selectable_value(&mut self.state.filter, "Artwork".to_string(), "Artwork");
+                        ui.selectable_value(
+                            &mut self.state.filter,
+                            "Needs Review".to_string(),
+                            "Needs Review",
+                        );
+                        ui.selectable_value(
+                            &mut self.state.filter,
+                            "Verified".to_string(),
+                            "Verified",
+                        );
+                        ui.selectable_value(
+                            &mut self.state.filter,
+                            "New Only".to_string(),
+                            "New Only",
+                        );
+                        ui.selectable_value(
+                            &mut self.state.filter,
+                            "Artwork".to_string(),
+                            "Artwork",
+                        );
                     });
             });
             ui.add_space(theme::SPACING);
@@ -161,40 +213,64 @@ impl ReviewView {
                 // Left: archive list
                 ui.vertical(|ui| {
                     ui.label(RichText::new("Archives").strong().color(self.palette.muted));
-                    ScrollArea::vertical().id_salt("review_list").max_height(400.0).show(ui, |ui| {
-                        if self.state.archives.is_empty() {
-                            empty_state(ui, &self.palette, "📭", "No archives yet", "Run Scan first to discover game archives.");
-                        } else {
-                            for (i, archive) in self.state.archives.iter().enumerate() {
-                                let selected = self.state.selected_index == Some(i);
-                                let name = if archive.display_name.is_empty() {
-                                    archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
-                                } else {
-                                    archive.display_name.clone()
-                                };
-                                let response = archive_row(
+                    ScrollArea::vertical()
+                        .id_salt("review_list")
+                        .max_height(400.0)
+                        .show(ui, |ui| {
+                            if self.state.archives.is_empty() {
+                                empty_state(
                                     ui,
                                     &self.palette,
-                                    &name,
-                                    &format!("{} bytes", archive.size),
-                                    selected,
+                                    "📭",
+                                    "No archives yet",
+                                    "Run Scan first to discover game archives.",
                                 );
-                                if response.clicked() {
-                                    self.state.selected_index = Some(i);
-                                    self.logger.log("REVIEW", &format!("Selected archive: {}", name), "");
+                            } else {
+                                for (i, archive) in self.state.archives.iter().enumerate() {
+                                    let selected = self.state.selected_index == Some(i);
+                                    let name = if archive.display_name.is_empty() {
+                                        archive
+                                            .path
+                                            .file_name()
+                                            .unwrap_or_default()
+                                            .to_string_lossy()
+                                            .to_string()
+                                    } else {
+                                        archive.display_name.clone()
+                                    };
+                                    let response = archive_row(
+                                        ui,
+                                        &self.palette,
+                                        &name,
+                                        &format!("{} bytes", archive.size),
+                                        selected,
+                                    );
+                                    if response.clicked() {
+                                        self.state.selected_index = Some(i);
+                                        self.logger.log(
+                                            "REVIEW",
+                                            &format!("Selected archive: {}", name),
+                                            "",
+                                        );
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
                 });
 
                 separator(ui);
 
                 // Right: detail panel
                 ui.vertical(|ui| {
-                    ui.label(RichText::new("Archive Detail").strong().color(self.palette.muted));
-                    ScrollArea::vertical().id_salt("review_detail").max_height(400.0).show(ui, |ui| {
-                        match self.state.selected_index {
+                    ui.label(
+                        RichText::new("Archive Detail")
+                            .strong()
+                            .color(self.palette.muted),
+                    );
+                    ScrollArea::vertical()
+                        .id_salt("review_detail")
+                        .max_height(400.0)
+                        .show(ui, |ui| match self.state.selected_index {
                             Some(i) => {
                                 let archive = &self.state.archives[i];
                                 ui.label(RichText::new(format!("Archive {}", i + 1)).strong());
@@ -207,7 +283,9 @@ impl ReviewView {
                                 });
                                 ui.label(format!("  Identity Key: {}", archive.identity_key));
                                 separator(ui);
-                                ui.label(RichText::new("Evidence:").small().color(self.palette.muted));
+                                ui.label(
+                                    RichText::new("Evidence:").small().color(self.palette.muted),
+                                );
                                 ui.label(format!("  Release Group: {}", archive.normalized_title));
                                 separator(ui);
                                 ui.label(format!("Size: {} bytes", archive.size));
@@ -216,10 +294,13 @@ impl ReviewView {
                                 ui.label(format!("Skipped: {}", archive.decision.skipped));
                             }
                             None => {
-                                ui.label(RichText::new("Select an archive to review").color(self.palette.muted).italics());
+                                ui.label(
+                                    RichText::new("Select an archive to review")
+                                        .color(self.palette.muted)
+                                        .italics(),
+                                );
                             }
-                        }
-                    });
+                        });
                 });
             });
 
@@ -228,7 +309,8 @@ impl ReviewView {
             // Bottom actions
             ui.horizontal(|ui| {
                 if secondary_button(ui, "Accept & Next", &self.palette, true).clicked() {
-                    self.logger.log("REVIEW", "Accept & Next button clicked", "");
+                    self.logger
+                        .log("REVIEW", "Accept & Next button clicked", "");
                     self.state.status = "Accept & Next clicked".to_string();
                     self.state.should_accept_next = true;
                 }
@@ -243,7 +325,8 @@ impl ReviewView {
                     self.state.should_wrong_match = true;
                 }
                 if secondary_button(ui, "Extract Selected", &self.palette, true).clicked() {
-                    self.logger.log("REVIEW", "Extract Selected button clicked", "");
+                    self.logger
+                        .log("REVIEW", "Extract Selected button clicked", "");
                     self.state.status = "Extract Selected clicked".to_string();
                 }
             });
@@ -252,14 +335,20 @@ impl ReviewView {
             if let Some(i) = self.state.selected_index {
                 ui.add_space(theme::SPACING);
                 let archive = &self.state.archives[i];
-                ui.label(RichText::new(format!("Actions for: {}", archive.display_name)).small().color(self.palette.muted));
+                ui.label(
+                    RichText::new(format!("Actions for: {}", archive.display_name))
+                        .small()
+                        .color(self.palette.muted),
+                );
                 ui.horizontal(|ui| {
                     if secondary_button(ui, "Accept", &self.palette, true).clicked() {
-                        self.logger.log("REVIEW", &format!("Accept: {}", archive.display_name), "");
+                        self.logger
+                            .log("REVIEW", &format!("Accept: {}", archive.display_name), "");
                         self.state.should_accept_index = Some(i);
                     }
                     if danger_button(ui, "Reject", &self.palette, true).clicked() {
-                        self.logger.log("REVIEW", &format!("Reject: {}", archive.display_name), "");
+                        self.logger
+                            .log("REVIEW", &format!("Reject: {}", archive.display_name), "");
                         self.state.should_reject_index = Some(i);
                     }
                 });
@@ -269,7 +358,8 @@ impl ReviewView {
             ui.add_space(theme::SPACING_LG);
             ui.horizontal(|ui| {
                 if primary_button(ui, "Approve All Verified", &self.palette, true).clicked() {
-                    self.logger.log("REVIEW", "Approve All Verified button clicked", "");
+                    self.logger
+                        .log("REVIEW", "Approve All Verified button clicked", "");
                     self.state.status = "Approving all verified…".to_string();
                     self.state.should_approve_all = true;
                 }
@@ -278,7 +368,8 @@ impl ReviewView {
                     self.state.status = "Add Category clicked".to_string();
                 }
                 if secondary_button(ui, "Use All Suggestions", &self.palette, true).clicked() {
-                    self.logger.log("REVIEW", "Use All Suggestions button clicked", "");
+                    self.logger
+                        .log("REVIEW", "Use All Suggestions button clicked", "");
                     self.state.status = "Use All Suggestions clicked".to_string();
                     self.state.should_use_suggestions = true;
                 }
@@ -290,13 +381,18 @@ impl ReviewView {
             });
 
             if primary_button(ui, "Continue to Organization", &self.palette, true).clicked() {
-                self.logger.log("REVIEW", "Continue to Organization button clicked", "");
+                self.logger
+                    .log("REVIEW", "Continue to Organization button clicked", "");
                 self.state.status = "Continue to Organization clicked".to_string();
                 self.state.should_continue_organize = true;
             }
 
             ui.add_space(theme::SPACING);
-            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
+            ui.label(
+                RichText::new(&self.state.status)
+                    .color(self.palette.muted)
+                    .small(),
+            );
         });
     }
 
@@ -307,7 +403,8 @@ impl ReviewView {
                 archive.decision.accepted = true;
             }
         }
-        self.logger.log("REVIEW", "All verified archives approved", &corr);
+        self.logger
+            .log("REVIEW", "All verified archives approved", &corr);
         self.state.status = "All verified archives approved".to_string();
     }
 
@@ -339,7 +436,11 @@ impl ReviewView {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.skipped = true;
             self.state.archives[i].decision.accepted = false;
-            self.logger.log("REVIEW", &format!("Skipped: {}", self.state.archives[i].display_name), "");
+            self.logger.log(
+                "REVIEW",
+                &format!("Skipped: {}", self.state.archives[i].display_name),
+                "",
+            );
             self.state.status = format!("Skipped: {}", self.state.archives[i].display_name);
         }
     }
@@ -348,15 +449,29 @@ impl ReviewView {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.accepted = false;
             self.state.archives[i].steam.found = false;
-            self.logger.log("REVIEW", &format!("Wrong match cleared for: {}", self.state.archives[i].display_name), "");
-            self.state.status = format!("Wrong match cleared for: {}", self.state.archives[i].display_name);
+            self.logger.log(
+                "REVIEW",
+                &format!(
+                    "Wrong match cleared for: {}",
+                    self.state.archives[i].display_name
+                ),
+                "",
+            );
+            self.state.status = format!(
+                "Wrong match cleared for: {}",
+                self.state.archives[i].display_name
+            );
         }
     }
 
     pub(crate) fn accept_archive(&mut self, index: usize) {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = true;
-            self.logger.log("REVIEW", &format!("Accepted: {}", self.state.archives[index].display_name), "");
+            self.logger.log(
+                "REVIEW",
+                &format!("Accepted: {}", self.state.archives[index].display_name),
+                "",
+            );
         }
     }
 
@@ -364,15 +479,27 @@ impl ReviewView {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = false;
             self.state.archives[index].decision.skipped = true;
-            self.logger.log("REVIEW", &format!("Rejected: {}", self.state.archives[index].display_name), "");
+            self.logger.log(
+                "REVIEW",
+                &format!("Rejected: {}", self.state.archives[index].display_name),
+                "",
+            );
         }
     }
 
     pub fn load(&mut self, archives: Vec<GameArchive>) {
         let corr = self.logger.correlation_id();
         self.state.archives = archives;
-        self.state.selected_index = if !self.state.archives.is_empty() { Some(0) } else { None };
-        self.logger.log("REVIEW", &format!("Loaded {} archives for review", self.state.archives.len()), &corr);
+        self.state.selected_index = if !self.state.archives.is_empty() {
+            Some(0)
+        } else {
+            None
+        };
+        self.logger.log(
+            "REVIEW",
+            &format!("Loaded {} archives for review", self.state.archives.len()),
+            &corr,
+        );
     }
 
     pub fn cancel_lookup(&mut self) {
@@ -393,7 +520,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let _view = ReviewView::new(palette, logger, watchdog);
@@ -408,7 +536,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = ReviewView::new(palette, logger, watchdog);
@@ -427,7 +556,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = ReviewView::new(palette, logger, watchdog);
@@ -446,7 +576,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = ReviewView::new(palette, logger, watchdog);
@@ -465,7 +596,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = ReviewView::new(palette, logger, watchdog);

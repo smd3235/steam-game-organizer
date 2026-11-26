@@ -112,4 +112,3 @@ impl std::fmt::Display for UriRefused {
 }
 
 impl std::error::Error for UriRefused {}
-

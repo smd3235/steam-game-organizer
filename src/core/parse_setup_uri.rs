@@ -52,4 +52,3 @@ mod tests {
         assert_eq!(parse_query_param("library=x&extract=y", "library"), "x");
     }
 }
-

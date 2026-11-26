@@ -51,11 +51,7 @@ impl CatalogService {
         }
     }
 
-    pub fn generate(
-        &self,
-        library_root: &Path,
-        _write_launcher: bool,
-    ) -> Vec<PathBuf> {
+    pub fn generate(&self, library_root: &Path, _write_launcher: bool) -> Vec<PathBuf> {
         let library_root = match library_root.canonicalize() {
             Ok(r) => r,
             Err(_) => return Vec::new(),
@@ -82,11 +78,7 @@ impl CatalogService {
             Err(exc) => {
                 (self.logger)(
                     "CATALOG",
-                    &format!(
-                        "WRITE_FAILED path=[{}] error={}",
-                        path.display(),
-                        exc
-                    ),
+                    &format!("WRITE_FAILED path=[{}] error={}", path.display(), exc),
                 );
                 Vec::new()
             }
@@ -96,10 +88,7 @@ impl CatalogService {
     fn _retain(&self, library_root: &Path, _categories: &HashMap<String, Vec<GameArchive>>) {
         *self._library_root.lock().unwrap() = Some(library_root.to_path_buf());
         *self._summary.lock().unwrap() = Some(LibrarySummary::default());
-        (self.logger)(
-            "CATALOG",
-            "INDEX_BUILT categories=0 games=0 developers=0",
-        );
+        (self.logger)("CATALOG", "INDEX_BUILT categories=0 games=0 developers=0");
     }
 
     pub fn library_summary(&self, library_root: Option<&Path>) -> LibrarySummary {
@@ -217,4 +206,3 @@ mod tests {
         assert!(banner.is_empty());
     }
 }
-

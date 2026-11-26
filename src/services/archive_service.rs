@@ -18,11 +18,11 @@ use zip::ZipArchive;
 use crate::core::constants::{
     ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG,
 };
-use crate::services::extract_service::ExtractService;
 use crate::core::filename_utils::{identity_key, normalize_name, version_key};
-use crate::core::installer_detect::{InstallSignature, installer_from_names};
+use crate::core::installer_detect::{installer_from_names, InstallSignature};
 use crate::core::library_utils::is_app_folder;
 use crate::core::models::{GameArchive, ScanResult};
+use crate::services::extract_service::ExtractService;
 
 lazy_static! {
     static ref INSTALLER_KIND_CACHE: Mutex<HashMap<String, (u64, u128, Option<InstallSignature>)>> =
@@ -60,7 +60,11 @@ impl ArchiveService {
         try_save_discovery_cache(library_root, dir_mtimes);
     }
 
-    fn walk_changed_files(&self, root: &Path, dir_mtimes_cache: &HashMap<String, u128>) -> (Vec<PathBuf>, HashMap<String, u128>) {
+    fn walk_changed_files(
+        &self,
+        root: &Path,
+        dir_mtimes_cache: &HashMap<String, u128>,
+    ) -> (Vec<PathBuf>, HashMap<String, u128>) {
         let mut files: Vec<PathBuf> = Vec::new();
         let mut updated: HashMap<String, u128> = HashMap::new();
         let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
@@ -84,13 +88,36 @@ impl ArchiveService {
             let cache_key = resolved.to_string_lossy().to_string();
             let cached_mtime = dir_mtimes_cache.get(&cache_key);
             if let Some(cached) = cached_mtime {
-                if *cached == dir_stat.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos() {
-                    updated.insert(cache_key, dir_stat.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos());
+                if *cached
+                    == dir_stat
+                        .modified()
+                        .unwrap_or(UNIX_EPOCH)
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_nanos()
+                {
+                    updated.insert(
+                        cache_key,
+                        dir_stat
+                            .modified()
+                            .unwrap_or(UNIX_EPOCH)
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_nanos(),
+                    );
                     continue;
                 }
             }
 
-            updated.insert(cache_key, dir_stat.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos());
+            updated.insert(
+                cache_key,
+                dir_stat
+                    .modified()
+                    .unwrap_or(UNIX_EPOCH)
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos(),
+            );
 
             let entries = match current.read_dir() {
                 Ok(e) => e,
@@ -125,7 +152,9 @@ impl ArchiveService {
         let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
         let mut result = ScanResult::default();
         if !root.is_dir() {
-            result.errors.push(format!("Library folder does not exist: {}", root.display()));
+            result
+                .errors
+                .push(format!("Library folder does not exist: {}", root.display()));
             return result;
         }
         let started = SystemTime::now();
@@ -164,21 +193,19 @@ impl ArchiveService {
                 .strip_prefix(&root)
                 .unwrap_or(path)
                 .ancestors()
-                .any(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.')))
+                .any(|p| {
+                    p.file_name()
+                        .is_some_and(|n| n.to_string_lossy().starts_with('.'))
+                })
             {
                 skipped += 1;
                 continue;
             }
-            if !path.is_file()
-                || reserved.iter().any(|r| path.ancestors().any(|a| a == *r))
-            {
+            if !path.is_file() || reserved.iter().any(|r| path.ancestors().any(|a| a == *r)) {
                 skipped += 1;
                 continue;
             }
-            if path
-                .ancestors()
-                .any(|p| p != root && is_app_folder(p))
-            {
+            if path.ancestors().any(|p| p != root && is_app_folder(p)) {
                 skipped += 1;
                 continue;
             }
@@ -186,10 +213,14 @@ impl ArchiveService {
                 skipped += 1;
                 continue;
             }
-            let suffix = path.extension()
+            let suffix = path
+                .extension()
                 .map(|e| e.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
-            if !ARCHIVE_EXTENSIONS.iter().any(|ext| ext.eq_ignore_ascii_case(&suffix)) {
+            if !ARCHIVE_EXTENSIONS
+                .iter()
+                .any(|ext| ext.eq_ignore_ascii_case(&suffix))
+            {
                 if let Some(progress) = progress {
                     if index % 25 == 0 {
                         progress(
@@ -256,14 +287,24 @@ impl ArchiveService {
             let size = path.metadata().map_or(0, |m| m.len());
             total_size += size;
             supported += 1;
-            let title = normalize_name(path.file_name().unwrap_or_default().to_string_lossy().as_ref());
+            let title = normalize_name(
+                path.file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .as_ref(),
+            );
             result.archives.push(GameArchive {
                 path: path.clone(),
                 display_name: title.clone(),
                 normalized_title: title.clone(),
                 identity_key: identity_key(&title),
                 extension: suffix.to_string(),
-                version: version_key(path.file_name().unwrap_or_default().to_string_lossy().as_ref()),
+                version: version_key(
+                    path.file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .as_ref(),
+                ),
                 size,
                 ..Default::default()
             });
@@ -324,11 +365,7 @@ impl ArchiveService {
         let candidates: Vec<PathBuf> = match fs::read_dir(root) {
             Ok(entries) => entries
                 .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.file_name()
-                        .to_string_lossy()
-                        .starts_with(TEMP_DIR_PREFIX)
-                })
+                .filter(|e| e.file_name().to_string_lossy().starts_with(TEMP_DIR_PREFIX))
                 .filter(|e| e.path().is_dir())
                 .map(|e| e.path())
                 .collect(),
@@ -351,17 +388,26 @@ impl ArchiveService {
 
     pub fn archive_installer_kind(&self, path: &Path) -> Option<InstallSignature> {
         let path = path.to_path_buf();
-        let suffix = path.extension()
+        let suffix = path
+            .extension()
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_default();
         let stat = path.metadata().ok();
         let cache_key: Option<String> = stat.as_ref().map(|_| path.to_string_lossy().to_string());
-        let cached = cache_key.as_ref().and_then(|ck| {
-            INSTALLER_KIND_CACHE.lock().unwrap().get(ck).cloned()
-        });
+        let cached = cache_key
+            .as_ref()
+            .and_then(|ck| INSTALLER_KIND_CACHE.lock().unwrap().get(ck).cloned());
         if let Some((cached_size, cached_mtime, cached_result)) = cached {
             if let Some(st) = stat.as_ref() {
-                if cached_size == st.len() && cached_mtime == st.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos() {
+                if cached_size == st.len()
+                    && cached_mtime
+                        == st
+                            .modified()
+                            .unwrap_or(UNIX_EPOCH)
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_nanos()
+                {
                     return cached_result;
                 }
             }
@@ -369,13 +415,13 @@ impl ArchiveService {
         let result = if suffix == ".zip" {
             match ZipArchive::new(fs::File::open(&path).ok()?) {
                 Ok(mut handle) => {
-                let mut names = Vec::new();
-                for i in 0..handle.len() {
-                    if let Ok(entry) = handle.by_index(i) {
-                        names.push(entry.name().to_string());
+                    let mut names = Vec::new();
+                    for i in 0..handle.len() {
+                        if let Ok(entry) = handle.by_index(i) {
+                            names.push(entry.name().to_string());
+                        }
                     }
-                }
-                installer_from_names(&names)
+                    installer_from_names(&names)
                 }
                 Err(_) => None,
             }
@@ -403,10 +449,18 @@ impl ArchiveService {
             }
         };
         if let Some(st) = stat.as_ref() {
-            let _ = INSTALLER_KIND_CACHE
-                .lock()
-                .unwrap()
-                .insert(cache_key.unwrap_or_default(), (st.len(), st.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos(), result.clone()));
+            let _ = INSTALLER_KIND_CACHE.lock().unwrap().insert(
+                cache_key.unwrap_or_default(),
+                (
+                    st.len(),
+                    st.modified()
+                        .unwrap_or(UNIX_EPOCH)
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_nanos(),
+                    result.clone(),
+                ),
+            );
         }
         result
     }
@@ -441,11 +495,16 @@ impl ArchiveService {
     }
 
     fn _is_own_temp_artefact(&self, path: &Path) -> bool {
-        if path.file_name().is_some_and(|n| n.to_string_lossy().contains(TEMP_FILE_TAG)) {
+        if path
+            .file_name()
+            .is_some_and(|n| n.to_string_lossy().contains(TEMP_FILE_TAG))
+        {
             return true;
         }
-        path.ancestors()
-            .any(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX)))
+        path.ancestors().any(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX))
+        })
     }
 
     fn _is_managed(&self, path: &Path) -> bool {
@@ -487,14 +546,24 @@ impl ArchiveService {
                 display_name: title.clone(),
                 normalized_title: title.clone(),
                 identity_key: identity_key(&title),
-                extension: p.extension().map_or(String::new(), |e| e.to_string_lossy().to_string()),
+                extension: p
+                    .extension()
+                    .map_or(String::new(), |e| e.to_string_lossy().to_string()),
                 version: version_key(n),
                 size: (i as u64) * 1024,
                 ..Default::default()
             });
             total += (i as u64) * 1024;
             if let Some(progress) = progress {
-                progress(i as u32, i as u32, names.len() as u32, total, i as u32, 0, &p);
+                progress(
+                    i as u32,
+                    i as u32,
+                    names.len() as u32,
+                    total,
+                    i as u32,
+                    0,
+                    &p,
+                );
             }
         }
         (self.logger)(
@@ -571,7 +640,8 @@ mod tests {
     #[test]
     fn test_archive_service_new() {
         fn dummy_logger(_: &str, _: &str) {}
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(dummy_logger);
+        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> =
+            Arc::new(dummy_logger);
         let service = ArchiveService::new(logger, false, None);
         assert!(!service.mock);
     }
@@ -579,9 +649,9 @@ mod tests {
     #[test]
     fn test_is_own_temp_artefact() {
         fn dummy_logger(_: &str, _: &str) {}
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(dummy_logger);
+        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> =
+            Arc::new(dummy_logger);
         let _service = ArchiveService::new(logger, false, None);
         assert!(true);
     }
 }
-

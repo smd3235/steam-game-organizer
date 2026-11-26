@@ -25,4 +25,3 @@ pub fn canonical_category(value: &str) -> String {
         .map(|(_, canonical)| canonical.to_string())
         .unwrap_or(text)
 }
-

@@ -84,4 +84,3 @@ mod tests {
         assert_eq!(parse_query_param("path=foo&other=bar", "path"), "foo");
     }
 }
-

@@ -17,4 +17,3 @@ pub fn parse_pick_launcher_uri(
 ) -> Result<PathBuf, UriRefused> {
     parse_extract_root_action(uri, extract_folders, "pick-launcher", true)
 }
-

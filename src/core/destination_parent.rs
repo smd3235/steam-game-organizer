@@ -51,4 +51,3 @@ mod tests {
         assert_eq!(result.unwrap(), PathBuf::from("C:\\Extract"));
     }
 }
-

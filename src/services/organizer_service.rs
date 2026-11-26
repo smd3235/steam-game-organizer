@@ -20,27 +20,27 @@ use walkdir::WalkDir;
 use winreg::enums::HKEY_CLASSES_ROOT;
 use winreg::RegKey;
 
-use crate::services::archive_service::ArchiveService;
 use crate::core::canonical_category::canonical_category;
 use crate::core::constants::{
-    COMPRESSION_LEVEL, COMPRESSION_THREADS, DEFAULT_ZIP_PASSWORD, LEVEL_RAM_BYTES,
-    LOCK_MARKER, MIN_COMPRESSION_LEVEL, PROCESSING_DIRNAME, RAM_HEADROOM_BYTES, TEMP_DIR_PREFIX,
-    TEMP_FILE_TAG,
+    COMPRESSION_LEVEL, COMPRESSION_THREADS, DEFAULT_ZIP_PASSWORD, LEVEL_RAM_BYTES, LOCK_MARKER,
+    MIN_COMPRESSION_LEVEL, PROCESSING_DIRNAME, RAM_HEADROOM_BYTES, TEMP_DIR_PREFIX, TEMP_FILE_TAG,
 };
-use crate::services::extract_service::ExtractService;
-use crate::core::models::{ConversionResult, GameArchive};
 use crate::core::debug::audit;
+use crate::core::models::{ConversionResult, GameArchive};
 use crate::core::naming_utils::{
     asset_prefix, game_name, modified_at, promotion_key, release_label, safe_name, unique_dir,
     ArchiveInput,
 };
 use crate::core::organizer_utils::{
-    defender_flagged, looks_like_resource_failure, pid_is_alive, stop_tool, still_running,
+    defender_flagged, looks_like_resource_failure, pid_is_alive, still_running, stop_tool,
     zip_is_encrypted,
 };
+use crate::services::archive_service::ArchiveService;
+use crate::services::extract_service::ExtractService;
 
 lazy_static! {
-    static ref STAGE_PROGRESS_RE: Regex = Regex::new(r"(\d{1,3})%\s+(?:\d+\s+[+-]\s+)?(.*)$").unwrap();
+    static ref STAGE_PROGRESS_RE: Regex =
+        Regex::new(r"(\d{1,3})%\s+(?:\d+\s+[+-]\s+)?(.*)$").unwrap();
 }
 
 const RECOGNISED_FOLDER_FILES: &[&str] = &[".game-info.json", "Open Steam Page.html"];
@@ -56,7 +56,9 @@ const LINK_NAME: &str = "Open Steam Page.html";
 
 const GENERIC_CONTENT_FOLDER_NAMES: &[&str] = &["game"];
 
-const RECOGNISED_IMAGE_SUFFIXES: &[&str] = &[".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"];
+const RECOGNISED_IMAGE_SUFFIXES: &[&str] = &[
+    ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff",
+];
 
 pub struct CancelContext {
     cancelled: Arc<std::sync::atomic::AtomicBool>,
@@ -74,7 +76,8 @@ impl CancelContext {
     }
 
     pub fn cancel(&self) {
-        self.cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.cancelled
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn checkpoint(&self) {
@@ -229,16 +232,25 @@ impl OrganizerService {
         }
     }
 
-    pub fn write_steam_links(&self, game_dir: &Path, appid: u32, name: Option<&str>) -> Option<PathBuf> {
+    pub fn write_steam_links(
+        &self,
+        game_dir: &Path,
+        appid: u32,
+        name: Option<&str>,
+    ) -> Option<PathBuf> {
         if appid == 0 {
             return None;
         }
         let url = format!("https://store.steampowered.com/app/{}/", appid);
         self._clean_old_links(game_dir);
         let link = game_dir.join(LINK_NAME);
-        let display_name = name
-            .map(escape_html)
-            .unwrap_or_else(|| game_dir.file_name().unwrap_or_default().to_string_lossy().to_string());
+        let display_name = name.map(escape_html).unwrap_or_else(|| {
+            game_dir
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string()
+        });
         let html = format!(
             "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{display_name} — Steam</title><meta http-equiv=\"refresh\" content=\"0; url={url}\"></head><body><h1>{display_name}</h1><p>Opening the Steam store page…</p><p><a href=\"{url}\">Open on Steam</a></p></body></html>"
         );
@@ -329,7 +341,11 @@ impl OrganizerService {
                 );
                 return false;
             }
-            let name = item.file_name().unwrap_or_default().to_string_lossy().to_string();
+            let name = item
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
             if RECOGNISED_FOLDER_FILES.contains(&name.as_str()) {
                 continue;
             }
@@ -379,13 +395,20 @@ impl OrganizerService {
                 );
                 return false;
             }
-            let name = item.file_name().unwrap_or_default().to_string_lossy().to_string();
+            let name = item
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
             if RECOGNISED_FOLDER_FILES.contains(&name.as_str()) {
                 continue;
             }
             if item.extension().is_some_and(|ext| {
                 RECOGNISED_IMAGE_SUFFIXES.contains(&ext.to_string_lossy().to_lowercase().as_str())
-            }) && item.file_stem().is_some_and(|s| s.to_string_lossy().contains('_')) {
+            }) && item
+                .file_stem()
+                .is_some_and(|s| s.to_string_lossy().contains('_'))
+            {
                 continue;
             }
             (self.logger)(
@@ -410,7 +433,10 @@ impl OrganizerService {
             Ok(d) => d,
             Err(_) => return false,
         };
-        if folder == destination || folder.parent().unwrap_or(&folder) == destination || !folder.is_dir() {
+        if folder == destination
+            || folder.parent().unwrap_or(&folder) == destination
+            || !folder.is_dir()
+        {
             return false;
         }
         let has_archive = WalkDir::new(&folder)
@@ -418,15 +444,17 @@ impl OrganizerService {
             .filter_map(|e| e.ok())
             .any(|item| {
                 item.file_type().is_file()
-                    && item
-                        .path()
-                        .extension()
-                        .is_some_and(|e| crate::core::constants::ARCHIVE_EXTENSIONS.contains(&e.to_string_lossy().to_lowercase().as_str()))
+                    && item.path().extension().is_some_and(|e| {
+                        crate::core::constants::ARCHIVE_EXTENSIONS
+                            .contains(&e.to_string_lossy().to_lowercase().as_str())
+                    })
             });
         if has_archive {
             return false;
         }
-        let managed = Self::MANAGED_FOLDER_MARKERS.iter().any(|m| folder.join(m).exists());
+        let managed = Self::MANAGED_FOLDER_MARKERS
+            .iter()
+            .any(|m| folder.join(m).exists());
         if managed {
             if !self._folder_is_prunable(&folder) {
                 return false;
@@ -616,7 +644,10 @@ impl OrganizerService {
             if GlobalMemoryStatusEx(&mut status) == 0 {
                 return (None, None);
             }
-            (Some(status.ull_avail_phys), Some(status.ull_avail_page_file))
+            (
+                Some(status.ull_avail_phys),
+                Some(status.ull_avail_page_file),
+            )
         }
     }
 
@@ -685,7 +716,7 @@ impl OrganizerService {
                 .lock()
                 .unwrap()
                 .insert(cache_key, (stat.len(), 0, None));
-                return None;
+            return None;
         }
         let stdout = String::from_utf8_lossy(&output.stdout);
         let mut files = 0u64;
@@ -713,7 +744,11 @@ impl OrganizerService {
                 }
             }
         }
-        let result = if files > 0 { Some((files, total)) } else { None };
+        let result = if files > 0 {
+            Some((files, total))
+        } else {
+            None
+        };
         let _ = self
             .manifest_cache
             .lock()
@@ -724,7 +759,12 @@ impl OrganizerService {
 
     // --- extraction completeness check ---
 
-    fn _extraction_is_short(&self, path: &Path, temp_dir: &Path, game_files: Option<Vec<PathBuf>>) -> bool {
+    fn _extraction_is_short(
+        &self,
+        path: &Path,
+        temp_dir: &Path,
+        game_files: Option<Vec<PathBuf>>,
+    ) -> bool {
         let claimed = match self._archive_manifest(path) {
             Some(c) => c,
             None => return false,
@@ -829,7 +869,11 @@ impl OrganizerService {
                     "SOURCE_INTEGRITY_FAILED path=[{}] exit={} detail=[{}]",
                     path.file_name().unwrap_or_default().to_string_lossy(),
                     output.status.code().unwrap_or(-1),
-                    if detail.is_empty() { "no output" } else { &detail }
+                    if detail.is_empty() {
+                        "no output"
+                    } else {
+                        &detail
+                    }
                 ),
             );
             false
@@ -895,7 +939,14 @@ impl OrganizerService {
                 let display = if name.is_empty() {
                     format!("{}%", pct)
                 } else {
-                    format!("{}% — {}", pct, Path::new(name).file_name().unwrap_or_default().to_string_lossy())
+                    format!(
+                        "{}% — {}",
+                        pct,
+                        Path::new(name)
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                    )
                 };
                 report(&display, stage);
                 tail.push(display);
@@ -913,20 +964,14 @@ impl OrganizerService {
         } else {
             tail_str
         };
-        (
-            output.status.code().unwrap_or(-1),
-            tail_str,
-        )
+        (output.status.code().unwrap_or(-1), tail_str)
     }
 
     // --- game files ---
 
     fn _game_files(directory: &Path) -> Vec<PathBuf> {
         let mut items: Vec<PathBuf> = Vec::new();
-        for entry in WalkDir::new(directory)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
+        for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
             if path.file_name().is_some_and(|n| n != LOCK_MARKER)
                 && path.is_file()
@@ -944,15 +989,15 @@ impl OrganizerService {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let _ = fs::write(temp_dir.join(LOCK_MARKER), format!("{} {}\n", pid, time_secs));
+        let _ = fs::write(
+            temp_dir.join(LOCK_MARKER),
+            format!("{} {}\n", pid, time_secs),
+        );
     }
 
     fn _remove_tree(&self, directory: &Path) {
         let mut children: Vec<PathBuf> = Vec::new();
-        for entry in WalkDir::new(directory)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
+        for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
             children.push(entry.path().to_path_buf());
         }
         children.sort_by(|a, b| b.components().count().cmp(&a.components().count()));
@@ -968,7 +1013,11 @@ impl OrganizerService {
 
     // --- stale build dir sweep ---
 
-    pub fn sweep_stale_build_dirs(&self, library_root: Option<&Path>, min_age_seconds: u64) -> (u32, u64) {
+    pub fn sweep_stale_build_dirs(
+        &self,
+        library_root: Option<&Path>,
+        min_age_seconds: u64,
+    ) -> (u32, u64) {
         let library_root = match library_root {
             Some(r) => r.to_path_buf(),
             None => return (0, 0),
@@ -985,7 +1034,10 @@ impl OrganizerService {
                 .flatten()
                 .filter_map(|i| Some(i.path()))
                 .filter(|p| p.is_dir())
-                .filter(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX)))
+                .filter(|p| {
+                    p.file_name()
+                        .is_some_and(|n| n.to_string_lossy().starts_with(TEMP_DIR_PREFIX))
+                })
                 .collect(),
             Err(_) => return (0, 0),
         };
@@ -1043,7 +1095,10 @@ impl OrganizerService {
         let age = match fs::metadata(folder) {
             Ok(meta) => {
                 let modified = meta.modified().unwrap_or(UNIX_EPOCH);
-                let modified_secs = modified.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs_f64();
+                let modified_secs = modified
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs_f64();
                 now - modified_secs
             }
             Err(_) => return true,
@@ -1053,7 +1108,10 @@ impl OrganizerService {
         }
         let marker = folder.join(LOCK_MARKER);
         let pid = match fs::read_to_string(&marker) {
-            Ok(text) => text.split_whitespace().next().and_then(|s| s.parse::<u32>().ok()),
+            Ok(text) => text
+                .split_whitespace()
+                .next()
+                .and_then(|s| s.parse::<u32>().ok()),
             Err(_) => return false,
         };
         let Some(pid) = pid else {
@@ -1123,10 +1181,7 @@ impl OrganizerService {
             Ok(_) => {
                 (self.logger)(
                     "ORGANIZER",
-                    &format!(
-                        "PROCESSING_DIR_REMOVED path=[{}]",
-                        processing.display()
-                    ),
+                    &format!("PROCESSING_DIR_REMOVED path=[{}]", processing.display()),
                 );
                 true
             }
@@ -1160,14 +1215,19 @@ impl OrganizerService {
         library_root: Option<&Path>,
     ) -> PathBuf {
         let path = &archive.path;
-        let suffix = path.extension()
+        let suffix = path
+            .extension()
             .map_or_else(String::new, |e| e.to_string_lossy().to_lowercase());
 
         audit(
             "archive_repack_start",
             &path.to_string_lossy(),
             "started",
-            &format!("suffix={}, convert_archives={}", suffix, self.convert_archives()),
+            &format!(
+                "suffix={}, convert_archives={}",
+                suffix,
+                self.convert_archives()
+            ),
         );
 
         if suffix != "zip" && suffix != "rar" && suffix != "7z" {
@@ -1224,16 +1284,15 @@ impl OrganizerService {
             return path.to_path_buf();
         }
 
-        if suffix == "zip" && self.convert_archives()
-            && !self._unlock_zip(path, ctx) {
-                (self.logger)(
-                    "ORGANIZER",
-                    &format!(
-                        "ZIP_UNLOCK_FAILED path=[{}]",
-                        path.file_name().unwrap_or_default().to_string_lossy()
-                    ),
-                );
-            }
+        if suffix == "zip" && self.convert_archives() && !self._unlock_zip(path, ctx) {
+            (self.logger)(
+                "ORGANIZER",
+                &format!(
+                    "ZIP_UNLOCK_FAILED path=[{}]",
+                    path.file_name().unwrap_or_default().to_string_lossy()
+                ),
+            );
+        }
 
         if suffix == "7z" && !(archive.steam.found && !archive.steam.name.is_empty()) {
             if let Some(on_progress) = on_progress {
@@ -1288,11 +1347,9 @@ impl OrganizerService {
             staging_dir = self._staging_dir(path, library_root);
             let temp_dir_path = match &staging_dir {
                 Some(d) => d.clone(),
-                None => std::env::temp_dir().join(format!(
-                    "{}-{}",
-                    TEMP_DIR_PREFIX,
-                    std::process::id()
-                )),
+                None => {
+                    std::env::temp_dir().join(format!("{}-{}", TEMP_DIR_PREFIX, std::process::id()))
+                }
             };
             temp_dir = Some(temp_dir_path.clone());
             self._write_lock_marker(temp_dir_path.as_path());
@@ -1309,7 +1366,11 @@ impl OrganizerService {
                     a.push(format!("-p{}", zip_password));
                 }
                 a.push(path.to_string_lossy().to_string());
-                a.push(format!("{}{}", temp_dir_path.display(), std::path::MAIN_SEPARATOR));
+                a.push(format!(
+                    "{}{}",
+                    temp_dir_path.display(),
+                    std::path::MAIN_SEPARATOR
+                ));
                 ("unrar", a)
             } else {
                 let mut a = vec![
@@ -1353,7 +1414,11 @@ impl OrganizerService {
                         path.file_name().unwrap_or_default().to_string_lossy(),
                         extractor,
                         extract_code,
-                        if detail.is_empty() { "no output" } else { &detail }
+                        if detail.is_empty() {
+                            "no output"
+                        } else {
+                            &detail
+                        }
                     ),
                 );
                 if let Some(on_progress) = on_progress {
@@ -1365,7 +1430,10 @@ impl OrganizerService {
                         "failed",
                     );
                 }
-                return Err(format!("{} could not extract this archive (exit {})", extractor, extract_code));
+                return Err(format!(
+                    "{} could not extract this archive (exit {})",
+                    extractor, extract_code
+                ));
             }
 
             audit(
@@ -1386,7 +1454,11 @@ impl OrganizerService {
                     &format!(
                         "ARCHIVE_EXTRACT_WARN path=[{}] extractor=[unrar] exit=9 detail=[{}]",
                         path.file_name().unwrap_or_default().to_string_lossy(),
-                        if detail.is_empty() { "no output" } else { &detail }
+                        if detail.is_empty() {
+                            "no output"
+                        } else {
+                            &detail
+                        }
                     ),
                 );
             }
@@ -1428,7 +1500,10 @@ impl OrganizerService {
                                 "ORGANIZER",
                                 &format!(
                                     "RENAMED_CONTENT_FOLDER source=[{}] target=[{}]",
-                                    content_folder.file_name().unwrap_or_default().to_string_lossy(),
+                                    content_folder
+                                        .file_name()
+                                        .unwrap_or_default()
+                                        .to_string_lossy(),
                                     new_folder.file_name().unwrap_or_default().to_string_lossy()
                                 ),
                             );
@@ -1468,7 +1543,10 @@ impl OrganizerService {
             };
             build_target = Some(build_target_path.clone());
             let final_name = if suffix == target_suffix {
-                path.file_name().unwrap_or_default().to_string_lossy().to_string()
+                path.file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string()
             } else {
                 path.with_extension(target_suffix)
                     .file_name()
@@ -1563,7 +1641,11 @@ impl OrganizerService {
                             path.file_name().unwrap_or_default().to_string_lossy(),
                             level,
                             level - 1,
-                            if detail.is_empty() { "no output" } else { &detail }
+                            if detail.is_empty() {
+                                "no output"
+                            } else {
+                                &detail
+                            }
                         ),
                     );
                     let _ = fs::remove_file(&build_target_path);
@@ -1615,7 +1697,10 @@ impl OrganizerService {
                 on_progress(
                     &format!(
                         "Verifying {}",
-                        build_target_path.file_name().unwrap_or_default().to_string_lossy()
+                        build_target_path
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
                     ),
                     "verifying",
                 );
@@ -1654,10 +1739,7 @@ impl OrganizerService {
                 let _ = metadata;
             }
 
-            let final_path = path
-                .parent()
-                .unwrap_or(Path::new("."))
-                .join(&final_name);
+            let final_path = path.parent().unwrap_or(Path::new(".")).join(&final_name);
             if suffix == target_suffix {
                 fs::rename(&build_target_path, path).map_err(|e| e.to_string())?;
                 (self.logger)(
@@ -1697,7 +1779,11 @@ impl OrganizerService {
                 on_progress(
                     &format!(
                         "Converted to {}: {}",
-                        final_path.extension().unwrap_or_default().to_string_lossy().to_uppercase(),
+                        final_path
+                            .extension()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_uppercase(),
                         final_path.file_name().unwrap_or_default().to_string_lossy()
                     ),
                     "converted",
@@ -1718,12 +1804,7 @@ impl OrganizerService {
                 final_path
             }
             Err(err) => {
-                audit(
-                    "archive_repack",
-                    &path.to_string_lossy(),
-                    "failed",
-                    &err,
-                );
+                audit("archive_repack", &path.to_string_lossy(), "failed", &err);
                 if let Some(on_progress) = on_progress {
                     on_progress(
                         &format!(
@@ -1795,7 +1876,9 @@ impl OrganizerService {
                 }
                 changes.push((
                     old.path.clone(),
-                    destination.join("Archive").join(old.path.file_name().unwrap_or_default()),
+                    destination
+                        .join("Archive")
+                        .join(old.path.file_name().unwrap_or_default()),
                 ));
             }
         }
@@ -1810,15 +1893,15 @@ impl OrganizerService {
         destination: &Path,
         on_progress: Option<&dyn Fn(&str, &str)>,
     ) -> PathBuf {
-        let destination = destination.canonicalize().unwrap_or_else(|_| destination.to_path_buf());
+        let destination = destination
+            .canonicalize()
+            .unwrap_or_else(|_| destination.to_path_buf());
         let category = safe_name(
-            canonical_category(
-                if archive.decision.category.is_empty() {
-                    "Unsorted"
-                } else {
-                    archive.decision.category.as_str()
-                }
-            )
+            canonical_category(if archive.decision.category.is_empty() {
+                "Unsorted"
+            } else {
+                archive.decision.category.as_str()
+            })
             .as_str(),
         );
         let category_dir = destination.join(&category);
@@ -1847,10 +1930,9 @@ impl OrganizerService {
                 );
             }
             Err(_) => {
-                if fs::copy(&source, &target).is_err()
-                    && target.exists() && source.exists() {
-                        let _ = fs::remove_file(&target);
-                    }
+                if fs::copy(&source, &target).is_err() && target.exists() && source.exists() {
+                    let _ = fs::remove_file(&target);
+                }
                 if created_dir {
                     let _ = fs::remove_dir_all(&game_dir);
                 }
@@ -1866,7 +1948,13 @@ impl OrganizerService {
         archive.path = target.clone();
         archive.organized_path = Some(target.clone());
 
-        archive.path = self._repack_with_official_name(archive, None, on_progress, DEFAULT_ZIP_PASSWORD, Some(&destination));
+        archive.path = self._repack_with_official_name(
+            archive,
+            None,
+            on_progress,
+            DEFAULT_ZIP_PASSWORD,
+            Some(&destination),
+        );
         let target = archive.path.clone();
         archive.organized_path = Some(target.clone());
 
@@ -1955,7 +2043,11 @@ impl OrganizerService {
                 .extension()
                 .map_or("", |e| e.to_str().unwrap_or(""))
                 .to_uppercase();
-            n.final_name = target.file_name().unwrap_or_default().to_string_lossy().to_string();
+            n.final_name = target
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
             n.final_size = target.metadata().map_or(0, |m| m.len());
         }
         target
@@ -1991,7 +2083,8 @@ mod tests {
     #[test]
     fn test_organizer_service_clean_old_links_nonexistent() {
         let service = OrganizerService::new(Arc::new(dummy_logger), true);
-        let temp = std::env::temp_dir().join(format!("test_clean_old_links_{}", std::process::id()));
+        let temp =
+            std::env::temp_dir().join(format!("test_clean_old_links_{}", std::process::id()));
         let _ = fs::create_dir_all(&temp);
         service._clean_old_links(&temp);
         let _ = fs::remove_dir_all(&temp);
@@ -2000,7 +2093,8 @@ mod tests {
     #[test]
     fn test_organizer_service_sweep_stale_build_dirs_nonexistent() {
         let service = OrganizerService::new(Arc::new(dummy_logger), true);
-        let (removed, reclaimed) = service.sweep_stale_build_dirs(Some(Path::new("/nonexistent")), 900);
+        let (removed, reclaimed) =
+            service.sweep_stale_build_dirs(Some(Path::new("/nonexistent")), 900);
         assert_eq!((removed, reclaimed), (0, 0));
     }
 
@@ -2028,4 +2122,3 @@ mod tests {
         assert_eq!(result, archive.path);
     }
 }
-

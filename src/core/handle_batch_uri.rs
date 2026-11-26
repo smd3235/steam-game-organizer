@@ -9,7 +9,11 @@
 use crate::core::config::AppConfig;
 use crate::core::uri_actions::UriRefused;
 
-pub fn handle_batch_uri(_uri: &str, _config: &AppConfig, _logger: &(dyn Fn(&str, &str) + Send + Sync)) -> i32 {
+pub fn handle_batch_uri(
+    _uri: &str,
+    _config: &AppConfig,
+    _logger: &(dyn Fn(&str, &str) + Send + Sync),
+) -> i32 {
     let _ = UriRefused::new("Batch extract URI handling not yet ported to Rust");
     2
 }
@@ -31,4 +35,3 @@ mod tests {
         assert_eq!(result, 2);
     }
 }
-

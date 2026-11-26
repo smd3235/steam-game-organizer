@@ -1,0 +1,2 @@
+# rustfmt.toml — Consistent formatting for the Rust conversion
+max_width = 100

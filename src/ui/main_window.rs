@@ -19,11 +19,11 @@ use crate::ui::organize_view::OrganizeView;
 use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::ScanView;
 use crate::ui::setup_view::SetupView;
-use egui::RichText;
 use crate::ui::theme::{
-    card, ghost_button, nav_item, secondary_button,
-    separator, constrained_content, SPACING, SPACING_XL, Palette,
+    card, constrained_content, ghost_button, nav_item, secondary_button, separator, Palette,
+    SPACING, SPACING_XL,
 };
+use egui::RichText;
 
 const NAV_ITEMS: &[(&str, &str, &str)] = &[
     ("scan", "🔍", "Scan"),
@@ -73,12 +73,30 @@ impl MainWindow {
         let logger_for_artwork = Arc::clone(&logger);
         let logger_for_done = Arc::clone(&logger);
         let logger_for_setup = Arc::clone(&logger);
-        let watchdog_for_scan = Arc::new(crate::core::errors::Watchdog::new(logger_for_scan.clone(), 300000));
-        let watchdog_for_review = Arc::new(crate::core::errors::Watchdog::new(logger_for_review.clone(), 300000));
-        let watchdog_for_organize = Arc::new(crate::core::errors::Watchdog::new(logger_for_organize.clone(), 600000));
-        let watchdog_for_artwork = Arc::new(crate::core::errors::Watchdog::new(logger_for_artwork.clone(), 300000));
-        let watchdog_for_done = Arc::new(crate::core::errors::Watchdog::new(logger_for_done.clone(), 300000));
-        let watchdog_for_setup = Arc::new(crate::core::errors::Watchdog::new(logger_for_setup.clone(), 300000));
+        let watchdog_for_scan = Arc::new(crate::core::errors::Watchdog::new(
+            logger_for_scan.clone(),
+            300000,
+        ));
+        let watchdog_for_review = Arc::new(crate::core::errors::Watchdog::new(
+            logger_for_review.clone(),
+            300000,
+        ));
+        let watchdog_for_organize = Arc::new(crate::core::errors::Watchdog::new(
+            logger_for_organize.clone(),
+            600000,
+        ));
+        let watchdog_for_artwork = Arc::new(crate::core::errors::Watchdog::new(
+            logger_for_artwork.clone(),
+            300000,
+        ));
+        let watchdog_for_done = Arc::new(crate::core::errors::Watchdog::new(
+            logger_for_done.clone(),
+            300000,
+        ));
+        let watchdog_for_setup = Arc::new(crate::core::errors::Watchdog::new(
+            logger_for_setup.clone(),
+            300000,
+        ));
         let services_clone = Arc::clone(&services);
         let jobs_for_field = Arc::clone(&jobs);
         let jobs_for_scan = Arc::clone(&jobs);
@@ -102,9 +120,21 @@ impl MainWindow {
                 logger_for_scan,
                 watchdog_for_scan,
             ),
-            review_view: ReviewView::new(Palette::default(), logger_for_review, watchdog_for_review),
-            organize_view: OrganizeView::new(Palette::default(), logger_for_organize, watchdog_for_organize),
-            artwork_view: ArtworkView::new(Palette::default(), logger_for_artwork, watchdog_for_artwork),
+            review_view: ReviewView::new(
+                Palette::default(),
+                logger_for_review,
+                watchdog_for_review,
+            ),
+            organize_view: OrganizeView::new(
+                Palette::default(),
+                logger_for_organize,
+                watchdog_for_organize,
+            ),
+            artwork_view: ArtworkView::new(
+                Palette::default(),
+                logger_for_artwork,
+                watchdog_for_artwork,
+            ),
             done_view: DoneView::new(Palette::default(), logger_for_done, watchdog_for_done),
             setup_view: SetupView::new(Palette::default(), logger_for_setup, watchdog_for_setup),
             shared_archives: Vec::new(),
@@ -116,7 +146,11 @@ impl MainWindow {
     fn sync_archives(&mut self) {
         let archives = self.scan_view.state.discovered_archives.clone();
         if !archives.is_empty() {
-            self.logger.log("MAIN", &format!("Syncing {} archives to downstream views", archives.len()), "");
+            self.logger.log(
+                "MAIN",
+                &format!("Syncing {} archives to downstream views", archives.len()),
+                "",
+            );
             self.shared_archives = archives.clone();
             self.review_view.load(archives.clone());
             self.organize_view.load(archives.clone());
@@ -143,10 +177,19 @@ impl MainWindow {
         });
 
         // Auto-sync when accepted archives change
-        let accepted_count = self.review_view.state.archives.iter()
-            .filter(|a| a.decision.accepted).count();
+        let accepted_count = self
+            .review_view
+            .state
+            .archives
+            .iter()
+            .filter(|a| a.decision.accepted)
+            .count();
         if accepted_count > 0 && self.shared_archives.len() != accepted_count {
-            let accepted: Vec<_> = self.review_view.state.archives.iter()
+            let accepted: Vec<_> = self
+                .review_view
+                .state
+                .archives
+                .iter()
                 .filter(|a| a.decision.accepted)
                 .cloned()
                 .collect();
@@ -168,8 +211,13 @@ impl MainWindow {
             let skipped = self.organize_view.state.skipped_count;
             let failed = self.organize_view.state.failed_count;
             if !archives.is_empty() {
-                self.done_view.load(archives.clone(), converted, skipped, failed);
-                self.logger.log("MAIN", &format!("Pushed {} results to Done view", archives.len()), "");
+                self.done_view
+                    .load(archives.clone(), converted, skipped, failed);
+                self.logger.log(
+                    "MAIN",
+                    &format!("Pushed {} results to Done view", archives.len()),
+                    "",
+                );
             }
         }
     }
@@ -198,19 +246,28 @@ impl MainWindow {
 
         // App logo area
         ui.vertical_centered(|ui| {
-            ui.label(RichText::new("SGO").color(self.palette.accent).strong().heading());
+            ui.label(
+                RichText::new("SGO")
+                    .color(self.palette.accent)
+                    .strong()
+                    .heading(),
+            );
             ui.add_space(SPACING / 2.0);
-            ui.label(RichText::new("Steam Game Organizer")
-                .color(self.palette.text_secondary)
-                .small());
+            ui.label(
+                RichText::new("Steam Game Organizer")
+                    .color(self.palette.text_secondary)
+                    .small(),
+            );
         });
         ui.add_space(SPACING_XL);
 
         // Navigation header
-        ui.label(RichText::new("NAVIGATION")
-            .color(self.palette.text_tertiary)
-            .small()
-            .strong());
+        ui.label(
+            RichText::new("NAVIGATION")
+                .color(self.palette.text_tertiary)
+                .small()
+                .strong(),
+        );
         ui.add_space(SPACING / 2.0);
 
         // Navigation items
@@ -218,7 +275,8 @@ impl MainWindow {
             let is_active = self.current == *key;
             if nav_item(ui, &self.palette, icon, label, is_active).clicked() {
                 self.current = key.to_string();
-                self.logger.log("DEBUG", &format!("Navigated to {}", key), "");
+                self.logger
+                    .log("DEBUG", &format!("Navigated to {}", key), "");
             }
         }
 
@@ -228,10 +286,12 @@ impl MainWindow {
         separator(ui);
 
         // Setup button
-        ui.label(RichText::new("SETUP")
-            .color(self.palette.text_tertiary)
-            .small()
-            .strong());
+        ui.label(
+            RichText::new("SETUP")
+                .color(self.palette.text_tertiary)
+                .small()
+                .strong(),
+        );
         ui.add_space(SPACING / 2.0);
         if secondary_button(ui, "Setup Wizard", &self.palette, true).clicked() {
             self.logger.log("DEBUG", "Setup Wizard button clicked", "");
@@ -255,13 +315,17 @@ impl MainWindow {
             );
             separator(ui);
             ui.add_space(SPACING);
-            ui.label(RichText::new(format!("View: {}", self.current))
-                .color(self.palette.text_secondary)
-                .small());
+            ui.label(
+                RichText::new(format!("View: {}", self.current))
+                    .color(self.palette.text_secondary)
+                    .small(),
+            );
             ui.add_space(SPACING);
-            ui.label(RichText::new(format!("Archives: {}", self.shared_archives.len()))
-                .color(self.palette.text_secondary)
-                .small());
+            ui.label(
+                RichText::new(format!("Archives: {}", self.shared_archives.len()))
+                    .color(self.palette.text_secondary)
+                    .small(),
+            );
             ui.add_space(SPACING);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ghost_button(ui, "Quit", &self.palette, true).clicked() {

@@ -11,9 +11,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::core::config::AppConfig;
 use crate::app::events::EventBus;
 use crate::app::jobs::{JobContext, JobManager};
+use crate::core::config::AppConfig;
 use crate::core::models::{ArtworkResult, GameArchive, ScanResult, SteamMatch};
 use crate::services::organizer_service::OrganizerService;
 
@@ -40,7 +40,13 @@ impl StateStore {
         }
     }
 
-    pub fn update(&self, phase: &str, cancel_requested: bool, job_id: &str, scan_result: Option<ScanResult>) {
+    pub fn update(
+        &self,
+        phase: &str,
+        cancel_requested: bool,
+        job_id: &str,
+        scan_result: Option<ScanResult>,
+    ) {
         let mut s = self.state.lock().unwrap();
         s.phase = phase.to_string();
         s.cancel_requested = cancel_requested;
@@ -89,7 +95,9 @@ impl AppController {
     // --- pure helpers (ported from controller.py) ---
 
     fn _category_file(&self) -> Option<PathBuf> {
-        self.config.as_ref().map(|c| c.config_dir.clone().join("category-decisions.json"))
+        self.config
+            .as_ref()
+            .map(|c| c.config_dir.clone().join("category-decisions.json"))
     }
 
     fn _saved_categories(&self) -> serde_json::Value {
@@ -127,7 +135,18 @@ impl AppController {
         &self,
         _root: &Path,
         _scan_progress: Option<Box<dyn Fn(serde_json::Value) + Send>>,
-        _verify_progress: Option<Box<dyn Fn(usize, usize, &GameArchive, &SteamMatch, Option<&ArtworkResult>, &serde_json::Value) + Send>>,
+        _verify_progress: Option<
+            Box<
+                dyn Fn(
+                        usize,
+                        usize,
+                        &GameArchive,
+                        &SteamMatch,
+                        Option<&ArtworkResult>,
+                        &serde_json::Value,
+                    ) + Send,
+            >,
+        >,
         _done: Box<dyn Fn(Vec<GameArchive>) + Send>,
         _download_artwork: bool,
     ) -> Arc<JobContext> {
@@ -143,7 +162,16 @@ impl AppController {
     pub fn verify_all(
         &self,
         _archives: Vec<GameArchive>,
-        _on_progress: Box<dyn Fn(usize, usize, &GameArchive, &SteamMatch, Option<&ArtworkResult>, &serde_json::Value) + Send>,
+        _on_progress: Box<
+            dyn Fn(
+                    usize,
+                    usize,
+                    &GameArchive,
+                    &SteamMatch,
+                    Option<&ArtworkResult>,
+                    &serde_json::Value,
+                ) + Send,
+        >,
         _done: Box<dyn Fn(Vec<GameArchive>) + Send>,
         _download_artwork: bool,
     ) -> Arc<JobContext> {
@@ -219,7 +247,12 @@ impl AppController {
         0
     }
 
-    pub fn _prune_rolled_back_folder(&self, _game_dir: &Path, _owned: bool, _library_root: Option<&Path>) {
+    pub fn _prune_rolled_back_folder(
+        &self,
+        _game_dir: &Path,
+        _owned: bool,
+        _library_root: Option<&Path>,
+    ) {
         // Stub: no-op
     }
 }
@@ -263,4 +296,3 @@ mod tests {
         // Should not panic
     }
 }
-

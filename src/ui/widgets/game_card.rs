@@ -3,8 +3,8 @@
 //!
 //! 2026-11-25: egui game card stub in the Rust conversion.
 
+use crate::ui::theme::{separator, Palette};
 use egui::{RichText, Ui};
-use crate::ui::theme::{Palette, separator};
 
 #[derive(Default)]
 pub struct GameCardState {
@@ -35,19 +35,35 @@ impl GameCard {
             ui.vertical(|ui| {
                 separator(ui);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(&self.state.title).strong().color(self.palette.text));
+                    ui.label(
+                        RichText::new(&self.state.title)
+                            .strong()
+                            .color(self.palette.text),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(RichText::new("NEW").color(self.palette.bg).small().strong());
                     });
                 });
 
                 separator(ui);
-                ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
+                ui.label(
+                    RichText::new(&self.state.status)
+                        .small()
+                        .color(self.palette.muted),
+                );
 
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(format!("Category: {}", self.state.category)).small().color(self.palette.muted));
+                    ui.label(
+                        RichText::new(format!("Category: {}", self.state.category))
+                            .small()
+                            .color(self.palette.muted),
+                    );
                     separator(ui);
-                    ui.label(RichText::new(format!("Confidence: {}", self.state.confidence)).small().color(self.palette.muted));
+                    ui.label(
+                        RichText::new(format!("Confidence: {}", self.state.confidence))
+                            .small()
+                            .color(self.palette.muted),
+                    );
                 });
             });
 
@@ -57,7 +73,8 @@ impl GameCard {
                 egui::pos2(group_rect.left(), group_rect.top()),
                 egui::pos2(group_rect.left() + 2.0, group_rect.bottom()),
             );
-            let strip_color = if self.state.category.is_empty() || self.state.category == "Unsorted" {
+            let strip_color = if self.state.category.is_empty() || self.state.category == "Unsorted"
+            {
                 self.palette.muted
             } else {
                 self.palette.accent

@@ -754,4 +754,3 @@ pub fn suggest_category(
 ) -> String {
     suggest_category_with_evidence(genres, title, description, tags, steam_categories).0
 }
-

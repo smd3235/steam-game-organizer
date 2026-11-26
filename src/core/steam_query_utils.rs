@@ -269,4 +269,3 @@ mod tests {
         assert_eq!(swap_trailing_numeral("Game II"), "Game 2");
     }
 }
-

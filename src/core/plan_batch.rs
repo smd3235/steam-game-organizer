@@ -17,12 +17,12 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::services::archive_service::ArchiveService;
 use crate::core::batch_item::BatchItem;
 use crate::core::catalog_status::already_extracted;
 use crate::core::filename_utils::normalize_name;
 use crate::core::installer_detect::NEEDS_INSTALL_DIRNAME;
 use crate::core::models::GameArchive;
+use crate::services::archive_service::ArchiveService;
 
 /// Everything the window needs before the first archive is touched.
 #[derive(Debug, Clone)]
@@ -167,4 +167,3 @@ mod tests {
         assert_eq!(plan.category, "the whole library");
     }
 }
-

@@ -8,10 +8,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use egui::{RichText, ScrollArea};
 use crate::ui::theme::{
-    card, heading, primary_button, secondary_button, section_header, Palette, separator,
+    card, heading, primary_button, secondary_button, section_header, separator, Palette,
 };
+use egui::{RichText, ScrollArea};
 
 #[derive(Default, Clone)]
 pub struct SetupViewState {
@@ -80,7 +80,11 @@ impl SetupView {
             separator(ui);
 
             // Status line
-            ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
+            ui.label(
+                RichText::new(&self.state.status)
+                    .small()
+                    .color(self.palette.muted),
+            );
             separator(ui);
 
             // Library Root
@@ -96,7 +100,11 @@ impl SetupView {
                     self.state.status = "Browse for library root…".to_string();
                 }
             });
-            ui.label(RichText::new("Where your game archives are stored").small().color(self.palette.muted));
+            ui.label(
+                RichText::new("Where your game archives are stored")
+                    .small()
+                    .color(self.palette.muted),
+            );
             separator(ui);
 
             // Extract Folder
@@ -108,11 +116,16 @@ impl SetupView {
                         .desired_width(400.0),
                 );
                 if secondary_button(ui, "Browse Extract", &self.palette, true).clicked() {
-                    self.logger.log("SETUP", "Extract folder Browse clicked", "");
+                    self.logger
+                        .log("SETUP", "Extract folder Browse clicked", "");
                     self.state.status = "Browse for extract folder…".to_string();
                 }
             });
-            ui.label(RichText::new("Where extracted game files go").small().color(self.palette.muted));
+            ui.label(
+                RichText::new("Where extracted game files go")
+                    .small()
+                    .color(self.palette.muted),
+            );
             separator(ui);
 
             // 7-Zip Path
@@ -128,13 +141,21 @@ impl SetupView {
                     self.state.status = "Browse for 7-Zip executable…".to_string();
                 }
             });
-            ui.label(RichText::new("Path to 7z.exe for archive operations").small().color(self.palette.muted));
+            ui.label(
+                RichText::new("Path to 7z.exe for archive operations")
+                    .small()
+                    .color(self.palette.muted),
+            );
             separator(ui);
 
             // Developer Mode
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.state.developer_mode, "Developer Mode");
-                ui.label(RichText::new("Enable debug logging and extra diagnostics").small().color(self.palette.muted));
+                ui.label(
+                    RichText::new("Enable debug logging and extra diagnostics")
+                        .small()
+                        .color(self.palette.muted),
+                );
             });
             separator(ui);
 
@@ -142,7 +163,8 @@ impl SetupView {
             section_header(ui, &self.palette, "VALIDATION");
             ui.horizontal(|ui| {
                 if primary_button(ui, "Validate Configuration", &self.palette, true).clicked() {
-                    self.logger.log("SETUP", "Validate Configuration button clicked", "");
+                    self.logger
+                        .log("SETUP", "Validate Configuration button clicked", "");
                     self.state.should_validate = true;
                 }
                 if secondary_button(ui, "Clear", &self.palette, true).clicked() {
@@ -154,18 +176,21 @@ impl SetupView {
 
             // Validation messages
             if !self.state.validation_messages.is_empty() {
-                ScrollArea::vertical().id_salt("setup_validation").max_height(150.0).show(ui, |ui| {
-                    for msg in &self.state.validation_messages {
-                        let color = if msg.starts_with("ERROR") || msg.starts_with("✗") {
-                            self.palette.red
-                        } else if msg.starts_with("✓") || msg.starts_with("OK") {
-                            self.palette.green
-                        } else {
-                            self.palette.orange
-                        };
-                        ui.label(RichText::new(msg).small().color(color));
-                    }
-                });
+                ScrollArea::vertical()
+                    .id_salt("setup_validation")
+                    .max_height(150.0)
+                    .show(ui, |ui| {
+                        for msg in &self.state.validation_messages {
+                            let color = if msg.starts_with("ERROR") || msg.starts_with("✗") {
+                                self.palette.red
+                            } else if msg.starts_with("✓") || msg.starts_with("OK") {
+                                self.palette.green
+                            } else {
+                                self.palette.orange
+                            };
+                            ui.label(RichText::new(msg).small().color(color));
+                        }
+                    });
             }
 
             separator(ui);
@@ -173,7 +198,8 @@ impl SetupView {
             // Save button
             ui.horizontal(|ui| {
                 if primary_button(ui, "Save & Finish Setup", &self.palette, true).clicked() {
-                    self.logger.log("SETUP", "Save & Finish Setup button clicked", "");
+                    self.logger
+                        .log("SETUP", "Save & Finish Setup button clicked", "");
                     self.state.should_save = true;
                 }
                 if secondary_button(ui, "Skip Setup", &self.palette, true).clicked() {
@@ -183,7 +209,11 @@ impl SetupView {
             });
 
             separator(ui);
-            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
+            ui.label(
+                RichText::new(&self.state.status)
+                    .color(self.palette.muted)
+                    .small(),
+            );
         });
     }
 
@@ -194,40 +224,63 @@ impl SetupView {
 
         // Validate library root
         if self.state.library_root.is_empty() {
-            self.state.validation_messages.push("✗ Library root is required".to_string());
+            self.state
+                .validation_messages
+                .push("✗ Library root is required".to_string());
             all_ok = false;
         } else {
             let path = PathBuf::from(&self.state.library_root);
             if path.is_dir() {
-                self.state.validation_messages.push(format!("✓ Library root exists: {}", self.state.library_root));
+                self.state.validation_messages.push(format!(
+                    "✓ Library root exists: {}",
+                    self.state.library_root
+                ));
             } else {
-                self.state.validation_messages.push(format!("✗ Library root not found: {}", self.state.library_root));
+                self.state.validation_messages.push(format!(
+                    "✗ Library root not found: {}",
+                    self.state.library_root
+                ));
                 all_ok = false;
             }
         }
 
         // Validate extract folder
         if self.state.extract_folder.is_empty() {
-            self.state.validation_messages.push("✗ Extract folder is required".to_string());
+            self.state
+                .validation_messages
+                .push("✗ Extract folder is required".to_string());
             all_ok = false;
         } else {
             let path = PathBuf::from(&self.state.extract_folder);
             if path.is_dir() {
-                self.state.validation_messages.push(format!("✓ Extract folder exists: {}", self.state.extract_folder));
+                self.state.validation_messages.push(format!(
+                    "✓ Extract folder exists: {}",
+                    self.state.extract_folder
+                ));
             } else {
-                self.state.validation_messages.push(format!("! Extract folder will be created: {}", self.state.extract_folder));
+                self.state.validation_messages.push(format!(
+                    "! Extract folder will be created: {}",
+                    self.state.extract_folder
+                ));
             }
         }
 
         // Validate 7z path
         if self.state.seven_zip_path.is_empty() {
-            self.state.validation_messages.push("! 7-Zip path not set (archive operations may fail)".to_string());
+            self.state
+                .validation_messages
+                .push("! 7-Zip path not set (archive operations may fail)".to_string());
         } else {
             let path = PathBuf::from(&self.state.seven_zip_path);
             if path.is_file() {
-                self.state.validation_messages.push(format!("✓ 7-Zip found: {}", self.state.seven_zip_path));
+                self.state
+                    .validation_messages
+                    .push(format!("✓ 7-Zip found: {}", self.state.seven_zip_path));
             } else {
-                self.state.validation_messages.push(format!("! 7-Zip not found at: {}", self.state.seven_zip_path));
+                self.state.validation_messages.push(format!(
+                    "! 7-Zip not found at: {}",
+                    self.state.seven_zip_path
+                ));
             }
         }
 
@@ -237,13 +290,25 @@ impl SetupView {
             self.state.status = "Configuration has issues — fix before saving".to_string();
         }
 
-        self.logger.log("SETUP", &format!("Validation complete: {} messages", self.state.validation_messages.len()), &corr);
+        self.logger.log(
+            "SETUP",
+            &format!(
+                "Validation complete: {} messages",
+                self.state.validation_messages.len()
+            ),
+            &corr,
+        );
     }
 
     pub(crate) fn save_config(&mut self) {
         let corr = self.logger.correlation_id();
         self.validate_config();
-        if self.state.validation_messages.iter().any(|m| m.starts_with("✗")) {
+        if self
+            .state
+            .validation_messages
+            .iter()
+            .any(|m| m.starts_with("✗"))
+        {
             self.state.status = "Cannot save — fix errors first".to_string();
             return;
         }
@@ -254,10 +319,15 @@ impl SetupView {
             if !path.exists() {
                 match std::fs::create_dir_all(&path) {
                     Ok(()) => {
-                        self.state.validation_messages.push(format!("✓ Created extract folder: {}", self.state.extract_folder));
+                        self.state.validation_messages.push(format!(
+                            "✓ Created extract folder: {}",
+                            self.state.extract_folder
+                        ));
                     }
                     Err(e) => {
-                        self.state.validation_messages.push(format!("✗ Failed to create extract folder: {}", e));
+                        self.state
+                            .validation_messages
+                            .push(format!("✗ Failed to create extract folder: {}", e));
                         self.state.status = "Save failed".to_string();
                         return;
                     }
@@ -266,10 +336,23 @@ impl SetupView {
         }
 
         self.state.status = "Configuration saved successfully!".to_string();
-        self.logger.log("SETUP", "Configuration saved successfully", &corr);
-        self.logger.log("SETUP", &format!("Library root: {}", self.state.library_root), &corr);
-        self.logger.log("SETUP", &format!("Extract folder: {}", self.state.extract_folder), &corr);
-        self.logger.log("SETUP", &format!("7-Zip path: {}", self.state.seven_zip_path), &corr);
+        self.logger
+            .log("SETUP", "Configuration saved successfully", &corr);
+        self.logger.log(
+            "SETUP",
+            &format!("Library root: {}", self.state.library_root),
+            &corr,
+        );
+        self.logger.log(
+            "SETUP",
+            &format!("Extract folder: {}", self.state.extract_folder),
+            &corr,
+        );
+        self.logger.log(
+            "SETUP",
+            &format!("7-Zip path: {}", self.state.seven_zip_path),
+            &corr,
+        );
     }
 }
 
@@ -286,7 +369,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let _view = SetupView::new(palette, logger, watchdog);
@@ -301,13 +385,18 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = SetupView::new(palette, logger, watchdog);
         view.validate_config();
         assert!(!view.state.validation_messages.is_empty());
-        assert!(view.state.validation_messages.iter().any(|m| m.starts_with("✗")));
+        assert!(view
+            .state
+            .validation_messages
+            .iter()
+            .any(|m| m.starts_with("✗")));
     }
 
     #[test]
@@ -319,13 +408,18 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = SetupView::new(palette, logger, watchdog);
         view.state.library_root = ".".to_string();
         view.state.extract_folder = std::env::temp_dir().to_string_lossy().to_string();
         view.validate_config();
-        assert!(view.state.validation_messages.iter().any(|m| m.starts_with("✓")));
+        assert!(view
+            .state
+            .validation_messages
+            .iter()
+            .any(|m| m.starts_with("✓")));
     }
 }

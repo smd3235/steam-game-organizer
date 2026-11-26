@@ -3,8 +3,8 @@
 //!
 //! 2026-11-25: egui phase timeline in the Rust conversion.
 
-use egui::{RichText, Ui};
 use crate::ui::theme::Palette;
+use egui::{RichText, Ui};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PhaseState {
@@ -31,7 +31,10 @@ impl PhaseTimeline {
     }
 
     pub fn set_phases(&mut self, phases: &[(&str, &str)]) {
-        self.states = phases.iter().map(|(key, _)| (key.to_string(), PhaseState::Pending)).collect();
+        self.states = phases
+            .iter()
+            .map(|(key, _)| (key.to_string(), PhaseState::Pending))
+            .collect();
     }
 
     pub fn start(&mut self, key: &str) {
@@ -77,7 +80,11 @@ impl PhaseTimeline {
                     PhaseState::Failed => ("✗", self.palette.red),
                     PhaseState::Skipped => ("–", self.palette.muted),
                 };
-                ui.label(RichText::new(format!("{} {}", mark, key)).color(color).small());
+                ui.label(
+                    RichText::new(format!("{} {}", mark, key))
+                        .color(color)
+                        .small(),
+                );
             }
         });
     }

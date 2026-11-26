@@ -3,8 +3,8 @@
 //!
 //! 2026-11-25: egui extract result window stub in the Rust conversion.
 
+use crate::ui::theme::{secondary_button, separator, Palette};
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{secondary_button, Palette, separator};
 
 pub struct ExtractResultDialogState {
     pub archive_name: String,
@@ -47,28 +47,39 @@ impl ExtractResultDialog {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         separator(ui);
 
-        ui.heading(if self.state.needs_install { "Extracting Installer" } else { "Extracting" });
+        ui.heading(if self.state.needs_install {
+            "Extracting Installer"
+        } else {
+            "Extracting"
+        });
         ui.label(&self.state.archive_name);
         separator(ui);
 
-        ui.label(RichText::new(&self.state.stage).small().color(self.palette.muted));
+        ui.label(
+            RichText::new(&self.state.stage)
+                .small()
+                .color(self.palette.muted),
+        );
         ui.add(egui::ProgressBar::new(self.state.progress).desired_width(300.0));
         separator(ui);
 
-        ScrollArea::vertical().id_salt("extract_result").max_height(200.0).show(ui, |ui| {
-            if let Some(ref err) = self.state.error_message {
-                ui.colored_label(self.palette.red, format!("Failed: {}", err));
-            } else if self.state.completed {
-                if self.state.success {
-                    ui.colored_label(self.palette.green, "Extraction complete.");
+        ScrollArea::vertical()
+            .id_salt("extract_result")
+            .max_height(200.0)
+            .show(ui, |ui| {
+                if let Some(ref err) = self.state.error_message {
+                    ui.colored_label(self.palette.red, format!("Failed: {}", err));
+                } else if self.state.completed {
+                    if self.state.success {
+                        ui.colored_label(self.palette.green, "Extraction complete.");
+                    } else {
+                        ui.colored_label(self.palette.red, "Extraction failed.");
+                    }
+                    ui.label(format!("Destination: {}", self.state.destination));
                 } else {
-                    ui.colored_label(self.palette.red, "Extraction failed.");
+                    ui.label("Extracting in progress…");
                 }
-                ui.label(format!("Destination: {}", self.state.destination));
-            } else {
-                ui.label("Extracting in progress…");
-            }
-        });
+            });
 
         separator(ui);
 

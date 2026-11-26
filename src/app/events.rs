@@ -52,7 +52,12 @@ impl EventBus {
     {
         let name = name.to_string();
         let handler: Arc<dyn Fn(&Event) + Send + Sync> = Arc::new(handler);
-        self.handlers.lock().unwrap().entry(name.clone()).or_default().push(Arc::clone(&handler));
+        self.handlers
+            .lock()
+            .unwrap()
+            .entry(name.clone())
+            .or_default()
+            .push(Arc::clone(&handler));
         let handlers = Arc::clone(&self.handlers);
         Box::new(move || {
             if let Some(list) = handlers.lock().unwrap().get_mut(&name) {

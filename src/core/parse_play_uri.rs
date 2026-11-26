@@ -13,7 +13,7 @@ use crate::core::catalog_status::get_launch_target;
 use crate::core::configured_bases::configured_bases;
 use crate::core::parse_extract_root_action::parse_extract_root_action;
 use crate::core::setup_hint::setup_hint;
-use crate::core::uri_actions::{PlayRequest, SCHEME, UriRefused};
+use crate::core::uri_actions::{PlayRequest, UriRefused, SCHEME};
 use crate::core::within::within;
 
 /// Returns a validated PlayRequest for a steamgameorganizer://play link.
@@ -21,7 +21,10 @@ use crate::core::within::within;
 /// `exe` may point directly at an executable, or `path` may point at a marker/root
 /// directory whose persisted `launch_target` should be used. The target must be a
 /// `.exe` file under configured extract folders.
-pub fn parse_play_uri(uri: &str, extract_folders: Option<Vec<&str>>) -> Result<PlayRequest, UriRefused> {
+pub fn parse_play_uri(
+    uri: &str,
+    extract_folders: Option<Vec<&str>>,
+) -> Result<PlayRequest, UriRefused> {
     let parts = split_url(uri);
     if parts.scheme.to_lowercase() != SCHEME {
         return Err(UriRefused::new(&format!(
@@ -31,10 +34,7 @@ pub fn parse_play_uri(uri: &str, extract_folders: Option<Vec<&str>>) -> Result<P
     }
     let action = parts.path.trim_start_matches('/').to_lowercase();
     if action != "play" {
-        return Err(UriRefused::new(&format!(
-            "Unknown action: {}",
-            action
-        )));
+        return Err(UriRefused::new(&format!("Unknown action: {}", action)));
     }
     let bases = configured_bases(extract_folders.clone());
     if bases.is_empty() {
@@ -44,8 +44,13 @@ pub fn parse_play_uri(uri: &str, extract_folders: Option<Vec<&str>>) -> Result<P
         )));
     }
     let query_pairs = parse_query(&parts.query);
-    let raw_exe = query_pairs.iter().find(|(k, _)| *k == "exe").map(|(_, v)| *v).unwrap_or("");
-    let raw_marker = query_pairs.iter()
+    let raw_exe = query_pairs
+        .iter()
+        .find(|(k, _)| *k == "exe")
+        .map(|(_, v)| *v)
+        .unwrap_or("");
+    let raw_marker = query_pairs
+        .iter()
         .find(|(k, _)| *k == "path" || *k == "marker")
         .map(|(_, v)| *v)
         .unwrap_or("");
@@ -67,17 +72,29 @@ pub fn parse_play_uri(uri: &str, extract_folders: Option<Vec<&str>>) -> Result<P
                 raw_exe
             )));
         }
-        exe_path = Some(exe.canonicalize().map_err(|exc| {
-            UriRefused::new(&format!("That launcher cannot be opened: {}", exc))
-        })?);
+        exe_path =
+            Some(exe.canonicalize().map_err(|exc| {
+                UriRefused::new(&format!("That launcher cannot be opened: {}", exc))
+            })?);
         let exe_path_ref = exe_path.as_ref().expect("exe_path must be Some");
-        if !exe_path_ref.is_file() || exe_path_ref.extension().map_or(false, |e| e.to_string_lossy().to_lowercase() != "exe") {
-            return Err(UriRefused::new("Play links may only launch .exe files inside extract folders."));
+        if !exe_path_ref.is_file()
+            || exe_path_ref
+                .extension()
+                .map_or(false, |e| e.to_string_lossy().to_lowercase() != "exe")
+        {
+            return Err(UriRefused::new(
+                "Play links may only launch .exe files inside extract folders.",
+            ));
         }
     } else if let Some(ref marker) = marker_dir {
-        exe_path = get_launch_target(&marker, &bases.iter().map(|b| b.to_path_buf()).collect::<Vec<_>>());
+        exe_path = get_launch_target(
+            &marker,
+            &bases.iter().map(|b| b.to_path_buf()).collect::<Vec<_>>(),
+        );
         if exe_path.is_none() {
-            return Err(UriRefused::new("No saved launcher is set for this game. Use Pick launcher first."));
+            return Err(UriRefused::new(
+                "No saved launcher is set for this game. Use Pick launcher first.",
+            ));
         }
     } else {
         return Err(UriRefused::new("The link did not say what to launch."));
@@ -111,12 +128,17 @@ fn split_url(uri: &str) -> UrlParts {
     if !path.starts_with('/') {
         path = format!("/{}", path);
     }
-    UrlParts { scheme, path, query }
+    UrlParts {
+        scheme,
+        path,
+        query,
+    }
 }
 
 /// Simple query string parsing (replaces Python's parse_qs).
 fn parse_query(query: &str) -> Vec<(&str, &str)> {
-    query.split('&')
+    query
+        .split('&')
         .filter(|pair| pair.contains('='))
         .map(|pair| {
             let mut kv = pair.splitn(2, '=');
@@ -163,4 +185,3 @@ mod tests {
         assert_eq!(pairs[1], ("path", "/bar"));
     }
 }
-

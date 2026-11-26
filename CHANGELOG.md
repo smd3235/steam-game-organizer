@@ -23,6 +23,17 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — feat: Conversion audit infrastructure — prevents future regression
+
+- `.github/workflows/ci.yml`: Added GitHub Actions CI pipeline with four jobs: audit, clippy (`-D warnings`), test, and build release; runs on push/PR to main and Rust-Conversion
+- `scripts/audit_conversion.ps1`: New audit script that detects Python-to-Rust conversion anti-patterns: `#![allow(clippy::all)]`, double panic hooks, unused config fields, stub methods, hardcoded paths; runs `cargo clippy --all-targets`
+- `.rustfmt.toml`: Added formatting config (max_width=100) for consistent code style
+- `cargo fmt --check` added to CI audit job
+- `cargo clippy --all-targets -- -D warnings` added to CI clippy job
+- `cargo test` added to CI test job
+- `cargo build --release` added to CI build job
+- 320 tests pass, cargo fmt --check clean, cargo clippy --all-targets clean
+
 ### 2026-11-26 — fix: Remove #![allow(clippy::all)] from 13 files, fix double panic hook, wire AppController config
 
 - `src/core/config.rs`, `src/core/filename_utils.rs`, `src/core/controller_utils.rs`: Removed `#![allow(clippy::all)]` — all clippy lints now active

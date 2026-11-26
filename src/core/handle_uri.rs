@@ -19,12 +19,20 @@ use crate::core::uri_actions::UriRefused;
 /// Currently refuses every URI because the UI-dependent handlers (open-folder, open-extracted,
 /// play, pick-launcher, mark-installed, extract-all, extract-multi, setup, refresh-catalog)
 /// are not yet ported to Rust.
-pub fn handle_uri(uri: &str, _config: &AppConfig, _logger: &(dyn Fn(&str, &str) + Send + Sync)) -> i32 {
+pub fn handle_uri(
+    uri: &str,
+    _config: &AppConfig,
+    _logger: &(dyn Fn(&str, &str) + Send + Sync),
+) -> i32 {
     // Extract the action from the URI: steamgameorganizer://action?params
     let action = uri
         .split("://")
         .nth(1)
-        .and_then(|rest| rest.split_once('?').map(|(path, _)| path.to_string()).or_else(|| Some(rest.to_string())))
+        .and_then(|rest| {
+            rest.split_once('?')
+                .map(|(path, _)| path.to_string())
+                .or_else(|| Some(rest.to_string()))
+        })
         .unwrap_or_default()
         .trim_start_matches('/')
         .trim()
@@ -94,4 +102,3 @@ mod tests {
         assert_eq!(result, 2);
     }
 }
-

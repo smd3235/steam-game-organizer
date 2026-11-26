@@ -102,4 +102,3 @@ mod tests {
         assert_eq!(status["failed"], 0);
     }
 }
-

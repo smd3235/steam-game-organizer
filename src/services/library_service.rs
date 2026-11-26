@@ -16,14 +16,16 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use regex::Regex;
 use walkdir::WalkDir;
 
-use crate::core::constants::{ARCHIVE_EXTENSIONS, LOCK_MARKER, LIBRARY_RESERVED_DIRS, TEMP_DIR_PREFIX, TEMP_FILE_TAG};
+use crate::core::constants::{
+    ARCHIVE_EXTENSIONS, LIBRARY_RESERVED_DIRS, LOCK_MARKER, TEMP_DIR_PREFIX, TEMP_FILE_TAG,
+};
+use crate::core::debug::audit;
 use crate::core::library_utils::{game_folder_is_prunable, is_app_folder};
 use crate::core::models::{ConversionResult, GameArchive};
 use crate::core::naming_utils::safe_name;
-use crate::services::organizer_service::{CancelContext, OrganizerService};
-use crate::core::path_safety::{DeletionGuard, is_within};
+use crate::core::path_safety::{is_within, DeletionGuard};
 use crate::core::treewalk::is_link;
-use crate::core::debug::audit;
+use crate::services::organizer_service::{CancelContext, OrganizerService};
 
 lazy_static::lazy_static! {
     static ref APPID_PATTERN: Regex = Regex::new(r"app/(\d+)").unwrap();
@@ -69,10 +71,7 @@ impl LibraryService {
         if let Some(cd) = &self._config_dir {
             return cd.clone();
         }
-        library_root
-            .parent()
-            .unwrap_or(library_root)
-            .join("config")
+        library_root.parent().unwrap_or(library_root).join("config")
     }
 
     fn _load_scan_state(&self, library_root: &Path) -> Option<HashMap<String, u64>> {
@@ -113,16 +112,28 @@ impl LibraryService {
             existing = serde_json::json!({});
         }
         if let Some(obj) = existing.as_object_mut() {
-            obj.insert("folder_mtimes".to_string(), serde_json::to_value(folder_mtimes).unwrap());
+            obj.insert(
+                "folder_mtimes".to_string(),
+                serde_json::to_value(folder_mtimes).unwrap(),
+            );
             obj.insert(
                 "recorded_at".to_string(),
-                serde_json::to_value(SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()).unwrap(),
+                serde_json::to_value(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                )
+                .unwrap(),
             );
         }
         if fs::create_dir_all(&config_dir).is_err() {
             return;
         }
-        let _ = fs::write(&state_file, serde_json::to_string_pretty(&existing).unwrap());
+        let _ = fs::write(
+            &state_file,
+            serde_json::to_string_pretty(&existing).unwrap(),
+        );
     }
 
     fn _get_folder_mtime(&self, folder: &Path) -> u64 {
@@ -135,7 +146,11 @@ impl LibraryService {
                 for item in entries.flatten() {
                     let path = item.path();
                     if path.is_file() {
-                        let name = path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
+                        let name = path
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_lowercase();
                         let _ext = path.extension().map_or("", |e| e.to_str().unwrap_or(""));
                         if name.ends_with(".zip")
                             || name.ends_with(".rar")
@@ -151,7 +166,11 @@ impl LibraryService {
                         {
                             if let Ok(meta) = path.metadata() {
                                 if let Ok(mtime) = meta.modified() {
-                                    let ns = mtime.duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+                                    let ns = mtime
+                                        .duration_since(UNIX_EPOCH)
+                                        .unwrap_or_default()
+                                        .as_nanos()
+                                        as u64;
                                     if ns > max_mtime {
                                         max_mtime = ns;
                                     }
@@ -174,21 +193,23 @@ impl LibraryService {
                     .filter(|p| p.is_file())
                     .collect();
                 items.sort();
-                items
-                    .into_iter()
-                    .find(|p| {
-                        let ext = p.extension()
-                            .and_then(|e| e.to_str())
-                            .unwrap_or("")
-                            .to_lowercase();
-                        ext == "zip" || ext == "rar"
-                    })
+                items.into_iter().find(|p| {
+                    let ext = p
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    ext == "zip" || ext == "rar"
+                })
             }
             Err(_) => None,
         }
     }
 
-    pub fn pending_candidates(&self, library_root: &Path) -> Vec<(PathBuf, PathBuf, u64, String, String)> {
+    pub fn pending_candidates(
+        &self,
+        library_root: &Path,
+    ) -> Vec<(PathBuf, PathBuf, u64, String, String)> {
         let library_root = match library_root.canonicalize() {
             Ok(r) => r,
             Err(_) => return Vec::new(),
@@ -203,7 +224,11 @@ impl LibraryService {
                     p if p.is_dir() => p,
                     _ => continue,
                 };
-                let name = category_dir.file_name().unwrap_or_default().to_string_lossy().to_string();
+                let name = category_dir
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
                 if LIBRARY_RESERVED_DIRS.contains(&name.as_str()) || is_app_folder(&category_dir) {
                     continue;
                 }
@@ -222,7 +247,14 @@ impl LibraryService {
                         let appid = self._find_appid(&game_dir, &metadata);
                         let name = match metadata.get("name").and_then(|v| v.as_str()) {
                             Some(n) => n.to_string(),
-                            None => game_dir.file_stem().unwrap_or_default().to_string_lossy().split(" - ").next().unwrap_or("").to_string(),
+                            None => game_dir
+                                .file_stem()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .split(" - ")
+                                .next()
+                                .unwrap_or("")
+                                .to_string(),
                         };
                         found.push((game_dir, pending, size, appid, name));
                     }
@@ -286,18 +318,29 @@ impl LibraryService {
             audit(
                 "archive_repack",
                 &archive_path.to_string_lossy(),
-                if result != archive_path { "success" } else { "skipped" },
-                if result != archive_path { "converted" } else { "not_applicable" },
+                if result != archive_path {
+                    "success"
+                } else {
+                    "skipped"
+                },
+                if result != archive_path {
+                    "converted"
+                } else {
+                    "not_applicable"
+                },
             );
 
             // Call on_progress directly
             if let Some(f) = on_progress {
-                let name = archive_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                let name = archive_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
                 f(&name);
             }
 
-
-                // Outcome: converted or skipped (tracked via journal if provided)
+            // Outcome: converted or skipped (tracked via journal if provided)
 
             // Journal the move
             if let Some(journal) = journal.as_mut() {
@@ -337,7 +380,11 @@ impl LibraryService {
     }
 
     fn _is_own_temp(&self, path: &Path) -> bool {
-        let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         if path.is_dir() {
             return OWN_TEMP_DIRS.iter().any(|prefix| name.starts_with(*prefix));
         }
@@ -359,7 +406,9 @@ impl LibraryService {
             Ok(text) => {
                 let parts: Vec<&str> = text.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    if let (Ok(pid), Ok(started)) = (parts[0].parse::<u32>(), parts[1].parse::<f64>()) {
+                    if let (Ok(pid), Ok(started)) =
+                        (parts[0].parse::<u32>(), parts[1].parse::<f64>())
+                    {
                         return Some((pid, started));
                     }
                 }
@@ -371,7 +420,15 @@ impl LibraryService {
 
     fn _pid_alive(&self, pid: u32) -> bool {
         match std::process::Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+            .args([
+                "/PID",
+                &pid.to_string(),
+                "/FI",
+                &format!("PID eq {}", pid),
+                "/FO",
+                "CSV",
+                "/NH",
+            ])
             .output()
         {
             Ok(output) => {
@@ -403,7 +460,11 @@ impl LibraryService {
     }
 
     fn _temp_file_is_stale(&self, path: &Path) -> bool {
-        let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         if let Some(caps) = TEMP_FILE_OWNER_RE.captures(&name) {
             if let Ok(pid) = caps.get(1).unwrap().as_str().parse::<u32>() {
                 if self._pid_alive(pid) {
@@ -416,7 +477,10 @@ impl LibraryService {
                             .duration_since(UNIX_EPOCH)
                             .unwrap_or_default()
                             .as_secs_f64()
-                            - mtime.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs_f64();
+                            - mtime
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs_f64();
                         age > OWN_TEMP_GRACE_SECONDS as f64
                     }
                     Err(_) => false,
@@ -434,9 +498,10 @@ impl LibraryService {
                     if path.is_dir() {
                         if let Some(name) = path.file_name() {
                             if name.to_string_lossy().starts_with(TEMP_DIR_PREFIX)
-                                && !self._temp_is_stale(&path) {
-                                    return true;
-                                }
+                                && !self._temp_is_stale(&path)
+                            {
+                                return true;
+                            }
                         }
                     } else if path.is_file() {
                         if let Some(name) = path.file_name() {
@@ -453,16 +518,25 @@ impl LibraryService {
     }
 
     fn _is_sync_leftover(&self, path: &Path) -> bool {
-        let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         if SYNC_NEVER_TOUCH.iter().any(|s| name.starts_with(s)) {
             return false;
         }
-        SYNC_FILE_PATTERNS.iter().any(|p| {
-            name.contains(&p.replace(['*', '?'], ""))
-        })
+        SYNC_FILE_PATTERNS
+            .iter()
+            .any(|p| name.contains(&p.replace(['*', '?'], "")))
     }
 
-    pub fn cleanup_leftovers(&self, library_root: &Path, _ctx: Option<&CancelContext>, _grace_seconds: u64) -> HashMap<String, u64> {
+    pub fn cleanup_leftovers(
+        &self,
+        library_root: &Path,
+        _ctx: Option<&CancelContext>,
+        _grace_seconds: u64,
+    ) -> HashMap<String, u64> {
         let library_root = match library_root.canonicalize() {
             Ok(r) => r,
             Err(_) => return HashMap::new(),
@@ -492,9 +566,17 @@ impl LibraryService {
                 skipped_link += 1;
                 continue;
             }
-            let _name = here.file_name().unwrap_or_default().to_string_lossy().to_string();
+            let _name = here
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
             let own = self._is_own_temp(here);
-            let sync = if !own { self._is_sync_leftover(here) } else { false };
+            let sync = if !own {
+                self._is_sync_leftover(here)
+            } else {
+                false
+            };
             if !own && !sync {
                 continue;
             }
@@ -517,7 +599,10 @@ impl LibraryService {
             if !is_within(here, &library_root) {
                 (self.logger)(
                     "LIBRARY",
-                    &format!("LEFTOVER_REFUSED path=[{}] reason=[outside the library]", here.display()),
+                    &format!(
+                        "LEFTOVER_REFUSED path=[{}] reason=[outside the library]",
+                        here.display()
+                    ),
                 );
                 continue;
             }
@@ -568,7 +653,11 @@ impl LibraryService {
         let mut target = archive_dir.join(folder.file_name().unwrap_or_default());
         let mut n = 2;
         while target.exists() {
-            target = archive_dir.join(format!("{} ({})", folder.file_name().unwrap_or_default().to_string_lossy(), n));
+            target = archive_dir.join(format!(
+                "{} ({})",
+                folder.file_name().unwrap_or_default().to_string_lossy(),
+                n
+            ));
             n += 1;
         }
         let _ = fs::rename(folder, &target);
@@ -583,7 +672,11 @@ impl LibraryService {
                     p if p.is_dir() => p,
                     _ => continue,
                 };
-                let name = category_dir.file_name().unwrap_or_default().to_string_lossy().to_string();
+                let name = category_dir
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
                 if LIBRARY_RESERVED_DIRS.contains(&name.as_str()) || is_app_folder(&category_dir) {
                     continue;
                 }
@@ -595,8 +688,16 @@ impl LibraryService {
                 }
                 let root_has_archive = fs::read_dir(&category_dir)
                     .map(|e| {
-                        e.flatten()
-                            .any(|i| i.path().is_file() && ARCHIVE_EXTENSIONS.contains(&i.path().extension().map_or("", |e| e.to_str().unwrap_or("")).to_lowercase().as_str()))
+                        e.flatten().any(|i| {
+                            i.path().is_file()
+                                && ARCHIVE_EXTENSIONS.contains(
+                                    &i.path()
+                                        .extension()
+                                        .map_or("", |e| e.to_str().unwrap_or(""))
+                                        .to_lowercase()
+                                        .as_str(),
+                                )
+                        })
                     })
                     .unwrap_or(false);
                 let mut _pruned = 0u64;
@@ -608,8 +709,16 @@ impl LibraryService {
                         }
                         let has_archive = fs::read_dir(&game_dir)
                             .map(|e| {
-                                e.flatten()
-                                    .any(|i| i.path().is_file() && ARCHIVE_EXTENSIONS.contains(&i.path().extension().map_or("", |e| e.to_str().unwrap_or("")).to_lowercase().as_str()))
+                                e.flatten().any(|i| {
+                                    i.path().is_file()
+                                        && ARCHIVE_EXTENSIONS.contains(
+                                            &i.path()
+                                                .extension()
+                                                .map_or("", |e| e.to_str().unwrap_or(""))
+                                                .to_lowercase()
+                                                .as_str(),
+                                        )
+                                })
                             })
                             .unwrap_or(false);
                         if has_archive {
@@ -630,7 +739,8 @@ impl LibraryService {
                         }
                     }
                 }
-                if !root_has_archive && fs::read_dir(&category_dir).map_or(true, |e| e.count() == 0) {
+                if !root_has_archive && fs::read_dir(&category_dir).map_or(true, |e| e.count() == 0)
+                {
                     let target = self._move_to_archive(&category_dir, library_root);
                     let _ = target;
                     removed += 1;
@@ -650,7 +760,10 @@ impl LibraryService {
         summary
     }
 
-    pub fn audit_empty_game_folders(&self, library_root: &Path) -> Vec<(String, PathBuf, bool, Vec<String>)> {
+    pub fn audit_empty_game_folders(
+        &self,
+        library_root: &Path,
+    ) -> Vec<(String, PathBuf, bool, Vec<String>)> {
         let library_root = match library_root.canonicalize() {
             Ok(r) => r,
             Err(_) => return Vec::new(),
@@ -676,8 +789,16 @@ impl LibraryService {
                         }
                         let has_archive = fs::read_dir(&game_dir)
                             .map(|e| {
-                                e.flatten()
-                                    .any(|i| i.path().is_file() && ARCHIVE_EXTENSIONS.contains(&i.path().extension().map_or("", |e| e.to_str().unwrap_or("")).to_lowercase().as_str()))
+                                e.flatten().any(|i| {
+                                    i.path().is_file()
+                                        && ARCHIVE_EXTENSIONS.contains(
+                                            &i.path()
+                                                .extension()
+                                                .map_or("", |e| e.to_str().unwrap_or(""))
+                                                .to_lowercase()
+                                                .as_str(),
+                                        )
+                                })
                             })
                             .unwrap_or(false);
                         if has_archive {
@@ -686,13 +807,21 @@ impl LibraryService {
                         let files: Vec<String> = fs::read_dir(&game_dir)
                             .map(|e| {
                                 e.flatten()
-                                    .filter_map(|i| i.path().file_name().map(|n| n.to_string_lossy().to_string()))
+                                    .filter_map(|i| {
+                                        i.path()
+                                            .file_name()
+                                            .map(|n| n.to_string_lossy().to_string())
+                                    })
                                     .collect()
                             })
                             .unwrap_or_default();
                         let game_dir_clone = game_dir.clone();
                         found.push((
-                            category_dir.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                            category_dir
+                                .file_name()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .to_string(),
                             game_dir,
                             game_folder_is_prunable(&game_dir_clone),
                             files,
@@ -726,7 +855,11 @@ impl LibraryService {
 
     fn _audit_text(&self, outcome: &str) -> String {
         let base = outcome.split(':').next().unwrap_or(outcome);
-        let detail = outcome.split_once(':').map(|x| x.1).map(|s| s.trim()).unwrap_or("");
+        let detail = outcome
+            .split_once(':')
+            .map(|x| x.1)
+            .map(|s| s.trim())
+            .unwrap_or("");
         let text = match base {
             audit_outcome::NO_APPID => "no Steam AppID — nothing to refresh",
             audit_outcome::WRITTEN => "artwork refreshed",
@@ -761,7 +894,11 @@ impl LibraryService {
                 return safe_name(name);
             }
         }
-        let folder_name = game_dir.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let folder_name = game_dir
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         let cleaned = Regex::new(r"\s*-\s*(?:\d{4}-\d{2}-\d{2}|Unknown Release Date)$")
             .unwrap()
             .replace_all(&folder_name, "")
@@ -837,7 +974,9 @@ mod tests {
     #[test]
     fn test_library_service_new() {
         let service = LibraryService::new(Arc::new(dummy_logger), None);
-        assert!(service._config_dir_for(Path::new("/lib")).ends_with("config"));
+        assert!(service
+            ._config_dir_for(Path::new("/lib"))
+            .ends_with("config"));
     }
 
     #[test]
@@ -869,7 +1008,15 @@ mod tests {
         let service = LibraryService::new(Arc::new(dummy_logger), None);
         let organizer = OrganizerService::new(Arc::new(dummy_logger), true);
         let artwork = ArtworkServiceStub::new();
-        let summary = service.audit(Path::new("/nonexistent"), &artwork, &organizer, None, None, false, true);
+        let summary = service.audit(
+            Path::new("/nonexistent"),
+            &artwork,
+            &organizer,
+            None,
+            None,
+            false,
+            true,
+        );
         assert_eq!(summary.get("checked"), Some(&0));
     }
 
@@ -884,8 +1031,10 @@ mod tests {
     #[test]
     fn test_library_service_audit_text() {
         let service = LibraryService::new(Arc::new(dummy_logger), None);
-        assert_eq!(service._audit_text("no_appid"), "no Steam AppID — nothing to refresh");
+        assert_eq!(
+            service._audit_text("no_appid"),
+            "no Steam AppID — nothing to refresh"
+        );
         assert_eq!(service._audit_text("written"), "artwork refreshed");
     }
 }
-

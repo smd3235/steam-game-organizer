@@ -377,4 +377,3 @@ mod tests {
         assert_eq!(elapsed_text(3661.0), "1h 1m");
     }
 }
-

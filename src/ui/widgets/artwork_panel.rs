@@ -3,12 +3,12 @@
 //!
 //! 2026-11-25: egui artwork panel stub in the Rust conversion.
 
-use egui::{RichText, Ui};
 use crate::ui::theme::Palette;
+use egui::{RichText, Ui};
 
 pub enum ArtworkResult {
     Pending,
-    Showing(String),   // image path or description
+    Showing(String), // image path or description
     Failed,
     None,
 }
@@ -40,13 +40,25 @@ impl ArtworkPanel {
             match &self.state.result {
                 ArtworkResult::Pending => {
                     ui.centered_and_justified(|ui| {
-                        ui.label(RichText::new("ARTWORK\nLoading…").color(self.palette.muted).small());
+                        ui.label(
+                            RichText::new("ARTWORK\nLoading…")
+                                .color(self.palette.muted)
+                                .small(),
+                        );
                     });
                 }
                 ArtworkResult::Showing(path) => {
                     ui.centered_and_justified(|ui| {
-                        ui.label(RichText::new(format!("Artwork: {}", path)).small().color(self.palette.text));
-                        ui.label(RichText::new("(image display not yet implemented)").color(self.palette.muted).italics());
+                        ui.label(
+                            RichText::new(format!("Artwork: {}", path))
+                                .small()
+                                .color(self.palette.text),
+                        );
+                        ui.label(
+                            RichText::new("(image display not yet implemented)")
+                                .color(self.palette.muted)
+                                .italics(),
+                        );
                     });
                 }
                 ArtworkResult::Failed => {

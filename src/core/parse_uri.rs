@@ -132,4 +132,3 @@ mod tests {
         assert_eq!(parse_query_param("src=foo&dest=bar", "missing"), "");
     }
 }
-

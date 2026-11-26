@@ -32,11 +32,7 @@ pub fn build_name_map(
 }
 
 /// Open the three-folder setup wizard. Returns None on success, 0 if cancelled.
-pub fn _open_setup(
-    config: &AppConfig,
-    _logger: &AppLogger,
-    _prefill: Option<&str>,
-) -> Option<i32> {
+pub fn _open_setup(config: &AppConfig, _logger: &AppLogger, _prefill: Option<&str>) -> Option<i32> {
     let service = SetupService::new(Arc::new(noop_log), None, None);
     let (saved, _rows) = service.apply(
         config,
@@ -56,11 +52,7 @@ pub fn _open_setup(
 }
 
 /// Opens the extracted game/installer folder.
-pub fn _handle_open_extracted_uri(
-    _uri: &str,
-    _config: &AppConfig,
-    logger: &AppLogger,
-) -> i32 {
+pub fn _handle_open_extracted_uri(_uri: &str, _config: &AppConfig, logger: &AppLogger) -> i32 {
     logger.warning(
         "EXTRACT",
         &format!("URI_REFUSED uri=[{}] reason=[not yet implemented]", _uri),
@@ -260,7 +252,13 @@ pub fn main() -> i32 {
 
     // Extract
     if let Some(ref archive) = args.extract {
-        return _extract_to_disk(archive, args.dest.clone(), &config, &logger, &args.zip_password);
+        return _extract_to_disk(
+            archive,
+            args.dest.clone(),
+            &config,
+            &logger,
+            &args.zip_password,
+        );
     }
 
     // Setup wizard
@@ -288,7 +286,11 @@ pub fn main() -> i32 {
     }
 
     // First-run setup if needed
-    let needed_setup = config.library_root.as_ref().map(|p| !p.exists()).unwrap_or(true);
+    let needed_setup = config
+        .library_root
+        .as_ref()
+        .map(|p| !p.exists())
+        .unwrap_or(true);
     if needed_setup {
         config.save();
         if let Some(library_root) = &config.library_root {
@@ -296,8 +298,7 @@ pub fn main() -> i32 {
             let extract_refs: Vec<&Path> = folders.iter().map(|p| p.as_path()).collect();
             type NoopLogFn = Arc<dyn Fn(&str, &str) + Send + Sync>;
             let noop_catalog: NoopLogFn = Arc::new(noop_log);
-            let _ = CatalogService::new(noop_catalog, &extract_refs)
-                .generate(library_root, false);
+            let _ = CatalogService::new(noop_catalog, &extract_refs).generate(library_root, false);
         }
     }
 
@@ -307,8 +308,7 @@ pub fn main() -> i32 {
     let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
     let log_path = log_dir.join(format!("organizer-{}.log", stamp));
     let logger = Arc::new(
-        AppLogger::new(&log_path, "INFO", true, false)
-            .expect("failed to create log file"),
+        AppLogger::new(&log_path, "INFO", true, false).expect("failed to create log file"),
     );
     logger.info("APPLICATION", "START gui_mode=true", "");
     let _ = Application::new(&root_path, args.mock, Arc::clone(&logger));
@@ -342,9 +342,7 @@ fn find_recent_log(log_dir: &Path) -> Option<PathBuf> {
         .ok()?
         .filter_map(|e| e.ok())
         .filter(|e| {
-            e.file_name()
-                .to_string_lossy()
-                .starts_with("organizer-")
+            e.file_name().to_string_lossy().starts_with("organizer-")
                 && e.file_name().to_string_lossy().ends_with(".log")
         })
         .collect();

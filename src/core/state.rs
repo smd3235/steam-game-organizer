@@ -47,4 +47,3 @@ impl StateStore {
         state.clone()
     }
 }
-

@@ -8,7 +8,14 @@ use std::path::{Path, PathBuf};
 
 /// Directories that are never scanned: frozen outputs, bundled runtime, git.
 #[allow(dead_code)]
-const SKIP_DIRS: &[&str] = &[".git", "dist", "build", "runtime", "__pycache__", ".pytest_cache"];
+const SKIP_DIRS: &[&str] = &[
+    ".git",
+    "dist",
+    "build",
+    "runtime",
+    "__pycache__",
+    ".pytest_cache",
+];
 
 /// Real Steam game names that were replaced with fictional equivalents.
 /// Each entry is a lowercase substring; any file containing it (case-insensitive)

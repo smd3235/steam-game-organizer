@@ -61,7 +61,10 @@ impl SetupService {
         let app = Path::new(app_or_empty(app));
         let extract = Path::new(extract_or_empty(extract));
         if library.as_os_str().is_empty() {
-            rows.push(("error".to_string(), "No game library folder was given.".to_string()));
+            rows.push((
+                "error".to_string(),
+                "No game library folder was given.".to_string(),
+            ));
         } else if !library.is_dir() {
             rows.push((
                 "warn".to_string(),
@@ -106,11 +109,17 @@ impl SetupService {
             rows.push(("ok".to_string(), format!("App folder: {}", app.display())));
         }
         if extract.as_os_str().is_empty() {
-            rows.push(("error".to_string(), "No extract folder was given.".to_string()));
+            rows.push((
+                "error".to_string(),
+                "No extract folder was given.".to_string(),
+            ));
         } else if extract.exists() && !extract.is_dir() {
             rows.push((
                 "error".to_string(),
-                format!("The extract folder is a file, not a folder: {}", extract.display()),
+                format!(
+                    "The extract folder is a file, not a folder: {}",
+                    extract.display()
+                ),
             ));
         } else if !_writable_or_creatable(&extract) {
             rows.push((
@@ -130,7 +139,10 @@ impl SetupService {
                 ),
             ));
         } else {
-            rows.push(("ok".to_string(), format!("Extract to: {}", extract.display())));
+            rows.push((
+                "ok".to_string(),
+                format!("Extract to: {}", extract.display()),
+            ));
         }
         let (found, _reason) = ExtractService::find_tool();
         if found.is_none() {
@@ -142,10 +154,7 @@ impl SetupService {
         if let Some(command) = (self.registered)() {
             rows.push((
                 "ok".to_string(),
-                format!(
-                    "The steamgameorganizer:// link is registered: {}",
-                    command
-                ),
+                format!("The steamgameorganizer:// link is registered: {}", command),
             ));
         } else {
             rows.push((
@@ -221,8 +230,15 @@ fn _library_has_games(root: &Path) -> bool {
         if !category.is_dir() {
             continue;
         }
-        let category_name = category.file_name().unwrap_or_default().to_string_lossy().to_string();
-        if LIBRARY_RESERVED_DIRS.iter().any(|name| name == &category_name) {
+        let category_name = category
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        if LIBRARY_RESERVED_DIRS
+            .iter()
+            .any(|name| name == &category_name)
+        {
             continue;
         }
         let Ok(game_entries) = category.read_dir() else {
@@ -241,12 +257,18 @@ fn _library_has_games(root: &Path) -> bool {
 /// parent. The nearest existing ancestor is what answers the second case.
 fn _writable_or_creatable(path: &Path) -> bool {
     if path.exists() {
-        return path.is_dir() && std::fs::metadata(path).map(|m| m.permissions().readonly() == false).unwrap_or(false);
+        return path.is_dir()
+            && std::fs::metadata(path)
+                .map(|m| m.permissions().readonly() == false)
+                .unwrap_or(false);
     }
     let mut ancestor = path.parent();
     while let Some(anc) = ancestor {
         if anc.exists() {
-            return anc.is_dir() && std::fs::metadata(anc).map(|m| m.permissions().readonly() == false).unwrap_or(false);
+            return anc.is_dir()
+                && std::fs::metadata(anc)
+                    .map(|m| m.permissions().readonly() == false)
+                    .unwrap_or(false);
         }
         ancestor = anc.parent();
     }
@@ -335,4 +357,3 @@ mod tests {
         assert!(!_within(&outside, &root));
     }
 }
-

@@ -19,7 +19,11 @@ pub struct Diagnostics<'a> {
 
 impl<'a> Diagnostics<'a> {
     pub fn new(config: &'a AppConfig, state: &'a StateStore, logger: &'a AppLogger) -> Self {
-        Diagnostics { config, state, logger }
+        Diagnostics {
+            config,
+            state,
+            logger,
+        }
     }
 
     /// A multi-line text report suitable for pasting into a support ticket.
@@ -29,11 +33,11 @@ impl<'a> Diagnostics<'a> {
         lines.push("========================================".to_string());
         lines.push(String::new());
         lines.push(format!("App: Steam Game Organizer"));
-        lines.push(format!("Project root: {}", self.config.project_root.display()));
         lines.push(format!(
-            "Config dir: {}",
-            self.config.config_dir.display()
+            "Project root: {}",
+            self.config.project_root.display()
         ));
+        lines.push(format!("Config dir: {}", self.config.config_dir.display()));
         lines.push(format!(
             "Library root: {}",
             self.config
@@ -48,10 +52,7 @@ impl<'a> Diagnostics<'a> {
                 .as_deref()
                 .map_or(false, |p| p.is_dir())
         ));
-        lines.push(format!(
-            "Developer mode: {}",
-            self.config.developer_mode
-        ));
+        lines.push(format!("Developer mode: {}", self.config.developer_mode));
         lines.push(String::new());
         lines.push("Settings:".to_string());
         if let Some(settings) = self.config.settings.as_object() {

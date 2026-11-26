@@ -214,4 +214,3 @@ mod tests {
         assert!(!is_app_folder(Path::new("/tmp")));
     }
 }
-

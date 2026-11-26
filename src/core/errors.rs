@@ -217,40 +217,17 @@ pub type OrganizerResult<T> = Result<T, OrganizerError>;
 #[macro_export]
 macro_rules! err {
     ($component:expr, $operation:expr, $msg:expr) => {
-        OrganizerError::new(
-            ErrorSeverity::Error,
-            $component,
-            $operation,
-            "",
-            $msg,
-        )
+        OrganizerError::new(ErrorSeverity::Error, $component, $operation, "", $msg)
     };
     ($component:expr, $operation:expr, $msg:expr, severity=$sev:expr) => {
-        OrganizerError::new(
-            $sev,
-            $component,
-            $operation,
-            "",
-            $msg,
-        )
+        OrganizerError::new($sev, $component, $operation, "", $msg)
     };
     ($component:expr, $operation:expr, $msg:expr, corr=$corr:expr) => {
-        OrganizerError::new(
-            ErrorSeverity::Error,
-            $component,
-            $operation,
-            $corr,
-            $msg,
-        )
+        OrganizerError::new(ErrorSeverity::Error, $component, $operation, $corr, $msg)
     };
     ($component:expr, $operation:expr, $msg:expr, detail=($k:expr, $v:expr)) => {
-        OrganizerError::new(
-            ErrorSeverity::Error,
-            $component,
-            $operation,
-            "",
-            $msg,
-        ).with_detail($k, $v)
+        OrganizerError::new(ErrorSeverity::Error, $component, $operation, "", $msg)
+            .with_detail($k, $v)
     };
 }
 
@@ -288,31 +265,39 @@ macro_rules! log_error {
 /// Usage: trace_op!(logger, component, operation, correlation_id, { ... code ... })
 #[macro_export]
 macro_rules! trace_op {
-    ($logger:expr, $component:expr, $operation:expr, $corr:expr, $block:block) => {
-        {
-            let _start = std::time::Instant::now();
-            let corr = if $corr.is_empty() {
-                $logger.correlation_id()
-            } else {
-                $corr.to_string()
-            };
-            let ts = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| {
-                    let secs = d.as_secs();
-                    let h = (secs / 3600) % 24;
-                    let m = (secs / 60) % 60;
-                    let s = secs % 60;
-                    format!("{h:02}:{m:02}:{s:02}")
-                })
-                .unwrap_or_default();
-            $logger.write("INFO", $component, &format!("OP_START {}", $operation), &corr);
-            let result = $block;
-            let elapsed = _start.elapsed();
-            $logger.write("INFO", $component, &format!("OP_END {} elapsed_ms={}", $operation, elapsed.as_millis()), &corr);
-            result
-        }
-    };
+    ($logger:expr, $component:expr, $operation:expr, $corr:expr, $block:block) => {{
+        let _start = std::time::Instant::now();
+        let corr = if $corr.is_empty() {
+            $logger.correlation_id()
+        } else {
+            $corr.to_string()
+        };
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| {
+                let secs = d.as_secs();
+                let h = (secs / 3600) % 24;
+                let m = (secs / 60) % 60;
+                let s = secs % 60;
+                format!("{h:02}:{m:02}:{s:02}")
+            })
+            .unwrap_or_default();
+        $logger.write(
+            "INFO",
+            $component,
+            &format!("OP_START {}", $operation),
+            &corr,
+        );
+        let result = $block;
+        let elapsed = _start.elapsed();
+        $logger.write(
+            "INFO",
+            $component,
+            &format!("OP_END {} elapsed_ms={}", $operation, elapsed.as_millis()),
+            &corr,
+        );
+        result
+    }};
 }
 
 /// Watchdog entry for tracking long-running operations.
@@ -334,7 +319,10 @@ pub struct Watchdog {
 }
 
 impl Watchdog {
-    pub fn new(logger: std::sync::Arc<crate::core::logger::AppLogger>, default_timeout_ms: u64) -> Self {
+    pub fn new(
+        logger: std::sync::Arc<crate::core::logger::AppLogger>,
+        default_timeout_ms: u64,
+    ) -> Self {
         Watchdog {
             entries: std::sync::Mutex::new(Vec::new()),
             logger,
@@ -343,7 +331,13 @@ impl Watchdog {
     }
 
     /// Register a new operation to watch.
-    pub fn start(&self, operation: &str, component: &str, correlation_id: &str, timeout_ms: Option<u64>) -> u64 {
+    pub fn start(
+        &self,
+        operation: &str,
+        component: &str,
+        correlation_id: &str,
+        timeout_ms: Option<u64>,
+    ) -> u64 {
         let id = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -453,7 +447,8 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let wd = Watchdog::new(logger.clone(), 1000);
 

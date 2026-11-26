@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use crate::app::controller::Services;
 use crate::core::config::AppConfig;
+use crate::core::errors::Watchdog;
 use crate::core::logger::AppLogger;
 use crate::core::models::GameArchive;
-use crate::core::errors::Watchdog;
 use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
 use crate::ui::theme::Palette;
@@ -29,7 +29,9 @@ fn test_logger() -> Arc<AppLogger> {
 
 /// Helper: create a test AppConfig
 fn test_config() -> Arc<AppConfig> {
-    Arc::new(AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())))
+    Arc::new(AppConfig::new(std::path::Path::new(
+        std::env::temp_dir().to_str().unwrap(),
+    )))
 }
 
 /// Helper: create a test Watchdog
@@ -40,20 +42,15 @@ fn test_watchdog(logger: Arc<AppLogger>) -> Arc<Watchdog> {
 /// Helper: create test services
 fn test_services() -> Arc<Services> {
     let logger = test_logger();
-    let organizer = OrganizerService::new(
-        Arc::new(move |cat, msg| logger.info(cat, msg, "")),
-        false,
-    );
+    let organizer =
+        OrganizerService::new(Arc::new(move |cat, msg| logger.info(cat, msg, "")), false);
     Arc::new(Services { organizer })
 }
 
 /// Helper: create test library service
 fn test_library_service() -> LibraryService {
     let logger = test_logger();
-    LibraryService::new(
-        Arc::new(move |cat, msg| logger.info(cat, msg, "")),
-        None,
-    )
+    LibraryService::new(Arc::new(move |cat, msg| logger.info(cat, msg, "")), None)
 }
 
 /// Helper: create test jobs
@@ -72,7 +69,15 @@ fn test_scan_view_initial_state() {
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     assert!(!view.state.scanning);
     assert!(!view.state.convert_archives);
@@ -93,7 +98,15 @@ fn test_scan_view_convert_archives_checkbox() {
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     // Toggle on
     view.state.convert_archives = true;
@@ -106,13 +119,20 @@ fn test_scan_view_convert_archives_checkbox() {
 
 #[test]
 fn test_scan_view_preview_only_checkbox() {
-
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     view.state.preview_only = true;
     assert!(view.state.preview_only);
@@ -123,13 +143,20 @@ let library_service = test_library_service();
 
 #[test]
 fn test_scan_view_start_scan() {
-
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     // Simulate Start Scan button click
     view.state.scanning = true;
@@ -141,13 +168,20 @@ let library_service = test_library_service();
 
 #[test]
 fn test_scan_view_scan_with_artwork() {
-
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     // Simulate Scan + Artwork button click
     view.state.scanning = true;
@@ -161,13 +195,20 @@ let library_service = test_library_service();
 
 #[test]
 fn test_scan_view_cancel_scan() {
-
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     view.state.scanning = true;
     view.state.status = "Scanning…".to_string();
@@ -182,13 +223,20 @@ let library_service = test_library_service();
 
 #[test]
 fn test_scan_view_feed_activity() {
-
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     view.feed("Test activity line 1");
     view.feed("Test activity line 2");
@@ -200,13 +248,20 @@ let library_service = test_library_service();
 
 #[test]
 fn test_scan_view_feed_trims_at_500() {
-
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     for i in 0..510 {
         view.feed(&format!("line {}", i));
@@ -224,7 +279,15 @@ fn test_scan_view_phase_done_all_six_phases() {
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     for (i, (key, _label)) in SCAN_PHASES.iter().enumerate() {
         view.phase_done(key);
@@ -239,7 +302,15 @@ fn test_scan_view_phase_start_all_six_phases() {
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     for (i, (key, _label)) in SCAN_PHASES.iter().enumerate() {
         view.phase_start(key);
@@ -249,13 +320,20 @@ fn test_scan_view_phase_start_all_six_phases() {
 
 #[test]
 fn test_scan_view_progress_and_stage() {
-
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let mut view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let mut view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     view.state.progress = 0.5;
     view.state.stage = "Extracting…".to_string();
@@ -285,7 +363,11 @@ fn test_review_view_load_and_select() {
     let palette = Palette::default();
     let mut view = ReviewView::new(palette, test_logger(), test_watchdog(test_logger()));
 
-    view.load(vec![GameArchive::default(), GameArchive::default(), GameArchive::default()]);
+    view.load(vec![
+        GameArchive::default(),
+        GameArchive::default(),
+        GameArchive::default(),
+    ]);
 
     assert_eq!(view.state.archives.len(), 3);
     assert_eq!(view.state.selected_index, Some(0));
@@ -604,7 +686,11 @@ fn test_done_view_load_mixed_results() {
     let mut view = DoneView::new(palette, test_logger(), test_watchdog(test_logger()));
 
     view.load(
-        vec![GameArchive::default(), GameArchive::default(), GameArchive::default()],
+        vec![
+            GameArchive::default(),
+            GameArchive::default(),
+            GameArchive::default(),
+        ],
         2,
         1,
         0,
@@ -715,12 +801,20 @@ fn test_button_audit_scan_view() {
     // Scan view buttons: Start Scan, Scan + Artwork, Cancel Scan
     // Checkboxes: Convert Archives, Preview Only
 
-let library_service = test_library_service();
+    let library_service = test_library_service();
     let services = test_services();
     let jobs = test_jobs();
     let palette = Palette::default();
 
-    let view = ScanView::new(services, library_service, jobs, test_config(), palette, test_logger(), test_watchdog(test_logger()));
+    let view = ScanView::new(
+        services,
+        library_service,
+        jobs,
+        test_config(),
+        palette,
+        test_logger(),
+        test_watchdog(test_logger()),
+    );
 
     // Verify all state fields exist for button handlers
     assert!(!view.state.scanning);

@@ -103,8 +103,8 @@ pub fn log_audit(log_dir: &Path) -> Result<LogResult, String> {
 
 /// Audit a single log file for errors and warnings.
 fn audit_log_file(path: &Path) -> Result<LogResult, String> {
-    let contents = fs::read_to_string(path)
-        .map_err(|e| format!("Cannot read {}: {}", path.display(), e))?;
+    let contents =
+        fs::read_to_string(path).map_err(|e| format!("Cannot read {}: {}", path.display(), e))?;
 
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
@@ -141,8 +141,8 @@ fn audit_log_file(path: &Path) -> Result<LogResult, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use std::fs::File;
+    use std::io::Write;
     use tempfile::TempDir;
 
     #[test]
@@ -164,8 +164,16 @@ mod tests {
         let log_path = tmp.path().join("test.log");
         let mut f = File::create(&log_path).unwrap();
         writeln!(f, "2026-11-25 10:00:00 [INFO] [COMPONENT] Normal operation").unwrap();
-        writeln!(f, "2026-11-25 10:01:00 [ERROR] [COMPONENT] FileNotFoundError: missing file").unwrap();
-        writeln!(f, "2026-11-25 10:02:00 [WARN] [COMPONENT] RETRY_LOOKUP: retrying Steam lookup").unwrap();
+        writeln!(
+            f,
+            "2026-11-25 10:01:00 [ERROR] [COMPONENT] FileNotFoundError: missing file"
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "2026-11-25 10:02:00 [WARN] [COMPONENT] RETRY_LOOKUP: retrying Steam lookup"
+        )
+        .unwrap();
 
         let result = log_audit(tmp.path()).unwrap();
         assert_eq!(result.lines, 3);

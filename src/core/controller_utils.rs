@@ -12,7 +12,7 @@ use std::path::Path;
 
 use crate::core::constants::ARCHIVE_EXTENSIONS;
 use crate::core::models::{ArtworkResult, GameArchive};
-use crate::core::path_safety::{DeletionGuard};
+use crate::core::path_safety::DeletionGuard;
 
 /// Whether one archive has artwork, counting an unreadable artwork object as having none.
 ///
@@ -35,7 +35,11 @@ where
 {
     group
         .iter()
-        .max_by(|a, b| promotion_key(a).partial_cmp(&promotion_key(b)).unwrap_or(std::cmp::Ordering::Less))
+        .max_by(|a, b| {
+            promotion_key(a)
+                .partial_cmp(&promotion_key(b))
+                .unwrap_or(std::cmp::Ordering::Less)
+        })
         .expect("group must not be empty")
 }
 
@@ -76,14 +80,15 @@ pub fn prune_rolled_back_folder(
     if !owned {
         return;
     }
-    let root = library_root
-        .map(|l| l.to_path_buf())
-        .unwrap_or_default();
+    let root = library_root.map(|l| l.to_path_buf()).unwrap_or_default();
     if root.as_os_str().is_empty() {
         if let Some(logger) = logger {
             logger(
                 "ORGANIZER",
-                &format!("ROLLBACK_FOLDER_KEPT path=[{}] reason=[no library root to prove containment]", game_dir.display()),
+                &format!(
+                    "ROLLBACK_FOLDER_KEPT path=[{}] reason=[no library root to prove containment]",
+                    game_dir.display()
+                ),
             );
         }
         return;
@@ -97,7 +102,11 @@ pub fn prune_rolled_back_folder(
             if let Some(logger) = logger {
                 logger(
                     "ORGANIZER",
-                    &format!("ROLLBACK_FOLDER_KEPT path=[{}] reason=[{}]", game_dir.display(), refused),
+                    &format!(
+                        "ROLLBACK_FOLDER_KEPT path=[{}] reason=[{}]",
+                        game_dir.display(),
+                        refused
+                    ),
                 );
             }
             return;
@@ -109,17 +118,21 @@ pub fn prune_rolled_back_folder(
     if game_dir.read_dir().is_ok_and(|mut entries| {
         entries.any(|e| {
             e.is_ok_and(|entry| {
-                entry
-                    .path()
-                    .extension()
-                    .is_some_and(|ext| ARCHIVE_EXTENSIONS.iter().any(|ae| ext.eq_ignore_ascii_case(ae)))
+                entry.path().extension().is_some_and(|ext| {
+                    ARCHIVE_EXTENSIONS
+                        .iter()
+                        .any(|ae| ext.eq_ignore_ascii_case(ae))
+                })
             })
         })
     }) {
         if let Some(logger) = logger {
             logger(
                 "ORGANIZER",
-                &format!("ROLLBACK_FOLDER_KEPT path=[{}] reason=[still holds an archive]", game_dir.display()),
+                &format!(
+                    "ROLLBACK_FOLDER_KEPT path=[{}] reason=[still holds an archive]",
+                    game_dir.display()
+                ),
             );
         }
         return;
@@ -129,7 +142,11 @@ pub fn prune_rolled_back_folder(
     let mut target = archive_dir.join(game_dir.file_name().unwrap_or_default());
     let mut n = 2;
     while target.exists() {
-        target = archive_dir.join(format!("{} ({})", game_dir.file_name().unwrap_or_default().to_string_lossy(), n));
+        target = archive_dir.join(format!(
+            "{} ({})",
+            game_dir.file_name().unwrap_or_default().to_string_lossy(),
+            n
+        ));
         n += 1;
     }
     match fs::rename(game_dir, &target) {
@@ -192,4 +209,3 @@ mod tests {
         assert!(!needs_conversion(&archive, false));
     }
 }
-

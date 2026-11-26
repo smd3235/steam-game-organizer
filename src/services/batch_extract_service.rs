@@ -27,9 +27,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use crate::core::batch_item::{BatchItem, CANCELLED, DONE, EXTRACTING, FAILED, QUEUED};
-use crate::services::extract_service::ExtractService;
 use crate::core::formatting::human_size;
 use crate::core::plan_batch::BatchPlan;
+use crate::services::extract_service::ExtractService;
 
 /// Runs a BatchPlan on a worker thread and reports each transition.
 ///
@@ -163,7 +163,11 @@ impl BatchExtractJob {
                 item.state = EXTRACTING.to_string();
                 item.percent = 0;
                 let item_ref = &*item;
-                self.emit("item", Some(item_ref), &format!("{} of {}", index + 1, total));
+                self.emit(
+                    "item",
+                    Some(item_ref),
+                    &format!("{} of {}", index + 1, total),
+                );
             }
 
             let archive = {
@@ -315,7 +319,12 @@ impl BatchExtractJob {
             parts.push(format!("{} need install", needs_install));
         }
         let written = human_size(Some(written as f64));
-        format!("{} in {}  •  {} unpacked", parts.join(", "), elapsed, written)
+        format!(
+            "{} in {}  •  {} unpacked",
+            parts.join(", "),
+            elapsed,
+            written
+        )
     }
 }
 
@@ -348,4 +357,3 @@ mod tests {
         assert!(job.cancel_requested());
     }
 }
-

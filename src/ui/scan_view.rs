@@ -12,16 +12,16 @@ use std::sync::Arc;
 use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
 use crate::core::config::AppConfig;
-use crate::services::library_service::LibraryService;
-use crate::core::models::GameArchive;
 use crate::core::errors::Watchdog;
+use crate::core::models::GameArchive;
+use crate::services::library_service::LibraryService;
 
-use egui::{RichText, ScrollArea};
 use crate::ui::theme;
 use crate::ui::theme::{
     archive_row, card, danger_button, empty_state, heading, loading_card, pill, primary_button,
-    section_header, secondary_button, Palette, separator, stat_card,
+    secondary_button, section_header, separator, stat_card, Palette,
 };
+use egui::{RichText, ScrollArea};
 
 /// Every phase a scan runs through, in order.
 pub const SCAN_PHASES: &[(&str, &str)] = &[
@@ -130,8 +130,26 @@ impl ScanView {
             // Summary stats row
             ui.horizontal(|ui| {
                 let archive_count = self.state.discovered_archives.len();
-                stat_card(ui, &self.palette, &archive_count.to_string(), "Archives Found", self.palette.accent);
-                stat_card(ui, &self.palette, &self.state.phase_states.iter().filter(|&&x| x).count().to_string(), "Phases Complete", self.palette.green);
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &archive_count.to_string(),
+                    "Archives Found",
+                    self.palette.accent,
+                );
+                stat_card(
+                    ui,
+                    &self.palette,
+                    &self
+                        .state
+                        .phase_states
+                        .iter()
+                        .filter(|&&x| x)
+                        .count()
+                        .to_string(),
+                    "Phases Complete",
+                    self.palette.green,
+                );
             });
             ui.add_space(theme::SPACING);
 
@@ -155,14 +173,19 @@ impl ScanView {
                     self.state.activity.push("Scan starting…".to_string());
                 }
                 if secondary_button(ui, "Scan with Artwork", &self.palette, true).clicked() {
-                    self.logger.log("SCAN", "Scan with Artwork button clicked", "");
+                    self.logger
+                        .log("SCAN", "Scan with Artwork button clicked", "");
                     self.state.scanning = true;
                     self.state.scan_with_artwork = true;
                     self.state.should_scan = true;
                     self.state.status = "Scan with Artwork starting…".to_string();
-                    self.state.activity.push("Scan with Artwork starting…".to_string());
+                    self.state
+                        .activity
+                        .push("Scan with Artwork starting…".to_string());
                 }
-                if self.state.scanning && danger_button(ui, "Cancel Scan", &self.palette, true).clicked() {
+                if self.state.scanning
+                    && danger_button(ui, "Cancel Scan", &self.palette, true).clicked()
+                {
                     self.logger.log("SCAN", "Cancel Scan button clicked", "");
                     self.state.scanning = false;
                     self.state.status = "Scan cancelled.".to_string();
@@ -196,7 +219,11 @@ impl ScanView {
             ui.horizontal(|ui| {
                 ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
                 ui.add_space(theme::SPACING);
-                ui.label(RichText::new(&self.state.stage).color(self.palette.text_secondary).small());
+                ui.label(
+                    RichText::new(&self.state.stage)
+                        .color(self.palette.text_secondary)
+                        .small(),
+                );
             });
             ui.add_space(theme::SPACING);
 
@@ -205,7 +232,12 @@ impl ScanView {
                 section_header(ui, &self.palette, "ACTIVITY FEED");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if self.state.scanning {
-                        ui.label(RichText::new("Scanning…").color(self.palette.accent).small().italics());
+                        ui.label(
+                            RichText::new("Scanning…")
+                                .color(self.palette.accent)
+                                .small()
+                                .italics(),
+                        );
                     }
                 });
             });
@@ -227,24 +259,37 @@ impl ScanView {
 
         // Show discovered archives in separate card
         if self.state.discovered_archives.is_empty() {
-            empty_state(ui, &self.palette, "🔍", "No archives discovered", "Run Scan to find game archives in your library.");
+            empty_state(
+                ui,
+                &self.palette,
+                "🔍",
+                "No archives discovered",
+                "Run Scan to find game archives in your library.",
+            );
         } else {
             card(ui, &self.palette, |ui| {
                 section_header(ui, &self.palette, "DISCOVERED ARCHIVES");
-                ScrollArea::vertical().id_salt("discovered_list").max_height(200.0).show(ui, |ui| {
-                    for archive in &self.state.discovered_archives {
-                        let response = archive_row(
-                            ui,
-                            &self.palette,
-                            &archive.display_name,
-                            &format!("{} bytes", archive.size),
-                            false,
-                        );
-                        if response.clicked() {
-                            self.logger.log("SCAN", &format!("Clicked archive: {}", archive.display_name), "");
+                ScrollArea::vertical()
+                    .id_salt("discovered_list")
+                    .max_height(200.0)
+                    .show(ui, |ui| {
+                        for archive in &self.state.discovered_archives {
+                            let response = archive_row(
+                                ui,
+                                &self.palette,
+                                &archive.display_name,
+                                &format!("{} bytes", archive.size),
+                                false,
+                            );
+                            if response.clicked() {
+                                self.logger.log(
+                                    "SCAN",
+                                    &format!("Clicked archive: {}", archive.display_name),
+                                    "",
+                                );
+                            }
                         }
-                    }
-                });
+                    });
             });
         }
     }
@@ -255,14 +300,16 @@ impl ScanView {
         let op_id = self.logger.op_start("run_scan", &corr);
         self.watchdog.start("run_scan", "SCAN", &corr, Some(300000)); // 5 minute timeout
 
-        self.logger.log("SCAN", "run_scan: beginning archive discovery", &corr);
+        self.logger
+            .log("SCAN", "run_scan: beginning archive discovery", &corr);
 
         // Phase: Cleanup
         self.state.current_phase = 0;
         self.state.phase_states[0] = true;
         self.state.stage = "Cleanup".to_string();
         self.state.status = "Cleanup complete".to_string();
-        self.logger.log("SCAN", "Phase 1/6: Cleanup complete", &corr);
+        self.logger
+            .log("SCAN", "Phase 1/6: Cleanup complete", &corr);
 
         // Phase: Dedupe
         self.state.current_phase = 1;
@@ -282,16 +329,20 @@ impl ScanView {
         self.state.current_phase = 3;
         self.state.stage = "Discovering archives…".to_string();
         self.state.status = "Discovering archives…".to_string();
-        self.logger.log("SCAN", "Phase 4/6: Discovering archives", &corr);
+        self.logger
+            .log("SCAN", "Phase 4/6: Discovering archives", &corr);
 
         // Try to use ArchiveService to discover real archives
         if let Some(library_root) = self.get_library_root() {
-            self.logger.log("SCAN", &format!("Discovering archives in: {}", library_root.display()), &corr);
+            self.logger.log(
+                "SCAN",
+                &format!("Discovering archives in: {}", library_root.display()),
+                &corr,
+            );
             let corr_for_archive = corr.clone();
             let logger_clone = Arc::clone(&self.logger);
-            let logger_for_archive = Arc::new(move |cat: &str, msg: &str| {
-                logger_clone.log(cat, msg, &corr_for_archive)
-            });
+            let logger_for_archive =
+                Arc::new(move |cat: &str, msg: &str| logger_clone.log(cat, msg, &corr_for_archive));
             let archive_service = crate::services::archive_service::ArchiveService::new(
                 logger_for_archive,
                 self.state.convert_archives,
@@ -310,15 +361,30 @@ impl ScanView {
                 true,  // use_cache
             );
 
-            self.logger.log("SCAN", &format!("Discovery complete: {} archives found, {} errors", result.archives.len(), result.errors.len()), &corr);
+            self.logger.log(
+                "SCAN",
+                &format!(
+                    "Discovery complete: {} archives found, {} errors",
+                    result.archives.len(),
+                    result.errors.len()
+                ),
+                &corr,
+            );
 
             for archive in &result.archives {
-                self.logger.log("SCAN", &format!("  Found: {} ({} bytes)", archive.display_name, archive.size), &corr);
-                self.state.activity.push(format!("Found: {}", archive.display_name));
+                self.logger.log(
+                    "SCAN",
+                    &format!("  Found: {} ({} bytes)", archive.display_name, archive.size),
+                    &corr,
+                );
+                self.state
+                    .activity
+                    .push(format!("Found: {}", archive.display_name));
             }
 
             for error in &result.errors {
-                self.logger.log("SCAN", &format!("  Error: {}", error), &corr);
+                self.logger
+                    .log("SCAN", &format!("  Error: {}", error), &corr);
             }
 
             self.state.discovered_archives = result.archives;
@@ -326,7 +392,11 @@ impl ScanView {
             self.state.stage = "Discovery complete".to_string();
             self.state.status = format!("Found {} archives", self.state.discovered_archives.len());
         } else {
-            self.logger.log("SCAN", "No library root configured, skipping discovery", &corr);
+            self.logger.log(
+                "SCAN",
+                "No library root configured, skipping discovery",
+                &corr,
+            );
             self.state.phase_states[3] = true;
             self.state.stage = "No library root".to_string();
             self.state.status = "No library root configured".to_string();
@@ -344,7 +414,8 @@ impl ScanView {
         self.state.phase_states[5] = true;
         self.state.stage = "Catalog".to_string();
         self.state.status = "Catalog complete".to_string();
-        self.logger.log("SCAN", "Phase 6/6: Catalog complete", &corr);
+        self.logger
+            .log("SCAN", "Phase 6/6: Catalog complete", &corr);
 
         self.state.scanning = false;
         self.state.stage = "Idle".to_string();
@@ -358,7 +429,11 @@ impl ScanView {
         // Use configured library root first
         if let Some(root) = self.config.library_root.as_ref() {
             if root.is_dir() {
-                self.logger.log("SCAN", &format!("Using configured library root: {}", root.display()), "");
+                self.logger.log(
+                    "SCAN",
+                    &format!("Using configured library root: {}", root.display()),
+                    "",
+                );
                 return Some(root.clone());
             }
         }
@@ -375,18 +450,29 @@ impl ScanView {
 
         for candidate in &candidates {
             if candidate.is_dir() {
-                self.logger.log("SCAN", &format!("Found library root: {}", candidate.display()), "");
+                self.logger.log(
+                    "SCAN",
+                    &format!("Found library root: {}", candidate.display()),
+                    "",
+                );
                 return Some(candidate.clone());
             }
         }
 
         // Walk up from exe directory looking for project root (where Cargo.toml is)
         // Archives like the test zip may be in the project root
-        if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())) {
+        if let Some(exe_dir) = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        {
             let mut current = exe_dir.clone();
             for _ in 0..5 {
                 if current.join("Cargo.toml").is_file() {
-                    self.logger.log("SCAN", &format!("Found project root: {}", current.display()), "");
+                    self.logger.log(
+                        "SCAN",
+                        &format!("Found project root: {}", current.display()),
+                        "",
+                    );
                     return Some(current.clone());
                 }
                 if !current.pop() {
@@ -395,7 +481,8 @@ impl ScanView {
             }
             // Also check exe_dir itself for archives
             if exe_dir.is_dir() {
-                self.logger.log("SCAN", &format!("Found exe dir: {}", exe_dir.display()), "");
+                self.logger
+                    .log("SCAN", &format!("Found exe dir: {}", exe_dir.display()), "");
                 return Some(exe_dir.clone());
             }
         }
@@ -407,7 +494,9 @@ impl ScanView {
     pub fn feed(&mut self, message: &str) {
         self.state.activity.push(message.to_string());
         if self.state.activity.len() > 500 {
-            self.state.activity.drain(0..self.state.activity.len() - 500);
+            self.state
+                .activity
+                .drain(0..self.state.activity.len() - 500);
         }
     }
 
@@ -432,15 +521,11 @@ mod tests {
 
     #[test]
     fn test_scan_view_new() {
-        let organizer = crate::services::organizer_service::OrganizerService::new(
-            Arc::new(|_, _| {}),
-            false,
-        );
+        let organizer =
+            crate::services::organizer_service::OrganizerService::new(Arc::new(|_, _| {}), false);
         let services = Arc::new(crate::app::controller::Services { organizer });
-        let library_service = crate::services::library_service::LibraryService::new(
-            Arc::new(|_, _| {}),
-            None,
-        );
+        let library_service =
+            crate::services::library_service::LibraryService::new(Arc::new(|_, _| {}), None);
         let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
         let palette = Palette::default();
         let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
@@ -449,24 +534,31 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())));
-        let _view = ScanView::new(services, library_service, jobs, Arc::clone(&config), palette, logger, watchdog);
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(
+            std::env::temp_dir().to_str().unwrap(),
+        )));
+        let _view = ScanView::new(
+            services,
+            library_service,
+            jobs,
+            Arc::clone(&config),
+            palette,
+            logger,
+            watchdog,
+        );
     }
 
     #[test]
     fn test_scan_view_feed() {
-        let organizer = crate::services::organizer_service::OrganizerService::new(
-            Arc::new(|_, _| {}),
-            false,
-        );
+        let organizer =
+            crate::services::organizer_service::OrganizerService::new(Arc::new(|_, _| {}), false);
         let services = Arc::new(crate::app::controller::Services { organizer });
-        let library_service = crate::services::library_service::LibraryService::new(
-            Arc::new(|_, _| {}),
-            None,
-        );
+        let library_service =
+            crate::services::library_service::LibraryService::new(Arc::new(|_, _| {}), None);
         let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
         let palette = Palette::default();
         let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
@@ -475,26 +567,33 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())));
-        let mut view = ScanView::new(services, library_service, jobs, Arc::clone(&config), palette, logger, watchdog);
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(
+            std::env::temp_dir().to_str().unwrap(),
+        )));
+        let mut view = ScanView::new(
+            services,
+            library_service,
+            jobs,
+            Arc::clone(&config),
+            palette,
+            logger,
+            watchdog,
+        );
         view.feed("test message");
         assert_eq!(view.state.activity.len(), 1);
     }
 
     #[test]
     fn test_scan_view_phase_done() {
-        let organizer = crate::services::organizer_service::OrganizerService::new(
-            Arc::new(|_, _| {}),
-            false,
-        );
+        let organizer =
+            crate::services::organizer_service::OrganizerService::new(Arc::new(|_, _| {}), false);
         let services = Arc::new(crate::app::controller::Services { organizer });
-        let library_service = crate::services::library_service::LibraryService::new(
-            Arc::new(|_, _| {}),
-            None,
-        );
+        let library_service =
+            crate::services::library_service::LibraryService::new(Arc::new(|_, _| {}), None);
         let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
         let palette = Palette::default();
         let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
@@ -503,11 +602,22 @@ mod tests {
                 "INFO",
                 false,
                 false,
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())));
-        let mut view = ScanView::new(services, library_service, jobs, Arc::clone(&config), palette, logger, watchdog);
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(
+            std::env::temp_dir().to_str().unwrap(),
+        )));
+        let mut view = ScanView::new(
+            services,
+            library_service,
+            jobs,
+            Arc::clone(&config),
+            palette,
+            logger,
+            watchdog,
+        );
         view.phase_done("cleanup");
         assert!(view.state.phase_states[0]);
     }

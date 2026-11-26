@@ -39,7 +39,10 @@ impl ConnectionPool {
         if let Some(client) = clients.get(host) {
             return client.clone();
         }
-        let client = Client::builder().timeout(self.timeout).build().expect("client must build");
+        let client = Client::builder()
+            .timeout(self.timeout)
+            .build()
+            .expect("client must build");
         let arc = Arc::new(client);
         clients.insert(host.to_string(), arc.clone());
         arc

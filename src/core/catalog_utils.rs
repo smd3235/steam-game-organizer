@@ -389,4 +389,3 @@ mod tests {
         assert_eq!(batch_button("Action", 0, 0, "Extract", "Title", ""), "");
     }
 }
-

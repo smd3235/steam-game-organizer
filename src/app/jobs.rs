@@ -8,8 +8,8 @@
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::SystemTime;
 
@@ -87,7 +87,10 @@ impl JobManager {
         );
         let ctx = Arc::new(JobContext::new(&job_id));
         {
-            self.jobs.lock().unwrap().insert(job_id.clone(), ctx.clone());
+            self.jobs
+                .lock()
+                .unwrap()
+                .insert(job_id.clone(), ctx.clone());
         }
 
         let ctx_clone = ctx.clone();
@@ -183,4 +186,3 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
 }
-

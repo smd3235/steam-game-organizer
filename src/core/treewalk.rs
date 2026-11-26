@@ -77,10 +77,7 @@ mod tests {
 
     #[test]
     fn test_walk_files_empty() {
-        let nonexistent = std::env::temp_dir().join(format!(
-            "nonexistent_{}",
-            std::process::id()
-        ));
+        let nonexistent = std::env::temp_dir().join(format!("nonexistent_{}", std::process::id()));
         let result = walk_files(&nonexistent);
         assert!(result.is_empty());
     }

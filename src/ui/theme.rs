@@ -165,17 +165,17 @@ pub fn separator(ui: &mut egui::Ui) {
 /// Section header with accent-colored label.
 pub fn section_header(ui: &mut egui::Ui, palette: &Palette, text: &str) {
     ui.add_space(SPACING_LG);
-    ui.label(
-        RichText::new(text)
-            .color(palette.accent)
-            .strong()
-            .small(),
-    );
+    ui.label(RichText::new(text).color(palette.accent).strong().small());
     ui.add_space(SPACING);
 }
 
 /// A styled primary button with hover feedback and disabled state.
-pub fn primary_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: bool) -> egui::Response {
+pub fn primary_button(
+    ui: &mut egui::Ui,
+    text: &str,
+    palette: &Palette,
+    enabled: bool,
+) -> egui::Response {
     let button = egui::Button::new(RichText::new(text).color(Color32::WHITE).strong())
         .fill(palette.accent)
         .corner_radius(CORNER_RADIUS)
@@ -188,11 +188,19 @@ pub fn primary_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled:
 }
 
 /// A styled secondary button with panel2 fill and accent border, with hover feedback.
-pub fn secondary_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: bool) -> egui::Response {
+pub fn secondary_button(
+    ui: &mut egui::Ui,
+    text: &str,
+    palette: &Palette,
+    enabled: bool,
+) -> egui::Response {
     let button = egui::Button::new(RichText::new(text).color(palette.accent).strong())
         .fill(palette.panel2)
         .corner_radius(CORNER_RADIUS)
-        .stroke(Stroke { width: 1.5_f32, color: palette.accent })
+        .stroke(Stroke {
+            width: 1.5_f32,
+            color: palette.accent,
+        })
         .min_size(Vec2::new(110.0, 36.0));
     if enabled {
         ui.add(button)
@@ -202,7 +210,12 @@ pub fn secondary_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enable
 }
 
 /// A danger button with red fill and hover darkening.
-pub fn danger_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: bool) -> egui::Response {
+pub fn danger_button(
+    ui: &mut egui::Ui,
+    text: &str,
+    palette: &Palette,
+    enabled: bool,
+) -> egui::Response {
     let button = egui::Button::new(RichText::new(text).color(Color32::WHITE).strong())
         .fill(palette.danger)
         .corner_radius(CORNER_RADIUS)
@@ -215,11 +228,19 @@ pub fn danger_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: 
 }
 
 /// A ghost button (panel3 fill, accent text) — visible on dark panels via fill and border.
-pub fn ghost_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: bool) -> egui::Response {
+pub fn ghost_button(
+    ui: &mut egui::Ui,
+    text: &str,
+    palette: &Palette,
+    enabled: bool,
+) -> egui::Response {
     let button = egui::Button::new(RichText::new(text).color(palette.accent).strong())
         .fill(palette.panel3)
         .corner_radius(CORNER_RADIUS)
-        .stroke(Stroke { width: 1.0_f32, color: palette.border_focus })
+        .stroke(Stroke {
+            width: 1.0_f32,
+            color: palette.border_focus,
+        })
         .min_size(Vec2::new(110.0, 36.0));
     if enabled {
         ui.add(button)
@@ -229,11 +250,19 @@ pub fn ghost_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: b
 }
 
 /// A small button for list-row actions (e.g. "Select"), with minimal width.
-pub fn small_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: bool) -> egui::Response {
+pub fn small_button(
+    ui: &mut egui::Ui,
+    text: &str,
+    palette: &Palette,
+    enabled: bool,
+) -> egui::Response {
     let button = egui::Button::new(RichText::new(text).color(palette.text).strong())
         .fill(palette.panel3)
         .corner_radius(SMALL_RADIUS)
-        .stroke(Stroke { width: 1.0_f32, color: palette.border })
+        .stroke(Stroke {
+            width: 1.0_f32,
+            color: palette.border,
+        })
         .min_size(Vec2::new(60.0, 28.0));
     if enabled {
         ui.add(button)
@@ -245,11 +274,8 @@ pub fn small_button(ui: &mut egui::Ui, text: &str, palette: &Palette, enabled: b
 /// A card container with rounded background and border for separation.
 pub fn card(ui: &mut egui::Ui, palette: &Palette, contents: impl FnOnce(&mut egui::Ui)) {
     let rect = ui.min_rect();
-    ui.painter().rect_filled(
-        rect.expand(1.0),
-        CORNER_RADIUS,
-        palette.panel2,
-    );
+    ui.painter()
+        .rect_filled(rect.expand(1.0), CORNER_RADIUS, palette.panel2);
     contents(ui);
 }
 
@@ -278,11 +304,8 @@ pub fn card_centered(
     let left_margin = (available_width - card_width) / 2.0;
     ui.add_space(left_margin);
     ui.set_max_width(card_width);
-    ui.painter().rect_filled(
-        ui.min_rect().expand(1.0),
-        CORNER_RADIUS,
-        palette.panel2,
-    );
+    ui.painter()
+        .rect_filled(ui.min_rect().expand(1.0), CORNER_RADIUS, palette.panel2);
     contents(ui);
     ui.add_space(left_margin);
 }
@@ -322,7 +345,12 @@ pub fn heading(ui: &mut egui::Ui, palette: &Palette, text: &str) {
 
 /// A subheading text.
 pub fn subheading(ui: &mut egui::Ui, palette: &Palette, text: &str) {
-    ui.label(RichText::new(text).color(palette.text_secondary).strong().size(16.0));
+    ui.label(
+        RichText::new(text)
+            .color(palette.text_secondary)
+            .strong()
+            .size(16.0),
+    );
     ui.add_space(SPACING);
 }
 
@@ -342,7 +370,10 @@ pub fn spinner(ui: &mut egui::Ui, size: f32, palette: &Palette) -> egui::Respons
     ui.painter().circle_stroke(
         center,
         radius,
-        egui::Stroke { width: 3.0, color: palette.accent },
+        egui::Stroke {
+            width: 3.0,
+            color: palette.accent,
+        },
     );
     ui.painter().line_segment(
         [
@@ -352,7 +383,10 @@ pub fn spinner(ui: &mut egui::Ui, size: f32, palette: &Palette) -> egui::Respons
                 center.y + angle.sin() * radius,
             ),
         ],
-        egui::Stroke { width: 3.0, color: palette.accent },
+        egui::Stroke {
+            width: 3.0,
+            color: palette.accent,
+        },
     );
     ui.allocate_rect(rect, egui::Sense::hover())
 }
@@ -377,7 +411,12 @@ pub fn empty_state(ui: &mut egui::Ui, palette: &Palette, icon: &str, title: &str
             ui.add_space(SPACING / 2.0);
             ui.label(RichText::new(title).color(palette.text).strong().small());
             ui.add_space(SPACING / 4.0);
-            ui.label(RichText::new(desc).color(palette.text_secondary).small().italics());
+            ui.label(
+                RichText::new(desc)
+                    .color(palette.text_secondary)
+                    .small()
+                    .italics(),
+            );
             ui.add_space(SPACING_LG);
         });
     });
@@ -431,11 +470,8 @@ pub fn archive_row(
     ui.painter().rect_filled(rect.expand(1.0), SMALL_RADIUS, bg);
     let response = ui.selectable_label(selected, RichText::new(name).color(palette.text));
     if response.hovered() && !selected {
-        ui.painter().rect_filled(
-            rect.expand(1.0),
-            SMALL_RADIUS,
-            palette.entry_hover,
-        );
+        ui.painter()
+            .rect_filled(rect.expand(1.0), SMALL_RADIUS, palette.entry_hover);
     }
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         ui.label(RichText::new(size).color(palette.text_secondary).small());
@@ -444,20 +480,28 @@ pub fn archive_row(
 }
 
 /// A navigation sidebar item.
-pub fn nav_item(ui: &mut egui::Ui, palette: &Palette, icon: &str, label: &str, active: bool) -> egui::Response {
+pub fn nav_item(
+    ui: &mut egui::Ui,
+    palette: &Palette,
+    icon: &str,
+    label: &str,
+    active: bool,
+) -> egui::Response {
     let text_color = if active {
         palette.accent
     } else {
         palette.text_secondary
     };
     ui.add_space(SPACING / 2.0);
-    let response = ui.selectable_label(active, RichText::new(format!("{}  {}", icon, label)).color(text_color).strong());
+    let response = ui.selectable_label(
+        active,
+        RichText::new(format!("{}  {}", icon, label))
+            .color(text_color)
+            .strong(),
+    );
     if response.hovered() && !active {
-        ui.painter().rect_filled(
-            response.rect.expand(2.0),
-            SMALL_RADIUS,
-            palette.entry_hover,
-        );
+        ui.painter()
+            .rect_filled(response.rect.expand(2.0), SMALL_RADIUS, palette.entry_hover);
     }
     ui.add_space(SPACING / 2.0);
     response

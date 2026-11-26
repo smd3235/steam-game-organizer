@@ -3,8 +3,8 @@
 //!
 //! 2026-11-25: egui game list stub in the Rust conversion.
 
+use crate::ui::theme::{separator, Palette};
 use egui::{RichText, ScrollArea, Ui};
-use crate::ui::theme::{Palette, separator};
 
 pub struct GameListState {
     pub items: Vec<String>,
@@ -39,7 +39,11 @@ impl GameList {
 
     pub fn ui(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
-            ui.label(RichText::new("Game Queue").strong().color(self.palette.accent_hi));
+            ui.label(
+                RichText::new("Game Queue")
+                    .strong()
+                    .color(self.palette.accent_hi),
+            );
             separator(ui);
 
             ui.horizontal(|ui| {
@@ -50,8 +54,16 @@ impl GameList {
                     .selected_text(&self.state.filter)
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.state.filter, "All".to_string(), "All");
-                        ui.selectable_value(&mut self.state.filter, "New Only".to_string(), "New Only");
-                        ui.selectable_value(&mut self.state.filter, "Verified".to_string(), "Verified");
+                        ui.selectable_value(
+                            &mut self.state.filter,
+                            "New Only".to_string(),
+                            "New Only",
+                        );
+                        ui.selectable_value(
+                            &mut self.state.filter,
+                            "Verified".to_string(),
+                            "Verified",
+                        );
                     });
             });
 
@@ -65,7 +77,11 @@ impl GameList {
                     }
                 }
                 if self.state.items.is_empty() {
-                    ui.label(RichText::new("(no games)").color(self.palette.muted).italics());
+                    ui.label(
+                        RichText::new("(no games)")
+                            .color(self.palette.muted)
+                            .italics(),
+                    );
                 }
             });
 

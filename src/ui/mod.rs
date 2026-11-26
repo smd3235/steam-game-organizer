@@ -8,6 +8,7 @@
 pub mod artwork_view;
 pub mod batch_extract_window;
 pub mod done_view;
+pub mod e2e_integration_tests;
 pub mod extract_result_window;
 pub mod main_window;
 pub mod organize_view;
@@ -18,7 +19,6 @@ pub mod setup_view;
 pub mod setup_window;
 pub mod theme;
 pub mod widgets;
-pub mod e2e_integration_tests;
 
 #[cfg(test)]
 mod integration_tests;

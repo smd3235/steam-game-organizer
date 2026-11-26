@@ -6,9 +6,9 @@
 //! the source of truth until their Rust replacement passes `cargo test` and is
 //! lint-clean.
 
-pub mod core;
-pub mod services;
 pub mod app;
-pub mod ui;
+pub mod core;
 pub mod entry;
+pub mod services;
 pub mod tools;
+pub mod ui;

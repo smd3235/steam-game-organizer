@@ -5,28 +5,27 @@
 //! Tests simulate button clicks by directly calling view handlers and verifying state transitions.
 
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::fs;
 
 use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
 use crate::core::config::AppConfig;
+use crate::core::errors::Watchdog;
 use crate::core::logger::AppLogger;
 use crate::core::models::{
     ArtworkResult, ConversionResult, GameArchive, OrganizationDecision, SteamMatch,
 };
-use crate::core::errors::Watchdog;
 use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
-use crate::ui::theme::Palette;
 use crate::ui::artwork_view::ArtworkView;
 use crate::ui::done_view::DoneView;
 use crate::ui::organize_view::OrganizeView;
 use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::{ScanView, SCAN_PHASES};
 use crate::ui::setup_view::SetupView;
-
+use crate::ui::theme::Palette;
 
 /// Helper: create a test AppLogger
 fn test_logger() -> Arc<AppLogger> {
@@ -36,7 +35,9 @@ fn test_logger() -> Arc<AppLogger> {
 
 /// Helper: create a test AppConfig
 fn test_config() -> Arc<AppConfig> {
-    Arc::new(AppConfig::new(std::path::Path::new(std::env::temp_dir().to_str().unwrap())))
+    Arc::new(AppConfig::new(std::path::Path::new(
+        std::env::temp_dir().to_str().unwrap(),
+    )))
 }
 
 /// Helper: create a test Watchdog
@@ -47,20 +48,15 @@ fn test_watchdog(logger: Arc<AppLogger>) -> Arc<Watchdog> {
 /// Helper: create test services
 fn test_services() -> Arc<Services> {
     let logger = test_logger();
-    let organizer = OrganizerService::new(
-        Arc::new(move |cat, msg| logger.info(cat, msg, "")),
-        false,
-    );
+    let organizer =
+        OrganizerService::new(Arc::new(move |cat, msg| logger.info(cat, msg, "")), false);
     Arc::new(Services { organizer })
 }
 
 /// Helper: create test library service
 fn test_library_service() -> LibraryService {
     let logger = test_logger();
-    LibraryService::new(
-        Arc::new(move |cat, msg| logger.info(cat, msg, "")),
-        None,
-    )
+    LibraryService::new(Arc::new(move |cat, msg| logger.info(cat, msg, "")), None)
 }
 
 /// Helper: create test jobs
@@ -173,7 +169,10 @@ fn test_e2e_full_flow_scan_to_done() {
     scan_view.state.scan_with_artwork = true;
     scan_view.state.should_scan = true;
     scan_view.state.status = "Scan + Artwork starting…".to_string();
-    scan_view.state.activity.push("Scan + Artwork starting…".to_string());
+    scan_view
+        .state
+        .activity
+        .push("Scan + Artwork starting…".to_string());
     assert!(scan_view.state.scanning);
     assert!(scan_view.state.scan_with_artwork);
 
@@ -192,7 +191,11 @@ fn test_e2e_full_flow_scan_to_done() {
     // Test phase_done() for all 6 phases
     for (i, (key, _label)) in SCAN_PHASES.iter().enumerate() {
         scan_view.phase_done(key);
-        assert!(scan_view.state.phase_states[i], "Phase {} should be done", key);
+        assert!(
+            scan_view.state.phase_states[i],
+            "Phase {} should be done",
+            key
+        );
     }
 
     // Test phase_start() for all 6 phases
@@ -216,7 +219,8 @@ fn test_e2e_full_flow_scan_to_done() {
     println!("✓ SCAN VIEW: All buttons and controls verified");
 
     // ========== REVIEW VIEW ==========
-    let mut review_view = ReviewView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut review_view =
+        ReviewView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
 
     // Initial state
     assert!(review_view.state.archives.is_empty());
@@ -260,12 +264,18 @@ fn test_e2e_full_flow_scan_to_done() {
     // Click Retry Failed
     review_view.state.should_retry_failed = true;
     review_view.retry_failed();
-    assert_eq!(review_view.state.status, "Failed archives retried".to_string());
+    assert_eq!(
+        review_view.state.status,
+        "Failed archives retried".to_string()
+    );
 
     // Click Continue to Organization
     review_view.state.status = "Continue to Organization clicked".to_string();
     review_view.state.should_continue_organize = true;
-    assert_eq!(review_view.state.status, "Continue to Organization clicked".to_string());
+    assert_eq!(
+        review_view.state.status,
+        "Continue to Organization clicked".to_string()
+    );
 
     // Click Accept & Next
     review_view.state.should_accept_next = true;
@@ -320,7 +330,8 @@ fn test_e2e_full_flow_scan_to_done() {
     println!("✓ REVIEW VIEW: All buttons and controls verified");
 
     // ========== ORGANIZE VIEW ==========
-    let mut organize_view = OrganizeView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut organize_view =
+        OrganizeView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
 
     // Initial state
     assert!(organize_view.state.archives.is_empty());
@@ -352,7 +363,10 @@ fn test_e2e_full_flow_scan_to_done() {
     organize_view.state.converting = true;
     organize_view.state.should_organize = true;
     organize_view.state.status = "Organization starting…".to_string();
-    organize_view.state.activity.push("Organization starting…".to_string());
+    organize_view
+        .state
+        .activity
+        .push("Organization starting…".to_string());
     assert!(organize_view.state.converting);
 
     // Run organize (preview_only = true so nothing actually moves)
@@ -375,7 +389,11 @@ fn test_e2e_full_flow_scan_to_done() {
     // Test feed
     organize_view.feed("Organizing test...");
     assert!(organize_view.state.activity.len() > 0);
-    assert!(organize_view.state.activity.iter().any(|a| a.contains("Organizing test")));
+    assert!(organize_view
+        .state
+        .activity
+        .iter()
+        .any(|a| a.contains("Organizing test")));
 
     // Test shutdown
     organize_view.state.converting = true;
@@ -386,7 +404,8 @@ fn test_e2e_full_flow_scan_to_done() {
     println!("✓ ORGANIZE VIEW: All buttons and controls verified");
 
     // ========== ARTWORK VIEW ==========
-    let mut artwork_view = ArtworkView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut artwork_view =
+        ArtworkView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
 
     // Initial state
     assert!(artwork_view.state.archives.is_empty());
@@ -452,15 +471,26 @@ fn test_e2e_full_flow_scan_to_done() {
     assert_eq!(done_view.state.archives.len(), 0);
     assert_eq!(done_view.state.converted, 0);
     assert_eq!(done_view.state.skipped, 0);
-    assert_eq!(done_view.state.status, "Organization run undone.".to_string());
+    assert_eq!(
+        done_view.state.status,
+        "Organization run undone.".to_string()
+    );
 
     // Reload and test other buttons
-    done_view.load(vec![make_test_archive("Done Game 3", "66666", "Action")], 1, 0, 0);
+    done_view.load(
+        vec![make_test_archive("Done Game 3", "66666", "Action")],
+        1,
+        0,
+        0,
+    );
 
     // Click Open Library
     done_view.state.should_open_library = true;
     done_view.open_library();
-    assert_eq!(done_view.state.status, "Opening library folder…".to_string());
+    assert_eq!(
+        done_view.state.status,
+        "Opening library folder…".to_string()
+    );
 
     // Click Scan Again
     done_view.state.status = "Scan Again clicked".to_string();
@@ -487,7 +517,10 @@ fn test_e2e_full_flow_scan_to_done() {
 
     // Test 7z path field
     setup_view.state.seven_zip_path = "C:\\Program Files\\7-Zip\\7z.exe".to_string();
-    assert_eq!(setup_view.state.seven_zip_path, "C:\\Program Files\\7-Zip\\7z.exe");
+    assert_eq!(
+        setup_view.state.seven_zip_path,
+        "C:\\Program Files\\7-Zip\\7z.exe"
+    );
 
     // Test Developer Mode checkbox
     setup_view.state.developer_mode = true;
@@ -507,13 +540,24 @@ fn test_e2e_full_flow_scan_to_done() {
     setup_view.state.should_validate = true;
     setup_view.validate_config();
     assert!(!setup_view.state.validation_messages.is_empty());
-    assert!(setup_view.state.validation_messages.iter().any(|m| m.starts_with("✗")));
+    assert!(setup_view
+        .state
+        .validation_messages
+        .iter()
+        .any(|m| m.starts_with("✗")));
 
     // Set valid paths and validate again
     setup_view.state.library_root = std::env::temp_dir().to_string_lossy().to_string();
-    setup_view.state.extract_folder = std::env::temp_dir().join("e2e_extract").to_string_lossy().to_string();
+    setup_view.state.extract_folder = std::env::temp_dir()
+        .join("e2e_extract")
+        .to_string_lossy()
+        .to_string();
     setup_view.validate_config();
-    assert!(setup_view.state.validation_messages.iter().any(|m| m.starts_with("✓")));
+    assert!(setup_view
+        .state
+        .validation_messages
+        .iter()
+        .any(|m| m.starts_with("✓")));
 
     // Click Clear
     setup_view.state.validation_messages.clear();
@@ -524,23 +568,36 @@ fn test_e2e_full_flow_scan_to_done() {
     // Click Save & Finish Setup (should succeed with valid paths)
     setup_view.state.should_save = true;
     setup_view.save_config();
-    assert_eq!(setup_view.state.status, "Configuration saved successfully!".to_string());
+    assert_eq!(
+        setup_view.state.status,
+        "Configuration saved successfully!".to_string()
+    );
 
     // Test saving again (idempotent)
     setup_view.save_config();
-    assert_eq!(setup_view.state.status, "Configuration saved successfully!".to_string());
+    assert_eq!(
+        setup_view.state.status,
+        "Configuration saved successfully!".to_string()
+    );
 
     // Click Skip Setup
     setup_view.state.status = "Setup skipped — using defaults".to_string();
-    assert_eq!(setup_view.state.status, "Setup skipped — using defaults".to_string());
+    assert_eq!(
+        setup_view.state.status,
+        "Setup skipped — using defaults".to_string()
+    );
 
     println!("✓ SETUP VIEW: All buttons and controls verified");
 
     println!("\n✅✅✓ ALL 5 VIEWS: Every button and control verified successfully!");
     println!("   Scan: Start Scan, Scan + Artwork, Cancel Scan, checkboxes, phases, feed");
     println!("   Review: Approve All, Add Category, Use Suggestions, Retry Failed, Continue,");
-    println!("           Accept & Next, Skip, Wrong Match, Extract Selected, per-archive Accept/Reject");
-    println!("   Organize: Start Organize, Cancel, Preview Only, progress tracking, feed, shutdown");
+    println!(
+        "           Accept & Next, Skip, Wrong Match, Extract Selected, per-archive Accept/Reject"
+    );
+    println!(
+        "   Organize: Start Organize, Cancel, Preview Only, progress tracking, feed, shutdown"
+    );
     println!("   Artwork: Open Folder, View Artwork, Re-download Missing, Scan Again, Review");
     println!("   Done: Undo, Open Library, Scan Again, mixed results");
     println!("   Setup: Browse x3, Validate, Clear, Save & Finish, Skip Setup, Developer Mode");
@@ -610,7 +667,10 @@ fn test_review_with_empty_archives() {
 
     // Approve all on empty list
     view.approve_all_verified();
-    assert_eq!(view.state.status, "All verified archives approved".to_string());
+    assert_eq!(
+        view.state.status,
+        "All verified archives approved".to_string()
+    );
 
     // Use all suggestions on empty list
     view.use_all_suggestions();
@@ -692,18 +752,30 @@ fn test_setup_with_invalid_paths() {
     view.state.should_validate = true;
     view.validate_config();
     assert!(!view.state.validation_messages.is_empty());
-    assert!(view.state.validation_messages.iter().any(|m| m.starts_with("✗")));
+    assert!(view
+        .state
+        .validation_messages
+        .iter()
+        .any(|m| m.starts_with("✗")));
 
     // Non-existent library root
     view.state.library_root = "C:\\Nonexistent\\Path\\That\\Does\\Not\\Exist".to_string();
     view.validate_config();
-    assert!(view.state.validation_messages.iter().any(|m| m.contains("not found")));
+    assert!(view
+        .state
+        .validation_messages
+        .iter()
+        .any(|m| m.contains("not found")));
 
     // Non-existent 7z path
     view.state.library_root = std::env::temp_dir().to_string_lossy().to_string();
     view.state.seven_zip_path = "C:\\Nonexistent\\7z.exe".to_string();
     view.validate_config();
-    assert!(view.state.validation_messages.iter().any(|m| m.contains("not found")));
+    assert!(view
+        .state
+        .validation_messages
+        .iter()
+        .any(|m| m.contains("not found")));
 }
 
 #[test]
@@ -753,17 +825,20 @@ fn test_state_persistence_across_views() {
     assert_eq!(scan_view.state.discovered_archives.len(), 2);
 
     // Transfer to review view (simulating MainWindow sync)
-    let mut review_view = ReviewView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut review_view =
+        ReviewView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
     review_view.load(scan_view.state.discovered_archives.clone());
     assert_eq!(review_view.state.archives.len(), 2);
 
     // Transfer to organize view
-    let mut organize_view = OrganizeView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut organize_view =
+        OrganizeView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
     organize_view.load(review_view.state.archives.clone());
     assert_eq!(organize_view.state.archives.len(), 2);
 
     // Transfer to artwork view
-    let mut artwork_view = ArtworkView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut artwork_view =
+        ArtworkView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
     artwork_view.load(organize_view.state.archives.clone());
     assert_eq!(artwork_view.state.archives.len(), 2);
 

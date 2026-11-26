@@ -61,7 +61,13 @@ fn main() {
     let args = Args::parse();
 
     // If any headless flag is present, delegate to the CLI entry point
-    if args.version || args.diagnostics || args.health || args.uri.is_some() || args.extract.is_some() || args.setup {
+    if args.version
+        || args.diagnostics
+        || args.health
+        || args.uri.is_some()
+        || args.extract.is_some()
+        || args.setup
+    {
         process::exit(entry_main());
     }
 
@@ -146,10 +152,18 @@ fn main() {
             logger_for_shutdown.info("APPLICATION", "SHUTDOWN", "");
         }
         Ok(Err(e)) => {
-            logger_for_shutdown.error("APPLICATION", &format!("eframe::run_native error: {:?}", e), "");
+            logger_for_shutdown.error(
+                "APPLICATION",
+                &format!("eframe::run_native error: {:?}", e),
+                "",
+            );
         }
         Err(panic) => {
-            logger_for_shutdown.error("APPLICATION", &format!("eframe::run_native panicked: {:?}", panic), "");
+            logger_for_shutdown.error(
+                "APPLICATION",
+                &format!("eframe::run_native panicked: {:?}", panic),
+                "",
+            );
         }
     }
 }
