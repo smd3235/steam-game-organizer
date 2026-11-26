@@ -293,6 +293,117 @@ pub fn body_text(ui: &mut egui::Ui, palette: &Palette, text: &str) {
     ui.add_space(SPACING);
 }
 
+/// A spinning loader indicator for async operations.
+pub fn spinner(ui: &mut egui::Ui, size: f32, palette: &Palette) -> egui::Response {
+    let rect = ui.available_rect_before_wrap().shrink(4.0);
+    let center = rect.center();
+    let radius = size / 2.0;
+    let time = ui.input(|i| i.time as f32);
+    let angle = (time * 4.0) % (2.0 * std::f32::consts::PI);
+    ui.painter().circle_stroke(
+        center,
+        radius,
+        egui::Stroke { width: 3.0, color: palette.accent },
+    );
+    ui.painter().line_segment(
+        [
+            center,
+            egui::pos2(
+                center.x + angle.cos() * radius,
+                center.y + angle.sin() * radius,
+            ),
+        ],
+        egui::Stroke { width: 3.0, color: palette.accent },
+    );
+    ui.allocate_rect(rect, egui::Sense::hover())
+}
+
+/// A loading card shown during async operations (scan, organize, extract).
+pub fn loading_card(ui: &mut egui::Ui, palette: &Palette, label: &str) {
+    card(ui, palette, |ui| {
+        ui.vertical_centered(|ui| {
+            spinner(ui, 24.0, palette);
+            ui.add_space(SPACING / 2.0);
+            ui.label(RichText::new(label).color(palette.text_secondary).small());
+        });
+    });
+}
+
+/// An empty state with icon, title, and description.
+pub fn empty_state(ui: &mut egui::Ui, palette: &Palette, icon: &str, title: &str, desc: &str) {
+    card(ui, palette, |ui| {
+        ui.vertical_centered(|ui| {
+            ui.add_space(SPACING_LG);
+            ui.label(RichText::new(icon).size(32.0));
+            ui.add_space(SPACING / 2.0);
+            ui.label(RichText::new(title).color(palette.text).strong().small());
+            ui.add_space(SPACING / 4.0);
+            ui.label(RichText::new(desc).color(palette.text_secondary).small().italics());
+            ui.add_space(SPACING_LG);
+        });
+    });
+}
+
+/// Map a category name to an accent color pill.
+pub fn category_pill_color(category: &str, palette: &Palette) -> Color32 {
+    match category {
+        "Action" | "Adventure" => palette.orange,
+        "RPG" | "Role-Playing" => palette.purple,
+        "Strategy" => palette.sky,
+        "Simulation" => palette.cyan,
+        "Shooter" | "FPS" => palette.red,
+        "Platformer" => palette.green,
+        "Puzzle" => palette.pink,
+        "Racing" => palette.violet,
+        "Sports" => palette.green_light,
+        "Indie" => palette.accent,
+        _ => palette.text_secondary,
+    }
+}
+
+/// A category pill with color-coded background.
+pub fn category_pill(ui: &mut egui::Ui, category: &str, palette: &Palette) -> egui::Response {
+    let color = category_pill_color(category, palette);
+    let label = RichText::new(category).color(palette.bg).small().strong();
+    ui.add(
+        egui::Button::new(label)
+            .fill(color)
+            .corner_radius(SMALL_RADIUS)
+            .frame(false)
+            .min_size(Vec2::new(0.0, 0.0)),
+    )
+    .on_hover_text(format!("Category: {}", category))
+}
+
+/// An archive list row with hover state and selection. Returns the response for click handling.
+pub fn archive_row(
+    ui: &mut egui::Ui,
+    palette: &Palette,
+    name: &str,
+    size: &str,
+    selected: bool,
+) -> egui::Response {
+    let bg = if selected {
+        palette.entry_selected
+    } else {
+        palette.entry_bg
+    };
+    let rect = ui.min_rect();
+    ui.painter().rect_filled(rect.expand(1.0), SMALL_RADIUS, bg);
+    let response = ui.selectable_label(selected, RichText::new(name).color(palette.text));
+    if response.hovered() && !selected {
+        ui.painter().rect_filled(
+            rect.expand(1.0),
+            SMALL_RADIUS,
+            palette.entry_hover,
+        );
+    }
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.label(RichText::new(size).color(palette.text_secondary).small());
+    });
+    response
+}
+
 /// A navigation sidebar item.
 pub fn nav_item(ui: &mut egui::Ui, palette: &Palette, icon: &str, label: &str, active: bool) -> egui::Response {
     let text_color = if active {

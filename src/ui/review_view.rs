@@ -14,8 +14,8 @@ use egui::{RichText, ScrollArea};
 
 use crate::ui::theme;
 use crate::ui::theme::{
-    card, danger_button, pill, primary_button, secondary_button, small_button, Palette,
-    separator, stat_card,
+    archive_row, card, category_pill, danger_button, empty_state, heading, primary_button,
+    secondary_button, Palette, separator, stat_card,
 };
 
 #[derive(Default, Clone)]
@@ -119,7 +119,7 @@ impl ReviewView {
 
         card(ui, &self.palette, |ui| {
             // Header
-            ui.label(RichText::new("Game Review").color(self.palette.text).strong().size(18.0));
+            heading(ui, &self.palette, "Game Review");
             ui.label(RichText::new("Verify Steam matches, pick categories, accept games").color(self.palette.muted).small());
             separator(ui);
 
@@ -162,22 +162,28 @@ impl ReviewView {
                 ui.vertical(|ui| {
                     ui.label(RichText::new("Archives").strong().color(self.palette.muted));
                     ScrollArea::vertical().id_salt("review_list").max_height(400.0).show(ui, |ui| {
-                        for (i, archive) in self.state.archives.iter().enumerate() {
-                            let selected = self.state.selected_index == Some(i);
-                            let name = if archive.display_name.is_empty() {
-                                archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
-                            } else {
-                                archive.display_name.clone()
-                            };
-                            let kind = if selected { "accent" } else { "muted" };
-                            pill(ui, &name, kind, &self.palette);
-                            if small_button(ui, "Select", &self.palette, true).clicked() {
-                                self.state.selected_index = Some(i);
-                                self.logger.log("REVIEW", &format!("Selected archive: {}", name), "");
-                            }
-                        }
                         if self.state.archives.is_empty() {
-                            ui.label(RichText::new("(no archives — run Scan first)").color(self.palette.muted).italics());
+                            empty_state(ui, &self.palette, "📭", "No archives yet", "Run Scan first to discover game archives.");
+                        } else {
+                            for (i, archive) in self.state.archives.iter().enumerate() {
+                                let selected = self.state.selected_index == Some(i);
+                                let name = if archive.display_name.is_empty() {
+                                    archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
+                                } else {
+                                    archive.display_name.clone()
+                                };
+                                let response = archive_row(
+                                    ui,
+                                    &self.palette,
+                                    &name,
+                                    &format!("{} bytes", archive.size),
+                                    selected,
+                                );
+                                if response.clicked() {
+                                    self.state.selected_index = Some(i);
+                                    self.logger.log("REVIEW", &format!("Selected archive: {}", name), "");
+                                }
+                            }
                         }
                     });
                 });
@@ -195,7 +201,10 @@ impl ReviewView {
                                 separator(ui);
                                 ui.label(format!("  Name: {}", archive.display_name));
                                 ui.label(format!("  APPID: {}", archive.steam.appid));
-                                ui.label(format!("  Category: {}", archive.decision.category));
+                                ui.horizontal(|ui| {
+                                    ui.label("  Category: ");
+                                    category_pill(ui, &archive.decision.category, &self.palette);
+                                });
                                 ui.label(format!("  Identity Key: {}", archive.identity_key));
                                 separator(ui);
                                 ui.label(RichText::new("Evidence:").small().color(self.palette.muted));

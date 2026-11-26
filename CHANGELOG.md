@@ -23,6 +23,16 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — feat: UI design additions — spinner, loading cards, empty states, category pills, archive rows
+
+- `src/ui/theme.rs`: Added `spinner()` animated loader for async operations; `loading_card()` centered loading state; `empty_state()` with icon/title/description for zero-data views; `archive_row()` hover-styled selectable list rows; `category_pill()` color-coded category badges using cyan/sky/pink/purple/violet accent colors; `category_pill_color()` category-to-color mapper
+- `src/ui/scan_view.rs`: `loading_card()` during scan; `empty_state()` when no archives discovered; `archive_row()` for discovered archives list
+- `src/ui/review_view.rs`: `empty_state()` when no archives; `archive_row()` with click-to-select; `category_pill()` in detail panel; `heading()` for page header
+- `src/ui/organize_view.rs`: `loading_card()` during organize; `empty_state()` when no archives; `archive_row()` for list; `heading()` for page header
+- `src/ui/artwork_view.rs`: `empty_state()` when no artwork downloaded
+- `src/ui/done_view.rs`: `empty_state()` when no results
+- 316 tests pass, clippy clean, zero warnings in UI source files
+
 ### 2026-11-26 — refactor: UI design improvements — hover states, disabled buttons, focus rings, smaller buttons
 
 - `src/ui/theme.rs`: Added `enabled: bool` parameter to all button helpers (primary/secondary/danger/ghost/small_button) for disabled state support; reduced button sizes from 140x40 to 110x36 (primary/secondary/danger/ghost) and 60x28 (small_button); added `small_button()` helper for list-row actions like "Select"; removed unused dead-code helpers

@@ -20,8 +20,8 @@ use crate::core::errors::Watchdog;
 use egui::{RichText, ScrollArea};
 use crate::ui::theme;
 use crate::ui::theme::{
-    card, danger_button, heading, pill, primary_button, secondary_button, section_header, Palette,
-    separator, stat_card,
+    archive_row, card, danger_button, empty_state, heading, loading_card, pill, primary_button,
+    section_header, secondary_button, Palette, separator, stat_card,
 };
 
 /// Every phase a scan runs through, in order.
@@ -112,6 +112,11 @@ impl ScanView {
         if self.state.should_scan {
             self.state.should_scan = false;
             self.run_scan();
+        }
+
+        if self.state.scanning {
+            loading_card(ui, &self.palette, "Scanning archives…");
+            return;
         }
 
         card(ui, &self.palette, |ui| {
@@ -219,17 +224,23 @@ impl ScanView {
         });
 
         // Show discovered archives in separate card
-        if !self.state.discovered_archives.is_empty() {
+        if self.state.discovered_archives.is_empty() {
+            empty_state(ui, &self.palette, "🔍", "No archives discovered", "Run Scan to find game archives in your library.");
+        } else {
             card(ui, &self.palette, |ui| {
                 section_header(ui, &self.palette, "DISCOVERED ARCHIVES");
                 ScrollArea::vertical().id_salt("discovered_list").max_height(200.0).show(ui, |ui| {
                     for archive in &self.state.discovered_archives {
-                        ui.horizontal(|ui| {
-                            pill(ui, &archive.display_name, "muted", &self.palette);
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                ui.label(RichText::new(format!("{} bytes", archive.size)).small().color(self.palette.muted));
-                            });
-                        });
+                        let response = archive_row(
+                            ui,
+                            &self.palette,
+                            &archive.display_name,
+                            &format!("{} bytes", archive.size),
+                            false,
+                        );
+                        if response.clicked() {
+                            self.logger.log("SCAN", &format!("Clicked archive: {}", archive.display_name), "");
+                        }
                     }
                 });
             });

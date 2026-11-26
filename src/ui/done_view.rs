@@ -13,7 +13,7 @@ use crate::core::errors::Watchdog;
 use egui::{RichText, ScrollArea};
 use crate::ui::theme;
 use crate::ui::theme::{
-    card, heading, pill, primary_button, secondary_button, section_header, Palette,
+    card, empty_state, heading, pill, primary_button, secondary_button, section_header, Palette,
     separator, stat_card,
 };
 
@@ -91,35 +91,36 @@ impl DoneView {
             // Per-archive results
             section_header(ui, &self.palette, "RESULTS");
             ScrollArea::vertical().id_salt("done_results").show(ui, |ui| {
-                for archive in &self.state.archives {
-                    let name = if archive.display_name.is_empty() {
-                        archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
-                    } else {
-                        archive.display_name.clone()
-                    };
-                    ui.horizontal(|ui| {
-                        pill(ui, &name, "muted", &self.palette);
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            let status = if archive.decision.accepted {
-                                "converted".to_string()
-                            } else if archive.decision.skipped {
-                                "skipped".to_string()
-                            } else {
-                                "failed".to_string()
-                            };
-                            let color = if archive.decision.accepted {
-                                self.palette.green
-                            } else if archive.decision.skipped {
-                                self.palette.orange
-                            } else {
-                                self.palette.red
-                            };
-                            ui.label(RichText::new(status).color(color));
-                        });
-                    });
-                }
                 if self.state.archives.is_empty() {
-                    ui.label(RichText::new("(no results yet)").color(self.palette.muted).italics());
+                    empty_state(ui, &self.palette, "✅", "No results yet", "Run Scan → Review → Organize to see results here.");
+                } else {
+                    for archive in &self.state.archives {
+                        let name = if archive.display_name.is_empty() {
+                            archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
+                        } else {
+                            archive.display_name.clone()
+                        };
+                        ui.horizontal(|ui| {
+                            pill(ui, &name, "muted", &self.palette);
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                let status = if archive.decision.accepted {
+                                    "converted".to_string()
+                                } else if archive.decision.skipped {
+                                    "skipped".to_string()
+                                } else {
+                                    "failed".to_string()
+                                };
+                                let color = if archive.decision.accepted {
+                                    self.palette.green
+                                } else if archive.decision.skipped {
+                                    self.palette.orange
+                                } else {
+                                    self.palette.red
+                                };
+                                ui.label(RichText::new(status).color(color));
+                            });
+                        });
+                    }
                 }
             });
 

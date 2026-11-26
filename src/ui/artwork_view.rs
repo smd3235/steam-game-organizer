@@ -12,7 +12,7 @@ use crate::core::errors::Watchdog;
 
 use egui::{RichText, ScrollArea};
 use crate::ui::theme::{
-    card, heading, info_card, secondary_button, section_header, Palette, separator,
+    card, empty_state, heading, info_card, secondary_button, section_header, Palette, separator,
 };
 
 #[derive(Default, Clone)]
@@ -67,8 +67,11 @@ impl ArtworkView {
             // Archive grid
             section_header(ui, &self.palette, "ARCHIVES");
             ScrollArea::vertical().id_salt("artwork_grid").show(ui, |ui| {
-                egui::Grid::new("artwork_grid").num_columns(3).spacing([20.0, 20.0]).show(ui, |ui| {
-                    for (i, archive) in self.state.archives.iter().enumerate() {
+                if self.state.archives.is_empty() {
+                    empty_state(ui, &self.palette, "🖼️", "No artwork downloaded yet", "Scan and organize games first, then download artwork.");
+                } else {
+                    egui::Grid::new("artwork_grid").num_columns(3).spacing([20.0, 20.0]).show(ui, |ui| {
+                        for (i, archive) in self.state.archives.iter().enumerate() {
                         let name = if archive.display_name.is_empty() {
                             archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
                         } else {
@@ -90,11 +93,9 @@ impl ArtworkView {
                             ui.end_row();
                         }
                     }
-                    if self.state.archives.is_empty() {
-                        ui.label(RichText::new("(no artwork downloaded yet)").color(self.palette.muted).italics());
-                    }
                 });
-            });
+            }
+        });
 
             separator(ui);
 

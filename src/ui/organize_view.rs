@@ -13,8 +13,8 @@ use crate::core::errors::Watchdog;
 use egui::{RichText, ScrollArea};
 use crate::ui::theme;
 use crate::ui::theme::{
-    card, danger_button, heading, pill, primary_button, small_button, Palette,
-    separator, stat_card,
+    archive_row, card, danger_button, empty_state, heading, loading_card, primary_button,
+    Palette, separator, stat_card,
 };
 
 #[derive(Default, Clone)]
@@ -83,6 +83,11 @@ impl OrganizeView {
             self.run_organize();
         }
 
+        if self.state.converting {
+            loading_card(ui, &self.palette, "Organizing archives…");
+            return;
+        }
+
         card(ui, &self.palette, |ui| {
             // Header
             heading(ui, &self.palette, "Organize Archives");
@@ -135,22 +140,28 @@ impl OrganizeView {
                 ui.vertical(|ui| {
                     ui.label(RichText::new("Archives to Organize").strong().color(self.palette.muted));
                     ScrollArea::vertical().id_salt("organize_list").max_height(400.0).show(ui, |ui| {
-                        for (i, archive) in self.state.archives.iter().enumerate() {
-                            let selected = self.state.selected_index == Some(i);
-                            let name = if archive.display_name.is_empty() {
-                                archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
-                            } else {
-                                archive.display_name.clone()
-                            };
-                            let kind = if selected { "accent" } else { "muted" };
-                            pill(ui, &name, kind, &self.palette);
-                            if small_button(ui, "Select", &self.palette, true).clicked() {
-                                self.state.selected_index = Some(i);
-                                self.logger.log("ORGANIZE", &format!("Selected: {}", name), "");
-                            }
-                        }
                         if self.state.archives.is_empty() {
-                            ui.label(RichText::new("(no archives — accept games on Review first)").color(self.palette.muted).italics());
+                            empty_state(ui, &self.palette, "📦", "No archives to organize", "Accept games on the Review page first.");
+                        } else {
+                            for (i, archive) in self.state.archives.iter().enumerate() {
+                                let selected = self.state.selected_index == Some(i);
+                                let name = if archive.display_name.is_empty() {
+                                    archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
+                                } else {
+                                    archive.display_name.clone()
+                                };
+                                let response = archive_row(
+                                    ui,
+                                    &self.palette,
+                                    &name,
+                                    &format!("{} bytes", archive.size),
+                                    selected,
+                                );
+                                if response.clicked() {
+                                    self.state.selected_index = Some(i);
+                                    self.logger.log("ORGANIZE", &format!("Selected: {}", name), "");
+                                }
+                            }
                         }
                     });
                 });
