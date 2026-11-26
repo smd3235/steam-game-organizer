@@ -5,6 +5,7 @@
 //! Fixed `uri` default_value bug that forced headless CLI path instead of GUI.
 
 use clap::Parser;
+use chrono::Local;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
@@ -83,7 +84,9 @@ fn main() {
         let log_dir = project_root.join("logs");
         let _ = std::fs::create_dir_all(&log_dir);
 
-        let logger = match AppLogger::new(log_dir.join("sandbox.log"), "DEBUG", true, false) {
+        let timestamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
+        let sandbox_log_name = format!("sandbox-{}.log", timestamp);
+        let logger = match AppLogger::new(log_dir.join(&sandbox_log_name), "DEBUG", true, false) {
             Ok(l) => Arc::new(l),
             Err(e) => {
                 eprintln!("[ERROR] Failed to create logger: {}", e);

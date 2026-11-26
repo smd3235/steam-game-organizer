@@ -28,6 +28,7 @@ cache/
 logs/
 config/
 backup/
+sandbox/
 runtime/
 temp/
 

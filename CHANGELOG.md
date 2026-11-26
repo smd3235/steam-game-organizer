@@ -23,6 +23,62 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — feat: Sandbox mode — mega-test covers all sections, buttons, zip conversion, category sorting
+
+- `src/tools/sandbox.rs`: Sandbox test environment lives under `<project_root>/sandbox/` with `config/`, `cache/`, `logs/`, `extracted/`, `library/` subdirs — not temp dirs — config points to sandbox paths for library root, extract folder, and logs
+- `src/tools/sandbox.rs`: Creates mock `.zip` archives under `sandbox/library/` for real ArchiveService discovery testing
+- `src/tools/sandbox.rs`: Step 1 Scan view — tests Start Scan, Scan with Artwork, Cancel Scan, convert/preview/artwork checkboxes, run_scan with real discovery, all 6 phase states, archive row clicks
+- `src/tools/sandbox.rs`: Step 2 Review view — tests Accept & Next, Skip, Wrong Match, Extract Selected, Accept/Reject by index, Approve All Verified, Add Category, Use All Suggestions, Retry Failed, Continue to Organize, search text, filter combobox (All/Needs Review/Verified/New Only/Artwork), archive selection
+- `src/tools/sandbox.rs`: Step 3 Organize view — tests Start Organize, Cancel, Preview Only, real zip→7z conversion via run_organize, category sorting counts per category (Action/RPG/Strategy/Simulation/Shooter), archive row selection
+- `src/tools/sandbox.rs`: Step 4 Artwork view — tests Open Folder, View Artwork per archive, Scan Again, Review, Re-download Missing, artwork present() checks
+- `src/tools/sandbox.rs`: Step 5 Done view — tests Undo, Open Library, Scan Again, per-archive status display, converted/skipped/failed counts
+- `src/tools/sandbox.rs`: Step 6 Setup view — tests Browse Library/Extract/7-Zip, Developer Mode checkbox, Validate Configuration, Clear validation, Save & Finish Setup, Skip Setup
+- `src/tools/sandbox.rs`: Step 6b Setup Window — tests browse buttons, Save setup, Launch Steam Game Organizer, refresh_checks
+- `src/tools/sandbox.rs`: Step 7 Batch Extract Window — tests Start Batch, Cancel while extracting
+- `src/tools/sandbox.rs`: Step 8 Extract Result Dialog — tests Cancel while extracting, Complete + Close workflow
+- `src/tools/sandbox.rs`: Step 9 PhaseTimeline — tests set_phases, start, done, fail, skip, reset state transitions
+- `src/tools/sandbox.rs`: Step 10 MainWindow navigation — verifies all 6 nav keys valid, navigation simulation, shared_archives count
+- `src/tools/sandbox.rs`: Step 11 Widgets — GameCard (title, category, confidence, status, selected) and ArtworkPanel (Pending/Showing/Failed/None states)
+- `src/tools/sandbox.rs`: Step 12 CatalogService — generates catalog from sandbox library, verifies empty library returns no outputs
+- `src/tools/sandbox.rs`: Step 13 RollbackService — records moves to journal, verifies journal file created
+- `src/tools/sandbox.rs`: Step 14 LibraryService — constructs service without config dir
+- `src/tools/sandbox.rs`: Step 15 Error Injection — writes `[ERROR]`, `[PANIC]`, `[FAILED]` to separate injection log, verifies all 3 patterns detected (isolated from Step 24 log checking)
+- `src/tools/sandbox.rs`: Step 16 Missing Path Validation — nonexistent library/extract/7z paths, verifies detection and status reporting
+- `src/tools/sandbox.rs`: Step 17 Steam Match Failure — unmatched archive with steam.found=false detected
+- `src/tools/sandbox.rs`: Step 18 Skip Current — verifies skipped=true and accepted=false
+- `src/tools/sandbox.rs`: Step 19 Empty State — ReviewView and DoneView with empty archive lists
+- `src/tools/sandbox.rs`: Step 20 Missing Library Root Config — empty library_root and 7z path validation detected
+- `src/tools/sandbox.rs`: Step 21 Full pipeline — scan → review → organize → artwork → done end-to-end flow with fresh archives
+- `src/tools/sandbox.rs`: Step 22 Corrupt/Missing Config — graceful handling of None library root
+- `src/tools/sandbox.rs`: Step 23 Watchdog — constructs with short timeout
+- `src/tools/sandbox.rs`: Step 24 Log checking — reads most recent `sandbox-<timestamp>.log`, checks for `[ERROR]`, `[PANIC]`, `[FAILED]` patterns
+- `src/tools/sandbox.rs`: Step 16b Cancel before finish — simulates cancel mid-conversion, clears converting flag, sets cancelled status, cleans up partially processed files under sandbox/partial/
+- `src/tools/sandbox.rs`: Step 16c Window maximized setting check — verifies `window_maximized` is not false in sandbox settings (app runs full screen per AGENTS.md)
+- `src/tools/sandbox.rs`: Config isolation — resets `config.settings` to `{}` after `AppConfig::new()` so `_migrate_from_appdata()` cannot leak LIVE settings from `%LOCALAPPDATA%` (e.g. `window_maximized: false`, `zip_password`) into sandbox/config/settings.json
+- Sandbox now runs 144 total checks across 25 steps covering 9 UI views, 3 widgets, and 4 services, all passing
+
+### 2026-11-26 — feat: Sandbox mode — verbose debug logging and per-archive tracing
+
+- `src/tools/sandbox.rs`: Added verbose DEBUG-level logging to Step 3 Organize — per-archive category assignment logging ('Archive X → category Y') plus category sort totals
+- `src/tools/sandbox.rs`: Added verbose DEBUG-level logging to Step 4 Artwork — per-archive artwork present/path/source/status detail for every archive
+- `src/tools/sandbox.rs`: Added verbose DEBUG-level logging to Step 5 Done — pre-undo per-archive logging showing display_name and counts before Undo runs
+- `src/tools/sandbox.rs`: Added verbose DEBUG-level logging to Step 21 Pipeline — per-archive logging through all stages: scan discovery, review acceptance, organize conversion, done results (each archive's name, appid, category, size, final_name, final_size, source_size)
+
+### 2026-11-26 — feat: Sandbox mode — verbose debug logging and test isolation fixes
+
+- `src/tools/sandbox.rs`: Added verbose DEBUG-level logging throughout all 25 steps — every button click, state change, file creation, and validation result is logged with descriptive messages for full traceability
+- `src/tools/sandbox.rs`: Step 2 fix — reset `selected_index` to `Some(0)` before `accept_and_next()` and `skip_current()` so they target `archives[0]` instead of the index left by prior row-selection tests
+- `src/tools/sandbox.rs`: Step 24 fix — log error pattern matching now checks line starts (`[ERROR`, `PANIC`, `FAILED`) instead of substring matches, preventing false positives from debug messages containing those words
+
+### 2026-11-26 — fix: Sandbox mode — timestamped log file naming
+
+- `src/bin.rs`: Sandbox logger now writes to `logs/sandbox-<YYYYMMDD>-<HHMMSS>.log` (timestamped) instead of fixed `sandbox.log`, so test runs are separate from live logs and identifiable by timestamp
+- `src/tools/sandbox.rs`: Log file lookup now finds the most recent `sandbox-*.log` file by modification time instead of hardcoded `sandbox.log`
+
+- `src/tools/sandbox.rs`: Create `<project_root>/sandbox/` directory with mock `.jpg` artwork files and patch archive `artwork.path` to point at them so `ArtworkResult::present()` returns true
+- `src/tools/sandbox.rs`: Derive project root from `output_dir` (`<root>/docs/screenshots`) instead of `current_exe().parent()` for log file lookup — logger writes to `<project_root>/logs/sandbox.log`
+- `src/tools/sandbox.rs`: Refine error log patterns to uppercase only (`[ERROR`, `PANIC`, `FAILED`) to avoid false positives from benign words like "errors"
+
 ### 2026-11-26 — feat: Sandbox mode — end-to-end UI simulation and automated testing
 
 - `src/bin.rs`: Added `--sandbox` CLI flag that runs end-to-end UI simulation: creates mock game archives, populates each view, simulates button clicks, reads logs, reports issues
