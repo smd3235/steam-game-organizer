@@ -2,6 +2,7 @@
 //! across all 5 views: Scan → Review → Organize → Artwork → Done.
 //!
 //! 2026-11-26: Full automation testing - every button, every step, every transition.
+//! Tests simulate button clicks by directly calling view handlers and verifying state transitions.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -29,7 +30,7 @@ use crate::ui::setup_view::SetupView;
 /// Helper: create a test AppLogger
 fn test_logger() -> Arc<AppLogger> {
     let path = std::env::temp_dir().join(format!("e2e_test_{}.log", std::process::id()));
-    Arc::new(AppLogger::new(&path, "DEBUG", true, false).unwrap())
+    Arc::new(AppLogger::new(&path, "DEBUG", false, false).unwrap())
 }
 
 /// Helper: create a test Watchdog
@@ -351,7 +352,7 @@ fn test_e2e_full_flow_scan_to_done() {
     organize_view.state.preview_only = true;
     organize_view.run_organize();
     assert!(!organize_view.state.converting);
-    assert_eq!(organize_view.state.skipped_count, 2); // Both preview_only = skipped
+    assert_eq!(organize_view.state.skipped_count, 2);
 
     // Reset and run without preview
     organize_view.state.converting = true;
@@ -524,9 +525,6 @@ fn test_e2e_full_flow_scan_to_done() {
 
     // Click Skip Setup
     setup_view.state.status = "Setup skipped — using defaults".to_string();
-
-    // Click Skip Setup
-    setup_view.state.status = "Setup skipped — using defaults".to_string();
     assert_eq!(setup_view.state.status, "Setup skipped — using defaults".to_string());
 
     println!("✓ SETUP VIEW: All buttons and controls verified");
@@ -535,13 +533,11 @@ fn test_e2e_full_flow_scan_to_done() {
     println!("   Scan: Start Scan, Scan + Artwork, Cancel Scan, checkboxes, phases, feed");
     println!("   Review: Approve All, Add Category, Use Suggestions, Retry Failed, Continue,");
     println!("           Accept & Next, Skip, Wrong Match, Extract Selected, per-archive Accept/Reject");
-    println!("   Organize: Start Organize, Cancel, Preview Only, feed, shutdown");
+    println!("   Organize: Start Organize, Cancel, Preview Only, progress tracking, feed, shutdown");
     println!("   Artwork: Open Folder, View Artwork, Re-download Missing, Scan Again, Review");
     println!("   Done: Undo, Open Library, Scan Again, mixed results");
     println!("   Setup: Browse x3, Validate, Clear, Save & Finish, Skip Setup, Developer Mode");
 }
-
-// ========== BUTTON COUNT AUDIT ==========
 
 #[test]
 fn test_button_count_audit() {
