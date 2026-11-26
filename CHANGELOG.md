@@ -23,6 +23,14 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — feat: --view CLI flag for single-view UI testing
+
+- `src/bin.rs`: Added `--view` CLI argument (scan, review, organize, artwork, done, setup) to launch a single UI view in isolation without running the full application
+- `src/ui/main_window.rs`: Added `single_view: Option<String>` field to `MainWindow`; when set, `update()` skips the sidebar and top bar, rendering only the requested view in the central panel; constructor accepts `single_view` parameter and initializes `current` to the requested view
+- Usage: `./target/release/steam-game-organizer.exe --view scan` (or review, organize, artwork, done, setup)
+- Enables per-view screenshots with `capture_screens` tool without navigating through the app
+- 316 tests pass, clippy clean, zero UI source warnings
+
 ### 2026-11-26 — feat: capture_screens tool — PowerShell-based screen capture utility
 
 - `src/tools/capture_screens.rs`: Implemented stub → functional screenshot capture using PowerShell + System.Drawing; captures primary monitor to timestamped PNG under docs/screenshots/

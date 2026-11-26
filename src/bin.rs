@@ -51,6 +51,10 @@ struct Args {
     /// Password for an encrypted .zip or .rar
     #[arg(long, default_value = "")]
     zip_password: String,
+
+    /// Launch a single UI view in isolation (scan, review, organize, artwork, done, setup) for testing/screenshots
+    #[arg(long)]
+    view: Option<String>,
 }
 
 fn main() {
@@ -146,6 +150,7 @@ fn main() {
                         None,
                     ),
                     std::sync::Arc::new(steam_game_organizer::app::jobs::JobManager::new(4)),
+                    args.view.clone(),
                 )))
             }),
         )

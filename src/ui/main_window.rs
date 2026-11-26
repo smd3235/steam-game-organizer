@@ -49,6 +49,8 @@ pub struct MainWindow {
     pub done_view: DoneView,
     pub setup_view: SetupView,
     pub shared_archives: Vec<crate::core::models::GameArchive>,
+    /// When set, renders only this view (scan/review/organize/artwork/done/setup) without sidebar or top bar.
+    pub single_view: Option<String>,
 }
 
 impl MainWindow {
@@ -59,6 +61,7 @@ impl MainWindow {
         services: Arc<Services>,
         _library_service: LibraryService,
         jobs: Arc<JobManager>,
+        single_view: Option<String>,
     ) -> Self {
         logger.log("DEBUG", "MainWindow::new called", "");
         let logger_for_scan = Arc::clone(&logger);
@@ -76,13 +79,14 @@ impl MainWindow {
         let services_clone = Arc::clone(&services);
         let jobs_for_field = Arc::clone(&jobs);
         let jobs_for_scan = Arc::clone(&jobs);
+        let initial_view = single_view.as_deref().unwrap_or("scan").to_string();
         MainWindow {
             state,
             bus,
             logger,
             services,
             jobs: jobs_for_field,
-            current: "scan".to_string(),
+            current: initial_view,
             palette: Palette::default(),
             scan_view: ScanView::new(
                 services_clone,
@@ -98,6 +102,7 @@ impl MainWindow {
             done_view: DoneView::new(Palette::default(), logger_for_done, watchdog_for_done),
             setup_view: SetupView::new(Palette::default(), logger_for_setup, watchdog_for_setup),
             shared_archives: Vec::new(),
+            single_view,
         }
     }
 
@@ -282,6 +287,29 @@ impl eframe::App for MainWindow {
         style.spacing.item_spacing = egui::vec2(SPACING, SPACING);
         style.spacing.button_padding = egui::vec2(16.0, 8.0);
         ctx.set_style(style);
+
+        // Single-view mode: render only the requested view without sidebar or top bar
+        if let Some(view) = self.single_view.clone() {
+            egui::CentralPanel::default()
+                .frame(egui::Frame {
+                    fill: self.palette.bg,
+                    ..Default::default()
+                })
+                .show(ctx, |ui| {
+                    ui.add_space(SPACING);
+                    match view.as_str() {
+                        "scan" => self.render_scan(ui),
+                        "review" => self.render_review(ui),
+                        "organize" => self.render_organize(ui),
+                        "artwork" => self.render_artwork(ui),
+                        "done" => self.render_done(ui),
+                        "setup" => self.render_setup(ui),
+                        _ => self.render_scan(ui),
+                    }
+                    ui.add_space(SPACING_XL);
+                });
+            return;
+        }
 
         // Top bar
         egui::TopBottomPanel::top("top_bar")
