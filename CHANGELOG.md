@@ -23,6 +23,14 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — feat: capture_screens tool — PowerShell-based screen capture utility
+
+- `src/tools/capture_screens.rs`: Implemented stub → functional screenshot capture using PowerShell + System.Drawing; captures primary monitor to timestamped PNG under docs/screenshots/
+- `Cargo.toml`: Added `[[bin]]` entry for `capture_screens` binary; runs as `./target/release/capture_screens`
+- Usage: Launch app → navigate to a view → run capture_screens → repeat for each view
+- `src/tools/capture_screens.rs`: Unit test verifies output directory creation logic
+- 317 tests pass (316 + 1 new), clippy clean, zero UI source warnings
+
 ### 2026-11-26 — feat: UI design additions — spinner, loading cards, empty states, category pills, archive rows
 
 - `src/ui/theme.rs`: Added `spinner()` animated loader for async operations; `loading_card()` centered loading state; `empty_state()` with icon/title/description for zero-data views; `archive_row()` hover-styled selectable list rows; `category_pill()` color-coded category badges using cyan/sky/pink/purple/violet accent colors; `category_pill_color()` category-to-color mapper

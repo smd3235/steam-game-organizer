@@ -44,3 +44,7 @@ tempfile = "3"
 [[bin]]
 name = "steam-game-organizer"
 path = "src/bin.rs"
+
+[[bin]]
+name = "capture_screens"
+path = "src/tools/capture_screens.rs"
