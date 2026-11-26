@@ -23,6 +23,13 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — feat: Sandbox mode — end-to-end UI simulation and automated testing
+
+- `src/bin.rs`: Added `--sandbox` CLI flag that runs end-to-end UI simulation: creates mock game archives, populates each view, simulates button clicks, reads logs, reports issues
+- `src/tools/sandbox.rs`: New sandbox module with `run_sandbox()` — creates 5 mock archives, populates Scan/Review/Organize/Artwork/Done/Setup views, verifies counts and states, checks log for error patterns, saves manifest JSON to docs/screenshots/
+- `src/tools/mod.rs`: Added `pub mod sandbox;`
+- `cargo fmt --check` clean, `cargo clippy --all-targets` clean, 323 tests pass
+
 ### 2026-11-26 — fix: Eliminate all clippy warnings and fix conversion gaps
 
 - `src/lib.rs`: Added `#![allow(clippy::type_complexity)]` at crate level — complex types (Arc<dyn Fn...>, nested closures) are inherent to the design

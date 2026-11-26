@@ -20,6 +20,10 @@ struct Args {
     #[arg(long)]
     mock: bool,
 
+    /// Run sandbox mode: simulate UI interactions end-to-end, read logs, report issues
+    #[arg(long)]
+    sandbox: bool,
+
     /// Print diagnostics report and exit
     #[arg(long)]
     diagnostics: bool,
@@ -69,6 +73,29 @@ fn main() {
         || args.setup
     {
         process::exit(entry_main());
+    }
+
+    // Sandbox mode: simulate UI interactions end-to-end, read logs, report issues
+    if args.sandbox {
+        let project_root = resolve_project_root();
+        let output_dir = project_root.join("docs/screenshots");
+        let _ = std::fs::create_dir_all(&output_dir);
+        let log_dir = project_root.join("logs");
+        let _ = std::fs::create_dir_all(&log_dir);
+
+        let logger = match AppLogger::new(log_dir.join("sandbox.log"), "DEBUG", true, false) {
+            Ok(l) => Arc::new(l),
+            Err(e) => {
+                eprintln!("[ERROR] Failed to create logger: {}", e);
+                process::exit(1);
+            }
+        };
+
+        if let Err(e) = steam_game_organizer::tools::sandbox::run_sandbox(logger, &output_dir) {
+            eprintln!("[ERROR] Sandbox failed: {}", e);
+            process::exit(1);
+        }
+        return;
     }
 
     // Otherwise, run the GUI with real file logging

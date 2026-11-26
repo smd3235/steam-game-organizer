@@ -18,6 +18,7 @@ pub mod log_audit;
 pub mod ocr_test;
 pub mod overnight_repair;
 pub mod restore_backup;
+pub mod sandbox;
 pub mod search_backups;
 pub mod tk_probe;
 pub mod validate_game_names;
