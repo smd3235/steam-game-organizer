@@ -21,7 +21,7 @@ use crate::ui::setup_view::SetupView;
 use egui::RichText;
 use crate::ui::theme::{
     card, ghost_button, nav_item, secondary_button,
-    separator, SPACING, SPACING_XL, Palette,
+    separator, constrained_content, SPACING, SPACING_XL, Palette,
 };
 
 const NAV_ITEMS: &[(&str, &str, &str)] = &[
@@ -290,23 +290,26 @@ impl eframe::App for MainWindow {
 
         // Single-view mode: render only the requested view without sidebar or top bar
         if let Some(view) = self.single_view.clone() {
+            let palette = self.palette.clone();
             egui::CentralPanel::default()
                 .frame(egui::Frame {
-                    fill: self.palette.bg,
+                    fill: palette.bg,
                     ..Default::default()
                 })
                 .show(ctx, |ui| {
-                    ui.add_space(SPACING);
-                    match view.as_str() {
-                        "scan" => self.render_scan(ui),
-                        "review" => self.render_review(ui),
-                        "organize" => self.render_organize(ui),
-                        "artwork" => self.render_artwork(ui),
-                        "done" => self.render_done(ui),
-                        "setup" => self.render_setup(ui),
-                        _ => self.render_scan(ui),
-                    }
-                    ui.add_space(SPACING_XL);
+                    constrained_content(ui, 1200.0, |ui| {
+                        ui.add_space(SPACING);
+                        match view.as_str() {
+                            "scan" => self.render_scan(ui),
+                            "review" => self.render_review(ui),
+                            "organize" => self.render_organize(ui),
+                            "artwork" => self.render_artwork(ui),
+                            "done" => self.render_done(ui),
+                            "setup" => self.render_setup(ui),
+                            _ => self.render_scan(ui),
+                        }
+                        ui.add_space(SPACING_XL);
+                    });
                 });
             return;
         }
@@ -332,24 +335,28 @@ impl eframe::App for MainWindow {
                 self.render_nav_sidebar(ui);
             });
 
-        // Main content: view stack
+        // Main content: view stack — wrapped in centered max-width container
+        // so content doesn't stretch awkwardly on maximized / ultra-wide screens.
+        let palette = self.palette.clone();
         egui::CentralPanel::default()
             .frame(egui::Frame {
-                fill: self.palette.bg,
+                fill: palette.bg,
                 ..Default::default()
             })
             .show(ctx, |ui| {
-                ui.add_space(SPACING);
-                match self.current.as_str() {
-                    "scan" => self.render_scan(ui),
-                    "review" => self.render_review(ui),
-                    "organize" => self.render_organize(ui),
-                    "artwork" => self.render_artwork(ui),
-                    "done" => self.render_done(ui),
-                    "setup" => self.render_setup(ui),
-                    _ => self.render_scan(ui),
-                }
-                ui.add_space(SPACING_XL);
+                constrained_content(ui, 1200.0, |ui| {
+                    ui.add_space(SPACING);
+                    match self.current.as_str() {
+                        "scan" => self.render_scan(ui),
+                        "review" => self.render_review(ui),
+                        "organize" => self.render_organize(ui),
+                        "artwork" => self.render_artwork(ui),
+                        "done" => self.render_done(ui),
+                        "setup" => self.render_setup(ui),
+                        _ => self.render_scan(ui),
+                    }
+                    ui.add_space(SPACING_XL);
+                });
             });
     }
 

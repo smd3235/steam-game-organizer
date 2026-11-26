@@ -23,6 +23,13 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — fix: UI layout max-width constraint to fix empty space on maximized screens
+
+- `src/ui/theme.rs`: Added `constrained_content()` helper that wraps view content in a centered max-width (1200px) container; removed `card_centered()` (unused); simplified `stat_card()` with `set_min_width(150.0)` for uniform stat card sizing
+- `src/ui/main_window.rs`: Wrapped main content and single-view content in `constrained_content(ui, 1200.0, ...)` so content doesn't stretch full-width on maximized / ultra-wide screens; clone palette to satisfy borrow checker
+- All 6 view screenshots recaptured with centered layout
+- 320 tests pass, clippy clean
+
 ### 2026-11-26 — feat: OCR verification for capture_screens with --ocr flag
 
 - `src/tools/capture_screens.rs`: Added `--ocr` flag that runs Tesseract OCR on captured screenshots and verifies expected UI text per view

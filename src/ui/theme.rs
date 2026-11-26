@@ -250,19 +250,58 @@ pub fn card(ui: &mut egui::Ui, palette: &Palette, contents: impl FnOnce(&mut egu
         CORNER_RADIUS,
         palette.panel2,
     );
-    // Border drawn via rect_stroke requires egui API; skipping for compatibility.
     contents(ui);
 }
 
-/// A stat card showing a number with a label.
+/// A stat card showing a number with a label — fixed width for uniform grid layout.
 pub fn stat_card(ui: &mut egui::Ui, palette: &Palette, value: &str, label: &str, color: Color32) {
     card(ui, palette, |ui| {
+        ui.set_min_width(150.0);
         ui.add_space(SPACING);
         ui.label(RichText::new(value).color(color).strong().size(24.0));
         ui.add_space(SPACING / 2.0);
         ui.label(RichText::new(label).color(palette.text_secondary).small());
         ui.add_space(SPACING);
     });
+}
+
+/// A card container with max-width constraint, centered horizontally.
+/// Prevents content from stretching awkwardly on wide screens.
+pub fn card_centered(
+    ui: &mut egui::Ui,
+    palette: &Palette,
+    max_width: f32,
+    contents: impl FnOnce(&mut egui::Ui),
+) {
+    let available_width = ui.available_width();
+    let card_width = available_width.min(max_width);
+    let left_margin = (available_width - card_width) / 2.0;
+    ui.add_space(left_margin);
+    ui.set_max_width(card_width);
+    ui.painter().rect_filled(
+        ui.min_rect().expand(1.0),
+        CORNER_RADIUS,
+        palette.panel2,
+    );
+    contents(ui);
+    ui.add_space(left_margin);
+}
+
+/// Wrap content in a horizontally centered container with max-width.
+/// Use this at the top of each view to prevent content from stretching
+/// awkwardly on maximized / ultra-wide screens.
+pub fn constrained_content(
+    ui: &mut egui::Ui,
+    max_width: f32,
+    contents: impl FnOnce(&mut egui::Ui),
+) {
+    let available_width = ui.available_width();
+    let content_width = available_width.min(max_width);
+    let left_margin = (available_width - content_width) / 2.0;
+    ui.add_space(left_margin);
+    ui.set_max_width(content_width);
+    contents(ui);
+    ui.add_space(left_margin);
 }
 
 /// An info card showing a key-value pair.
