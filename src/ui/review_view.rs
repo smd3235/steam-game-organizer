@@ -1,15 +1,21 @@
 //! Review view: verify Steam matches, pick categories, accept games, and move to organization.
 //! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
+//! All buttons log actions through the logger with detailed context.
 //!
-//! 2026-11-25: egui review view with new theme and wired button actions.
-//! All buttons log actions through the logger.
+//! 2026-11-26: egui review view with new theme and wired button actions.
+//! v2 - comprehensive logging on every button and state change.
 
 use std::sync::Arc;
 
-use egui::{RichText, ScrollArea};
 use crate::core::models::GameArchive;
+use crate::core::errors::{
+    OrganizerError, ErrorSeverity, Watchdog,
+};
+use crate::{log_error, err, trace_op};
+
+use egui::{RichText, ScrollArea};
 use crate::ui::theme::{
-    card, danger_button, primary_button, secondary_button, Palette,
+    card, danger_button, pill, primary_button, secondary_button, section_header, Palette,
     separator,
 };
 
@@ -56,15 +62,21 @@ impl ReviewViewState {
 pub struct ReviewView {
     pub state: ReviewViewState,
     pub palette: Palette,
-    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+    pub logger: Arc<crate::core::logger::AppLogger>,
+    pub watchdog: Arc<Watchdog>,
 }
 
 impl ReviewView {
-    pub fn new(palette: Palette, logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>) -> Self {
+    pub fn new(
+        palette: Palette,
+        logger: Arc<crate::core::logger::AppLogger>,
+        watchdog: Arc<Watchdog>,
+    ) -> Self {
         ReviewView {
             state: ReviewViewState::new(),
             palette,
             logger,
+            watchdog,
         }
     }
 
@@ -113,7 +125,7 @@ impl ReviewView {
                 ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if primary_button(ui, "Approve All Verified", &self.palette).clicked() {
-                        (self.logger)("REVIEW", "Approve All Verified button clicked");
+                        self.logger.log("REVIEW", "Approve All Verified button clicked", "");
                         self.state.status = "Approving all verified…".to_string();
                         self.state.should_approve_all = true;
                     }
@@ -155,16 +167,16 @@ impl ReviewView {
                     });
                 ui.separator();
                 if secondary_button(ui, "＋ Add Category", &self.palette).clicked() {
-                    (self.logger)("REVIEW", "Add Category button clicked");
+                    self.logger.log("REVIEW", "Add Category button clicked", "");
                     self.state.status = "Add Category clicked".to_string();
                 }
                 if secondary_button(ui, "Use All Suggestions", &self.palette).clicked() {
-                    (self.logger)("REVIEW", "Use All Suggestions button clicked");
+                    self.logger.log("REVIEW", "Use All Suggestions button clicked", "");
                     self.state.status = "Use All Suggestions clicked".to_string();
                     self.state.should_use_suggestions = true;
                 }
                 if secondary_button(ui, "Retry Failed", &self.palette).clicked() {
-                    (self.logger)("REVIEW", "Retry Failed button clicked");
+                    self.logger.log("REVIEW", "Retry Failed button clicked", "");
                     self.state.status = "Retry Failed clicked".to_string();
                     self.state.should_retry_failed = true;
                 }
@@ -175,8 +187,9 @@ impl ReviewView {
                 )
                 .clicked()
                 {
-                    (self.logger)("REVIEW", "Continue to Organization button clicked");
+                    self.logger.log("REVIEW", "Continue to Organization button clicked", "");
                     self.state.status = "Continue to Organization clicked".to_string();
+                    self.state.should_continue_organize = true;
                 }
             });
 
@@ -197,7 +210,7 @@ impl ReviewView {
                             };
                             if ui.selectable_label(selected, &name).clicked() {
                                 self.state.selected_index = Some(i);
-                                (self.logger)("REVIEW", &format!("Selected archive: {}", name));
+                                self.logger.log("REVIEW", &format!("Selected archive: {}", name), "");
                             }
                         }
                         if self.state.archives.is_empty() {
@@ -243,22 +256,22 @@ impl ReviewView {
             // Bottom actions
             ui.horizontal(|ui| {
                 if secondary_button(ui, "Accept & Next", &self.palette).clicked() {
-                    (self.logger)("REVIEW", "Accept & Next button clicked");
+                    self.logger.log("REVIEW", "Accept & Next button clicked", "");
                     self.state.status = "Accept & Next clicked".to_string();
                     self.state.should_accept_next = true;
                 }
                 if secondary_button(ui, "Skip", &self.palette).clicked() {
-                    (self.logger)("REVIEW", "Skip button clicked");
+                    self.logger.log("REVIEW", "Skip button clicked", "");
                     self.state.status = "Skip clicked".to_string();
                     self.state.should_skip = true;
                 }
                 if danger_button(ui, "Wrong Match", &self.palette).clicked() {
-                    (self.logger)("REVIEW", "Wrong Match button clicked");
+                    self.logger.log("REVIEW", "Wrong Match button clicked", "");
                     self.state.status = "Wrong Match clicked".to_string();
                     self.state.should_wrong_match = true;
                 }
                 if secondary_button(ui, "Extract Selected", &self.palette).clicked() {
-                    (self.logger)("REVIEW", "Extract Selected button clicked");
+                    self.logger.log("REVIEW", "Extract Selected button clicked", "");
                     self.state.status = "Extract Selected clicked".to_string();
                 }
             });
@@ -270,11 +283,11 @@ impl ReviewView {
                 ui.label(RichText::new(format!("Actions for: {}", archive.display_name)).small().color(self.palette.muted));
                 ui.horizontal(|ui| {
                     if secondary_button(ui, "Accept", &self.palette).clicked() {
-                        (self.logger)("REVIEW", &format!("Accept: {}", archive.display_name));
+                        self.logger.log("REVIEW", &format!("Accept: {}", archive.display_name), "");
                         self.state.should_accept_index = Some(i);
                     }
                     if danger_button(ui, "Reject", &self.palette).clicked() {
-                        (self.logger)("REVIEW", &format!("Reject: {}", archive.display_name));
+                        self.logger.log("REVIEW", &format!("Reject: {}", archive.display_name), "");
                         self.state.should_reject_index = Some(i);
                     }
                 });
@@ -283,25 +296,28 @@ impl ReviewView {
     }
 
     fn approve_all_verified(&mut self) {
+        let corr = self.logger.correlation_id();
         for archive in &mut self.state.archives {
             if !archive.decision.skipped {
                 archive.decision.accepted = true;
             }
         }
-        (self.logger)("REVIEW", "All verified archives approved");
+        self.logger.log("REVIEW", "All verified archives approved", &corr);
         self.state.status = "All verified archives approved".to_string();
     }
 
     fn use_all_suggestions(&mut self) {
+        let corr = self.logger.correlation_id();
         for archive in &mut self.state.archives {
             archive.decision.category = archive.decision.suggested_category.clone();
         }
-        (self.logger)("REVIEW", "All suggestions applied");
+        self.logger.log("REVIEW", "All suggestions applied", &corr);
         self.state.status = "All suggestions applied".to_string();
     }
 
     fn retry_failed(&mut self) {
-        (self.logger)("REVIEW", "Retry failed archives");
+        let corr = self.logger.correlation_id();
+        self.logger.log("REVIEW", "Retry failed archives", &corr);
         self.state.status = "Failed archives retried".to_string();
     }
 
@@ -318,7 +334,7 @@ impl ReviewView {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.skipped = true;
             self.state.archives[i].decision.accepted = false;
-            (self.logger)("REVIEW", &format!("Skipped: {}", self.state.archives[i].display_name));
+            self.logger.log("REVIEW", &format!("Skipped: {}", self.state.archives[i].display_name), "");
             self.state.status = format!("Skipped: {}", self.state.archives[i].display_name);
         }
     }
@@ -327,7 +343,7 @@ impl ReviewView {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.accepted = false;
             self.state.archives[i].steam.found = false;
-            (self.logger)("REVIEW", &format!("Wrong match cleared for: {}", self.state.archives[i].display_name));
+            self.logger.log("REVIEW", &format!("Wrong match cleared for: {}", self.state.archives[i].display_name), "");
             self.state.status = format!("Wrong match cleared for: {}", self.state.archives[i].display_name);
         }
     }
@@ -335,7 +351,7 @@ impl ReviewView {
     fn accept_archive(&mut self, index: usize) {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = true;
-            (self.logger)("REVIEW", &format!("Accepted: {}", self.state.archives[index].display_name));
+            self.logger.log("REVIEW", &format!("Accepted: {}", self.state.archives[index].display_name), "");
         }
     }
 
@@ -343,13 +359,15 @@ impl ReviewView {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = false;
             self.state.archives[index].decision.skipped = true;
-            (self.logger)("REVIEW", &format!("Rejected: {}", self.state.archives[index].display_name));
+            self.logger.log("REVIEW", &format!("Rejected: {}", self.state.archives[index].display_name), "");
         }
     }
 
     pub fn load(&mut self, archives: Vec<GameArchive>) {
+        let corr = self.logger.correlation_id();
         self.state.archives = archives;
         self.state.selected_index = if !self.state.archives.is_empty() { Some(0) } else { None };
+        self.logger.log("REVIEW", &format!("Loaded {} archives for review", self.state.archives.len()), &corr);
     }
 
     pub fn cancel_lookup(&mut self) {
@@ -364,15 +382,31 @@ mod tests {
     #[test]
     fn test_review_view_new() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let _view = ReviewView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let _view = ReviewView::new(palette, logger, watchdog);
     }
 
     #[test]
     fn test_review_view_load() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = ReviewView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive]);
         assert_eq!(view.state.archives.len(), 1);
@@ -382,8 +416,16 @@ mod tests {
     #[test]
     fn test_review_view_cancel_lookup() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = ReviewView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive]);
         view.cancel_lookup();
@@ -393,8 +435,16 @@ mod tests {
     #[test]
     fn test_review_view_approve_all_verified() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = ReviewView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive]);
         view.approve_all_verified();
@@ -404,8 +454,16 @@ mod tests {
     #[test]
     fn test_review_view_skip_current() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = ReviewView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive]);
         view.skip_current();

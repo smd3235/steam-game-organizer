@@ -1,13 +1,19 @@
 //! Artwork review screen: shows each accepted game's downloaded artwork assets.
 //! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
-//!
-//! 2026-11-25: egui artwork view with new theme and wired button actions.
 //! All buttons log actions through the logger.
+//!
+//! 2026-11-26: egui artwork view with new theme and wired button actions.
+//! v2 - comprehensive logging on every button.
 
 use std::sync::Arc;
 
-use egui::{RichText, ScrollArea};
 use crate::core::models::GameArchive;
+use crate::core::errors::{
+    OrganizerError, ErrorSeverity, Watchdog,
+};
+use crate::{log_error, err, trace_op};
+
+use egui::{RichText, ScrollArea};
 use crate::ui::theme::{card, secondary_button, section_header, Palette, separator};
 
 #[derive(Default, Clone)]
@@ -31,15 +37,21 @@ impl ArtworkViewState {
 pub struct ArtworkView {
     pub state: ArtworkViewState,
     pub palette: Palette,
-    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+    pub logger: Arc<crate::core::logger::AppLogger>,
+    pub watchdog: Arc<Watchdog>,
 }
 
 impl ArtworkView {
-    pub fn new(palette: Palette, logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>) -> Self {
+    pub fn new(
+        palette: Palette,
+        logger: Arc<crate::core::logger::AppLogger>,
+        watchdog: Arc<Watchdog>,
+    ) -> Self {
         ArtworkView {
             state: ArtworkViewState::new(),
             palette,
             logger,
+            watchdog,
         }
     }
 
@@ -67,11 +79,11 @@ impl ArtworkView {
                             ui.label(RichText::new(&name).small().strong());
                             separator(ui, &self.palette);
                             if secondary_button(ui, "Open Folder", &self.palette).clicked() {
-                                (self.logger)("ARTWORK", &format!("Open Folder: {}", name));
+                                self.logger.log("ARTWORK", &format!("Open Folder: {}", name), "");
                                 self.state.status = format!("Opened folder for {}", name);
                             }
                             if secondary_button(ui, "View Artwork", &self.palette).clicked() {
-                                (self.logger)("ARTWORK", &format!("View Artwork: {}", name));
+                                self.logger.log("ARTWORK", &format!("View Artwork: {}", name), "");
                                 self.state.status = format!("Viewing artwork for {}", name);
                             }
                         });
@@ -90,15 +102,15 @@ impl ArtworkView {
             // Bottom actions
             ui.horizontal(|ui| {
                 if secondary_button(ui, "Scan Again", &self.palette).clicked() {
-                    (self.logger)("ARTWORK", "Scan Again button clicked");
+                    self.logger.log("ARTWORK", "Scan Again button clicked", "");
                     self.state.status = "Scan Again clicked".to_string();
                 }
                 if secondary_button(ui, "Review", &self.palette).clicked() {
-                    (self.logger)("ARTWORK", "Review button clicked");
+                    self.logger.log("ARTWORK", "Review button clicked", "");
                     self.state.status = "Review clicked".to_string();
                 }
                 if secondary_button(ui, "Re-download Missing", &self.palette).clicked() {
-                    (self.logger)("ARTWORK", "Re-download Missing button clicked");
+                    self.logger.log("ARTWORK", "Re-download Missing button clicked", "");
                     self.state.status = "Re-downloading missing artwork…".to_string();
                 }
             });
@@ -119,9 +131,11 @@ impl ArtworkView {
     }
 
     pub fn load(&mut self, archives: Vec<GameArchive>) {
+        let corr = self.logger.correlation_id();
         self.state.archives = archives;
         self.state.selected_index = if !self.state.archives.is_empty() { Some(0) } else { None };
         self.state.status = format!("Loaded {} archives for artwork review", self.state.archives.len());
+        self.logger.log("ARTWORK", &self.state.status, &corr);
     }
 }
 
@@ -132,15 +146,31 @@ mod tests {
     #[test]
     fn test_artwork_view_new() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let _view = ArtworkView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("artwork_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let _view = ArtworkView::new(palette, logger, watchdog);
     }
 
     #[test]
     fn test_artwork_view_load() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = ArtworkView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("artwork_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ArtworkView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive.clone(), archive]);
         assert_eq!(view.state.archives.len(), 2);

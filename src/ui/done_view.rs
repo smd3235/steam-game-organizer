@@ -1,13 +1,19 @@
 //! Done screen: final run summary with per-archive conversion results and action buttons.
 //! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
-//!
-//! 2026-11-25: egui done view with new theme and wired button actions.
 //! All buttons log actions through the logger.
+//!
+//! 2026-11-26: egui done view with new theme and wired button actions.
+//! v2 - comprehensive logging on every button.
 
 use std::sync::Arc;
 
-use egui::{RichText, ScrollArea};
 use crate::core::models::GameArchive;
+use crate::core::errors::{
+    OrganizerError, ErrorSeverity, Watchdog,
+};
+use crate::{log_error, err, trace_op};
+
+use egui::{RichText, ScrollArea};
 use crate::ui::theme::{card, pill, primary_button, secondary_button, section_header, Palette, separator};
 
 #[derive(Default, Clone)]
@@ -39,15 +45,21 @@ impl DoneViewState {
 pub struct DoneView {
     pub state: DoneViewState,
     pub palette: Palette,
-    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+    pub logger: Arc<crate::core::logger::AppLogger>,
+    pub watchdog: Arc<Watchdog>,
 }
 
 impl DoneView {
-    pub fn new(palette: Palette, logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>) -> Self {
+    pub fn new(
+        palette: Palette,
+        logger: Arc<crate::core::logger::AppLogger>,
+        watchdog: Arc<Watchdog>,
+    ) -> Self {
         DoneView {
             state: DoneViewState::new(),
             palette,
             logger,
+            watchdog,
         }
     }
 
@@ -118,17 +130,17 @@ impl DoneView {
             // Bottom actions
             ui.horizontal(|ui| {
                 if secondary_button(ui, "Undo", &self.palette).clicked() {
-                    (self.logger)("DONE", "Undo button clicked");
+                    self.logger.log("DONE", "Undo button clicked", "");
                     self.state.status = "Undo clicked".to_string();
                     self.state.should_undo = true;
                 }
                 if secondary_button(ui, "Open Library", &self.palette).clicked() {
-                    (self.logger)("DONE", "Open Library button clicked");
+                    self.logger.log("DONE", "Open Library button clicked", "");
                     self.state.status = "Open Library clicked".to_string();
                     self.state.should_open_library = true;
                 }
                 if primary_button(ui, "Scan Again", &self.palette).clicked() {
-                    (self.logger)("DONE", "Scan Again button clicked");
+                    self.logger.log("DONE", "Scan Again button clicked", "");
                     self.state.status = "Scan Again clicked".to_string();
                 }
             });
@@ -139,7 +151,8 @@ impl DoneView {
     }
 
     fn undo_last_run(&mut self) {
-        (self.logger)("DONE", "Undo last organization run");
+        let corr = self.logger.correlation_id();
+        self.logger.log("DONE", "Undo last organization run", &corr);
         self.state.archives.clear();
         self.state.converted = 0;
         self.state.skipped = 0;
@@ -148,16 +161,19 @@ impl DoneView {
     }
 
     fn open_library(&mut self) {
-        (self.logger)("DONE", "Open library folder requested");
+        let corr = self.logger.correlation_id();
+        self.logger.log("DONE", "Open library folder requested", &corr);
         self.state.status = "Opening library folder…".to_string();
     }
 
     pub fn load(&mut self, archives: Vec<GameArchive>, converted: usize, skipped: usize, failed: usize) {
+        let corr = self.logger.correlation_id();
         self.state.archives = archives;
         self.state.converted = converted;
         self.state.skipped = skipped;
         self.state.failed = failed;
         self.state.status = format!("Run complete — {} converted, {} skipped, {} failed.", converted, skipped, failed);
+        self.logger.log("DONE", &self.state.status, &corr);
     }
 }
 
@@ -168,15 +184,31 @@ mod tests {
     #[test]
     fn test_done_view_new() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let _view = DoneView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("done_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let _view = DoneView::new(palette, logger, watchdog);
     }
 
     #[test]
     fn test_done_view_load() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = DoneView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("done_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = DoneView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive], 1, 0, 0);
         assert_eq!(view.state.archives.len(), 1);
@@ -188,8 +220,16 @@ mod tests {
     #[test]
     fn test_done_view_undo() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = DoneView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("done_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = DoneView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive.clone()], 1, 0, 0);
         view.undo_last_run();

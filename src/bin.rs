@@ -1,8 +1,7 @@
 //! Binary entry point for the Steam Game Organizer application.
 //! Handles both GUI mode (default) and CLI mode (--version, --diagnostics, --health, --uri, --extract, --setup, --mock).
 //!
-//! 2026-11-25: Wired real AppLogger (HH:MM:SS timestamps) into GUI path so every run writes to logs/.
-//! Added comprehensive panic hooks and error handling for end-to-end debugging.
+//! 2026-11-26: Wired real AppLogger with panic hooks, HH:MM:SS timestamps, and watchdog into GUI path.
 //! Fixed `uri` default_value bug that forced headless CLI path instead of GUI.
 
 use clap::Parser;
@@ -109,15 +108,13 @@ fn main() {
     };
 
     // Install panic hook that logs through our logger
-    logger.install_excepthook();
+    logger.install_panic_hook();
 
     logger.info("APPLICATION", "START gui_mode=true", "");
 
     let _app = Application::new(project_root.as_path(), args.mock, Arc::clone(&logger));
 
-    let logger_for_ui = Arc::clone(&logger);
-    let logger_for_organizer = Arc::clone(&logger);
-    let logger_for_library = Arc::clone(&logger);
+    let logger_for_shutdown = Arc::clone(&logger);
 
     let run_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         eframe::run_native(
@@ -127,20 +124,24 @@ fn main() {
                 Ok(Box::new(steam_game_organizer::ui::main_window::MainWindow::new(
                     std::sync::Arc::new(steam_game_organizer::app::controller::StateStore::new()),
                     std::sync::Arc::new(steam_game_organizer::app::events::EventBus::new()),
-                    Arc::new(move |cat, msg| {
-                        logger_for_ui.info(cat, msg, "");
-                    }),
+                    Arc::clone(&logger),
                     std::sync::Arc::new(steam_game_organizer::app::controller::Services {
                         organizer: steam_game_organizer::services::organizer_service::OrganizerService::new(
-                            Arc::new(move |cat, msg| {
-                                logger_for_organizer.info(cat, msg, "");
+                            Arc::new({
+                                let logger = Arc::clone(&logger);
+                                move |cat, msg| {
+                                    logger.info(cat, msg, "");
+                                }
                             }),
                             false,
                         ),
                     }),
                     steam_game_organizer::services::library_service::LibraryService::new(
-                        Arc::new(move |cat, msg| {
-                            logger_for_library.info(cat, msg, "");
+                        Arc::new({
+                            let logger = Arc::clone(&logger);
+                            move |cat, msg| {
+                                logger.info(cat, msg, "");
+                            }
                         }),
                         None,
                     ),
@@ -152,13 +153,13 @@ fn main() {
 
     match run_result {
         Ok(Ok(())) => {
-            logger.info("APPLICATION", "SHUTDOWN", "");
+            logger_for_shutdown.info("APPLICATION", "SHUTDOWN", "");
         }
         Ok(Err(e)) => {
-            logger.error("APPLICATION", &format!("eframe::run_native error: {:?}", e), "");
+            logger_for_shutdown.error("APPLICATION", &format!("eframe::run_native error: {:?}", e), "");
         }
         Err(panic) => {
-            logger.error("APPLICATION", &format!("eframe::run_native panicked: {:?}", panic), "");
+            logger_for_shutdown.error("APPLICATION", &format!("eframe::run_native panicked: {:?}", panic), "");
         }
     }
 }

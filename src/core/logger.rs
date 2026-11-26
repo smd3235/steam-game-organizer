@@ -10,19 +10,23 @@
 //! accumulates an unbounded log file. A level threshold can be raised above `DEBUG`
 //! to suppress noise in normal operation while keeping troubleshooting detail available.
 //!
-//! 2026-11-24: Converted from `core/logger.py` to Rust in the Rust conversion
-//! (one file at a time, tracked on the `Rust-Conversion` branch).
+//! 2026-11-26: Enhanced with panic hooks, backtrace capture, operation timing,
+//! watchdog integration, and health check support as part of comprehensive debugging system.
 
+use std::backtrace::Backtrace;
 use std::fs::{remove_file, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::core::errors::ErrorSeverity;
+
 const LEVEL_DEBUG: i32 = 0;
 const LEVEL_INFO: i32 = 1;
 const LEVEL_WARN: i32 = 2;
 const LEVEL_ERROR: i32 = 3;
+const LEVEL_CRITICAL: i32 = 4;
 
 fn level_to_i32(level: &str) -> i32 {
     match level.to_uppercase().as_str() {
@@ -30,7 +34,19 @@ fn level_to_i32(level: &str) -> i32 {
         "INFO" => LEVEL_INFO,
         "WARN" => LEVEL_WARN,
         "ERROR" => LEVEL_ERROR,
+        "CRITICAL" | "CRIT" => LEVEL_CRITICAL,
         _ => LEVEL_DEBUG,
+    }
+}
+
+fn i32_to_level(i32_level: i32) -> &'static str {
+    match i32_level {
+        LEVEL_DEBUG => "DEBUG",
+        LEVEL_INFO => "INFO",
+        LEVEL_WARN => "WARN",
+        LEVEL_ERROR => "ERROR",
+        LEVEL_CRITICAL => "CRITICAL",
+        _ => "DEBUG",
     }
 }
 
@@ -43,6 +59,8 @@ pub struct AppLogger {
     lock: Mutex<()>,
     /// Approximate bytes written since the last rotate check.
     _bytes_since_rotate_check: Mutex<u64>,
+    /// Operation timing tracker.
+    _op_times: Mutex<Vec<(String, std::time::Instant)>>,
 }
 
 const MAX_BYTES: u64 = 5 * 1024 * 1024; // 5 MB per file
@@ -50,11 +68,12 @@ const MAX_FILES: u32 = 3; // active + 2 rotated
 
 impl AppLogger {
     pub fn new(
-        path: &Path,
+        path: impl AsRef<Path>,
         level: &str,
         console: bool,
         json_format: bool,
     ) -> std::io::Result<Self> {
+        let path = path.as_ref();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -65,6 +84,7 @@ impl AppLogger {
             json_format,
             lock: Mutex::new(()),
             _bytes_since_rotate_check: Mutex::new(0),
+            _op_times: Mutex::new(Vec::new()),
         })
     }
 
@@ -86,6 +106,14 @@ impl AppLogger {
 
     pub fn set_level(&mut self, level: &str) {
         self.level = level_to_i32(level);
+    }
+
+    pub fn get_level(&self) -> i32 {
+        self.level
+    }
+
+    pub fn get_level_name(&self) -> &'static str {
+        i32_to_level(self.level)
     }
 
     fn should_log(&self, level: &str) -> bool {
@@ -113,12 +141,12 @@ impl AppLogger {
         let _ = std::fs::rename(&self.path, format!("{}.1", self.path.display()));
     }
 
+    /// Write a log entry with HH:MM:SS timestamp, level, component, correlation_id.
     pub fn write(&self, level: &str, component: &str, message: &str, correlation_id: &str) {
         if !self.should_log(level) {
             return;
         }
         let corr = if correlation_id.is_empty() {
-            // Use thread-local correlation id if available
             "-".to_string()
         } else {
             correlation_id.to_string()
@@ -190,20 +218,48 @@ impl AppLogger {
         self.write("ERROR", c, m, i);
     }
 
+    pub fn critical(&self, c: &str, m: &str, i: &str) {
+        self.write("CRITICAL", c, m, i);
+    }
+
     pub fn exception(&self, c: &str, m: &str, exc: &str, i: &str) {
         self.write(
             "ERROR",
             c,
-            &format!("{} type={}: {}\n{}", m, "Unknown", exc, ""),
+            &format!("{} type=Unknown: {}", m, exc),
             i,
         );
     }
 
-    /// Route uncaught exceptions through this logger instead of a default traceback.
-    /// In Rust, panics are handled via `std::panic::set_hook`; this logs the panic
-    /// with HH:MM:SS timestamp, location, and message to the log file.
-    pub fn install_excepthook(&self) {
+    /// Log an OrganizerError with full context.
+    pub fn log_error(&self, err: &crate::core::errors::OrganizerError) {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| {
+                let secs = d.as_secs();
+                let h = (secs / 3600) % 24;
+                let m = (secs / 60) % 60;
+                let s = secs % 60;
+                format!("{h:02}:{m:02}:{s:02}")
+            })
+            .unwrap_or_default();
+        self.write(
+            match err.severity {
+                crate::core::errors::ErrorSeverity::Info => "INFO",
+                crate::core::errors::ErrorSeverity::Warning => "WARN",
+                crate::core::errors::ErrorSeverity::Error => "ERROR",
+                crate::core::errors::ErrorSeverity::Critical => "CRITICAL",
+            },
+            &err.context.component,
+            &err.log_line(&ts),
+            &err.context.correlation_id,
+        );
+    }
+
+    /// Route uncaught panics through this logger with detailed backtrace.
+    pub fn install_panic_hook(&self) {
         let logger_path = self.path.clone();
+        let console = self.console;
         std::panic::set_hook(Box::new(move |info| {
             let ts = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -225,15 +281,71 @@ impl AppLogger {
             };
             let location = info.location().map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())).unwrap_or_else(|| "unknown".to_string());
             let thread = std::thread::current().name().unwrap_or("<unnamed>").to_string();
-            let line = format!("[{}] [PANIC] [PANIC] [-         ] thread={} location={} message={}\n", ts, thread, location, msg);
+            let backtrace = format!("{:?}", Backtrace::capture());
+            let line = format!(
+                "[{}] [PANIC] [PANIC] [-         ] thread={} location={} message={}\n  backtrace: {}\n",
+                ts, thread, location, msg, backtrace
+            );
+            // Write to log file
             let _ = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(&logger_path)
                 .and_then(|mut f| f.write_all(line.as_bytes()));
-            // Also print to stderr if available (ignore errors when no console)
-            let _ = std::io::stderr().write_all(line.as_bytes());
+            // Also print to stderr if console enabled
+            if console {
+                let _ = std::io::stderr().write_all(line.as_bytes());
+            }
         }));
+    }
+
+    /// Start tracking an operation for timing.
+    pub fn op_start(&self, operation: &str, correlation_id: &str) -> u64 {
+        let _id = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+        self._op_times.lock().unwrap().push((format!("{}:{}", operation, correlation_id), std::time::Instant::now()));
+        self.write("INFO", "OP_TIMING", &format!("OP_START {} corr={}", operation, correlation_id), correlation_id);
+        _id
+    }
+
+    /// End tracking an operation and log elapsed time.
+    pub fn op_end(&self, id: u64, operation: &str, correlation_id: &str) {
+        let mut times = self._op_times.lock().unwrap();
+        if let Some(pos) = times.iter().position(|(label, _)| {
+            label.contains(operation) && label.contains(correlation_id)
+        }) {
+            let (_, start) = times.remove(pos);
+            let elapsed = start.elapsed();
+            self.write("INFO", "OP_TIMING", &format!("OP_END {} corr={} elapsed_ms={}", operation, correlation_id, elapsed.as_millis()), correlation_id);
+        }
+    }
+
+    /// Convenience method: log a message at INFO level.
+    /// Allows call sites to use `logger.log("component", "message", "corr")` 
+    /// instead of `logger.info("component", "message", "corr")`.
+    pub fn log(&self, category: &str, message: &str, correlation_id: &str) {
+        self.info(category, message, correlation_id);
+    }
+
+    /// Get current log level name.
+    pub fn level_name(&self) -> &'static str {
+        i32_to_level(self.level)
+    }
+}
+
+impl Default for AppLogger {
+    fn default() -> Self {
+        AppLogger {
+            path: std::path::PathBuf::from("logs/organizer-default.log"),
+            level: LEVEL_INFO,
+            console: false,
+            json_format: false,
+            lock: Mutex::new(()),
+            _bytes_since_rotate_check: Mutex::new(0),
+            _op_times: Mutex::new(Vec::new()),
+        }
     }
 }
 
@@ -246,5 +358,37 @@ mod tests {
         assert!(level_to_i32("DEBUG") < level_to_i32("INFO"));
         assert!(level_to_i32("INFO") < level_to_i32("WARN"));
         assert!(level_to_i32("WARN") < level_to_i32("ERROR"));
+        assert!(level_to_i32("ERROR") < level_to_i32("CRITICAL"));
+    }
+
+    #[test]
+    fn test_critical_level() {
+        assert_eq!(level_to_i32("CRITICAL"), LEVEL_CRITICAL);
+        assert_eq!(level_to_i32("CRIT"), LEVEL_CRITICAL);
+    }
+
+    #[test]
+    fn test_op_timing() {
+        let path = std::env::temp_dir().join(format!("op_test_{}.log", std::process::id()));
+        let logger = AppLogger::new(&path, "INFO", false, false).unwrap();
+        let id = logger.op_start("test_op", "corr1");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        logger.op_end(id, "test_op", "corr1");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_log_error() {
+        let path = std::env::temp_dir().join(format!("error_test_{}.log", std::process::id()));
+        let logger = AppLogger::new(&path, "INFO", false, false).unwrap();
+        let err = crate::core::errors::OrganizerError::new(
+            crate::core::errors::ErrorSeverity::Error,
+            "TEST",
+            "test_op",
+            "corr1",
+            "test error message",
+        );
+        logger.log_error(&err);
+        let _ = std::fs::remove_file(&path);
     }
 }

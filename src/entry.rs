@@ -237,7 +237,7 @@ pub fn main() -> i32 {
             return 1;
         }
     };
-    logger.install_excepthook();
+    logger.install_panic_hook();
 
     if args.diagnostics {
         println!("Diagnostics not yet available in Rust.");

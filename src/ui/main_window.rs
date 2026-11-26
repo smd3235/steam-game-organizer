@@ -1,8 +1,9 @@
 //! Main application window using egui.
 //! Completely redesigned layout with left navigation sidebar, top bar, and themed content area.
 //!
-//! 2026-11-25: New layout with navigation sidebar, modern theme, card-based views.
+//! 2026-11-26: New layout with navigation sidebar, modern theme, card-based views.
 //! All views share logger and archives flow from Scan → Review → Organize → Artwork → Done.
+//! Comprehensive logging and watchdog on all views.
 
 #![allow(clippy::all)]
 
@@ -12,6 +13,7 @@ use crate::app::controller::{Services, StateStore};
 use crate::app::events::EventBus;
 use crate::app::jobs::JobManager;
 use crate::services::library_service::LibraryService;
+use crate::core::errors::Watchdog;
 
 use crate::ui::artwork_view::ArtworkView;
 use crate::ui::done_view::DoneView;
@@ -35,7 +37,7 @@ const NAV_ITEMS: &[(&str, &str)] = &[
 pub struct MainWindow {
     pub state: Arc<StateStore>,
     pub bus: Arc<EventBus>,
-    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+    pub logger: Arc<crate::core::logger::AppLogger>,
     pub services: Arc<Services>,
     pub jobs: Arc<JobManager>,
     pub current: String,
@@ -53,18 +55,24 @@ impl MainWindow {
     pub fn new(
         state: Arc<StateStore>,
         bus: Arc<EventBus>,
-        logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+        logger: Arc<crate::core::logger::AppLogger>,
         services: Arc<Services>,
         _library_service: LibraryService,
         jobs: Arc<JobManager>,
     ) -> Self {
-        (logger)("DEBUG", "MainWindow::new called");
+        logger.log("DEBUG", "MainWindow::new called", "");
         let logger_for_scan = Arc::clone(&logger);
         let logger_for_review = Arc::clone(&logger);
         let logger_for_organize = Arc::clone(&logger);
         let logger_for_artwork = Arc::clone(&logger);
         let logger_for_done = Arc::clone(&logger);
         let logger_for_setup = Arc::clone(&logger);
+        let watchdog_for_scan = Arc::new(crate::core::errors::Watchdog::new(logger_for_scan.clone(), 300000));
+        let watchdog_for_review = Arc::new(crate::core::errors::Watchdog::new(logger_for_review.clone(), 300000));
+        let watchdog_for_organize = Arc::new(crate::core::errors::Watchdog::new(logger_for_organize.clone(), 600000));
+        let watchdog_for_artwork = Arc::new(crate::core::errors::Watchdog::new(logger_for_artwork.clone(), 300000));
+        let watchdog_for_done = Arc::new(crate::core::errors::Watchdog::new(logger_for_done.clone(), 300000));
+        let watchdog_for_setup = Arc::new(crate::core::errors::Watchdog::new(logger_for_setup.clone(), 300000));
         let services_clone = Arc::clone(&services);
         let jobs_for_field = Arc::clone(&jobs);
         let jobs_for_scan = Arc::clone(&jobs);
@@ -82,12 +90,13 @@ impl MainWindow {
                 jobs_for_scan,
                 Palette::default(),
                 logger_for_scan,
+                watchdog_for_scan,
             ),
-            review_view: ReviewView::new(Palette::default(), logger_for_review),
-            organize_view: OrganizeView::new(Palette::default(), logger_for_organize),
-            artwork_view: ArtworkView::new(Palette::default(), logger_for_artwork),
-            done_view: DoneView::new(Palette::default(), logger_for_done),
-            setup_view: SetupView::new(Palette::default(), logger_for_setup),
+            review_view: ReviewView::new(Palette::default(), logger_for_review, watchdog_for_review),
+            organize_view: OrganizeView::new(Palette::default(), logger_for_organize, watchdog_for_organize),
+            artwork_view: ArtworkView::new(Palette::default(), logger_for_artwork, watchdog_for_artwork),
+            done_view: DoneView::new(Palette::default(), logger_for_done, watchdog_for_done),
+            setup_view: SetupView::new(Palette::default(), logger_for_setup, watchdog_for_setup),
             shared_archives: Vec::new(),
         }
     }
@@ -96,7 +105,7 @@ impl MainWindow {
     fn sync_archives(&mut self) {
         let archives = self.scan_view.state.discovered_archives.clone();
         if !archives.is_empty() {
-            (self.logger)("MAIN", &format!("Syncing {} archives to downstream views", archives.len()));
+            self.logger.log("MAIN", &format!("Syncing {} archives to downstream views", archives.len()), "");
             self.shared_archives = archives.clone();
             self.review_view.load(archives.clone());
             self.organize_view.load(archives.clone());
@@ -149,7 +158,7 @@ impl MainWindow {
             let failed = self.organize_view.state.failed_count;
             if !archives.is_empty() {
                 self.done_view.load(archives.clone(), converted, skipped, failed);
-                (self.logger)("MAIN", &format!("Pushed {} results to Done view", archives.len()));
+                self.logger.log("MAIN", &format!("Pushed {} results to Done view", archives.len()), "");
             }
         }
     }
@@ -213,7 +222,7 @@ impl MainWindow {
                 let response = ui.selectable_label(is_active, *label);
                 if response.clicked() {
                     self.current = key.to_string();
-                    (self.logger)("DEBUG", &format!("Navigated to {}", key));
+                    self.logger.log("DEBUG", &format!("Navigated to {}", key), "");
                 }
             }
 
@@ -231,7 +240,7 @@ impl MainWindow {
             );
             ui.add_space(4.0);
             if secondary_button(ui, "Setup Wizard", &self.palette).clicked() {
-                (self.logger)("DEBUG", "Setup Wizard button clicked");
+                self.logger.log("DEBUG", "Setup Wizard button clicked", "");
                 self.current = "setup".to_string();
             }
 
@@ -255,7 +264,7 @@ impl MainWindow {
             );
             ui.separator();
             ui.label(
-                egui::RichText::new(format!("view: {}", self.current))
+                RichText::new(format!("view: {}", self.current))
                     .color(self.palette.muted)
                     .small(),
             );
@@ -280,7 +289,7 @@ fn ctx_send_close(ctx: &egui::Context) {
 
 impl eframe::App for MainWindow {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        (self.logger)("DEBUG", "MainWindow::update called");
+        self.logger.log("DEBUG", "MainWindow::update called", "");
 
         // Top bar
         egui::TopBottomPanel::top("top_bar")
@@ -326,6 +335,6 @@ impl eframe::App for MainWindow {
     }
 
     fn on_exit(&mut self, _frame: Option<&eframe::glow::Context>) {
-        (self.logger)("APPLICATION", "SHUTDOWN");
+        self.logger.log("APPLICATION", "SHUTDOWN", "");
     }
 }

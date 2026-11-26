@@ -1,14 +1,20 @@
 //! Organize view: convert ZIP/RAR to 7z, move into category folders, write artwork and catalog pages.
 //! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
+//! All buttons log actions through the logger with detailed context.
 //!
-//! 2026-11-25: egui organize view with new theme and wired button actions.
-//! All buttons log actions through the logger.
+//! 2026-11-26: egui organize view with new theme and wired button actions.
+//! v2 - comprehensive logging on every button and state change.
 
 use std::sync::Arc;
 
-use egui::{RichText, ScrollArea};
 use crate::core::models::GameArchive;
-use crate::ui::theme::{card, danger_button, primary_button, Palette, separator};
+use crate::core::errors::{
+    OrganizerError, ErrorSeverity, Watchdog,
+};
+use crate::{log_error, err, trace_op};
+
+use egui::{RichText, ScrollArea};
+use crate::ui::theme::{card, danger_button, pill, primary_button, secondary_button, Palette, separator};
 
 #[derive(Default, Clone)]
 pub struct OrganizeViewState {
@@ -51,15 +57,21 @@ impl OrganizeViewState {
 pub struct OrganizeView {
     pub state: OrganizeViewState,
     pub palette: Palette,
-    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+    pub logger: Arc<crate::core::logger::AppLogger>,
+    pub watchdog: Arc<Watchdog>,
 }
 
 impl OrganizeView {
-    pub fn new(palette: Palette, logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>) -> Self {
+    pub fn new(
+        palette: Palette,
+        logger: Arc<crate::core::logger::AppLogger>,
+        watchdog: Arc<Watchdog>,
+    ) -> Self {
         OrganizeView {
             state: OrganizeViewState::new(),
             palette,
             logger,
+            watchdog,
         }
     }
 
@@ -103,14 +115,14 @@ impl OrganizeView {
                 ui.checkbox(&mut self.state.preview_only, "Preview Only");
                 ui.separator();
                 if primary_button(ui, "Start Organize", &self.palette).clicked() {
-                    (self.logger)("ORGANIZE", "Start Organize button clicked");
+                    self.logger.log("ORGANIZE", "Start Organize button clicked", "");
                     self.state.converting = true;
                     self.state.should_organize = true;
                     self.state.status = "Organization starting…".to_string();
                     self.state.activity.push("Organization starting…".to_string());
                 }
                 if self.state.converting && danger_button(ui, "Cancel", &self.palette).clicked() {
-                    (self.logger)("ORGANIZE", "Cancel button clicked");
+                    self.logger.log("ORGANIZE", "Cancel button clicked", "");
                     self.state.converting = false;
                     self.state.status = "Organization cancelled.".to_string();
                     self.state.activity.push("Organization cancelled.".to_string());
@@ -134,7 +146,7 @@ impl OrganizeView {
                             };
                             if ui.selectable_label(selected, &name).clicked() {
                                 self.state.selected_index = Some(i);
-                                (self.logger)("ORGANIZE", &format!("Selected: {}", name));
+                                self.logger.log("ORGANIZE", &format!("Selected: {}", name), "");
                             }
                         }
                         if self.state.archives.is_empty() {
@@ -167,12 +179,18 @@ impl OrganizeView {
     }
 
     fn run_organize(&mut self) {
-        (self.logger)("ORGANIZE", "run_organize: beginning organization process");
+        let corr = self.logger.correlation_id();
+        let op_id = self.logger.op_start("run_organize", &corr);
+        self.watchdog.start("run_organize", "ORGANIZE", &corr, Some(600000)); // 10 minute timeout
+
+        self.logger.log("ORGANIZE", "run_organize: beginning organization process", &corr);
 
         let total = self.state.archives.len();
         if total == 0 {
             self.state.status = "No archives to organize".to_string();
             self.state.converting = false;
+            self.watchdog.complete(op_id);
+            self.logger.op_end(op_id, "run_organize", &corr);
             return;
         }
 
@@ -186,11 +204,11 @@ impl OrganizeView {
             self.state.stage = format!("Processing {} ({}/{})", archive.display_name, i + 1, total);
             self.state.status = self.state.stage.clone();
 
-            (self.logger)("ORGANIZE", &format!("Processing archive {} ({}/{})", archive.display_name, i + 1, total));
+            self.logger.log("ORGANIZE", &format!("Processing archive {} ({}/{})", archive.display_name, i + 1, total), &corr);
 
             if self.state.preview_only {
                 self.state.activity.push(format!("PREVIEW: Would organize {}", archive.display_name));
-                (self.logger)("ORGANIZE", &format!("PREVIEW: Would organize {}", archive.display_name));
+                self.logger.log("ORGANIZE", &format!("PREVIEW: Would organize {}", archive.display_name), &corr);
                 self.state.skipped_count += 1;
                 continue;
             }
@@ -198,7 +216,7 @@ impl OrganizeView {
             // Simulate organization - mark as converted
             archive.decision.accepted = true;
             self.state.activity.push(format!("Organized: {}", archive.display_name));
-            (self.logger)("ORGANIZE", &format!("Organized: {}", archive.display_name));
+            self.logger.log("ORGANIZE", &format!("Organized: {}", archive.display_name), &corr);
             self.state.converted_count += 1;
 
             // Update progress
@@ -209,12 +227,16 @@ impl OrganizeView {
         self.state.stage = "Organization complete".to_string();
         self.state.status = format!("Organization complete — {} converted, {} skipped, {} failed",
             self.state.converted_count, self.state.skipped_count, self.state.failed_count);
-        (self.logger)("ORGANIZE", &self.state.status);
+        self.logger.log("ORGANIZE", &self.state.status, &corr);
+        self.watchdog.complete(op_id);
+        self.logger.op_end(op_id, "run_organize", &corr);
     }
 
     pub fn load(&mut self, archives: Vec<GameArchive>) {
+        let corr = self.logger.correlation_id();
         self.state.archives = archives;
         self.state.selected_index = if !self.state.archives.is_empty() { Some(0) } else { None };
+        self.logger.log("ORGANIZE", &format!("Loaded {} archives for organization", self.state.archives.len()), &corr);
     }
 
     pub fn feed(&mut self, message: &str) {
@@ -237,15 +259,31 @@ mod tests {
     #[test]
     fn test_organize_view_new() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let _view = OrganizeView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("organize_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let _view = OrganizeView::new(palette, logger, watchdog);
     }
 
     #[test]
     fn test_organize_view_load() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = OrganizeView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("organize_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = OrganizeView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive.clone(), archive]);
         assert_eq!(view.state.archives.len(), 2);
@@ -255,8 +293,16 @@ mod tests {
     #[test]
     fn test_organize_view_feed() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = OrganizeView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("organize_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = OrganizeView::new(palette, logger, watchdog);
         view.feed("test message");
         assert_eq!(view.state.activity.len(), 1);
     }
@@ -264,8 +310,16 @@ mod tests {
     #[test]
     fn test_organize_view_shutdown() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = OrganizeView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("organize_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = OrganizeView::new(palette, logger, watchdog);
         view.state.converting = true;
         view.shutdown();
         assert!(!view.state.converting);
@@ -274,8 +328,16 @@ mod tests {
     #[test]
     fn test_organize_view_run_organize() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = OrganizeView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("organize_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = OrganizeView::new(palette, logger, watchdog);
         let archive = GameArchive::default();
         view.load(vec![archive]);
         view.state.converting = true;

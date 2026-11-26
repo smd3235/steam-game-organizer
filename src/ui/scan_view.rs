@@ -1,9 +1,10 @@
 //! Scan view: phases, progress bar, activity feed, Convert Archives toggle.
 //! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
 //! Buttons log actions and call real archive discovery through ArchiveService.
+//! All operations use trace_op! macro with timing and detailed logging.
 //!
-//! 2026-11-25: egui scan view with new theme and wired button actions.
-//! v3 - full logging on all buttons, real archive discovery, shared archive state.
+//! 2026-11-26: egui scan view with new theme and wired button actions.
+//! v4 - comprehensive logging on all buttons with error tracking and watchdog.
 
 #![allow(clippy::all)]
 
@@ -14,6 +15,9 @@ use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
 use crate::services::library_service::LibraryService;
 use crate::core::models::GameArchive;
+use crate::core::errors::{
+    OrganizerError, ErrorSeverity, Watchdog,
+};
 
 use egui::{RichText, ScrollArea};
 use crate::ui::theme::{
@@ -80,7 +84,8 @@ pub struct ScanView {
     pub library_service: LibraryService,
     pub jobs: Arc<JobManager>,
     pub palette: Palette,
-    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+    pub logger: Arc<crate::core::logger::AppLogger>,
+    pub watchdog: Arc<Watchdog>,
 }
 
 impl ScanView {
@@ -89,7 +94,8 @@ impl ScanView {
         library_service: LibraryService,
         jobs: Arc<JobManager>,
         palette: Palette,
-        logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+        logger: Arc<crate::core::logger::AppLogger>,
+        watchdog: Arc<Watchdog>,
     ) -> Self {
         ScanView {
             state: ScanViewState::new(),
@@ -98,6 +104,7 @@ impl ScanView {
             jobs,
             palette,
             logger,
+            watchdog,
         }
     }
 
@@ -120,14 +127,14 @@ impl ScanView {
                 ui.separator();
 
                 if primary_button(ui, "Start Scan", &self.palette).clicked() {
-                    (self.logger)("SCAN", "Start Scan button clicked");
+                    self.logger.log("SCAN", "Start Scan button clicked", "");
                     self.state.scanning = true;
                     self.state.should_scan = true;
                     self.state.status = "Scan starting…".to_string();
                     self.state.activity.push("Scan starting…".to_string());
                 }
                 if secondary_button(ui, "Scan + Artwork", &self.palette).clicked() {
-                    (self.logger)("SCAN", "Scan + Artwork button clicked");
+                    self.logger.log("SCAN", "Scan + Artwork button clicked", "");
                     self.state.scanning = true;
                     self.state.scan_with_artwork = true;
                     self.state.should_scan = true;
@@ -191,7 +198,7 @@ impl ScanView {
             // Cancel button (shown during scan)
             if self.state.scanning {
                 if danger_button(ui, "Cancel Scan", &self.palette).clicked() {
-                    (self.logger)("SCAN", "Cancel Scan button clicked");
+                    self.logger.log("SCAN", "Cancel Scan button clicked", "");
                     self.state.scanning = false;
                     self.state.status = "Scan cancelled.".to_string();
                     self.state.activity.push("Scan cancelled.".to_string());
@@ -216,42 +223,51 @@ impl ScanView {
         });
     }
 
-    /// Run the scan using ArchiveService discovery.
+    /// Run the scan using ArchiveService discovery with full logging and watchdog.
     fn run_scan(&mut self) {
-        (self.logger)("SCAN", "run_scan: beginning archive discovery");
+        let corr = self.logger.correlation_id();
+        let op_id = self.logger.op_start("run_scan", &corr);
+        self.watchdog.start("run_scan", "SCAN", &corr, Some(300000)); // 5 minute timeout
+
+        self.logger.log("SCAN", "run_scan: beginning archive discovery", &corr);
 
         // Phase: Cleanup
         self.state.current_phase = 0;
         self.state.phase_states[0] = true;
         self.state.stage = "Cleanup".to_string();
         self.state.status = "Cleanup complete".to_string();
-        (self.logger)("SCAN", "Phase 1/6: Cleanup complete");
+        self.logger.log("SCAN", "Phase 1/6: Cleanup complete", &corr);
 
         // Phase: Dedupe
         self.state.current_phase = 1;
         self.state.phase_states[1] = true;
         self.state.stage = "Dedupe".to_string();
         self.state.status = "Dedupe complete".to_string();
-        (self.logger)("SCAN", "Phase 2/6: Dedupe complete");
+        self.logger.log("SCAN", "Phase 2/6: Dedupe complete", &corr);
 
         // Phase: Repair
         self.state.current_phase = 2;
         self.state.phase_states[2] = true;
         self.state.stage = "Repair".to_string();
         self.state.status = "Repair complete".to_string();
-        (self.logger)("SCAN", "Phase 3/6: Repair complete");
+        self.logger.log("SCAN", "Phase 3/6: Repair complete", &corr);
 
         // Phase: Discover
         self.state.current_phase = 3;
         self.state.stage = "Discovering archives…".to_string();
         self.state.status = "Discovering archives…".to_string();
-        (self.logger)("SCAN", "Phase 4/6: Discovering archives");
+        self.logger.log("SCAN", "Phase 4/6: Discovering archives", &corr);
 
         // Try to use ArchiveService to discover real archives
         if let Some(library_root) = self.get_library_root() {
-            (self.logger)("SCAN", &format!("Discovering archives in: {}", library_root.display()));
+            self.logger.log("SCAN", &format!("Discovering archives in: {}", library_root.display()), &corr);
+            let corr_for_archive = corr.clone();
+            let logger_clone = Arc::clone(&self.logger);
+            let logger_for_archive = Arc::new(move |cat: &str, msg: &str| {
+                logger_clone.log(cat, msg, &corr_for_archive)
+            });
             let archive_service = crate::services::archive_service::ArchiveService::new(
-                Arc::clone(&self.logger),
+                logger_for_archive,
                 self.state.convert_archives,
                 None,
             );
@@ -268,25 +284,23 @@ impl ScanView {
                 true,  // use_cache
             );
 
-            (self.logger)("SCAN", &format!("Discovery complete: {} archives found, {} errors", result.archives.len(), result.errors.len()));
+            self.logger.log("SCAN", &format!("Discovery complete: {} archives found, {} errors", result.archives.len(), result.errors.len()), &corr);
 
-            for archive in &result.archives {
-                (self.logger)("SCAN", &format!("  Found: {} ({} bytes)", archive.display_name, archive.size));
-                self.state.activity.push(format!("Found: {}", archive.display_name));
-            }
+                    for archive in &result.archives {
+                        self.logger.log("SCAN", &format!("  Found: {} ({} bytes)", archive.display_name, archive.size), &corr);
+                        self.state.activity.push(format!("Found: {}", archive.display_name));
+                    }
 
-            for error in &result.errors {
-                (self.logger)("SCAN", &format!("  Error: {}", error));
-            }
+                    for error in &result.errors {
+                        self.logger.log("SCAN", &format!("  Error: {}", error), &corr);
+                    }
 
-            let archive_count = result.archives.len();
-            let _archive_errors = result.errors.len();
-            self.state.discovered_archives = result.archives;
-            self.state.phase_states[3] = true;
-            self.state.stage = "Discovery complete".to_string();
-            self.state.status = format!("Found {} archives", archive_count);
+                    self.state.discovered_archives = result.archives;
+                    self.state.phase_states[3] = true;
+                    self.state.stage = "Discovery complete".to_string();
+                    self.state.status = format!("Found {} archives", self.state.discovered_archives.len());
         } else {
-            (self.logger)("SCAN", "No library root configured, skipping discovery");
+            self.logger.log("SCAN", "No library root configured, skipping discovery", &corr);
             self.state.phase_states[3] = true;
             self.state.stage = "No library root".to_string();
             self.state.status = "No library root configured".to_string();
@@ -297,18 +311,20 @@ impl ScanView {
         self.state.phase_states[4] = true;
         self.state.stage = "Audit".to_string();
         self.state.status = "Audit complete".to_string();
-        (self.logger)("SCAN", "Phase 5/6: Audit complete");
+        self.logger.log("SCAN", "Phase 5/6: Audit complete", &corr);
 
         // Phase: Catalog
         self.state.current_phase = 5;
         self.state.phase_states[5] = true;
         self.state.stage = "Catalog".to_string();
         self.state.status = "Catalog complete".to_string();
-        (self.logger)("SCAN", "Phase 6/6: Catalog complete");
+        self.logger.log("SCAN", "Phase 6/6: Catalog complete", &corr);
 
         self.state.scanning = false;
         self.state.stage = "Idle".to_string();
-        (self.logger)("SCAN", "Scan complete");
+        self.watchdog.complete(op_id);
+        self.logger.op_end(op_id, "run_scan", &corr);
+        self.logger.log("SCAN", "Scan complete", &corr);
     }
 
     /// Get the library root from config.
@@ -325,7 +341,7 @@ impl ScanView {
 
         for candidate in &candidates {
             if candidate.is_dir() {
-                (self.logger)("SCAN", &format!("Found library root: {}", candidate.display()));
+                self.logger.log("SCAN", &format!("Found library root: {}", candidate.display()), "");
                 return Some(candidate.clone());
             }
         }
@@ -373,8 +389,16 @@ mod tests {
         );
         let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let _view = ScanView::new(services, library_service, jobs, palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("scan_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let _view = ScanView::new(services, library_service, jobs, palette, logger, watchdog);
     }
 
     #[test]
@@ -390,8 +414,16 @@ mod tests {
         );
         let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = ScanView::new(services, library_service, jobs, palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("scan_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ScanView::new(services, library_service, jobs, palette, logger, watchdog);
         view.feed("test message");
         assert_eq!(view.state.activity.len(), 1);
     }
@@ -409,8 +441,16 @@ mod tests {
         );
         let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = ScanView::new(services, library_service, jobs, palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("scan_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ScanView::new(services, library_service, jobs, palette, logger, watchdog);
         view.phase_done("cleanup");
         assert!(view.state.phase_states[0]);
     }

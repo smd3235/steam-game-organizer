@@ -1,7 +1,8 @@
 //! Setup view: initial configuration wizard for library root, extract folder, and 7z path.
 //! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
+//! All buttons log actions through the logger.
 //!
-//! 2026-11-25: egui setup view with new theme and wired button actions.
+//! 2026-11-26: egui setup view with new theme and wired button actions.
 //! All buttons log actions through the logger.
 
 use std::path::PathBuf;
@@ -41,15 +42,21 @@ impl SetupViewState {
 pub struct SetupView {
     pub state: SetupViewState,
     pub palette: Palette,
-    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
+    pub logger: Arc<crate::core::logger::AppLogger>,
+    pub watchdog: Arc<crate::core::errors::Watchdog>,
 }
 
 impl SetupView {
-    pub fn new(palette: Palette, logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>) -> Self {
+    pub fn new(
+        palette: Palette,
+        logger: Arc<crate::core::logger::AppLogger>,
+        watchdog: Arc<crate::core::errors::Watchdog>,
+    ) -> Self {
         SetupView {
             state: SetupViewState::new(),
             palette,
             logger,
+            watchdog,
         }
     }
 
@@ -83,7 +90,7 @@ impl SetupView {
                         .desired_width(400.0),
                 );
                 if secondary_button(ui, "Browse", &self.palette).clicked() {
-                    (self.logger)("SETUP", "Library root Browse clicked");
+                    self.logger.log("SETUP", "Library root Browse clicked", "");
                     self.state.status = "Browse for library root…".to_string();
                 }
             });
@@ -99,7 +106,7 @@ impl SetupView {
                         .desired_width(400.0),
                 );
                 if secondary_button(ui, "Browse", &self.palette).clicked() {
-                    (self.logger)("SETUP", "Extract folder Browse clicked");
+                    self.logger.log("SETUP", "Extract folder Browse clicked", "");
                     self.state.status = "Browse for extract folder…".to_string();
                 }
             });
@@ -115,7 +122,7 @@ impl SetupView {
                         .desired_width(400.0),
                 );
                 if secondary_button(ui, "Browse", &self.palette).clicked() {
-                    (self.logger)("SETUP", "7-Zip path Browse clicked");
+                    self.logger.log("SETUP", "7-Zip path Browse clicked", "");
                     self.state.status = "Browse for 7-Zip executable…".to_string();
                 }
             });
@@ -133,11 +140,11 @@ impl SetupView {
             section_header(ui, &self.palette, "VALIDATION");
             ui.horizontal(|ui| {
                 if primary_button(ui, "Validate Configuration", &self.palette).clicked() {
-                    (self.logger)("SETUP", "Validate Configuration button clicked");
+                    self.logger.log("SETUP", "Validate Configuration button clicked", "");
                     self.state.should_validate = true;
                 }
                 if secondary_button(ui, "Clear", &self.palette).clicked() {
-                    (self.logger)("SETUP", "Clear validation clicked");
+                    self.logger.log("SETUP", "Clear validation clicked", "");
                     self.state.validation_messages.clear();
                     self.state.status = "Validation cleared".to_string();
                 }
@@ -164,11 +171,11 @@ impl SetupView {
             // Save button
             ui.horizontal(|ui| {
                 if primary_button(ui, "Save & Finish Setup", &self.palette).clicked() {
-                    (self.logger)("SETUP", "Save & Finish Setup button clicked");
+                    self.logger.log("SETUP", "Save & Finish Setup button clicked", "");
                     self.state.should_save = true;
                 }
                 if secondary_button(ui, "Skip Setup", &self.palette).clicked() {
-                    (self.logger)("SETUP", "Skip Setup button clicked");
+                    self.logger.log("SETUP", "Skip Setup button clicked", "");
                     self.state.status = "Setup skipped — using defaults".to_string();
                 }
             });
@@ -179,6 +186,7 @@ impl SetupView {
     }
 
     fn validate_config(&mut self) {
+        let corr = self.logger.correlation_id();
         self.state.validation_messages.clear();
         let mut all_ok = true;
 
@@ -227,10 +235,11 @@ impl SetupView {
             self.state.status = "Configuration has issues — fix before saving".to_string();
         }
 
-        (self.logger)("SETUP", &format!("Validation complete: {} messages", self.state.validation_messages.len()));
+        self.logger.log("SETUP", &format!("Validation complete: {} messages", self.state.validation_messages.len()), &corr);
     }
 
     fn save_config(&mut self) {
+        let corr = self.logger.correlation_id();
         self.validate_config();
         if self.state.validation_messages.iter().any(|m| m.starts_with("✗")) {
             self.state.status = "Cannot save — fix errors first".to_string();
@@ -255,10 +264,10 @@ impl SetupView {
         }
 
         self.state.status = "Configuration saved successfully!".to_string();
-        (self.logger)("SETUP", "Configuration saved successfully");
-        (self.logger)("SETUP", &format!("Library root: {}", self.state.library_root));
-        (self.logger)("SETUP", &format!("Extract folder: {}", self.state.extract_folder));
-        (self.logger)("SETUP", &format!("7-Zip path: {}", self.state.seven_zip_path));
+        self.logger.log("SETUP", "Configuration saved successfully", &corr);
+        self.logger.log("SETUP", &format!("Library root: {}", self.state.library_root), &corr);
+        self.logger.log("SETUP", &format!("Extract folder: {}", self.state.extract_folder), &corr);
+        self.logger.log("SETUP", &format!("7-Zip path: {}", self.state.seven_zip_path), &corr);
     }
 }
 
@@ -269,15 +278,31 @@ mod tests {
     #[test]
     fn test_setup_view_new() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let _view = SetupView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("setup_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let _view = SetupView::new(palette, logger, watchdog);
     }
 
     #[test]
     fn test_setup_validate_empty() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = SetupView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("setup_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = SetupView::new(palette, logger, watchdog);
         view.validate_config();
         assert!(!view.state.validation_messages.is_empty());
         assert!(view.state.validation_messages.iter().any(|m| m.starts_with("✗")));
@@ -286,8 +311,16 @@ mod tests {
     #[test]
     fn test_setup_validate_with_paths() {
         let palette = Palette::default();
-        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
-        let mut view = SetupView::new(palette, logger);
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("setup_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            ).unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = SetupView::new(palette, logger, watchdog);
         view.state.library_root = ".".to_string();
         view.state.extract_folder = tempfile_dir().to_string_lossy().to_string();
         view.validate_config();

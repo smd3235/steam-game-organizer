@@ -3436,7 +3436,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "thiserror 1.0.69",
  "walkdir",
  "winreg 0.52.0",
  "zip",
