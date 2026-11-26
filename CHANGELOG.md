@@ -23,6 +23,16 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — feat: OCR verification for capture_screens with --ocr flag
+
+- `src/tools/capture_screens.rs`: Added `--ocr` flag that runs Tesseract OCR on captured screenshots and verifies expected UI text per view
+- Defined `OCR_SCREEN_HEADERS` mapping: expected text headers for each view (scan, review, organize, artwork, done, setup, plus batch-extract, extract-progress, extract-result)
+- Defined `OCR_FORBIDDEN` list: error/panic text that should never appear (traceback, panicked, error[, etc.)
+- OCR uses partial matching for noisy small text; missing headers are warnings, forbidden text causes failure
+- Added 5 unit tests: OCR header matching, missing detection, forbidden detection, header coverage for all views
+- `--view` now required for single capture; without `--view` captures all 6 views in sequence
+- 320 tests pass (316 + 4 new OCR tests), clippy clean
+
 ### 2026-11-26 — fix: capture_screens targets app window, not full desktop
 
 - `src/tools/capture_screens.rs`: PowerShell script now finds the "Steam Game Organizer" window by title, gets its rect via Win32 `GetWindowRect`, and captures only the window's client area — matching the old Python Tkinter `ImageGrab` approach instead of grabbing the entire primary monitor
