@@ -224,7 +224,7 @@ impl ScanView {
     }
 
     /// Run the scan using ArchiveService discovery with full logging and watchdog.
-    fn run_scan(&mut self) {
+    pub fn run_scan(&mut self) {
         let corr = self.logger.correlation_id();
         let op_id = self.logger.op_start("run_scan", &corr);
         self.watchdog.start("run_scan", "SCAN", &corr, Some(300000)); // 5 minute timeout

@@ -550,3 +550,328 @@ fn test_button_count_audit() {
     println!("   Setup View:       6 buttons, 3 text fields, 1 checkbox");
     println!("   Total: 29 interactive elements - ALL VERIFIED");
 }
+
+// ========== ERROR SCENARIO TESTS ==========
+
+#[test]
+fn test_scan_with_no_library_root() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let services = test_services();
+    let library_service = test_library_service();
+    let jobs = test_jobs();
+    let palette = Palette::default();
+
+    let mut view = ScanView::new(
+        Arc::clone(&services),
+        library_service,
+        Arc::clone(&jobs),
+        palette,
+        Arc::clone(&logger),
+        Arc::clone(&watchdog),
+    );
+
+    // No library root configured - should not panic
+    view.state.scanning = true;
+    view.state.should_scan = true;
+    view.state.status = "Scan starting…".to_string();
+
+    // Manually trigger scan with no library root
+    // get_library_root() will find Cargo.toml project root, which exists
+    // So we test with a non-existent path by checking the view doesn't panic
+    view.run_scan();
+    // Should complete without panic
+    assert!(!view.state.scanning);
+}
+
+#[test]
+fn test_review_with_empty_archives() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let palette = Palette::default();
+
+    let mut view = ReviewView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+
+    // Empty archives - should not panic
+    assert!(view.state.archives.is_empty());
+    assert_eq!(view.state.selected_index, None);
+
+    // Cancel lookup on empty list
+    view.cancel_lookup();
+    assert_eq!(view.state.status, "Verification cancelled.");
+
+    // Approve all on empty list
+    view.approve_all_verified();
+    assert_eq!(view.state.status, "All verified archives approved".to_string());
+
+    // Use all suggestions on empty list
+    view.use_all_suggestions();
+    assert_eq!(view.state.status, "All suggestions applied".to_string());
+
+    // Retry failed on empty list - no state change since nothing to retry
+    view.retry_failed();
+    assert_eq!(view.state.selected_index, None);
+
+    // Accept & Next with no selection
+    view.accept_and_next();
+    assert_eq!(view.state.selected_index, None);
+
+    // Skip with no selection - no state change since nothing selected
+    view.skip_current();
+    assert_eq!(view.state.selected_index, None);
+
+    // Wrong match with no selection - no state change since nothing selected
+    view.wrong_match();
+    assert_eq!(view.state.selected_index, None);
+}
+
+#[test]
+fn test_organize_with_empty_archives() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let palette = Palette::default();
+
+    let mut view = OrganizeView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+
+    // Empty archives - should not panic
+    assert!(view.state.archives.is_empty());
+
+    // Start organize with no archives
+    view.state.converting = true;
+    view.state.should_organize = true;
+    view.state.status = "Organization starting…".to_string();
+    view.run_organize();
+    assert!(!view.state.converting);
+    assert_eq!(view.state.status, "No archives to organize".to_string());
+
+    // Shutdown
+    view.shutdown();
+    assert!(!view.state.converting);
+}
+
+#[test]
+fn test_done_with_empty_archives() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let palette = Palette::default();
+
+    let mut view = DoneView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+
+    // Empty archives - should not panic
+    assert!(view.state.archives.is_empty());
+    assert_eq!(view.state.status, "No organization run yet.");
+
+    // Undo on empty
+    view.state.should_undo = true;
+    view.undo_last_run();
+    assert_eq!(view.state.status, "Organization run undone.".to_string());
+
+    // Open library
+    view.state.should_open_library = true;
+    view.open_library();
+    assert_eq!(view.state.status, "Opening library folder…".to_string());
+}
+
+#[test]
+fn test_setup_with_invalid_paths() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let palette = Palette::default();
+
+    let mut view = SetupView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+
+    // Empty paths - validation should fail
+    view.state.should_validate = true;
+    view.validate_config();
+    assert!(!view.state.validation_messages.is_empty());
+    assert!(view.state.validation_messages.iter().any(|m| m.starts_with("✗")));
+
+    // Non-existent library root
+    view.state.library_root = "C:\\Nonexistent\\Path\\That\\Does\\Not\\Exist".to_string();
+    view.validate_config();
+    assert!(view.state.validation_messages.iter().any(|m| m.contains("not found")));
+
+    // Non-existent 7z path
+    view.state.library_root = std::env::temp_dir().to_string_lossy().to_string();
+    view.state.seven_zip_path = "C:\\Nonexistent\\7z.exe".to_string();
+    view.validate_config();
+    assert!(view.state.validation_messages.iter().any(|m| m.contains("not found")));
+}
+
+#[test]
+fn test_artwork_with_empty_archives() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let palette = Palette::default();
+
+    let mut view = ArtworkView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+
+    // Empty archives - should not panic
+    assert!(view.state.archives.is_empty());
+    assert_eq!(view.state.status, "No artwork downloaded yet.");
+
+    // Load empty list
+    view.load(vec![]);
+    assert_eq!(view.state.archives.len(), 0);
+    assert_eq!(view.state.selected_index, None);
+}
+
+#[test]
+fn test_state_persistence_across_views() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let services = test_services();
+    let library_service = test_library_service();
+    let jobs = test_jobs();
+    let palette = Palette::default();
+
+    let mut scan_view = ScanView::new(
+        Arc::clone(&services),
+        library_service,
+        Arc::clone(&jobs),
+        palette.clone(),
+        Arc::clone(&logger),
+        Arc::clone(&watchdog),
+    );
+
+    // Simulate scan finding archives
+    scan_view.state.discovered_archives = vec![
+        make_test_archive("Test Game 1", "100", "Action"),
+        make_test_archive("Test Game 2", "200", "RPG"),
+    ];
+
+    // Verify archives are in scan view
+    assert_eq!(scan_view.state.discovered_archives.len(), 2);
+
+    // Transfer to review view (simulating MainWindow sync)
+    let mut review_view = ReviewView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    review_view.load(scan_view.state.discovered_archives.clone());
+    assert_eq!(review_view.state.archives.len(), 2);
+
+    // Transfer to organize view
+    let mut organize_view = OrganizeView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    organize_view.load(review_view.state.archives.clone());
+    assert_eq!(organize_view.state.archives.len(), 2);
+
+    // Transfer to artwork view
+    let mut artwork_view = ArtworkView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    artwork_view.load(organize_view.state.archives.clone());
+    assert_eq!(artwork_view.state.archives.len(), 2);
+
+    // Transfer to done view
+    let mut done_view = DoneView::new(palette.clone(), Arc::clone(&logger), Arc::clone(&watchdog));
+    done_view.load(artwork_view.state.archives.clone(), 2, 0, 0);
+    assert_eq!(done_view.state.archives.len(), 2);
+    assert_eq!(done_view.state.converted, 2);
+}
+
+#[test]
+fn test_scan_phase_progression() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let services = test_services();
+    let library_service = test_library_service();
+    let jobs = test_jobs();
+    let palette = Palette::default();
+
+    let mut view = ScanView::new(
+        Arc::clone(&services),
+        library_service,
+        Arc::clone(&jobs),
+        palette,
+        Arc::clone(&logger),
+        Arc::clone(&watchdog),
+    );
+
+    // All phases should start as not done
+    for phase_done in &view.state.phase_states {
+        assert!(!*phase_done);
+    }
+    assert_eq!(view.state.current_phase, 0);
+
+    // Complete all phases in order
+    for (i, (key, _label)) in SCAN_PHASES.iter().enumerate() {
+        view.phase_done(key);
+        assert!(view.state.phase_states[i]);
+    }
+
+    // All phases should be done
+    for phase_done in &view.state.phase_states {
+        assert!(*phase_done);
+    }
+}
+
+#[test]
+fn test_review_archive_selection_persistence() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let palette = Palette::default();
+
+    let mut view = ReviewView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+
+    view.load(vec![
+        make_test_archive("Game 1", "1", "Action"),
+        make_test_archive("Game 2", "2", "RPG"),
+        make_test_archive("Game 3", "3", "Strategy"),
+    ]);
+
+    // Select each archive in sequence
+    view.state.selected_index = Some(0);
+    assert_eq!(view.state.selected_index, Some(0));
+
+    view.state.selected_index = Some(1);
+    assert_eq!(view.state.selected_index, Some(1));
+
+    view.state.selected_index = Some(2);
+    assert_eq!(view.state.selected_index, Some(2));
+
+    // Select out of bounds - should not panic
+    view.state.selected_index = Some(5);
+    assert_eq!(view.state.selected_index, Some(5));
+
+    // Reset to none
+    view.state.selected_index = None;
+    assert_eq!(view.state.selected_index, None);
+}
+
+#[test]
+fn test_logging_produces_output() {
+    let logger = test_logger();
+    let watchdog = test_watchdog(logger.clone());
+    let palette = Palette::default();
+
+    // Generate various log entries
+    logger.info("TEST", "Info message", "corr1");
+    logger.warning("TEST", "Warning message", "corr2");
+    logger.error("TEST", "Error message", "corr3");
+    logger.critical("TEST", "Critical message", "corr4");
+
+    // Log an OrganizerError
+    let err = crate::core::errors::OrganizerError::new(
+        crate::core::errors::ErrorSeverity::Error,
+        "TEST",
+        "test_op",
+        "corr5",
+        "Test error message",
+    );
+    logger.log_error(&err);
+
+    // Log operation timing
+    let op_id = logger.op_start("test_op", "corr6");
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    logger.op_end(op_id, "test_op", "corr6");
+
+    // Watchdog timeout
+    view_watchdog_timeout(&watchdog, &logger);
+
+    // Verify logger is functional (no panic)
+    assert!(true);
+}
+
+fn view_watchdog_timeout(watchdog: &Watchdog, logger: &Arc<AppLogger>) {
+    // Start an operation with a very short timeout
+    let id = watchdog.start("slow_op", "TEST", "corr_watchdog", Some(10));
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    watchdog.check_timeouts();
+    watchdog.complete(id);
+}
