@@ -346,6 +346,26 @@ impl ScanView {
             }
         }
 
+        // Walk up from exe directory looking for project root (where Cargo.toml is)
+        // Archives like the test zip may be in the project root
+        if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())) {
+            let mut current = exe_dir.clone();
+            for _ in 0..5 {
+                if current.join("Cargo.toml").is_file() {
+                    self.logger.log("SCAN", &format!("Found project root: {}", current.display()), "");
+                    return Some(current.clone());
+                }
+                if !current.pop() {
+                    break;
+                }
+            }
+            // Also check exe_dir itself for archives
+            if exe_dir.is_dir() {
+                self.logger.log("SCAN", &format!("Found exe dir: {}", exe_dir.display()), "");
+                return Some(exe_dir.clone());
+            }
+        }
+
         None
     }
 
