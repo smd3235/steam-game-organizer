@@ -4,7 +4,7 @@
 //! 2026-11-25: egui setup window stub in the Rust conversion.
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{Palette, separator};
+use crate::ui::theme::{primary_button, secondary_button, Palette, separator};
 
 #[derive(Default)]
 pub struct SetupWindowState {
@@ -44,11 +44,11 @@ impl SetupWindow {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, app_name: &str) {
-        separator(ui, &self.palette);
+        separator(ui);
 
         ui.heading(format!("Set up {} on this PC", app_name));
         ui.label("Three folders decide whether the catalog's Extract buttons work here. Set them once; the choices are saved beside the app.");
-        ui.separator();
+        separator(ui);
 
         // Three folder fields
         ui.vertical(|ui| {
@@ -64,24 +64,24 @@ impl SetupWindow {
                         ui.label(RichText::new(hint).small().color(self.palette.muted).italics());
                     });
                 });
-                ui.separator();
+                separator(ui);
             }
         });
 
         // Browse buttons
         ui.horizontal(|ui| {
-            if ui.button("Browse… Library").clicked() {
+            if secondary_button(ui, "Browse Library", &self.palette, true).clicked() {
                 self.state.status = "Library browse clicked".to_string();
             }
-            if ui.button("Browse… App").clicked() {
+            if secondary_button(ui, "Browse App", &self.palette, true).clicked() {
                 self.state.status = "App browse clicked".to_string();
             }
-            if ui.button("Browse… Extract").clicked() {
+            if secondary_button(ui, "Browse Extract", &self.palette, true).clicked() {
                 self.state.status = "Extract browse clicked".to_string();
             }
         });
 
-        ui.separator();
+        separator(ui);
 
         // Checks section
         ui.label(RichText::new("Checks").strong().color(self.palette.accent_hi));
@@ -104,21 +104,21 @@ impl SetupWindow {
             }
         });
 
-        ui.separator();
+        separator(ui);
 
         // Footer: Save button + status
         ui.horizontal(|ui| {
-            if ui.button("Save setup").clicked() {
+            if primary_button(ui, "Save setup", &self.palette, true).clicked() {
                 self.state.saved = true;
                 self.state.status = "Setup saved.".to_string();
             }
-            if self.state.saved && ui.button("Launch Steam Game Organizer").clicked() {
+            if self.state.saved && primary_button(ui, "Launch Steam Game Organizer", &self.palette, true).clicked() {
                 self.state.status = "Launch clicked".to_string();
             }
         });
 
         if !self.state.status.is_empty() {
-            ui.separator();
+            separator(ui);
             ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
         }
     }

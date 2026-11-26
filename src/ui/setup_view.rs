@@ -9,7 +9,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{card, primary_button, secondary_button, section_header, Palette, separator};
+use crate::ui::theme::{
+    card, heading, primary_button, secondary_button, section_header, Palette, separator,
+};
 
 #[derive(Default, Clone)]
 pub struct SetupViewState {
@@ -73,13 +75,13 @@ impl SetupView {
 
         card(ui, &self.palette, |ui| {
             // Header
-            ui.heading("Setup Wizard");
-            ui.label("Configure Steam Game Organizer");
-            separator(ui, &self.palette);
+            heading(ui, &self.palette, "Setup Wizard");
+            ui.label("Configure Steam Game Organizer paths and settings");
+            separator(ui);
 
             // Status line
             ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Library Root
             section_header(ui, &self.palette, "LIBRARY ROOT");
@@ -89,13 +91,13 @@ impl SetupView {
                         .hint_text("e.g. C:\\SteamLibrary")
                         .desired_width(400.0),
                 );
-                if secondary_button(ui, "Browse", &self.palette).clicked() {
+                if secondary_button(ui, "Browse Library", &self.palette, true).clicked() {
                     self.logger.log("SETUP", "Library root Browse clicked", "");
                     self.state.status = "Browse for library root…".to_string();
                 }
             });
             ui.label(RichText::new("Where your game archives are stored").small().color(self.palette.muted));
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Extract Folder
             section_header(ui, &self.palette, "EXTRACT FOLDER");
@@ -105,15 +107,15 @@ impl SetupView {
                         .hint_text("e.g. C:\\Extracted")
                         .desired_width(400.0),
                 );
-                if secondary_button(ui, "Browse", &self.palette).clicked() {
+                if secondary_button(ui, "Browse Extract", &self.palette, true).clicked() {
                     self.logger.log("SETUP", "Extract folder Browse clicked", "");
                     self.state.status = "Browse for extract folder…".to_string();
                 }
             });
             ui.label(RichText::new("Where extracted game files go").small().color(self.palette.muted));
-            separator(ui, &self.palette);
+            separator(ui);
 
-            // 7z Path
+            // 7-Zip Path
             section_header(ui, &self.palette, "7-ZIP PATH");
             ui.horizontal(|ui| {
                 ui.add(
@@ -121,29 +123,29 @@ impl SetupView {
                         .hint_text("e.g. C:\\Program Files\\7-Zip\\7z.exe")
                         .desired_width(400.0),
                 );
-                if secondary_button(ui, "Browse", &self.palette).clicked() {
+                if secondary_button(ui, "Browse 7-Zip", &self.palette, true).clicked() {
                     self.logger.log("SETUP", "7-Zip path Browse clicked", "");
                     self.state.status = "Browse for 7-Zip executable…".to_string();
                 }
             });
             ui.label(RichText::new("Path to 7z.exe for archive operations").small().color(self.palette.muted));
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Developer Mode
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.state.developer_mode, "Developer Mode");
                 ui.label(RichText::new("Enable debug logging and extra diagnostics").small().color(self.palette.muted));
             });
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Validation section
             section_header(ui, &self.palette, "VALIDATION");
             ui.horizontal(|ui| {
-                if primary_button(ui, "Validate Configuration", &self.palette).clicked() {
+                if primary_button(ui, "Validate Configuration", &self.palette, true).clicked() {
                     self.logger.log("SETUP", "Validate Configuration button clicked", "");
                     self.state.should_validate = true;
                 }
-                if secondary_button(ui, "Clear", &self.palette).clicked() {
+                if secondary_button(ui, "Clear", &self.palette, true).clicked() {
                     self.logger.log("SETUP", "Clear validation clicked", "");
                     self.state.validation_messages.clear();
                     self.state.status = "Validation cleared".to_string();
@@ -166,26 +168,26 @@ impl SetupView {
                 });
             }
 
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Save button
             ui.horizontal(|ui| {
-                if primary_button(ui, "Save & Finish Setup", &self.palette).clicked() {
+                if primary_button(ui, "Save & Finish Setup", &self.palette, true).clicked() {
                     self.logger.log("SETUP", "Save & Finish Setup button clicked", "");
                     self.state.should_save = true;
                 }
-                if secondary_button(ui, "Skip Setup", &self.palette).clicked() {
+                if secondary_button(ui, "Skip Setup", &self.palette, true).clicked() {
                     self.logger.log("SETUP", "Skip Setup button clicked", "");
                     self.state.status = "Setup skipped — using defaults".to_string();
                 }
             });
 
-            separator(ui, &self.palette);
+            separator(ui);
             ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
         });
     }
 
-    pub fn validate_config(&mut self) {
+    pub(crate) fn validate_config(&mut self) {
         let corr = self.logger.correlation_id();
         self.state.validation_messages.clear();
         let mut all_ok = true;
@@ -238,7 +240,7 @@ impl SetupView {
         self.logger.log("SETUP", &format!("Validation complete: {} messages", self.state.validation_messages.len()), &corr);
     }
 
-    pub fn save_config(&mut self) {
+    pub(crate) fn save_config(&mut self) {
         let corr = self.logger.correlation_id();
         self.validate_config();
         if self.state.validation_messages.iter().any(|m| m.starts_with("✗")) {
@@ -322,13 +324,8 @@ mod tests {
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = SetupView::new(palette, logger, watchdog);
         view.state.library_root = ".".to_string();
-        view.state.extract_folder = tempfile_dir().to_string_lossy().to_string();
+        view.state.extract_folder = std::env::temp_dir().to_string_lossy().to_string();
         view.validate_config();
         assert!(view.state.validation_messages.iter().any(|m| m.starts_with("✓")));
     }
-}
-
-#[allow(dead_code)]
-fn tempfile_dir() -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("sgo_test_{}", std::process::id()))
 }

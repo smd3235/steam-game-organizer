@@ -8,13 +8,14 @@
 use std::sync::Arc;
 
 use crate::core::models::GameArchive;
-use crate::core::errors::{
-    OrganizerError, ErrorSeverity, Watchdog,
-};
-use crate::{log_error, err, trace_op};
+use crate::core::errors::Watchdog;
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{card, pill, primary_button, secondary_button, section_header, Palette, separator};
+use crate::ui::theme;
+use crate::ui::theme::{
+    card, heading, pill, primary_button, secondary_button, section_header, Palette,
+    separator, stat_card,
+};
 
 #[derive(Default, Clone)]
 pub struct DoneViewState {
@@ -76,19 +77,16 @@ impl DoneView {
 
         card(ui, &self.palette, |ui| {
             // Header
-            ui.heading("Done");
-            ui.label("Organization Run Complete");
-            separator(ui, &self.palette);
+            heading(ui, &self.palette, "Organization Complete");
+            separator(ui);
 
             // Summary counts
             ui.horizontal(|ui| {
-                ui.label(RichText::new(format!("Converted: {}", self.state.converted)).color(self.palette.green));
-                ui.separator();
-                ui.label(RichText::new(format!("Skipped: {}", self.state.skipped)).color(self.palette.orange));
-                ui.separator();
-                ui.label(RichText::new(format!("Failed: {}", self.state.failed)).color(self.palette.red));
+                stat_card(ui, &self.palette, &self.state.converted.to_string(), "Converted", self.palette.green);
+                stat_card(ui, &self.palette, &self.state.skipped.to_string(), "Skipped", self.palette.orange);
+                stat_card(ui, &self.palette, &self.state.failed.to_string(), "Failed", self.palette.red);
             });
-            separator(ui, &self.palette);
+            ui.add_space(theme::SPACING);
 
             // Per-archive results
             section_header(ui, &self.palette, "RESULTS");
@@ -125,32 +123,32 @@ impl DoneView {
                 }
             });
 
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Bottom actions
             ui.horizontal(|ui| {
-                if secondary_button(ui, "Undo", &self.palette).clicked() {
+                if secondary_button(ui, "Undo", &self.palette, true).clicked() {
                     self.logger.log("DONE", "Undo button clicked", "");
                     self.state.status = "Undo clicked".to_string();
                     self.state.should_undo = true;
                 }
-                if secondary_button(ui, "Open Library", &self.palette).clicked() {
+                if secondary_button(ui, "Open Library", &self.palette, true).clicked() {
                     self.logger.log("DONE", "Open Library button clicked", "");
                     self.state.status = "Open Library clicked".to_string();
                     self.state.should_open_library = true;
                 }
-                if primary_button(ui, "Scan Again", &self.palette).clicked() {
+                if primary_button(ui, "Scan Again", &self.palette, true).clicked() {
                     self.logger.log("DONE", "Scan Again button clicked", "");
                     self.state.status = "Scan Again clicked".to_string();
                 }
             });
 
-            separator(ui, &self.palette);
+            separator(ui);
             ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
         });
     }
 
-    pub fn undo_last_run(&mut self) {
+    pub(crate) fn undo_last_run(&mut self) {
         let corr = self.logger.correlation_id();
         self.logger.log("DONE", "Undo last organization run", &corr);
         self.state.archives.clear();
@@ -160,7 +158,7 @@ impl DoneView {
         self.state.status = "Organization run undone.".to_string();
     }
 
-    pub fn open_library(&mut self) {
+    pub(crate) fn open_library(&mut self) {
         let corr = self.logger.correlation_id();
         self.logger.log("DONE", "Open library folder requested", &corr);
         self.state.status = "Opening library folder…".to_string();

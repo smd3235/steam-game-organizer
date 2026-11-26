@@ -8,13 +8,12 @@
 use std::sync::Arc;
 
 use crate::core::models::GameArchive;
-use crate::core::errors::{
-    OrganizerError, ErrorSeverity, Watchdog,
-};
-use crate::{log_error, err, trace_op};
+use crate::core::errors::Watchdog;
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{card, secondary_button, section_header, Palette, separator};
+use crate::ui::theme::{
+    card, heading, info_card, secondary_button, section_header, Palette, separator,
+};
 
 #[derive(Default, Clone)]
 pub struct ArtworkViewState {
@@ -58,12 +57,12 @@ impl ArtworkView {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         card(ui, &self.palette, |ui| {
             // Header
-            ui.heading("Artwork & Steam Assets");
-            separator(ui, &self.palette);
+            heading(ui, &self.palette, "Artwork & Steam Assets");
+            separator(ui);
 
             // Summary
             ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Archive grid
             section_header(ui, &self.palette, "ARCHIVES");
@@ -77,12 +76,12 @@ impl ArtworkView {
                         };
                         ui.vertical(|ui| {
                             ui.label(RichText::new(&name).small().strong());
-                            separator(ui, &self.palette);
-                            if secondary_button(ui, "Open Folder", &self.palette).clicked() {
+                            separator(ui);
+                            if secondary_button(ui, "Open Folder", &self.palette, true).clicked() {
                                 self.logger.log("ARTWORK", &format!("Open Folder: {}", name), "");
                                 self.state.status = format!("Opened folder for {}", name);
                             }
-                            if secondary_button(ui, "View Artwork", &self.palette).clicked() {
+                            if secondary_button(ui, "View Artwork", &self.palette, true).clicked() {
                                 self.logger.log("ARTWORK", &format!("View Artwork: {}", name), "");
                                 self.state.status = format!("Viewing artwork for {}", name);
                             }
@@ -97,35 +96,35 @@ impl ArtworkView {
                 });
             });
 
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Bottom actions
             ui.horizontal(|ui| {
-                if secondary_button(ui, "Scan Again", &self.palette).clicked() {
+                if secondary_button(ui, "Scan Again", &self.palette, true).clicked() {
                     self.logger.log("ARTWORK", "Scan Again button clicked", "");
                     self.state.status = "Scan Again clicked".to_string();
                 }
-                if secondary_button(ui, "Review", &self.palette).clicked() {
+                if secondary_button(ui, "Review", &self.palette, true).clicked() {
                     self.logger.log("ARTWORK", "Review button clicked", "");
                     self.state.status = "Review clicked".to_string();
                 }
-                if secondary_button(ui, "Re-download Missing", &self.palette).clicked() {
+                if secondary_button(ui, "Re-download Missing", &self.palette, true).clicked() {
                     self.logger.log("ARTWORK", "Re-download Missing button clicked", "");
                     self.state.status = "Re-downloading missing artwork…".to_string();
                 }
             });
 
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Artwork detail panel
             if let Some(i) = self.state.selected_index {
                 let archive = &self.state.archives[i];
                 section_header(ui, &self.palette, &format!("Artwork Details: {}", archive.display_name));
-                ui.label(format!("Identity Key: {}", archive.identity_key));
-                ui.label(format!("Artwork Status: {}", archive.artwork.status));
-                ui.label(format!("Artwork Source: {}", archive.artwork.source));
-                ui.label(format!("Asset Count: {}", archive.artwork.assets.len()));
-                ui.separator();
+                info_card(ui, &self.palette, "Identity Key:", &archive.identity_key);
+                info_card(ui, &self.palette, "Artwork Status:", &archive.artwork.status);
+                info_card(ui, &self.palette, "Artwork Source:", &archive.artwork.source);
+                info_card(ui, &self.palette, "Asset Count:", &format!("{}", archive.artwork.assets.len()));
+                separator(ui);
             }
         });
     }

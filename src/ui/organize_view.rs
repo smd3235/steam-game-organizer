@@ -8,13 +8,14 @@
 use std::sync::Arc;
 
 use crate::core::models::GameArchive;
-use crate::core::errors::{
-    OrganizerError, ErrorSeverity, Watchdog,
-};
-use crate::{log_error, err, trace_op};
+use crate::core::errors::Watchdog;
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{card, danger_button, pill, primary_button, secondary_button, Palette, separator};
+use crate::ui::theme;
+use crate::ui::theme::{
+    card, danger_button, heading, pill, primary_button, small_button, Palette,
+    separator, stat_card,
+};
 
 #[derive(Default, Clone)]
 pub struct OrganizeViewState {
@@ -84,52 +85,49 @@ impl OrganizeView {
 
         card(ui, &self.palette, |ui| {
             // Header
-            ui.heading("Organize");
-            ui.label("Convert and Move Archives");
-            separator(ui, &self.palette);
+            heading(ui, &self.palette, "Organize Archives");
+            ui.label("Convert and move archives to organized folders");
+            separator(ui);
 
             // Summary counts
             ui.horizontal(|ui| {
-                ui.label(RichText::new(format!("Converted: {}", self.state.converted_count)).color(self.palette.green));
-                ui.separator();
-                ui.label(RichText::new(format!("Skipped: {}", self.state.skipped_count)).color(self.palette.orange));
-                ui.separator();
-                ui.label(RichText::new(format!("Failed: {}", self.state.failed_count)).color(self.palette.red));
+                stat_card(ui, &self.palette, &self.state.converted_count.to_string(), "Converted", self.palette.green);
+                stat_card(ui, &self.palette, &self.state.skipped_count.to_string(), "Skipped", self.palette.orange);
+                stat_card(ui, &self.palette, &self.state.failed_count.to_string(), "Failed", self.palette.red);
             });
-            separator(ui, &self.palette);
+            ui.add_space(theme::SPACING);
 
             // Summary line
             ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Progress bar + stage
             ui.horizontal(|ui| {
                 ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
+                ui.add_space(theme::SPACING);
                 ui.label(RichText::new(&self.state.stage).color(self.palette.muted).small());
             });
-
-            separator(ui, &self.palette);
+            ui.add_space(theme::SPACING);
 
             // Config: preview only checkbox
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.state.preview_only, "Preview Only");
-                ui.separator();
-                if primary_button(ui, "Start Organize", &self.palette).clicked() {
+                ui.add_space(theme::SPACING);
+                if primary_button(ui, "Start Organize", &self.palette, true).clicked() {
                     self.logger.log("ORGANIZE", "Start Organize button clicked", "");
                     self.state.converting = true;
                     self.state.should_organize = true;
                     self.state.status = "Organization starting…".to_string();
                     self.state.activity.push("Organization starting…".to_string());
                 }
-                if self.state.converting && danger_button(ui, "Cancel", &self.palette).clicked() {
+                if self.state.converting && danger_button(ui, "Cancel", &self.palette, true).clicked() {
                     self.logger.log("ORGANIZE", "Cancel button clicked", "");
                     self.state.converting = false;
                     self.state.status = "Organization cancelled.".to_string();
                     self.state.activity.push("Organization cancelled.".to_string());
                 }
             });
-
-            separator(ui, &self.palette);
+            ui.add_space(theme::SPACING);
 
             // Body: archive list left, activity feed right
             ui.horizontal(|ui| {
@@ -144,7 +142,9 @@ impl OrganizeView {
                             } else {
                                 archive.display_name.clone()
                             };
-                            if ui.selectable_label(selected, &name).clicked() {
+                            let kind = if selected { "accent" } else { "muted" };
+                            pill(ui, &name, kind, &self.palette);
+                            if small_button(ui, "Select", &self.palette, true).clicked() {
                                 self.state.selected_index = Some(i);
                                 self.logger.log("ORGANIZE", &format!("Selected: {}", name), "");
                             }
@@ -155,7 +155,7 @@ impl OrganizeView {
                     });
                 });
 
-                ui.separator();
+                separator(ui);
 
                 // Right: activity feed
                 ui.vertical(|ui| {
@@ -171,14 +171,16 @@ impl OrganizeView {
                 });
             });
 
-            separator(ui, &self.palette);
+            separator(ui);
 
             // Status line
-            ui.label(RichText::new(&self.state.status).color(self.palette.text));
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(&self.state.status).color(self.palette.text));
+            });
         });
     }
 
-    pub fn run_organize(&mut self) {
+    pub(crate) fn run_organize(&mut self) {
         let corr = self.logger.correlation_id();
         let op_id = self.logger.op_start("run_organize", &corr);
         self.watchdog.start("run_organize", "ORGANIZE", &corr, Some(600000)); // 10 minute timeout
@@ -204,7 +206,7 @@ impl OrganizeView {
             self.state.stage = format!("Processing {} ({}/{})", archive.display_name, i + 1, total);
             self.state.status = self.state.stage.clone();
 
-            self.logger.log("ORGANIZE", &format!("Processing archive {} ({}/{})", archive.display_name, i + 1, total), &corr);
+            self.logger.log("ORGANIZE", &format!("Processing archive {}: {} ({}/{})", archive.display_name, i + 1, i + 1, total), &corr);
 
             if self.state.preview_only {
                 self.state.activity.push(format!("PREVIEW: Would organize {}", archive.display_name));

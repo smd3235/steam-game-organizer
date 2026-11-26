@@ -4,7 +4,7 @@
 //! 2026-11-25: egui game list stub in the Rust conversion.
 
 use egui::{RichText, ScrollArea, Ui};
-use crate::ui::theme::Palette;
+use crate::ui::theme::{Palette, separator};
 
 pub struct GameListState {
     pub items: Vec<String>,
@@ -40,12 +40,12 @@ impl GameList {
     pub fn ui(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
             ui.label(RichText::new("Game Queue").strong().color(self.palette.accent_hi));
-            ui.separator();
+            separator(ui);
 
             ui.horizontal(|ui| {
                 ui.label("Search:");
                 ui.text_edit_singleline(&mut self.state.search_text);
-                ui.separator();
+                separator(ui);
                 egui::ComboBox::from_id_salt("game_list_filter")
                     .selected_text(&self.state.filter)
                     .show_ui(ui, |ui| {
@@ -55,7 +55,7 @@ impl GameList {
                     });
             });
 
-            ui.separator();
+            separator(ui);
 
             ScrollArea::vertical().id_salt("game_list").show(ui, |ui| {
                 for (i, item) in self.state.items.iter().enumerate() {
@@ -69,7 +69,7 @@ impl GameList {
                 }
             });
 
-            ui.separator();
+            separator(ui);
             ui.horizontal(|ui| {
                 ui.label(format!("{} games", self.state.items.len()));
             });

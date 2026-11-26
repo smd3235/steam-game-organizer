@@ -23,6 +23,50 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-26 — refactor: UI design improvements — hover states, disabled buttons, focus rings, smaller buttons
+
+- `src/ui/theme.rs`: Added `enabled: bool` parameter to all button helpers (primary/secondary/danger/ghost/small_button) for disabled state support; reduced button sizes from 140x40 to 110x36 (primary/secondary/danger/ghost) and 60x28 (small_button); added `small_button()` helper for list-row actions like "Select"; removed unused dead-code helpers
+- `src/ui/main_window.rs`: Removed duplicate Quit button from sidebar (already in top bar); added `ctx.set_style()` with hovered widget styling (bg_fill=panel3, bg_stroke=border_focus, 2px width) for keyboard/mouse navigation feedback; set item_spacing and button_padding for consistent layout
+- `src/ui/review_view.rs`, `organize_view.rs`, `done_view.rs`, `artwork_view.rs`, `setup_view.rs`, `scan_view.rs`, `batch_extract_window.rs`, `extract_result_window.rs`, `setup_window.rs`: Updated all button calls to pass `enabled: true`; replaced raw `egui::Button::new("Select")` with `small_button()` theme helper
+- 316 tests pass, clippy clean, zero warnings in UI source files
+
+### 2026-11-26 — refactor: UI consistency, raw separator → theme separator, differentiated Browse buttons
+
+- `src/ui/theme.rs`: Removed dead code — `card_accent`, `list_item`, `muted_text`, `small_caps`, `divider_with_text`, `progress_bar_with_label` (all unused); removed clip_rect from `card()` (was clipping popups/tooltips); fixed `nav_item` double-painting background
+- `src/ui/widgets/game_card.rs`: Fixed accent strip painted on wrong `ui.min_rect()` (rect changes as content added); replaced raw `ui.separator()` with `separator(ui)`
+- `src/ui/widgets/game_list.rs`: Replaced all raw `ui.separator()` calls with `separator(ui)`
+- `src/ui/setup_view.rs`: Differentiated three identical "Browse" buttons → "Browse Library", "Browse Extract", "Browse 7-Zip"
+- `src/ui/setup_window.rs`: Differentiated three identical "Browse" buttons → "Browse Library", "Browse App", "Browse Extract"; replaced all raw `ui.separator()` with `separator(ui)`
+- `src/ui/batch_extract_window.rs`: Replaced raw `ui.separator()` with `separator(ui)`
+- `src/ui/extract_result_window.rs`: Replaced raw `ui.separator()` with `separator(ui)`
+- `src/ui/review_view.rs`: Replaced raw `ui.separator()` with `separator(ui)`; styled hardcoded arrow separator
+- `src/ui/organize_view.rs`: Replaced raw `ui.separator()` with `separator(ui)`
+- `src/ui/artwork_view.rs`: Replaced raw `ui.separator()` with `separator(ui)`
+- `src/ui/main_window.rs`: Replaced raw `ui.separator()` with `separator(ui)`
+- `src/ui/scan_view.rs`: Styled hardcoded " → " arrow separator with muted color
+- 316 tests pass, clippy clean, zero warnings in UI source files
+
+### 2026-11-26 — refactor: UI code quality, remove dead code, fix nav double-paint
+
+- `src/ui/theme.rs`: Removed dead code — `card_accent`, `list_item`, `muted_text`, `small_caps`, `divider_with_text`, `progress_bar_with_label` (all unused); removed clip_rect from `card()` (was clipping popups/tooltips); fixed `nav_item` double-painting background (removed manual rect fill, `selectable_label` handles it)
+- `src/ui/review_view.rs`: Fixed invisible "Select" button (removed `frame(false)`); removed unused `ghost_button` import
+- `src/ui/organize_view.rs`: Fixed invisible "Select" button (removed `frame(false)`)
+- `src/ui/main_window.rs`: Removed unused `use crate::ui::theme;` import
+- 316 tests pass, clippy clean, no warnings in UI source files
+
+### 2026-11-26 — fix: UI visibility and compilation issues, code quality improvements
+
+- `src/ui/theme.rs`: ghost_button now uses panel3 fill with border_focus stroke for visibility on dark panels; card() clips content to rounded rect; nav_item paints active/hover background; separator signature simplified
+- `src/ui/main_window.rs`: Removed duplicate Button rendering in nav sidebar (nav_item now handles clicks); removed #![allow(clippy::all)]; fixed unused imports; removed unused render_view_header method
+- `src/ui/review_view.rs`, `organize_view.rs`, `done_view.rs`, `artwork_view.rs`, `setup_view.rs`: Fixed (self.logger)() calls → self.logger.log(); added missing theme module imports; removed unused imports
+- `src/ui/scan_view.rs`: Fixed .italic() → .italics(); added theme module import
+- `src/ui/batch_extract_window.rs`, `extract_result_window.rs`, `setup_window.rs`: Replaced raw egui::Button calls with theme helpers (primary_button, secondary_button, ghost_button) for consistent styling and visibility
+- `src/app/controller.rs`: Removed #![allow(clippy::all)]
+- All view methods accessed by tests changed to pub(crate)
+- `src/ui/review_view.rs`: Fixed invisible "Select" button (removed frame(false)); removed unused ghost_button import
+- `src/ui/organize_view.rs`: Fixed invisible "Select" button (removed frame(false))
+- 316 tests pass, clippy clean
+
 ### 2026-11-25 — feat: complete UI redesign with themed views, setup wizard, and wired buttons
 
 - `src/ui/theme.rs`: Modern dark theme with rounded corners, pill badges, section headers, primary/secondary/danger buttons, card containers, separators

@@ -4,7 +4,7 @@
 //! 2026-11-25: egui game card stub in the Rust conversion.
 
 use egui::{RichText, Ui};
-use crate::ui::theme::Palette;
+use crate::ui::theme::{Palette, separator};
 
 #[derive(Default)]
 pub struct GameCardState {
@@ -31,20 +31,9 @@ impl GameCard {
     pub fn ui(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
             ui.set_min_width(200.0);
-            // Left accent strip (category color)
-            ui.vertical(|ui| {
-                let strip_color = if self.state.category.is_empty() || self.state.category == "Unsorted" {
-                    self.palette.muted
-                } else {
-                    self.palette.accent
-                };
-                ui.painter().rect_filled(
-                    ui.min_rect(),
-                    2.0,
-                    strip_color,
-                );
-                ui.separator();
 
+            ui.vertical(|ui| {
+                separator(ui);
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(&self.state.title).strong().color(self.palette.text));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -52,15 +41,28 @@ impl GameCard {
                     });
                 });
 
-                ui.separator();
+                separator(ui);
                 ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
 
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(format!("Category: {}", self.state.category)).small().color(self.palette.muted));
-                    ui.separator();
+                    separator(ui);
                     ui.label(RichText::new(format!("Confidence: {}", self.state.confidence)).small().color(self.palette.muted));
                 });
             });
+
+            // Paint accent strip on the left edge of the group rect
+            let group_rect = ui.min_rect();
+            let strip_rect = egui::Rect::from_min_max(
+                egui::pos2(group_rect.left(), group_rect.top()),
+                egui::pos2(group_rect.left() + 2.0, group_rect.bottom()),
+            );
+            let strip_color = if self.state.category.is_empty() || self.state.category == "Unsorted" {
+                self.palette.muted
+            } else {
+                self.palette.accent
+            };
+            ui.painter().rect_filled(strip_rect, 2.0, strip_color);
         });
     }
 

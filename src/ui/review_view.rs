@@ -8,15 +8,14 @@
 use std::sync::Arc;
 
 use crate::core::models::GameArchive;
-use crate::core::errors::{
-    OrganizerError, ErrorSeverity, Watchdog,
-};
-use crate::{log_error, err, trace_op};
+use crate::core::errors::Watchdog;
 
 use egui::{RichText, ScrollArea};
+
+use crate::ui::theme;
 use crate::ui::theme::{
-    card, danger_button, pill, primary_button, secondary_button, section_header, Palette,
-    separator,
+    card, danger_button, pill, primary_button, secondary_button, small_button, Palette,
+    separator, stat_card,
 };
 
 #[derive(Default, Clone)]
@@ -120,80 +119,42 @@ impl ReviewView {
 
         card(ui, &self.palette, |ui| {
             // Header
-            ui.heading("Game Review");
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if primary_button(ui, "Approve All Verified", &self.palette).clicked() {
-                        self.logger.log("REVIEW", "Approve All Verified button clicked", "");
-                        self.state.status = "Approving all verified…".to_string();
-                        self.state.should_approve_all = true;
-                    }
-                });
-            });
+            ui.label(RichText::new("Game Review").color(self.palette.text).strong().size(18.0));
+            ui.label(RichText::new("Verify Steam matches, pick categories, accept games").color(self.palette.muted).small());
+            separator(ui);
 
-            separator(ui, &self.palette);
+            // Summary counts
+            let accepted = self.state.archives.iter().filter(|a| a.decision.accepted).count();
+            let skipped = self.state.archives.iter().filter(|a| a.decision.skipped).count();
+            let total = self.state.archives.len();
+            ui.horizontal(|ui| {
+                stat_card(ui, &self.palette, &total.to_string(), "Total", self.palette.text_secondary);
+                stat_card(ui, &self.palette, &accepted.to_string(), "Accepted", self.palette.green);
+                stat_card(ui, &self.palette, &skipped.to_string(), "Skipped", self.palette.orange);
+            });
+            ui.add_space(theme::SPACING);
+
+            // Status line
+            ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
+            separator(ui);
 
             // Controls row: search + filter + actions
             ui.horizontal(|ui| {
                 ui.label("Search:");
                 ui.text_edit_singleline(&mut self.state.search_text);
-                ui.separator();
+                ui.add_space(theme::SPACING);
                 ui.label("Filter:");
                 egui::ComboBox::from_id_salt("review_filter")
                     .selected_text(&self.state.filter)
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.state.filter, "All".to_string(), "All");
-                        ui.selectable_value(
-                            &mut self.state.filter,
-                            "Needs Review".to_string(),
-                            "Needs Review",
-                        );
-                        ui.selectable_value(
-                            &mut self.state.filter,
-                            "Verified".to_string(),
-                            "Verified",
-                        );
-                        ui.selectable_value(
-                            &mut self.state.filter,
-                            "New Only".to_string(),
-                            "New Only",
-                        );
-                        ui.selectable_value(
-                            &mut self.state.filter,
-                            "Artwork".to_string(),
-                            "Artwork",
-                        );
+                        ui.selectable_value(&mut self.state.filter, "Needs Review".to_string(), "Needs Review");
+                        ui.selectable_value(&mut self.state.filter, "Verified".to_string(), "Verified");
+                        ui.selectable_value(&mut self.state.filter, "New Only".to_string(), "New Only");
+                        ui.selectable_value(&mut self.state.filter, "Artwork".to_string(), "Artwork");
                     });
-                ui.separator();
-                if secondary_button(ui, "＋ Add Category", &self.palette).clicked() {
-                    self.logger.log("REVIEW", "Add Category button clicked", "");
-                    self.state.status = "Add Category clicked".to_string();
-                }
-                if secondary_button(ui, "Use All Suggestions", &self.palette).clicked() {
-                    self.logger.log("REVIEW", "Use All Suggestions button clicked", "");
-                    self.state.status = "Use All Suggestions clicked".to_string();
-                    self.state.should_use_suggestions = true;
-                }
-                if secondary_button(ui, "Retry Failed", &self.palette).clicked() {
-                    self.logger.log("REVIEW", "Retry Failed button clicked", "");
-                    self.state.status = "Retry Failed clicked".to_string();
-                    self.state.should_retry_failed = true;
-                }
-                if primary_button(
-                    ui,
-                    "Continue to Organization",
-                    &self.palette,
-                )
-                .clicked()
-                {
-                    self.logger.log("REVIEW", "Continue to Organization button clicked", "");
-                    self.state.status = "Continue to Organization clicked".to_string();
-                    self.state.should_continue_organize = true;
-                }
             });
-
-            separator(ui, &self.palette);
+            ui.add_space(theme::SPACING);
 
             // Body: game list left, detail right
             ui.horizontal(|ui| {
@@ -208,7 +169,9 @@ impl ReviewView {
                             } else {
                                 archive.display_name.clone()
                             };
-                            if ui.selectable_label(selected, &name).clicked() {
+                            let kind = if selected { "accent" } else { "muted" };
+                            pill(ui, &name, kind, &self.palette);
+                            if small_button(ui, "Select", &self.palette, true).clicked() {
                                 self.state.selected_index = Some(i);
                                 self.logger.log("REVIEW", &format!("Selected archive: {}", name), "");
                             }
@@ -219,7 +182,7 @@ impl ReviewView {
                     });
                 });
 
-                ui.separator();
+                separator(ui);
 
                 // Right: detail panel
                 ui.vertical(|ui| {
@@ -229,17 +192,17 @@ impl ReviewView {
                             Some(i) => {
                                 let archive = &self.state.archives[i];
                                 ui.label(RichText::new(format!("Archive {}", i + 1)).strong());
-                                separator(ui, &self.palette);
-                                ui.label(format!("Name: {}", archive.display_name));
-                                ui.label(format!("APPID: {}", archive.steam.appid));
-                                ui.label(format!("Category: {}", archive.decision.category));
-                                ui.label(format!("Identity Key: {}", archive.identity_key));
-                                separator(ui, &self.palette);
+                                separator(ui);
+                                ui.label(format!("  Name: {}", archive.display_name));
+                                ui.label(format!("  APPID: {}", archive.steam.appid));
+                                ui.label(format!("  Category: {}", archive.decision.category));
+                                ui.label(format!("  Identity Key: {}", archive.identity_key));
+                                separator(ui);
                                 ui.label(RichText::new("Evidence:").small().color(self.palette.muted));
                                 ui.label(format!("  Release Group: {}", archive.normalized_title));
-                                separator(ui, &self.palette);
+                                separator(ui);
                                 ui.label(format!("Size: {} bytes", archive.size));
-                                separator(ui, &self.palette);
+                                separator(ui);
                                 ui.label(format!("Accepted: {}", archive.decision.accepted));
                                 ui.label(format!("Skipped: {}", archive.decision.skipped));
                             }
@@ -251,26 +214,26 @@ impl ReviewView {
                 });
             });
 
-            separator(ui, &self.palette);
+            ui.add_space(theme::SPACING);
 
             // Bottom actions
             ui.horizontal(|ui| {
-                if secondary_button(ui, "Accept & Next", &self.palette).clicked() {
+                if secondary_button(ui, "Accept & Next", &self.palette, true).clicked() {
                     self.logger.log("REVIEW", "Accept & Next button clicked", "");
                     self.state.status = "Accept & Next clicked".to_string();
                     self.state.should_accept_next = true;
                 }
-                if secondary_button(ui, "Skip", &self.palette).clicked() {
+                if secondary_button(ui, "Skip", &self.palette, true).clicked() {
                     self.logger.log("REVIEW", "Skip button clicked", "");
                     self.state.status = "Skip clicked".to_string();
                     self.state.should_skip = true;
                 }
-                if danger_button(ui, "Wrong Match", &self.palette).clicked() {
+                if danger_button(ui, "Wrong Match", &self.palette, true).clicked() {
                     self.logger.log("REVIEW", "Wrong Match button clicked", "");
                     self.state.status = "Wrong Match clicked".to_string();
                     self.state.should_wrong_match = true;
                 }
-                if secondary_button(ui, "Extract Selected", &self.palette).clicked() {
+                if secondary_button(ui, "Extract Selected", &self.palette, true).clicked() {
                     self.logger.log("REVIEW", "Extract Selected button clicked", "");
                     self.state.status = "Extract Selected clicked".to_string();
                 }
@@ -278,24 +241,57 @@ impl ReviewView {
 
             // Show selected archive action buttons inline
             if let Some(i) = self.state.selected_index {
-                ui.separator();
+                ui.add_space(theme::SPACING);
                 let archive = &self.state.archives[i];
                 ui.label(RichText::new(format!("Actions for: {}", archive.display_name)).small().color(self.palette.muted));
                 ui.horizontal(|ui| {
-                    if secondary_button(ui, "Accept", &self.palette).clicked() {
+                    if secondary_button(ui, "Accept", &self.palette, true).clicked() {
                         self.logger.log("REVIEW", &format!("Accept: {}", archive.display_name), "");
                         self.state.should_accept_index = Some(i);
                     }
-                    if danger_button(ui, "Reject", &self.palette).clicked() {
+                    if danger_button(ui, "Reject", &self.palette, true).clicked() {
                         self.logger.log("REVIEW", &format!("Reject: {}", archive.display_name), "");
                         self.state.should_reject_index = Some(i);
                     }
                 });
             }
+
+            // Global action buttons
+            ui.add_space(theme::SPACING_LG);
+            ui.horizontal(|ui| {
+                if primary_button(ui, "Approve All Verified", &self.palette, true).clicked() {
+                    self.logger.log("REVIEW", "Approve All Verified button clicked", "");
+                    self.state.status = "Approving all verified…".to_string();
+                    self.state.should_approve_all = true;
+                }
+                if secondary_button(ui, "＋ Add Category", &self.palette, true).clicked() {
+                    self.logger.log("REVIEW", "Add Category button clicked", "");
+                    self.state.status = "Add Category clicked".to_string();
+                }
+                if secondary_button(ui, "Use All Suggestions", &self.palette, true).clicked() {
+                    self.logger.log("REVIEW", "Use All Suggestions button clicked", "");
+                    self.state.status = "Use All Suggestions clicked".to_string();
+                    self.state.should_use_suggestions = true;
+                }
+                if secondary_button(ui, "Retry Failed", &self.palette, true).clicked() {
+                    self.logger.log("REVIEW", "Retry Failed button clicked", "");
+                    self.state.status = "Retry Failed clicked".to_string();
+                    self.state.should_retry_failed = true;
+                }
+            });
+
+            if primary_button(ui, "Continue to Organization", &self.palette, true).clicked() {
+                self.logger.log("REVIEW", "Continue to Organization button clicked", "");
+                self.state.status = "Continue to Organization clicked".to_string();
+                self.state.should_continue_organize = true;
+            }
+
+            ui.add_space(theme::SPACING);
+            ui.label(RichText::new(&self.state.status).color(self.palette.muted).small());
         });
     }
 
-    pub fn approve_all_verified(&mut self) {
+    pub(crate) fn approve_all_verified(&mut self) {
         let corr = self.logger.correlation_id();
         for archive in &mut self.state.archives {
             if !archive.decision.skipped {
@@ -306,7 +302,7 @@ impl ReviewView {
         self.state.status = "All verified archives approved".to_string();
     }
 
-    pub fn use_all_suggestions(&mut self) {
+    pub(crate) fn use_all_suggestions(&mut self) {
         let corr = self.logger.correlation_id();
         for archive in &mut self.state.archives {
             archive.decision.category = archive.decision.suggested_category.clone();
@@ -315,13 +311,13 @@ impl ReviewView {
         self.state.status = "All suggestions applied".to_string();
     }
 
-    pub fn retry_failed(&mut self) {
+    pub(crate) fn retry_failed(&mut self) {
         let corr = self.logger.correlation_id();
         self.logger.log("REVIEW", "Retry failed archives", &corr);
         self.state.status = "Failed archives retried".to_string();
     }
 
-    pub fn accept_and_next(&mut self) {
+    pub(crate) fn accept_and_next(&mut self) {
         if let Some(i) = self.state.selected_index {
             self.accept_archive(i);
             if i + 1 < self.state.archives.len() {
@@ -330,7 +326,7 @@ impl ReviewView {
         }
     }
 
-    pub fn skip_current(&mut self) {
+    pub(crate) fn skip_current(&mut self) {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.skipped = true;
             self.state.archives[i].decision.accepted = false;
@@ -339,7 +335,7 @@ impl ReviewView {
         }
     }
 
-    pub fn wrong_match(&mut self) {
+    pub(crate) fn wrong_match(&mut self) {
         if let Some(i) = self.state.selected_index {
             self.state.archives[i].decision.accepted = false;
             self.state.archives[i].steam.found = false;
@@ -348,14 +344,14 @@ impl ReviewView {
         }
     }
 
-    pub fn accept_archive(&mut self, index: usize) {
+    pub(crate) fn accept_archive(&mut self, index: usize) {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = true;
             self.logger.log("REVIEW", &format!("Accepted: {}", self.state.archives[index].display_name), "");
         }
     }
 
-    pub fn reject_archive(&mut self, index: usize) {
+    pub(crate) fn reject_archive(&mut self, index: usize) {
         if index < self.state.archives.len() {
             self.state.archives[index].decision.accepted = false;
             self.state.archives[index].decision.skipped = true;

@@ -4,7 +4,7 @@
 //! All operations use trace_op! macro with timing and detailed logging.
 //!
 //! 2026-11-26: egui scan view with new theme and wired button actions.
-//! v4 - comprehensive logging on all buttons with error tracking and watchdog.
+//! v5 - redesigned layout with better visual hierarchy and modern styling.
 
 #![allow(clippy::all)]
 
@@ -15,14 +15,13 @@ use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
 use crate::services::library_service::LibraryService;
 use crate::core::models::GameArchive;
-use crate::core::errors::{
-    OrganizerError, ErrorSeverity, Watchdog,
-};
+use crate::core::errors::Watchdog;
 
 use egui::{RichText, ScrollArea};
+use crate::ui::theme;
 use crate::ui::theme::{
-    card, danger_button, pill, primary_button, secondary_button, section_header, Palette,
-    separator,
+    card, danger_button, heading, pill, primary_button, secondary_button, section_header, Palette,
+    separator, stat_card,
 };
 
 /// Every phase a scan runs through, in order.
@@ -117,34 +116,53 @@ impl ScanView {
 
         card(ui, &self.palette, |ui| {
             // Header
-            ui.heading("Steam Game Organizer");
-            ui.label("Scan — Game Archive Scanner");
-            separator(ui, &self.palette);
+            heading(ui, &self.palette, "Scan Game Archives");
+            ui.label("Discover and prepare your game archives for organization");
+            separator(ui);
+
+            // Summary stats row
+            ui.horizontal(|ui| {
+                let archive_count = self.state.discovered_archives.len();
+                stat_card(ui, &self.palette, &archive_count.to_string(), "Archives Found", self.palette.accent);
+                stat_card(ui, &self.palette, &self.state.phase_states.iter().filter(|&&x| x).count().to_string(), "Phases Complete", self.palette.green);
+            });
+            ui.add_space(theme::SPACING);
 
             // Config row
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.state.convert_archives, "Convert Archives");
-                ui.separator();
+                ui.add_space(theme::SPACING);
+                ui.checkbox(&mut self.state.preview_only, "Preview Only");
+                ui.add_space(theme::SPACING);
+                ui.checkbox(&mut self.state.scan_with_artwork, "Scan + Artwork");
+            });
+            ui.add_space(theme::SPACING);
 
-                if primary_button(ui, "Start Scan", &self.palette).clicked() {
+            // Action buttons
+            ui.horizontal(|ui| {
+                if primary_button(ui, "Start Scan", &self.palette, true).clicked() {
                     self.logger.log("SCAN", "Start Scan button clicked", "");
                     self.state.scanning = true;
                     self.state.should_scan = true;
                     self.state.status = "Scan starting…".to_string();
                     self.state.activity.push("Scan starting…".to_string());
                 }
-                if secondary_button(ui, "Scan + Artwork", &self.palette).clicked() {
-                    self.logger.log("SCAN", "Scan + Artwork button clicked", "");
+                if secondary_button(ui, "Scan with Artwork", &self.palette, true).clicked() {
+                    self.logger.log("SCAN", "Scan with Artwork button clicked", "");
                     self.state.scanning = true;
                     self.state.scan_with_artwork = true;
                     self.state.should_scan = true;
-                    self.state.status = "Scan + Artwork starting…".to_string();
-                    self.state.activity.push("Scan + Artwork starting…".to_string());
+                    self.state.status = "Scan with Artwork starting…".to_string();
+                    self.state.activity.push("Scan with Artwork starting…".to_string());
                 }
-                ui.checkbox(&mut self.state.preview_only, "Preview Only");
+                if self.state.scanning && danger_button(ui, "Cancel Scan", &self.palette, true).clicked() {
+                    self.logger.log("SCAN", "Cancel Scan button clicked", "");
+                    self.state.scanning = false;
+                    self.state.status = "Scan cancelled.".to_string();
+                    self.state.activity.push("Scan cancelled.".to_string());
+                }
             });
-
-            ui.separator();
+            ui.add_space(theme::SPACING_LG);
 
             // Phase timeline
             section_header(ui, &self.palette, "PHASES");
@@ -161,53 +179,48 @@ impl ScanView {
                     };
                     pill(ui, &format!("{} ({})", label, key), kind, &self.palette);
                     if i < SCAN_PHASES.len() - 1 {
-                        ui.label(" → ");
+                        ui.label(RichText::new(" → ").color(self.palette.muted).small());
                     }
                 }
             });
-
-            ui.separator();
+            ui.add_space(theme::SPACING);
 
             // Progress bar + stage label
             ui.horizontal(|ui| {
                 ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
-                ui.label(RichText::new(&self.state.stage).color(self.palette.muted).small());
+                ui.add_space(theme::SPACING);
+                ui.label(RichText::new(&self.state.stage).color(self.palette.text_secondary).small());
             });
-
-            ui.separator();
+            ui.add_space(theme::SPACING);
 
             // Activity feed (scrollable)
-            section_header(ui, &self.palette, "ACTIVITY");
+            ui.horizontal(|ui| {
+                section_header(ui, &self.palette, "ACTIVITY FEED");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if self.state.scanning {
+                        ui.label(RichText::new("Scanning…").color(self.palette.accent).small().italics());
+                    }
+                });
+            });
             ScrollArea::vertical()
                 .id_salt("scan_activity_feed")
-                .max_height(300.0)
+                .max_height(200.0)
                 .show(ui, |ui| {
                     for line in &self.state.activity {
                         ui.label(RichText::new(line).small().color(self.palette.text));
                     }
-                    if self.state.scanning {
-                        ui.label("Scan in progress…");
-                    }
                 });
-
-            ui.separator();
+            ui.add_space(theme::SPACING);
 
             // Status line
-            ui.label(RichText::new(&self.state.status).color(self.palette.text));
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(&self.state.status).color(self.palette.text));
+            });
+        });
 
-            // Cancel button (shown during scan)
-            if self.state.scanning {
-                if danger_button(ui, "Cancel Scan", &self.palette).clicked() {
-                    self.logger.log("SCAN", "Cancel Scan button clicked", "");
-                    self.state.scanning = false;
-                    self.state.status = "Scan cancelled.".to_string();
-                    self.state.activity.push("Scan cancelled.".to_string());
-                }
-            }
-
-            // Show discovered archives
-            if !self.state.discovered_archives.is_empty() {
-                ui.separator();
+        // Show discovered archives in separate card
+        if !self.state.discovered_archives.is_empty() {
+            card(ui, &self.palette, |ui| {
                 section_header(ui, &self.palette, "DISCOVERED ARCHIVES");
                 ScrollArea::vertical().id_salt("discovered_list").max_height(200.0).show(ui, |ui| {
                     for archive in &self.state.discovered_archives {
@@ -219,8 +232,8 @@ impl ScanView {
                         });
                     }
                 });
-            }
-        });
+            });
+        }
     }
 
     /// Run the scan using ArchiveService discovery with full logging and watchdog.
@@ -286,19 +299,19 @@ impl ScanView {
 
             self.logger.log("SCAN", &format!("Discovery complete: {} archives found, {} errors", result.archives.len(), result.errors.len()), &corr);
 
-                    for archive in &result.archives {
-                        self.logger.log("SCAN", &format!("  Found: {} ({} bytes)", archive.display_name, archive.size), &corr);
-                        self.state.activity.push(format!("Found: {}", archive.display_name));
-                    }
+            for archive in &result.archives {
+                self.logger.log("SCAN", &format!("  Found: {} ({} bytes)", archive.display_name, archive.size), &corr);
+                self.state.activity.push(format!("Found: {}", archive.display_name));
+            }
 
-                    for error in &result.errors {
-                        self.logger.log("SCAN", &format!("  Error: {}", error), &corr);
-                    }
+            for error in &result.errors {
+                self.logger.log("SCAN", &format!("  Error: {}", error), &corr);
+            }
 
-                    self.state.discovered_archives = result.archives;
-                    self.state.phase_states[3] = true;
-                    self.state.stage = "Discovery complete".to_string();
-                    self.state.status = format!("Found {} archives", self.state.discovered_archives.len());
+            self.state.discovered_archives = result.archives;
+            self.state.phase_states[3] = true;
+            self.state.stage = "Discovery complete".to_string();
+            self.state.status = format!("Found {} archives", self.state.discovered_archives.len());
         } else {
             self.logger.log("SCAN", "No library root configured, skipping discovery", &corr);
             self.state.phase_states[3] = true;

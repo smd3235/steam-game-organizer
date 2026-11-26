@@ -4,7 +4,7 @@
 //! 2026-11-25: egui extract result window stub in the Rust conversion.
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{Palette, separator};
+use crate::ui::theme::{secondary_button, Palette, separator};
 
 pub struct ExtractResultDialogState {
     pub archive_name: String,
@@ -45,15 +45,15 @@ impl ExtractResultDialog {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        separator(ui, &self.palette);
+        separator(ui);
 
         ui.heading(if self.state.needs_install { "Extracting Installer" } else { "Extracting" });
         ui.label(&self.state.archive_name);
-        ui.separator();
+        separator(ui);
 
         ui.label(RichText::new(&self.state.stage).small().color(self.palette.muted));
         ui.add(egui::ProgressBar::new(self.state.progress).desired_width(300.0));
-        ui.separator();
+        separator(ui);
 
         ScrollArea::vertical().id_salt("extract_result").max_height(200.0).show(ui, |ui| {
             if let Some(ref err) = self.state.error_message {
@@ -70,14 +70,14 @@ impl ExtractResultDialog {
             }
         });
 
-        ui.separator();
+        separator(ui);
 
         if self.state.completed {
-            if ui.button("Close").clicked() {
+            if secondary_button(ui, "Close", &self.palette, true).clicked() {
                 // close
             }
         } else {
-            if ui.button("Cancel").clicked() {
+            if secondary_button(ui, "Cancel", &self.palette, true).clicked() {
                 self.state.status = "Cancel requested".to_string();
             }
         }

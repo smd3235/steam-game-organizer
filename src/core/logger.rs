@@ -20,8 +20,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::core::errors::ErrorSeverity;
-
 const LEVEL_DEBUG: i32 = 0;
 const LEVEL_INFO: i32 = 1;
 const LEVEL_WARN: i32 = 2;
@@ -311,7 +309,7 @@ impl AppLogger {
     }
 
     /// End tracking an operation and log elapsed time.
-    pub fn op_end(&self, id: u64, operation: &str, correlation_id: &str) {
+    pub fn op_end(&self, _id: u64, operation: &str, correlation_id: &str) {
         let mut times = self._op_times.lock().unwrap();
         if let Some(pos) = times.iter().position(|(label, _)| {
             label.contains(operation) && label.contains(correlation_id)

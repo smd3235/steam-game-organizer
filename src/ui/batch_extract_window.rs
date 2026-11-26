@@ -4,7 +4,7 @@
 //! 2026-11-25: egui batch extract window stub in the Rust conversion.
 
 use egui::{RichText, ScrollArea};
-use crate::ui::theme::{Palette, separator};
+use crate::ui::theme::{ghost_button, primary_button, Palette, separator};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BatchItemState {
@@ -59,25 +59,25 @@ impl BatchExtractWindow {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        separator(ui, &self.palette);
+        separator(ui);
 
         ui.heading("Batch Extraction");
         ui.label(RichText::new(&self.state.status).small().color(self.palette.muted));
-        ui.separator();
+        separator(ui);
 
         ui.horizontal(|ui| {
             if self.state.extracting {
-                if ui.button("Cancel").clicked() {
+                if ghost_button(ui, "Cancel", &self.palette, true).clicked() {
                     self.state.cancelled = true;
                     self.state.status = "Cancelling…".to_string();
                 }
-            } else if ui.button("Start Batch").clicked() {
+            } else if primary_button(ui, "Start Batch", &self.palette, true).clicked() {
                 self.state.extracting = true;
                 self.state.status = "Batch starting…".to_string();
             }
         });
 
-        ui.separator();
+        separator(ui);
 
         ScrollArea::vertical().id_salt("batch_items").show(ui, |ui| {
             egui::Grid::new("batch_grid").num_columns(4).spacing([10.0, 4.0]).show(ui, |ui| {
@@ -110,7 +110,7 @@ impl BatchExtractWindow {
             });
         });
 
-        ui.separator();
+        separator(ui);
 
         ui.label(RichText::new(&self.state.status).color(self.palette.text));
     }
