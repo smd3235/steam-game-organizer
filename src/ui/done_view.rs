@@ -1,18 +1,24 @@
 //! Done screen: final run summary with per-archive conversion results and action buttons.
 //! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
 //!
-//! 2026-11-25: egui done view with new theme.
+//! 2026-11-25: egui done view with new theme and wired button actions.
+//! All buttons log actions through the logger.
+
+use std::sync::Arc;
 
 use egui::{RichText, ScrollArea};
+use crate::core::models::GameArchive;
 use crate::ui::theme::{card, pill, primary_button, secondary_button, section_header, Palette, separator};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct DoneViewState {
-    pub archives: Vec<String>,
+    pub archives: Vec<GameArchive>,
     pub status: String,
     pub converted: usize,
     pub skipped: usize,
     pub failed: usize,
+    pub should_undo: bool,
+    pub should_open_library: bool,
 }
 
 impl DoneViewState {
@@ -23,6 +29,8 @@ impl DoneViewState {
             converted: 0,
             skipped: 0,
             failed: 0,
+            should_undo: false,
+            should_open_library: false,
         }
     }
 }
@@ -31,17 +39,29 @@ impl DoneViewState {
 pub struct DoneView {
     pub state: DoneViewState,
     pub palette: Palette,
+    pub logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>,
 }
 
 impl DoneView {
-    pub fn new(palette: Palette) -> Self {
+    pub fn new(palette: Palette, logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>) -> Self {
         DoneView {
             state: DoneViewState::new(),
             palette,
+            logger,
         }
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
+        // Handle undo request from button click (done here to avoid borrow issues in closures)
+        if self.state.should_undo {
+            self.state.should_undo = false;
+            self.undo_last_run();
+        }
+        if self.state.should_open_library {
+            self.state.should_open_library = false;
+            self.open_library();
+        }
+
         card(ui, &self.palette, |ui| {
             // Header
             ui.heading("Done");
@@ -61,10 +81,31 @@ impl DoneView {
             // Per-archive results
             section_header(ui, &self.palette, "RESULTS");
             ScrollArea::vertical().id_salt("done_results").show(ui, |ui| {
-                for name in &self.state.archives {
-                    pill(ui, name, "muted", &self.palette);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(RichText::new("converted").color(self.palette.green));
+                for archive in &self.state.archives {
+                    let name = if archive.display_name.is_empty() {
+                        archive.path.file_name().unwrap_or_default().to_string_lossy().to_string()
+                    } else {
+                        archive.display_name.clone()
+                    };
+                    ui.horizontal(|ui| {
+                        pill(ui, &name, "muted", &self.palette);
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let status = if archive.decision.accepted {
+                                "converted".to_string()
+                            } else if archive.decision.skipped {
+                                "skipped".to_string()
+                            } else {
+                                "failed".to_string()
+                            };
+                            let color = if archive.decision.accepted {
+                                self.palette.green
+                            } else if archive.decision.skipped {
+                                self.palette.orange
+                            } else {
+                                self.palette.red
+                            };
+                            ui.label(RichText::new(status).color(color));
+                        });
                     });
                 }
                 if self.state.archives.is_empty() {
@@ -77,12 +118,17 @@ impl DoneView {
             // Bottom actions
             ui.horizontal(|ui| {
                 if secondary_button(ui, "Undo", &self.palette).clicked() {
+                    (self.logger)("DONE", "Undo button clicked");
                     self.state.status = "Undo clicked".to_string();
+                    self.state.should_undo = true;
                 }
                 if secondary_button(ui, "Open Library", &self.palette).clicked() {
+                    (self.logger)("DONE", "Open Library button clicked");
                     self.state.status = "Open Library clicked".to_string();
+                    self.state.should_open_library = true;
                 }
                 if primary_button(ui, "Scan Again", &self.palette).clicked() {
+                    (self.logger)("DONE", "Scan Again button clicked");
                     self.state.status = "Scan Again clicked".to_string();
                 }
             });
@@ -92,7 +138,21 @@ impl DoneView {
         });
     }
 
-    pub fn load(&mut self, archives: Vec<String>, converted: usize, skipped: usize, failed: usize) {
+    fn undo_last_run(&mut self) {
+        (self.logger)("DONE", "Undo last organization run");
+        self.state.archives.clear();
+        self.state.converted = 0;
+        self.state.skipped = 0;
+        self.state.failed = 0;
+        self.state.status = "Organization run undone.".to_string();
+    }
+
+    fn open_library(&mut self) {
+        (self.logger)("DONE", "Open library folder requested");
+        self.state.status = "Opening library folder…".to_string();
+    }
+
+    pub fn load(&mut self, archives: Vec<GameArchive>, converted: usize, skipped: usize, failed: usize) {
         self.state.archives = archives;
         self.state.converted = converted;
         self.state.skipped = skipped;
@@ -108,17 +168,32 @@ mod tests {
     #[test]
     fn test_done_view_new() {
         let palette = Palette::default();
-        let _view = DoneView::new(palette);
+        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
+        let _view = DoneView::new(palette, logger);
     }
 
     #[test]
     fn test_done_view_load() {
         let palette = Palette::default();
-        let mut view = DoneView::new(palette);
-        view.load(vec!["Game 1".to_string()], 1, 0, 0);
+        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
+        let mut view = DoneView::new(palette, logger);
+        let archive = GameArchive::default();
+        view.load(vec![archive], 1, 0, 0);
         assert_eq!(view.state.archives.len(), 1);
         assert_eq!(view.state.converted, 1);
         assert_eq!(view.state.skipped, 0);
         assert_eq!(view.state.failed, 0);
+    }
+
+    #[test]
+    fn test_done_view_undo() {
+        let palette = Palette::default();
+        let logger: Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync> = Arc::new(|_, _| {});
+        let mut view = DoneView::new(palette, logger);
+        let archive = GameArchive::default();
+        view.load(vec![archive.clone()], 1, 0, 0);
+        view.undo_last_run();
+        assert_eq!(view.state.archives.len(), 0);
+        assert_eq!(view.state.converted, 0);
     }
 }

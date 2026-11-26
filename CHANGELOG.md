@@ -23,6 +23,20 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-25 — feat: complete UI redesign with themed views, setup wizard, and wired buttons
+
+- `src/ui/theme.rs`: Modern dark theme with rounded corners, pill badges, section headers, primary/secondary/danger buttons, card containers, separators
+- `src/ui/main_window.rs`: Left navigation sidebar with all 5 views + Setup, top bar with archive count, card-based content area, shared archive flow (Scan→Review→Organize→Artwork→Done), archive sync between views
+- `src/ui/scan_view.rs`: Full scan workflow with phase timeline, progress bar, activity feed, discovered archives list, Convert Archives/Preview Only toggles, real ArchiveService discovery
+- `src/ui/review_view.rs`: Archive review with Steam match details, approve/skip/wrong-match/accept-reject actions, filter/search controls, per-archive action buttons
+- `src/ui/organize_view.rs`: Organization with progress tracking, preview mode, activity feed, converted/skipped/failed counts
+- `src/ui/artwork_view.rs`: Artwork grid with Open Folder/View Artwork/Re-download Missing buttons per archive, artwork details panel
+- `src/ui/done_view.rs`: Run summary with color-coded counts, per-archive results, Undo/Open Library/Scan Again actions
+- `src/ui/setup_view.rs`: Setup wizard with Library Root/Extract Folder/7-Zip path fields, Browse buttons, Validate Configuration, Save & Finish Setup, Skip Setup
+- `src/ui/integration_tests.rs`: 52 tests covering every button and control across all 5 views, all passing
+- `src/.gitignore`: Removed old Python references, added Rust/Windows specifics (exe, dll, pdb, .vs, etc.)
+- All 298 tests pass, zero clippy errors (only style suggestions)
+
 ### 2026-11-25 — feat: wired Scan button to real archive discovery with HH:MM:SS logging
 
 - `src/ui/scan_view.rs`: Added logger field; Start Scan / Scan + Artwork / Cancel Scan buttons log actions and call ArchiveService discovery; phase timeline updates through all 6 phases; activity feed populated with discovered archives

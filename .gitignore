@@ -1,24 +1,42 @@
+# Python artifacts (legacy, from the Py conversion)
 __pycache__/
 *.py[cod]
 *.tmp
-*.log
 *.coverage
 htmlcov/
 test_localsystem.txt
-cache/
-logs/
-.agent-cache/
 .pytest_cache/
 .ruff_cache/
-config/
-backup/
+
+# Python build artifacts
 build/
 dist/
+*.egg-info/
+
+# Windows / Visual Studio
+*.exe
+*.dll
+*.pdb
+*.user
+*.suo
+.vs/
+Thumbs.db
+desktop.ini
+
+# Application runtime directories (created at runtime)
+cache/
+logs/
+config/
+backup/
 runtime/
-# The frozen build's working folder is a build artefact; rebuild with
-# python tools/build_frozen.py instead of committing it.
-# Scratch space for throwaway scripts, generated HTML and ad-hoc captures. AGENTS.md requires these to live in the project, never in %TEMP%\kilo.
 temp/
+
+# Log files
+*.log
 
 # Rust build output
 target/
+target*/
+
+# Agent/cache
+.agent-cache/

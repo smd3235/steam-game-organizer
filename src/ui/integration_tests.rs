@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use crate::app::controller::Services;
+use crate::core::models::GameArchive;
 use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
 use crate::ui::theme::Palette;
@@ -18,7 +19,7 @@ use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::{ScanView, SCAN_PHASES};
 
 /// Helper: create a minimal no-op logger
-type LogFn = Arc<dyn Fn(&str, &str) + Send + Sync>;
+type LogFn = Arc<dyn for<'a, 'b> Fn(&'a str, &'b str) + Send + Sync>;
 
 fn noop_logger() -> LogFn {
     Arc::new(|_, _| {})
@@ -250,7 +251,7 @@ let library_service = test_library_service();
 #[test]
 fn test_review_view_initial_state() {
     let palette = Palette::default();
-    let view = ReviewView::new(palette);
+    let view = ReviewView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert_eq!(view.state.selected_index, None);
@@ -262,9 +263,9 @@ fn test_review_view_initial_state() {
 #[test]
 fn test_review_view_load_and_select() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
-    view.load(vec!["Game A".to_string(), "Game B".to_string(), "Game C".to_string()]);
+    view.load(vec![GameArchive::default(), GameArchive::default(), GameArchive::default()]);
 
     assert_eq!(view.state.archives.len(), 3);
     assert_eq!(view.state.selected_index, Some(0));
@@ -280,7 +281,7 @@ fn test_review_view_load_and_select() {
 #[test]
 fn test_review_view_approve_all_verified() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Approving all verified…".to_string();
     assert_eq!(view.state.status, "Approving all verified…");
@@ -289,7 +290,7 @@ fn test_review_view_approve_all_verified() {
 #[test]
 fn test_review_view_add_category() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Add Category clicked".to_string();
     assert_eq!(view.state.status, "Add Category clicked");
@@ -298,7 +299,7 @@ fn test_review_view_add_category() {
 #[test]
 fn test_review_view_use_all_suggestions() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Use All Suggestions clicked".to_string();
     assert_eq!(view.state.status, "Use All Suggestions clicked");
@@ -307,7 +308,7 @@ fn test_review_view_use_all_suggestions() {
 #[test]
 fn test_review_view_retry_failed() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Retry Failed clicked".to_string();
     assert_eq!(view.state.status, "Retry Failed clicked");
@@ -316,7 +317,7 @@ fn test_review_view_retry_failed() {
 #[test]
 fn test_review_view_continue_to_organize() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Continue to Organization clicked".to_string();
     assert_eq!(view.state.status, "Continue to Organization clicked");
@@ -325,7 +326,7 @@ fn test_review_view_continue_to_organize() {
 #[test]
 fn test_review_view_accept_and_next() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Accept & Next clicked".to_string();
     assert_eq!(view.state.status, "Accept & Next clicked");
@@ -334,7 +335,7 @@ fn test_review_view_accept_and_next() {
 #[test]
 fn test_review_view_skip() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Skip clicked".to_string();
     assert_eq!(view.state.status, "Skip clicked");
@@ -343,7 +344,7 @@ fn test_review_view_skip() {
 #[test]
 fn test_review_view_wrong_match() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Wrong Match clicked".to_string();
     assert_eq!(view.state.status, "Wrong Match clicked");
@@ -352,7 +353,7 @@ fn test_review_view_wrong_match() {
 #[test]
 fn test_review_view_extract_selected() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.status = "Extract Selected clicked".to_string();
     assert_eq!(view.state.status, "Extract Selected clicked");
@@ -361,7 +362,7 @@ fn test_review_view_extract_selected() {
 #[test]
 fn test_review_view_filter_values() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.filter = "All".to_string();
     assert_eq!(view.state.filter, "All");
@@ -382,7 +383,7 @@ fn test_review_view_filter_values() {
 #[test]
 fn test_review_view_search_text() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
     view.state.search_text = "zelda".to_string();
     assert_eq!(view.state.search_text, "zelda");
@@ -391,9 +392,9 @@ fn test_review_view_search_text() {
 #[test]
 fn test_review_view_cancel_lookup() {
     let palette = Palette::default();
-    let mut view = ReviewView::new(palette);
+    let mut view = ReviewView::new(palette, noop_logger());
 
-    view.load(vec!["Game 1".to_string()]);
+    view.load(vec![GameArchive::default()]);
     view.cancel_lookup();
     assert_eq!(view.state.status, "Verification cancelled.");
 }
@@ -405,7 +406,7 @@ fn test_review_view_cancel_lookup() {
 #[test]
 fn test_organize_view_initial_state() {
     let palette = Palette::default();
-    let view = OrganizeView::new(palette);
+    let view = OrganizeView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert_eq!(view.state.selected_index, None);
@@ -419,9 +420,9 @@ fn test_organize_view_initial_state() {
 #[test]
 fn test_organize_view_load_and_select() {
     let palette = Palette::default();
-    let mut view = OrganizeView::new(palette);
+    let mut view = OrganizeView::new(palette, noop_logger());
 
-    view.load(vec!["Archive 1".to_string(), "Archive 2".to_string()]);
+    view.load(vec![GameArchive::default(), GameArchive::default()]);
 
     assert_eq!(view.state.archives.len(), 2);
     assert_eq!(view.state.selected_index, Some(0));
@@ -433,7 +434,7 @@ fn test_organize_view_load_and_select() {
 #[test]
 fn test_organize_view_preview_only_checkbox() {
     let palette = Palette::default();
-    let mut view = OrganizeView::new(palette);
+    let mut view = OrganizeView::new(palette, noop_logger());
 
     view.state.preview_only = true;
     assert!(view.state.preview_only);
@@ -445,7 +446,7 @@ fn test_organize_view_preview_only_checkbox() {
 #[test]
 fn test_organize_view_start_organize() {
     let palette = Palette::default();
-    let mut view = OrganizeView::new(palette);
+    let mut view = OrganizeView::new(palette, noop_logger());
 
     view.state.converting = true;
     view.state.status = "Organization starting…".to_string();
@@ -457,7 +458,7 @@ fn test_organize_view_start_organize() {
 #[test]
 fn test_organize_view_cancel() {
     let palette = Palette::default();
-    let mut view = OrganizeView::new(palette);
+    let mut view = OrganizeView::new(palette, noop_logger());
 
     view.state.converting = true;
     view.state.status = "Organizing…".to_string();
@@ -472,7 +473,7 @@ fn test_organize_view_cancel() {
 #[test]
 fn test_organize_view_feed_activity() {
     let palette = Palette::default();
-    let mut view = OrganizeView::new(palette);
+    let mut view = OrganizeView::new(palette, noop_logger());
 
     view.feed("Organizing archive 1...");
     view.feed("Organizing archive 2...");
@@ -485,7 +486,7 @@ fn test_organize_view_feed_activity() {
 #[test]
 fn test_organize_view_shutdown() {
     let palette = Palette::default();
-    let mut view = OrganizeView::new(palette);
+    let mut view = OrganizeView::new(palette, noop_logger());
 
     view.state.converting = true;
     view.shutdown();
@@ -497,7 +498,7 @@ fn test_organize_view_shutdown() {
 #[test]
 fn test_organize_view_progress_and_stage() {
     let palette = Palette::default();
-    let mut view = OrganizeView::new(palette);
+    let mut view = OrganizeView::new(palette, noop_logger());
 
     view.state.progress = 0.75;
     view.state.stage = "Compressing…".to_string();
@@ -513,7 +514,7 @@ fn test_organize_view_progress_and_stage() {
 #[test]
 fn test_artwork_view_initial_state() {
     let palette = Palette::default();
-    let view = ArtworkView::new(palette);
+    let view = ArtworkView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert_eq!(view.state.selected_index, None);
@@ -523,9 +524,9 @@ fn test_artwork_view_initial_state() {
 #[test]
 fn test_artwork_view_load_and_select() {
     let palette = Palette::default();
-    let mut view = ArtworkView::new(palette);
+    let mut view = ArtworkView::new(palette, noop_logger());
 
-    view.load(vec!["Game Art 1".to_string(), "Game Art 2".to_string()]);
+    view.load(vec![GameArchive::default(), GameArchive::default()]);
 
     assert_eq!(view.state.archives.len(), 2);
     assert_eq!(view.state.selected_index, Some(0));
@@ -537,7 +538,7 @@ fn test_artwork_view_load_and_select() {
 #[test]
 fn test_artwork_view_open_folder() {
     let palette = Palette::default();
-    let mut view = ArtworkView::new(palette);
+    let mut view = ArtworkView::new(palette, noop_logger());
 
     view.state.status = "Opened folder for Game Art 1".to_string();
     assert_eq!(view.state.status, "Opened folder for Game Art 1");
@@ -546,7 +547,7 @@ fn test_artwork_view_open_folder() {
 #[test]
 fn test_artwork_view_scan_again() {
     let palette = Palette::default();
-    let mut view = ArtworkView::new(palette);
+    let mut view = ArtworkView::new(palette, noop_logger());
 
     view.state.status = "Scan Again clicked".to_string();
     assert_eq!(view.state.status, "Scan Again clicked");
@@ -555,7 +556,7 @@ fn test_artwork_view_scan_again() {
 #[test]
 fn test_artwork_view_review() {
     let palette = Palette::default();
-    let mut view = ArtworkView::new(palette);
+    let mut view = ArtworkView::new(palette, noop_logger());
 
     view.state.status = "Review clicked".to_string();
     assert_eq!(view.state.status, "Review clicked");
@@ -568,7 +569,7 @@ fn test_artwork_view_review() {
 #[test]
 fn test_done_view_initial_state() {
     let palette = Palette::default();
-    let view = DoneView::new(palette);
+    let view = DoneView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert_eq!(view.state.status, "No organization run yet.");
@@ -580,10 +581,10 @@ fn test_done_view_initial_state() {
 #[test]
 fn test_done_view_load_mixed_results() {
     let palette = Palette::default();
-    let mut view = DoneView::new(palette);
+    let mut view = DoneView::new(palette, noop_logger());
 
     view.load(
-        vec!["Game 1".to_string(), "Game 2".to_string(), "Game 3".to_string()],
+        vec![GameArchive::default(), GameArchive::default(), GameArchive::default()],
         2,
         1,
         0,
@@ -602,7 +603,7 @@ fn test_done_view_load_mixed_results() {
 #[test]
 fn test_done_view_all_zero() {
     let palette = Palette::default();
-    let mut view = DoneView::new(palette);
+    let mut view = DoneView::new(palette, noop_logger());
 
     view.load(vec![], 0, 0, 0);
 
@@ -618,7 +619,7 @@ fn test_done_view_all_zero() {
 #[test]
 fn test_done_view_undo() {
     let palette = Palette::default();
-    let mut view = DoneView::new(palette);
+    let mut view = DoneView::new(palette, noop_logger());
 
     view.state.status = "Undo clicked".to_string();
     assert_eq!(view.state.status, "Undo clicked");
@@ -627,7 +628,7 @@ fn test_done_view_undo() {
 #[test]
 fn test_done_view_open_library() {
     let palette = Palette::default();
-    let mut view = DoneView::new(palette);
+    let mut view = DoneView::new(palette, noop_logger());
 
     view.state.status = "Open Library clicked".to_string();
     assert_eq!(view.state.status, "Open Library clicked");
@@ -636,7 +637,7 @@ fn test_done_view_open_library() {
 #[test]
 fn test_done_view_scan_again() {
     let palette = Palette::default();
-    let mut view = DoneView::new(palette);
+    let mut view = DoneView::new(palette, noop_logger());
 
     view.state.status = "Scan Again clicked".to_string();
     assert_eq!(view.state.status, "Scan Again clicked");
@@ -714,7 +715,7 @@ fn test_button_audit_review_view() {
     // Retry Failed, Continue to Organization, Accept & Next, Skip, Wrong Match, Extract Selected
     // Controls: Search text, Filter combo
     let palette = Palette::default();
-    let view = ReviewView::new(palette);
+    let view = ReviewView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert_eq!(view.state.selected_index, None);
@@ -727,7 +728,7 @@ fn test_button_audit_organize_view() {
     // Organize view buttons: Start Organize, Cancel
     // Checkbox: Preview Only
     let palette = Palette::default();
-    let view = OrganizeView::new(palette);
+    let view = OrganizeView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert!(!view.state.preview_only);
@@ -738,7 +739,7 @@ fn test_button_audit_organize_view() {
 fn test_button_audit_artwork_view() {
     // Artwork view buttons: Open Folder (per archive), Scan Again, Review
     let palette = Palette::default();
-    let view = ArtworkView::new(palette);
+    let view = ArtworkView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert_eq!(view.state.status, "No artwork downloaded yet.");
@@ -748,7 +749,7 @@ fn test_button_audit_artwork_view() {
 fn test_button_audit_done_view() {
     // Done view buttons: Undo, Open Library, Scan Again
     let palette = Palette::default();
-    let view = DoneView::new(palette);
+    let view = DoneView::new(palette, noop_logger());
 
     assert!(view.state.archives.is_empty());
     assert_eq!(view.state.converted, 0);

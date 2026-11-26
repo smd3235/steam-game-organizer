@@ -3,7 +3,7 @@
 //! Buttons log actions and call real archive discovery through ArchiveService.
 //!
 //! 2026-11-25: egui scan view with new theme and wired button actions.
-//! v2 - fixed Arc clone issue.
+//! v3 - full logging on all buttons, real archive discovery, shared archive state.
 
 #![allow(clippy::all)]
 
@@ -13,8 +13,9 @@ use std::sync::Arc;
 use crate::app::controller::Services;
 use crate::app::jobs::JobManager;
 use crate::services::library_service::LibraryService;
+use crate::core::models::GameArchive;
 
-use egui::RichText;
+use egui::{RichText, ScrollArea};
 use crate::ui::theme::{
     card, danger_button, pill, primary_button, secondary_button, section_header, Palette,
     separator,
@@ -37,7 +38,7 @@ pub const SCAN_STAGE_SPAN: &[(&str, (f32, f32))] = &[
     ("verifying", (0.92, 1.0)),
 ];
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ScanViewState {
     pub scanning: bool,
     pub should_scan: bool,
@@ -50,6 +51,7 @@ pub struct ScanViewState {
     pub activity: Vec<String>,
     pub phase_states: [bool; 6],
     pub current_phase: usize,
+    pub discovered_archives: Vec<GameArchive>,
 }
 
 impl ScanViewState {
@@ -66,6 +68,7 @@ impl ScanViewState {
             activity: Vec::new(),
             phase_states: [false; 6],
             current_phase: 0,
+            discovered_archives: Vec::new(),
         }
     }
 }
@@ -168,7 +171,7 @@ impl ScanView {
 
             // Activity feed (scrollable)
             section_header(ui, &self.palette, "ACTIVITY");
-            egui::ScrollArea::vertical()
+            ScrollArea::vertical()
                 .id_salt("scan_activity_feed")
                 .max_height(300.0)
                 .show(ui, |ui| {
@@ -193,6 +196,22 @@ impl ScanView {
                     self.state.status = "Scan cancelled.".to_string();
                     self.state.activity.push("Scan cancelled.".to_string());
                 }
+            }
+
+            // Show discovered archives
+            if !self.state.discovered_archives.is_empty() {
+                ui.separator();
+                section_header(ui, &self.palette, "DISCOVERED ARCHIVES");
+                ScrollArea::vertical().id_salt("discovered_list").max_height(200.0).show(ui, |ui| {
+                    for archive in &self.state.discovered_archives {
+                        ui.horizontal(|ui| {
+                            pill(ui, &archive.display_name, "muted", &self.palette);
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                ui.label(RichText::new(format!("{} bytes", archive.size)).small().color(self.palette.muted));
+                            });
+                        });
+                    }
+                });
             }
         });
     }
@@ -260,9 +279,12 @@ impl ScanView {
                 (self.logger)("SCAN", &format!("  Error: {}", error));
             }
 
+            let archive_count = result.archives.len();
+            let _archive_errors = result.errors.len();
+            self.state.discovered_archives = result.archives;
             self.state.phase_states[3] = true;
             self.state.stage = "Discovery complete".to_string();
-            self.state.status = format!("Found {} archives", result.archives.len());
+            self.state.status = format!("Found {} archives", archive_count);
         } else {
             (self.logger)("SCAN", "No library root configured, skipping discovery");
             self.state.phase_states[3] = true;
@@ -291,11 +313,23 @@ impl ScanView {
 
     /// Get the library root from config.
     fn get_library_root(&self) -> Option<PathBuf> {
-        // Try to read from the config via services
-        // For now, return a default path or check common locations
-        if self.services.organizer.convert_archives() {
-            // Has config, but no direct access to library_root
+        // Check for common Steam library locations
+        let candidates = [
+            PathBuf::from("C:/SteamLibrary"),
+            PathBuf::from("D:/SteamLibrary"),
+            PathBuf::from("E:/SteamLibrary"),
+            PathBuf::from("C:/Program Files (x86)/Steam/steamapps"),
+            PathBuf::from("C:/Program Files/Steam/steamapps"),
+            PathBuf::from("."),
+        ];
+
+        for candidate in &candidates {
+            if candidate.is_dir() {
+                (self.logger)("SCAN", &format!("Found library root: {}", candidate.display()));
+                return Some(candidate.clone());
+            }
         }
+
         None
     }
 

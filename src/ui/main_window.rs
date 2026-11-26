@@ -2,6 +2,7 @@
 //! Completely redesigned layout with left navigation sidebar, top bar, and themed content area.
 //!
 //! 2026-11-25: New layout with navigation sidebar, modern theme, card-based views.
+//! All views share logger and archives flow from Scan → Review → Organize → Artwork → Done.
 
 #![allow(clippy::all)]
 
@@ -17,7 +18,9 @@ use crate::ui::done_view::DoneView;
 use crate::ui::organize_view::OrganizeView;
 use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::ScanView;
-use crate::ui::theme::{card, danger_button, secondary_button, Palette};
+use crate::ui::setup_view::SetupView;
+use egui::RichText;
+use crate::ui::theme::{card, danger_button, secondary_button, Palette, separator};
 
 const NAV_ITEMS: &[(&str, &str)] = &[
     ("scan", "Scan"),
@@ -25,6 +28,7 @@ const NAV_ITEMS: &[(&str, &str)] = &[
     ("organize", "Organize"),
     ("artwork", "Artwork"),
     ("done", "Done"),
+    ("setup", "Setup"),
 ];
 
 /// The egui application struct. Holds all shared state and renders views.
@@ -41,6 +45,8 @@ pub struct MainWindow {
     pub organize_view: OrganizeView,
     pub artwork_view: ArtworkView,
     pub done_view: DoneView,
+    pub setup_view: SetupView,
+    pub shared_archives: Vec<crate::core::models::GameArchive>,
 }
 
 impl MainWindow {
@@ -53,7 +59,12 @@ impl MainWindow {
         jobs: Arc<JobManager>,
     ) -> Self {
         (logger)("DEBUG", "MainWindow::new called");
-        let logger_clone = Arc::clone(&logger);
+        let logger_for_scan = Arc::clone(&logger);
+        let logger_for_review = Arc::clone(&logger);
+        let logger_for_organize = Arc::clone(&logger);
+        let logger_for_artwork = Arc::clone(&logger);
+        let logger_for_done = Arc::clone(&logger);
+        let logger_for_setup = Arc::clone(&logger);
         let services_clone = Arc::clone(&services);
         let jobs_for_field = Arc::clone(&jobs);
         let jobs_for_scan = Arc::clone(&jobs);
@@ -70,12 +81,26 @@ impl MainWindow {
                 _library_service,
                 jobs_for_scan,
                 Palette::default(),
-                logger_clone,
+                logger_for_scan,
             ),
-            review_view: ReviewView::new(Palette::default()),
-            organize_view: OrganizeView::new(Palette::default()),
-            artwork_view: ArtworkView::new(Palette::default()),
-            done_view: DoneView::new(Palette::default()),
+            review_view: ReviewView::new(Palette::default(), logger_for_review),
+            organize_view: OrganizeView::new(Palette::default(), logger_for_organize),
+            artwork_view: ArtworkView::new(Palette::default(), logger_for_artwork),
+            done_view: DoneView::new(Palette::default(), logger_for_done),
+            setup_view: SetupView::new(Palette::default(), logger_for_setup),
+            shared_archives: Vec::new(),
+        }
+    }
+
+    /// Sync discovered archives from scan view to all downstream views.
+    fn sync_archives(&mut self) {
+        let archives = self.scan_view.state.discovered_archives.clone();
+        if !archives.is_empty() {
+            (self.logger)("MAIN", &format!("Syncing {} archives to downstream views", archives.len()));
+            self.shared_archives = archives.clone();
+            self.review_view.load(archives.clone());
+            self.organize_view.load(archives.clone());
+            self.artwork_view.load(archives.clone());
         }
     }
 
@@ -83,18 +108,50 @@ impl MainWindow {
         card(ui, &self.palette, |ui| {
             self.scan_view.ui(ui);
         });
+
+        // After scan completes, auto-sync archives
+        if !self.scan_view.state.discovered_archives.is_empty()
+            && self.shared_archives.len() != self.scan_view.state.discovered_archives.len()
+        {
+            self.sync_archives();
+        }
     }
 
     pub(crate) fn render_review(&mut self, ui: &mut egui::Ui) {
         card(ui, &self.palette, |ui| {
             self.review_view.ui(ui);
         });
+
+        // Auto-sync when accepted archives change
+        let accepted_count = self.review_view.state.archives.iter()
+            .filter(|a| a.decision.accepted).count();
+        if accepted_count > 0 && self.shared_archives.len() != accepted_count {
+            let accepted: Vec<_> = self.review_view.state.archives.iter()
+                .filter(|a| a.decision.accepted)
+                .cloned()
+                .collect();
+            self.shared_archives = accepted.clone();
+            self.organize_view.load(accepted.clone());
+            self.artwork_view.load(accepted);
+        }
     }
 
     pub(crate) fn render_organize(&mut self, ui: &mut egui::Ui) {
         card(ui, &self.palette, |ui| {
             self.organize_view.ui(ui);
         });
+
+        // When organize completes, push results to done view
+        if !self.organize_view.state.converting && self.organize_view.state.converted_count > 0 {
+            let archives = self.organize_view.state.archives.clone();
+            let converted = self.organize_view.state.converted_count;
+            let skipped = self.organize_view.state.skipped_count;
+            let failed = self.organize_view.state.failed_count;
+            if !archives.is_empty() {
+                self.done_view.load(archives.clone(), converted, skipped, failed);
+                (self.logger)("MAIN", &format!("Pushed {} results to Done view", archives.len()));
+            }
+        }
     }
 
     pub(crate) fn render_artwork(&mut self, ui: &mut egui::Ui) {
@@ -106,6 +163,12 @@ impl MainWindow {
     pub(crate) fn render_done(&mut self, ui: &mut egui::Ui) {
         card(ui, &self.palette, |ui| {
             self.done_view.ui(ui);
+        });
+    }
+
+    pub(crate) fn render_setup(&mut self, ui: &mut egui::Ui) {
+        card(ui, &self.palette, |ui| {
+            self.setup_view.ui(ui);
         });
     }
 
@@ -156,6 +219,24 @@ impl MainWindow {
 
             ui.add_space(16.0);
 
+            // Separator before setup/quit
+            separator(ui, &self.palette);
+
+            // Setup button
+            ui.label(
+                egui::RichText::new("SETUP")
+                    .color(self.palette.muted)
+                    .small()
+                    .strong(),
+            );
+            ui.add_space(4.0);
+            if secondary_button(ui, "Setup Wizard", &self.palette).clicked() {
+                (self.logger)("DEBUG", "Setup Wizard button clicked");
+                self.current = "setup".to_string();
+            }
+
+            ui.add_space(16.0);
+
             // Bottom: Quit button
             if danger_button(ui, "Quit", &self.palette).clicked() {
                 ctx_send_close(ui.ctx());
@@ -175,6 +256,12 @@ impl MainWindow {
             ui.separator();
             ui.label(
                 egui::RichText::new(format!("view: {}", self.current))
+                    .color(self.palette.muted)
+                    .small(),
+            );
+            ui.separator();
+            ui.label(
+                RichText::new(format!("archives: {}", self.shared_archives.len()))
                     .color(self.palette.muted)
                     .small(),
             );
@@ -232,8 +319,13 @@ impl eframe::App for MainWindow {
                     "organize" => self.render_organize(ui),
                     "artwork" => self.render_artwork(ui),
                     "done" => self.render_done(ui),
+                    "setup" => self.render_setup(ui),
                     _ => self.render_scan(ui),
                 }
             });
+    }
+
+    fn on_exit(&mut self, _frame: Option<&eframe::glow::Context>) {
+        (self.logger)("APPLICATION", "SHUTDOWN");
     }
 }
