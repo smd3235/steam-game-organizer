@@ -21,16 +21,20 @@ use crate::ui::organize_view::OrganizeView;
 use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::ScanView;
 use crate::ui::setup_view::SetupView;
-use egui::RichText;
-use crate::ui::theme::{card, danger_button, secondary_button, Palette, separator};
+use egui::{RichText, Vec2};
+use crate::ui::theme as theme;
+use crate::ui::theme::{
+    body_text, card, danger_button, ghost_button, heading, nav_item, primary_button, secondary_button,
+    separator, SPACING, SPACING_LG, SPACING_XL, Palette,
+};
 
-const NAV_ITEMS: &[(&str, &str)] = &[
-    ("scan", "Scan"),
-    ("review", "Review"),
-    ("organize", "Organize"),
-    ("artwork", "Artwork"),
-    ("done", "Done"),
-    ("setup", "Setup"),
+const NAV_ITEMS: &[(&str, &str, &str)] = &[
+    ("scan", "🔍", "Scan"),
+    ("review", "📋", "Review"),
+    ("organize", "📦", "Organize"),
+    ("artwork", "🖼️", "Artwork"),
+    ("done", "✅", "Done"),
+    ("setup", "⚙️", "Setup"),
 ];
 
 /// The egui application struct. Holds all shared state and renders views.
@@ -183,103 +187,97 @@ impl MainWindow {
 
     /// Render the left navigation sidebar.
     fn render_nav_sidebar(&mut self, ui: &mut egui::Ui) {
-        ui.vertical(|ui| {
-            // App logo area
-            ui.add_space(8.0);
-            ui.label(
-                egui::RichText::new("SGO")
-                    .color(self.palette.accent)
-                    .strong()
-                    .heading(),
-            );
-            ui.label(
-                egui::RichText::new("Steam Game Organizer")
-                    .color(self.palette.muted)
-                    .small(),
-            );
-            ui.add_space(16.0);
+        ui.add_space(theme::SPACING_XL);
 
-            // Navigation items
-            ui.label(
-                egui::RichText::new("NAVIGATION")
-                    .color(self.palette.muted)
-                    .small()
-                    .strong(),
-            );
-            ui.add_space(4.0);
-
-            for (key, label) in NAV_ITEMS {
-                let is_active = self.current == *key;
-                let bg = if is_active {
-                    self.palette.accent.linear_multiply(0.15)
-                } else {
-                    self.palette.entry_bg
-                };
-
-                let rect = ui.min_rect();
-                ui.painter().rect_filled(rect, 4.0, bg);
-
-                let response = ui.selectable_label(is_active, *label);
-                if response.clicked() {
-                    self.current = key.to_string();
-                    self.logger.log("DEBUG", &format!("Navigated to {}", key), "");
-                }
-            }
-
-            ui.add_space(16.0);
-
-            // Separator before setup/quit
-            separator(ui, &self.palette);
-
-            // Setup button
-            ui.label(
-                egui::RichText::new("SETUP")
-                    .color(self.palette.muted)
-                    .small()
-                    .strong(),
-            );
-            ui.add_space(4.0);
-            if secondary_button(ui, "Setup Wizard", &self.palette).clicked() {
-                self.logger.log("DEBUG", "Setup Wizard button clicked", "");
-                self.current = "setup".to_string();
-            }
-
-            ui.add_space(16.0);
-
-            // Bottom: Quit button
-            if danger_button(ui, "Quit", &self.palette).clicked() {
-                ctx_send_close(ui.ctx());
-            }
+        // App logo area
+        ui.vertical_centered(|ui| {
+            ui.label(RichText::new("SGO").color(self.palette.accent).strong().heading());
+            ui.add_space(theme::SPACING / 2.0);
+            ui.label(RichText::new("Steam Game Organizer")
+                .color(self.palette.text_secondary)
+                .small());
         });
+        ui.add_space(theme::SPACING_XL);
+
+        // Navigation header
+        ui.label(RichText::new("NAVIGATION")
+            .color(self.palette.text_tertiary)
+            .small()
+            .strong());
+        ui.add_space(theme::SPACING / 2.0);
+
+        // Navigation items
+        for (key, icon, label) in NAV_ITEMS {
+            let is_active = self.current == *key;
+            nav_item(ui, &self.palette, icon, label, is_active);
+            if ui.add(egui::Button::new(RichText::new(format!("{}  {}", icon, label)).color(
+                if is_active { self.palette.accent } else { self.palette.text_secondary }
+            ).strong())
+            .corner_radius(theme::SMALL_RADIUS)
+            .min_size(Vec2::new(0.0, 0.0))
+            .frame(false)).clicked() {
+                self.current = key.to_string();
+                self.logger.log("DEBUG", &format!("Navigated to {}", key), "");
+            }
+        }
+
+        ui.add_space(theme::SPACING_XL);
+
+        // Separator before setup/quit
+        separator(ui, &self.palette);
+
+        // Setup button
+        ui.label(RichText::new("SETUP")
+            .color(self.palette.text_tertiary)
+            .small()
+            .strong());
+        ui.add_space(theme::SPACING / 2.0);
+        if secondary_button(ui, "Setup Wizard", &self.palette).clicked() {
+            self.logger.log("DEBUG", "Setup Wizard button clicked", "");
+            self.current = "setup".to_string();
+        }
+
+        ui.add_space(theme::SPACING_XL);
+
+        // Bottom: Quit button
+        if ghost_button(ui, "Quit", &self.palette).clicked() {
+            ctx_send_close(ui.ctx());
+        }
     }
 
     /// Render the top bar.
     fn render_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
+            ui.add_space(theme::SPACING);
             ui.label(
-                egui::RichText::new("Steam Game Organizer")
+                RichText::new("Steam Game Organizer")
                     .color(self.palette.text)
                     .strong()
                     .size(18.0),
             );
             ui.separator();
-            ui.label(
-                RichText::new(format!("view: {}", self.current))
-                    .color(self.palette.muted)
-                    .small(),
-            );
-            ui.separator();
-            ui.label(
-                RichText::new(format!("archives: {}", self.shared_archives.len()))
-                    .color(self.palette.muted)
-                    .small(),
-            );
+            ui.add_space(theme::SPACING);
+            ui.label(RichText::new(format!("View: {}", self.current))
+                .color(self.palette.text_secondary)
+                .small());
+            ui.add_space(theme::SPACING);
+            ui.label(RichText::new(format!("Archives: {}", self.shared_archives.len()))
+                .color(self.palette.text_secondary)
+                .small());
+            ui.add_space(theme::SPACING);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if secondary_button(ui, "Quit", &self.palette).clicked() {
+                if ghost_button(ui, "Quit", &self.palette).clicked() {
                     ctx_send_close(ui.ctx());
                 }
             });
         });
+    }
+
+    /// Render a view header with title and description.
+    fn render_view_header(&mut self, ui: &mut egui::Ui, title: &str, subtitle: &str) {
+        heading(ui, &self.palette, title);
+        body_text(ui, &self.palette, subtitle);
+        separator(ui, &self.palette);
     }
 }
 
@@ -290,6 +288,9 @@ fn ctx_send_close(ctx: &egui::Context) {
 impl eframe::App for MainWindow {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.logger.log("DEBUG", "MainWindow::update called", "");
+
+        // Style the context
+        ctx.set_visuals(egui::Visuals::dark());
 
         // Top bar
         egui::TopBottomPanel::top("top_bar")
@@ -303,7 +304,7 @@ impl eframe::App for MainWindow {
 
         // Main body: sidebar + content
         egui::SidePanel::left("nav_sidebar")
-            .default_width(200.0)
+            .default_width(220.0)
             .frame(egui::Frame {
                 fill: self.palette.bg,
                 ..Default::default()
@@ -312,16 +313,14 @@ impl eframe::App for MainWindow {
                 self.render_nav_sidebar(ui);
             });
 
-        // Main content: view stack inside a card
+        // Main content: view stack
         egui::CentralPanel::default()
             .frame(egui::Frame {
                 fill: self.palette.bg,
                 ..Default::default()
             })
             .show(ctx, |ui| {
-                // Add some padding
-                ui.add_space(8.0);
-
+                ui.add_space(theme::SPACING);
                 match self.current.as_str() {
                     "scan" => self.render_scan(ui),
                     "review" => self.render_review(ui),
@@ -331,6 +330,7 @@ impl eframe::App for MainWindow {
                     "setup" => self.render_setup(ui),
                     _ => self.render_scan(ui),
                 }
+                ui.add_space(theme::SPACING_XL);
             });
     }
 
