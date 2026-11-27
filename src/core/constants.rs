@@ -207,3 +207,77 @@ pub const DEFAULT_ZIP_PASSWORD: &str = "123";
 pub fn category_aliases_map() -> HashMap<&'static str, &'static str> {
     CATEGORY_ALIASES.iter().copied().collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_archive_extensions() {
+        assert!(ARCHIVE_EXTENSIONS.contains(&".zip"));
+        assert!(ARCHIVE_EXTENSIONS.contains(&".rar"));
+        assert!(ARCHIVE_EXTENSIONS.contains(&".7z"));
+        assert_eq!(ARCHIVE_EXTENSIONS.len(), 3);
+    }
+
+    #[test]
+    fn test_default_categories_contains_unsorted() {
+        assert!(DEFAULT_CATEGORIES.contains(&"Unsorted"));
+        assert!(DEFAULT_CATEGORIES.contains(&"Action"));
+        assert!(DEFAULT_CATEGORIES.contains(&"RPG"));
+        assert_eq!(DEFAULT_CATEGORIES.len(), 11);
+    }
+
+    #[test]
+    fn test_supplemental_categories_non_empty() {
+        assert!(!SUPPLEMENTAL_CATEGORIES.is_empty());
+        assert!(SUPPLEMENTAL_CATEGORIES.contains(&"Roguelike"));
+        assert!(SUPPLEMENTAL_CATEGORIES.contains(&"Soulslike"));
+        assert_eq!(SUPPLEMENTAL_CATEGORIES.len(), 34);
+    }
+
+    #[test]
+    fn test_category_aliases_lookup() {
+        let map = category_aliases_map();
+        assert_eq!(map.get("factory"), Some(&"Automation"));
+        assert_eq!(map.get("rogue"), Some(&"Roguelike"));
+        assert_eq!(map.get("survivors"), Some(&"Survival"));
+        assert_eq!(map.get("fps"), Some(&"First-Person Shooter"));
+    }
+
+    #[test]
+    fn test_ignored_auto_categories() {
+        assert!(IGNORED_AUTO_CATEGORIES.contains(&"indie"));
+        assert!(IGNORED_AUTO_CATEGORIES.contains(&"free to play"));
+        assert!(IGNORED_AUTO_CATEGORIES.contains(&"multiplayer"));
+        assert_eq!(IGNORED_AUTO_CATEGORIES.len(), 9);
+    }
+
+    #[test]
+    fn test_lock_marker_and_processing_dir() {
+        assert_eq!(LOCK_MARKER, ".organizer-lock");
+        assert_eq!(PROCESSING_DIRNAME, "Processing");
+        assert_eq!(TEMP_DIR_PREFIX, ".organizer-repack-");
+        assert_eq!(TEMP_FILE_TAG, ".organizer-temp");
+    }
+
+    #[test]
+    fn test_compression_constants() {
+        assert_eq!(COMPRESSION_LEVEL, 9);
+        assert_eq!(MIN_COMPRESSION_LEVEL, 5);
+        assert_eq!(COMPRESSION_THREADS, 2);
+        assert!(LEVEL_RAM_BYTES.len() == 5);
+    }
+
+    #[test]
+    fn test_default_zip_password() {
+        assert!(!DEFAULT_ZIP_PASSWORD.is_empty());
+    }
+
+    #[test]
+    fn test_library_reserved_dirs() {
+        assert!(LIBRARY_RESERVED_DIRS.contains(&"Archive"));
+        assert!(LIBRARY_RESERVED_DIRS.contains(&PROCESSING_DIRNAME));
+        assert_eq!(LIBRARY_RESERVED_DIRS.len(), 2);
+    }
+}

@@ -112,3 +112,91 @@ impl std::fmt::Display for UriRefused {
 }
 
 impl std::error::Error for UriRefused {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scheme_constant() {
+        assert_eq!(SCHEME, "steamgameorganizer");
+    }
+
+    #[test]
+    fn test_unsafe_chars_constant() {
+        assert!(!UNSAFE_CHARS.is_empty());
+    }
+
+    #[test]
+    fn test_extract_request_derive() {
+        let req = ExtractRequest {
+            archive: std::path::PathBuf::from("/tmp/game.zip"),
+            destination: std::path::PathBuf::from("/tmp/extract"),
+        };
+        let debug = format!("{:?}", req);
+        assert!(debug.contains("game.zip"));
+        assert!(debug.contains("extract"));
+    }
+
+    #[test]
+    fn test_play_request_derive() {
+        let req = PlayRequest {
+            exe: std::path::PathBuf::from("/tmp/game.exe"),
+            marker_dir: Some(std::path::PathBuf::from("/tmp/marker")),
+        };
+        let debug = format!("{:?}", req);
+        assert!(debug.contains("game.exe"));
+    }
+
+    #[test]
+    fn test_extract_root_request_derive() {
+        let req = ExtractRootRequest {
+            folder: std::path::PathBuf::from("/tmp/root"),
+        };
+        let debug = format!("{:?}", req);
+        assert!(debug.contains("root"));
+    }
+
+    #[test]
+    fn test_setup_request_default() {
+        let req = SetupRequest::default();
+        assert_eq!(req.library, "");
+        assert_eq!(req.extract, "");
+        assert_eq!(req.app, "");
+    }
+
+    #[test]
+    fn test_batch_extract_request_derive() {
+        let req = BatchExtractRequest {
+            category: "RPG".to_string(),
+            destination: std::path::PathBuf::from("/tmp/rpg"),
+        };
+        let debug = format!("{:?}", req);
+        assert!(debug.contains("RPG"));
+    }
+
+    #[test]
+    fn test_multibatch_request_derive() {
+        let req = MultiBatchRequest {
+            archives: vec![(
+                std::path::PathBuf::from("/tmp/a.zip"),
+                std::path::PathBuf::from("/tmp/out"),
+            )],
+            destination: std::path::PathBuf::from("/tmp/out"),
+        };
+        assert_eq!(req.archives.len(), 1);
+    }
+
+    #[test]
+    fn test_uri_refused_new_and_display() {
+        let err = UriRefused::new("access denied");
+        assert_eq!(err.message, "access denied");
+        assert_eq!(format!("{}", err), "access denied");
+    }
+
+    #[test]
+    fn test_system_paths_vec_returns_vec() {
+        let paths = system_paths_vec();
+        assert!(!paths.is_empty());
+    }
+}

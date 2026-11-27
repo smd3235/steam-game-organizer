@@ -238,3 +238,128 @@ impl RepairArchive {
         ""
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_steam_match_default() {
+        let m = SteamMatch::default();
+        assert!(!m.found);
+        assert_eq!(m.appid, "");
+        assert_eq!(m.name, "");
+        assert_eq!(m.confidence, "");
+        assert_eq!(m.score, 0.0);
+    }
+
+    #[test]
+    fn test_artwork_result_present() {
+        let a = ArtworkResult::default();
+        assert!(!a.present());
+        assert!(a.files().is_empty());
+    }
+
+    #[test]
+    fn test_artwork_result_files_dedup() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("same.png");
+        std::fs::write(&path, b"fake png").unwrap();
+        let a = ArtworkResult {
+            path: Some(path.clone()),
+            assets: std::collections::HashMap::from([("header".to_string(), path)]),
+            ..Default::default()
+        };
+        let files = a.files();
+        assert_eq!(files.len(), 1);
+    }
+
+    #[test]
+    fn test_organization_decision_default() {
+        let d = OrganizationDecision::default();
+        assert_eq!(d.category, "Unsorted");
+        assert!(!d.accepted);
+        assert!(!d.changed_from_suggestion);
+        assert!(!d.skipped);
+    }
+
+    #[test]
+    fn test_conversion_result_default() {
+        let c = ConversionResult::default();
+        assert_eq!(c.status, "");
+        assert_eq!(c.final_size, 0);
+        assert_eq!(c.source_size, 0);
+    }
+
+    #[test]
+    fn test_gamearchive_default_hash_eq() {
+        let a1 = GameArchive {
+            identity_key: "abc".to_string(),
+            ..Default::default()
+        };
+        let a2 = GameArchive {
+            identity_key: "abc".to_string(),
+            ..Default::default()
+        };
+        let a3 = GameArchive {
+            identity_key: "def".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(a1, a2);
+        assert_ne!(a1, a3);
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(a1.clone());
+        set.insert(a2);
+        assert_eq!(set.len(), 1);
+        set.insert(a3);
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_scan_result_default() {
+        let s = ScanResult::default();
+        assert!(s.archives.is_empty());
+        assert!(s.errors.is_empty());
+        assert_eq!(s.stale_build_dirs, 0);
+        assert_eq!(s.stale_build_bytes, 0);
+    }
+
+    #[test]
+    fn test_app_state_default() {
+        let s = AppState::default();
+        assert_eq!(s.phase, "");
+        assert_eq!(s.selected_index, None);
+        assert!(!s.cancel_requested);
+        assert!(!s.developer_mode);
+        assert_eq!(s.last_error, "");
+    }
+
+    #[test]
+    fn test_minimalarchive_methods() {
+        let m = MinimalArchive {
+            appid: "123".to_string(),
+            name: "Test Game".to_string(),
+            category: "RPG".to_string(),
+        };
+        assert_eq!(m.steam_appid(), "123");
+        assert_eq!(m.steam_name(), "Test Game");
+        assert_eq!(m.user_title(), "Test Game");
+        assert_eq!(m.display_name(), "Test Game");
+        assert_eq!(m.decision_category(), "RPG");
+    }
+
+    #[test]
+    fn test_repairarchive_methods() {
+        let r = RepairArchive {
+            path: std::path::PathBuf::from("/tmp/game.zip"),
+            appid: "456".to_string(),
+            name: "Repair Game".to_string(),
+            found: true,
+            conversion: ConversionResult::default(),
+        };
+        assert_eq!(r.display_name(), "Repair Game");
+        assert_eq!(r.user_title(), "Repair Game");
+        assert_eq!(r.decision_category(), "");
+    }
+}

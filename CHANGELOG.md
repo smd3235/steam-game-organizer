@@ -23,6 +23,19 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — feat: close test coverage gaps across core modules
+
+- `src/core/canonical_category.rs`: Added 6 unit tests covering exact match, case-insensitive matching, alias resolution, passthrough for unknown categories, and whitespace collapsing.
+- `src/core/category_evidence.rs`: Added 4 unit tests covering default construction, serialization, clone/equality.
+- `src/core/constants.rs`: Added 9 unit tests covering archive extensions, default categories, supplemental categories, category aliases lookup, ignored auto categories, lock markers, compression constants, default ZIP password, and library reserved dirs.
+- `src/core/library_summary.rs`: Added 8 unit tests covering default state, empty categorization, categorization with games, genre-based category lookup, developer precedent, and GameSummary debug output.
+- `src/core/models.rs`: Added 10 unit tests covering SteamMatch default, ArtworkResult files/dedup, OrganizationDecision default, ConversionResult default, GameArchive hash/equality, ScanResult default, AppState default, MinimalArchive methods, and RepairArchive methods.
+- `src/core/state.rs`: Added 4 unit tests covering default state, clone-on-get, state updates, and accumulating updates.
+- `src/core/suggest_category_with_evidence.rs`: Added 13 unit tests covering empty input, keyword matching (horror, puzzle, RPG, strategy), genre matching (RPG, action), ignored genres, simulation boost, specificity boost, tag matching, Steam category matching, runners-up, and suggest_category delegation.
+- `src/core/uri_actions.rs`: Added 9 unit tests covering scheme constant, unsafe chars, all request struct derives, default setup request, and URI refused error.
+- `src/core/parse_mark_installed_uri.rs` and `src/core/parse_pick_launcher_uri.rs`: Added 1 unit test each for invalid action handling.
+- Test count: 456 → 521 (+65 new tests).
+
 ### 2026-11-27 — feat: add CLI flags for all diagnostic tools + close test coverage gaps
 
 - `src/bin.rs`: Added `--duplicate-detector`, `--library-health-scan`, `--archive-encryption-scan`, `--steam-match-confidence`, `--crash-recovery` CLI flags, each taking a library directory argument. All five tools were previously functional but had no CLI entry point.

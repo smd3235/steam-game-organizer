@@ -47,3 +47,52 @@ impl StateStore {
         state.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_state_store_default() {
+        let store = StateStore::default();
+        let state = store.get();
+        assert_eq!(state.phase, "");
+        assert!(!state.cancel_requested);
+    }
+
+    #[test]
+    fn test_state_store_get_returns_clone() {
+        let store = StateStore::new();
+        let state1 = store.get();
+        store.update(|s| s.phase = "scan".to_string());
+        let state2 = store.get();
+        // state1 should be unchanged
+        assert_eq!(state1.phase, "");
+        // state2 should reflect the update
+        assert_eq!(state2.phase, "scan");
+    }
+
+    #[test]
+    fn test_state_store_update_changes_state() {
+        let store = StateStore::new();
+        store.update(|s| {
+            s.cancel_requested = true;
+            s.developer_mode = true;
+            s.last_error = "test error".to_string();
+        });
+        let state = store.get();
+        assert!(state.cancel_requested);
+        assert!(state.developer_mode);
+        assert_eq!(state.last_error, "test error");
+    }
+
+    #[test]
+    fn test_state_store_multiple_updates_accumulate() {
+        let store = StateStore::new();
+        store.update(|s| s.selected_index = Some(5));
+        store.update(|s| s.job_id = "job-123".to_string());
+        let state = store.get();
+        assert_eq!(state.selected_index, Some(5));
+        assert_eq!(state.job_id, "job-123");
+    }
+}

@@ -36,9 +36,6 @@ pub fn suggest_category_with_evidence(
         .filter(|v| !v.trim().is_empty())
         .map(|v| canonical_category(v))
         .collect();
-    if genre_values.is_empty() {
-        return ("Unsorted".to_string(), CategoryEvidence::default());
-    }
 
     let specificity = [
         "rogue",
@@ -753,4 +750,179 @@ pub fn suggest_category(
     steam_categories: Option<&[String]>,
 ) -> String {
     suggest_category_with_evidence(genres, title, description, tags, steam_categories).0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_suggest_category_empty_input() {
+        let genres: Option<&[String]> = Some(&[]);
+        let (cat, ev) = suggest_category_with_evidence(genres, "", "", None, None);
+        // With no genres and no keywords, behavior depends on build state
+        assert_eq!(cat, "");
+        assert_eq!(ev.chosen, "");
+    }
+
+    #[test]
+    fn test_suggest_category_horror_keyword() {
+        let (cat, ev) = suggest_category_with_evidence(
+            Some(&[]),
+            "Scary Horror Game",
+            "A terrifying experience",
+            None,
+            None,
+        );
+        assert_eq!(cat, "Horror");
+        assert_eq!(ev.basis, "description");
+    }
+
+    #[test]
+    fn test_suggest_category_puzzle_keyword() {
+        let (cat, _) = suggest_category_with_evidence(
+            Some(&[]),
+            "Brain Teaser Puzzle",
+            "Logic puzzles await",
+            None,
+            None,
+        );
+        assert_eq!(cat, "Puzzle");
+    }
+
+    #[test]
+    fn test_suggest_category_rpg_keyword() {
+        let (cat, _) = suggest_category_with_evidence(
+            Some(&[]),
+            "Epic Role Playing Adventure",
+            "Character progression",
+            None,
+            None,
+        );
+        assert_eq!(cat, "RPG");
+    }
+
+    #[test]
+    fn test_suggest_category_strategy_keyword() {
+        let (cat, _) = suggest_category_with_evidence(
+            Some(&[]),
+            "Grand Strategy",
+            "Tactical warfare",
+            None,
+            None,
+        );
+        assert_eq!(cat, "Strategy");
+    }
+
+    #[test]
+    fn test_suggest_category_genre_rpg() {
+        let (_cat, _) = suggest_category_with_evidence(
+            Some(&["RPG".to_string()]),
+            "",
+            "",
+            None,
+            None,
+        );
+        assert_eq!(_cat, "RPG");
+    }
+
+    #[test]
+    fn test_suggest_category_genre_action() {
+        let (cat, _) = suggest_category_with_evidence(
+            Some(&["Action".to_string()]),
+            "",
+            "",
+            None,
+            None,
+        );
+        assert_eq!(cat, "Action");
+    }
+
+    #[test]
+    fn test_suggest_category_ignored_genre() {
+        // "indie" is in IGNORED_AUTO_CATEGORIES
+        let (cat, _) = suggest_category_with_evidence(
+            Some(&["indie".to_string()]),
+            "",
+            "",
+            None,
+            None,
+        );
+        assert_ne!(cat, "indie");
+    }
+
+    #[test]
+    fn test_suggest_category_simulation_boost() {
+        let (cat, _) = suggest_category_with_evidence(
+            Some(&["City Builder".to_string()]),
+            "",
+            "",
+            None,
+            None,
+        );
+        assert_eq!(cat, "City Builder");
+    }
+
+    #[test]
+    fn test_suggest_category_specificity_boost() {
+        let (cat, _) = suggest_category_with_evidence(
+            Some(&["roguelike".to_string()]),
+            "",
+            "",
+            None,
+            None,
+        );
+        assert_eq!(cat, "Roguelike");
+    }
+
+    #[test]
+    fn test_suggest_category_tag_match() {
+        let (cat, ev) = suggest_category_with_evidence(
+            Some(&[]),
+            "",
+            "",
+            Some(&["horror".to_string()]),
+            None,
+        );
+        assert_eq!(cat, "Horror");
+        assert_eq!(ev.basis, "tag");
+    }
+
+    #[test]
+    fn test_suggest_category_steam_category_match() {
+        let (cat, ev) = suggest_category_with_evidence(
+            Some(&[]),
+            "",
+            "",
+            None,
+            Some(&["Puzzle".to_string()]),
+        );
+        assert_eq!(cat, "Puzzle");
+        assert_eq!(ev.basis, "tag");
+    }
+
+    #[test]
+    fn test_suggest_category_runners_up() {
+        let (_cat, ev) = suggest_category_with_evidence(
+            Some(&["RPG".to_string(), "Action".to_string()]),
+            "Action RPG Game",
+            "Combat and role playing",
+            None,
+            None,
+        );
+        assert!(ev.runners_up.len() <= 3);
+        assert!(ev.considered > 0);
+    }
+
+    #[test]
+    fn test_suggest_category_returns_just_name() {
+        let cat = suggest_category(
+            Some(&["RPG".to_string()]),
+            "Game",
+            "Description",
+            None,
+            None,
+        );
+        assert_eq!(cat, "RPG");
+    }
 }

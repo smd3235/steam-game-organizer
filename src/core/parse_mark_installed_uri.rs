@@ -17,3 +17,14 @@ pub fn parse_mark_installed_uri(
 ) -> Result<PathBuf, UriRefused> {
     parse_extract_root_action(uri, extract_folders, "mark-installed", true)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_mark_installed_uri_bad_action() {
+        let result = parse_mark_installed_uri("steamgameorganizer://pick-launcher/xyz", None);
+        assert!(result.is_err());
+    }
+}

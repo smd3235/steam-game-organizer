@@ -25,3 +25,40 @@ pub fn canonical_category(value: &str) -> String {
         .map(|(_, canonical)| canonical.to_string())
         .unwrap_or(text)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_canonical_category_exact_match() {
+        assert_eq!(canonical_category("Automation"), "Automation");
+    }
+
+    #[test]
+    fn test_canonical_category_case_insensitive() {
+        assert_eq!(canonical_category("automation"), "Automation");
+        assert_eq!(canonical_category("AUTOMATION"), "Automation");
+        assert_eq!(canonical_category("AutOmAtIoN"), "Automation");
+    }
+
+    #[test]
+    fn test_canonical_category_alias_match() {
+        assert_eq!(canonical_category("factory"), "Automation");
+        assert_eq!(canonical_category("factory sim"), "Automation");
+        assert_eq!(canonical_category("city builder"), "City Builder");
+        assert_eq!(canonical_category("rogue"), "Roguelike");
+    }
+
+    #[test]
+    fn test_canonical_category_unknown_passthrough() {
+        assert_eq!(canonical_category("Some Unknown Category"), "Some Unknown Category");
+        assert_eq!(canonical_category(""), "");
+    }
+
+    #[test]
+    fn test_canonical_category_whitespace_collapsed() {
+        assert_eq!(canonical_category("  automation  "), "Automation");
+        assert_eq!(canonical_category("  city   builder  "), "City Builder");
+    }
+}

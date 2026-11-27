@@ -186,3 +186,172 @@ pub struct GameSummary {
     pub genres: Vec<String>,
     pub archive_size: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_library_summary_default_indexed_false() {
+        let summary = LibrarySummary::default();
+        assert!(!summary.indexed());
+        assert_eq!(summary.total_games, 0);
+        assert!(summary.categories.is_empty());
+        assert!(summary.genre_placement.is_empty());
+        assert!(summary.developer_placement.is_empty());
+        assert!(summary.built_at.is_none());
+    }
+
+    #[test]
+    fn test_library_summary_from_categories_empty() {
+        let summary = LibrarySummary::from_categories(None);
+        assert!(summary.indexed());
+        assert_eq!(summary.total_games, 0);
+        assert!(summary.categories.is_empty());
+    }
+
+    #[test]
+    fn test_library_summary_from_categories_with_games() {
+        let mut games_by_cat: BTreeMap<String, Vec<GameSummary>> = BTreeMap::new();
+        games_by_cat.insert(
+            "RPG".to_string(),
+            vec![
+                GameSummary {
+                    name: "Game A".to_string(),
+                    category: "RPG".to_string(),
+                    developer: "Dev 1".to_string(),
+                    genres: vec!["Role-Playing".to_string()],
+                    archive_size: 1000,
+                },
+                GameSummary {
+                    name: "Game B".to_string(),
+                    category: "RPG".to_string(),
+                    developer: "Dev 1".to_string(),
+                    genres: vec!["Role-Playing".to_string(), "Fantasy".to_string()],
+                    archive_size: 2000,
+                },
+            ],
+        );
+        games_by_cat.insert(
+            "Action".to_string(),
+            vec![GameSummary {
+                name: "Game C".to_string(),
+                category: "Action".to_string(),
+                developer: "Dev 2".to_string(),
+                genres: vec!["Action".to_string()],
+                archive_size: 500,
+            }],
+        );
+
+        let summary = LibrarySummary::from_categories(Some(&games_by_cat));
+
+        assert_eq!(summary.total_games, 3);
+        assert_eq!(summary.categories.len(), 2);
+        // RPG first (2 games), then Action (1 game)
+        assert_eq!(summary.categories[0].0, "RPG");
+        assert_eq!(summary.categories[0].1, 2);
+        assert_eq!(summary.categories[0].2, 3000);
+        assert_eq!(summary.categories[1].0, "Action");
+        assert_eq!(summary.categories[1].1, 1);
+        assert_eq!(summary.categories[1].2, 500);
+    }
+
+    #[test]
+    fn test_categories_for_genres() {
+        let mut games_by_cat: BTreeMap<String, Vec<GameSummary>> = BTreeMap::new();
+        games_by_cat.insert(
+            "RPG".to_string(),
+            vec![GameSummary {
+                name: "Game A".to_string(),
+                category: "RPG".to_string(),
+                developer: "Dev".to_string(),
+                genres: vec!["Role-Playing".to_string(), "Fantasy".to_string()],
+                archive_size: 1000,
+            }],
+        );
+        let summary = LibrarySummary::from_categories(Some(&games_by_cat));
+
+        let result = summary.categories_for_genres(Some(&["Role-Playing".to_string()]));
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, "RPG");
+        assert_eq!(result[0].1, 1);
+
+        let result = summary.categories_for_genres(Some(&["Fantasy".to_string()]));
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, "RPG");
+        assert_eq!(result[0].1, 1);
+
+        let result = summary.categories_for_genres(None);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_precedent_for_developer_with_multiple_games() {
+        let mut games_by_cat: BTreeMap<String, Vec<GameSummary>> = BTreeMap::new();
+        games_by_cat.insert(
+            "RPG".to_string(),
+            vec![
+                GameSummary {
+                    name: "Game A".to_string(),
+                    category: "RPG".to_string(),
+                    developer: "Dev 1".to_string(),
+                    genres: vec![],
+                    archive_size: 1000,
+                },
+                GameSummary {
+                    name: "Game B".to_string(),
+                    category: "Action".to_string(),
+                    developer: "Dev 1".to_string(),
+                    genres: vec![],
+                    archive_size: 2000,
+                },
+            ],
+        );
+        let summary = LibrarySummary::from_categories(Some(&games_by_cat));
+
+        let precedent = summary.precedent_for(Some("Dev 1"));
+        assert_eq!(precedent.len(), 2);
+    }
+
+    #[test]
+    fn test_precedent_for_developer_single_game() {
+        let mut games_by_cat: BTreeMap<String, Vec<GameSummary>> = BTreeMap::new();
+        games_by_cat.insert(
+            "RPG".to_string(),
+            vec![GameSummary {
+                name: "Game A".to_string(),
+                category: "RPG".to_string(),
+                developer: "Solo Dev".to_string(),
+                genres: vec![],
+                archive_size: 1000,
+            }],
+        );
+        let summary = LibrarySummary::from_categories(Some(&games_by_cat));
+
+        let precedent = summary.precedent_for(Some("Solo Dev"));
+        assert!(precedent.is_empty());
+    }
+
+    #[test]
+    fn test_precedent_for_none_developer() {
+        let summary = LibrarySummary::default();
+        let precedent = summary.precedent_for(None);
+        assert!(precedent.is_empty());
+        let precedent = summary.precedent_for(Some(""));
+        assert!(precedent.is_empty());
+    }
+
+    #[test]
+    fn test_game_summary_debug() {
+        let gs = GameSummary {
+            name: "Test".to_string(),
+            category: "RPG".to_string(),
+            developer: "Dev".to_string(),
+            genres: vec!["RPG".to_string()],
+            archive_size: 100,
+        };
+        let debug = format!("{:?}", gs);
+        assert!(debug.contains("Test"));
+        assert!(debug.contains("RPG"));
+    }
+}

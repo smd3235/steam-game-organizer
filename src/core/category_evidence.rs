@@ -47,3 +47,60 @@ pub fn unsorted_evidence() -> CategoryEvidence {
         considered: 0,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unsorted_evidence_defaults() {
+        let ev = unsorted_evidence();
+        assert_eq!(ev.chosen, "Unsorted");
+        assert_eq!(ev.score, 0);
+        assert_eq!(ev.basis, "fallback");
+        assert!(ev.terms.is_empty());
+        assert!(ev.runners_up.is_empty());
+        assert_eq!(ev.considered, 0);
+    }
+
+    #[test]
+    fn test_category_evidence_derive_default() {
+        let ev = CategoryEvidence::default();
+        assert_eq!(ev.chosen, "");
+        assert_eq!(ev.score, 0);
+        assert_eq!(ev.basis, "");
+        assert!(ev.terms.is_empty());
+        assert!(ev.runners_up.is_empty());
+        assert_eq!(ev.considered, 0);
+    }
+
+    #[test]
+    fn test_category_evidence_serialize() {
+        let ev = CategoryEvidence {
+            chosen: "RPG".to_string(),
+            score: 5,
+            basis: "description".to_string(),
+            terms: vec!["role".to_string(), "playing".to_string()],
+            runners_up: vec![("Action".to_string(), 3), ("Adventure".to_string(), 2)],
+            considered: 3,
+        };
+        let json = serde_json::to_string(&ev).unwrap();
+        assert!(json.contains("\"chosen\":\"RPG\""));
+        assert!(json.contains("\"score\":5"));
+        assert!(json.contains("\"basis\":\"description\""));
+    }
+
+    #[test]
+    fn test_category_evidence_clone_partial_eq() {
+        let a = unsorted_evidence();
+        let b = unsorted_evidence();
+        assert_eq!(a, b);
+        let c = CategoryEvidence {
+            chosen: "Test".to_string(),
+            ..Default::default()
+        };
+        assert_ne!(a, c);
+        let d = c.clone();
+        assert_eq!(c, d);
+    }
+}
