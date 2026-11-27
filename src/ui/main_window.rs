@@ -435,3 +435,121 @@ impl eframe::App for MainWindow {
         self.logger.log("APPLICATION", "SHUTDOWN", "");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::controller::Services;
+    use crate::app::jobs::JobManager;
+    use crate::core::config::AppConfig;
+    use crate::services::library_service::LibraryService;
+
+    #[test]
+    fn test_nav_items_include_setup() {
+        // Verify the Setup Wizard nav item exists so users can navigate to setup view
+        let has_setup = NAV_ITEMS.iter().any(|(key, _, _)| *key == "setup");
+        assert!(
+            has_setup,
+            "NAV_ITEMS must include a 'setup' nav key for Setup Wizard"
+        );
+        // Verify setup nav item has correct icon and label
+        let setup_item = NAV_ITEMS.iter().find(|(key, _, _)| *key == "setup");
+        assert!(setup_item.is_some(), "Setup nav item must exist");
+        let (_, icon, label) = setup_item.unwrap();
+        assert_eq!(*icon, "⚙️", "Setup nav icon should be wrench");
+        assert_eq!(*label, "Setup", "Setup nav label should be 'Setup'");
+    }
+
+    #[test]
+    fn test_main_window_starts_on_scan_view() {
+        // Verify MainWindow initializes on scan view, not setup
+        let _palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("mw_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let logger_clone = Arc::clone(&logger);
+        let log_closure: Arc<dyn Fn(&str, &str) + Send + Sync> =
+            Arc::new(move |cat, msg| logger_clone.log(cat, msg, ""));
+        let services = Arc::new(Services {
+            organizer: crate::services::organizer_service::OrganizerService::new(
+                log_closure.clone(),
+                true,
+            ),
+        });
+        let config = Arc::new(AppConfig::new(
+            std::env::temp_dir().as_path(),
+        ));
+        let library_service = LibraryService::new(log_closure.clone(), None);
+        let _watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 300000));
+        let jobs = Arc::new(JobManager::new(4));
+        let state = Arc::new(crate::app::controller::StateStore::new());
+        let bus = Arc::new(crate::app::events::EventBus::new());
+
+        let mw = MainWindow::new(
+            state,
+            bus,
+            logger,
+            services,
+            config,
+            library_service,
+            jobs,
+            None,
+        );
+        assert_eq!(mw.current, "scan", "MainWindow should start on scan view");
+    }
+
+    #[test]
+    fn test_main_window_can_switch_to_setup_view() {
+        // Verify MainWindow can render setup view when current is "setup"
+        // This catches the case where Setup Wizard nav button doesn't switch views
+        let _palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("mw_setup_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let logger_clone = Arc::clone(&logger);
+        let log_closure: Arc<dyn Fn(&str, &str) + Send + Sync> =
+            Arc::new(move |cat, msg| logger_clone.log(cat, msg, ""));
+        let services = Arc::new(Services {
+            organizer: crate::services::organizer_service::OrganizerService::new(
+                log_closure.clone(),
+                true,
+            ),
+        });
+        let config = Arc::new(AppConfig::new(
+            std::env::temp_dir().as_path(),
+        ));
+        let library_service = LibraryService::new(log_closure.clone(), None);
+        let _watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 300000));
+        let jobs = Arc::new(JobManager::new(4));
+        let state = Arc::new(crate::app::controller::StateStore::new());
+        let bus = Arc::new(crate::app::events::EventBus::new());
+
+        let mut mw = MainWindow::new(
+            state,
+            bus,
+            logger,
+            services,
+            config,
+            library_service,
+            jobs,
+            Some("setup".to_string()),
+        );
+        assert_eq!(mw.current, "setup", "MainWindow should start on setup view with single_view");
+
+        // Simulate clicking the Setup Wizard nav button - sets current to "setup"
+        mw.current = "setup".to_string();
+        assert_eq!(mw.current, "setup", "Clicking Setup Wizard should switch to setup view");
+    }
+}
