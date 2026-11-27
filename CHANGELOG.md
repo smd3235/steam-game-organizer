@@ -23,6 +23,11 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — test: OCR verification now checks button labels on captured screenshots
+
+- `src/tools/capture_screens.rs`: Added button labels to `OCR_SCREEN_HEADERS` for scan, review, organize, artwork, done, and setup views. OCR (`capture_screens --ocr`) now verifies button text is actually visible in the rendered PNG — catching invisible buttons caused by fill==background color collisions (e.g. secondary buttons that used panel2 fill matching card background).
+- Added `test_ocr_headers_include_button_labels_for_interactive_views`, `test_ocr_missing_button_label_detected`, `test_ocr_button_labels_found_when_visible` — OCR must detect missing button labels (invisible button) and pass when visible.
+
 ### 2026-11-27 — fix: UI button visibility — secondary buttons now visible inside cards
 
 - `src/ui/theme.rs`: `secondary_button` fill changed from `panel2` to `panel3`. Previously `panel2` matched card background exactly, making secondary buttons (e.g. "Scan with Artwork", "Review", "Open Folder") invisible inside cards — only a 1.5px accent stroke distinguished them.

@@ -18,17 +18,19 @@ use std::path::Path;
 use std::process::Command;
 
 /// Expected UI header text per screen for OCR verification (matches old Python script).
+/// Button labels are included so OCR confirms buttons are actually visible on screen
+/// (not invisible due to fill==background color collisions).
 const OCR_SCREEN_HEADERS: &[(&str, &[&str])] = &[
-    ("scan", &["SCAN", "No archives discovered"]),
+    ("scan", &["SCAN", "No archives discovered", "Start Scan", "Scan with Artwork"]),
     ("scan-running", &["SCAN"]),
-    ("review", &["Game Review", "Archives"]),
+    ("review", &["Game Review", "Archives", "Accept & Next", "Skip", "Wrong Match"]),
     ("review-category", &["Game Review"]),
     ("add-category", &["Add Category"]),
-    ("organize", &["Organize Archives", "Archives to Organize"]),
-    ("artwork", &["Artwork & Steam Assets", "Game"]),
+    ("organize", &["Organize Archives", "Archives to Organize", "Start Organize"]),
+    ("artwork", &["Artwork & Steam Assets", "Game", "Open Folder", "View Artwork"]),
     ("catalog", &["Steam Game Organizer"]),
-    ("done", &["Organization Complete", "Results"]),
-    ("setup", &["Setup Wizard", "Library Root"]),
+    ("done", &["Organization Complete", "Results", "Open Library Folder", "Undo Last Run"]),
+    ("setup", &["Setup Wizard", "Library Root", "Browse Library", "Browse Extract", "Browse 7-Zip"]),
     ("batch-extract", &["Steam Game Organizer", "EXTRACT"]),
     ("extract-progress", &["Steam Game Organizer", "EXTRACT"]),
     ("extract-result", &["Steam Game Organizer", "EXTRACT"]),
@@ -414,7 +416,7 @@ mod tests {
     #[test]
     fn test_verify_ocr_found_required() {
         let (found, missing, forbidden) = verify_ocr(
-            "Game Review - Verify matches, pick categories, accept games. Archives list.",
+            "Game Review - Verify matches, pick categories, accept games. Archives list. Accept & Next Skip Wrong Match",
             "review",
         );
         assert!(found.iter().any(|f| f == "Game Review"));
@@ -467,5 +469,69 @@ mod tests {
                 name
             );
         }
+    }
+
+    /// Every interactive view's OCR headers should include at least one button label
+    /// so OCR verification actually validates that buttons are visible on screen.
+    /// (If a button is invisible due to fill==background, OCR won't read its label.)
+    #[test]
+    fn test_ocr_headers_include_button_labels_for_interactive_views() {
+        let interactive_views = [
+            "scan", "review", "organize", "artwork", "done", "setup",
+        ];
+        // Known button labels per view (subset of actual button text)
+        let button_labels = [
+            "Start Scan", "Scan with Artwork", "Cancel Scan",
+            "Accept & Next", "Skip", "Wrong Match", "Continue to Organization",
+            "Start Organize",
+            "Open Folder", "View Artwork", "Scan Again",
+            "Open Library Folder", "Undo Last Run",
+            "Browse Library", "Browse Extract", "Browse 7-Zip",
+        ];
+        for view_name in &interactive_views {
+            let headers = OCR_SCREEN_HEADERS
+                .iter()
+                .find(|(n, _)| *n == *view_name)
+                .map(|(_, h)| *h)
+                .unwrap_or(&[]);
+            let has_button = headers.iter().any(|h| {
+                button_labels.iter().any(|b| h.to_lowercase().contains(&b.to_lowercase()))
+            });
+            assert!(
+                has_button,
+                "OCR headers for view '{}' should include at least one button label for visibility verification",
+                view_name
+            );
+        }
+    }
+
+    /// OCR verification should fail (missing required) when a button label is absent from
+    /// the captured text — simulating an invisible button whose text OCR cannot read.
+    #[test]
+    fn test_ocr_missing_button_label_detected() {
+        // Simulate OCR text where "Start Scan" button is invisible (not in screenshot text).
+        // No word matches "start" or "scan".
+        let ocr_text = "SCREEN - No archives discovered - Archives Found 0 - Phases Complete 0";
+        let (_found, missing, _forbidden) = verify_ocr(ocr_text, "scan");
+        assert!(
+            missing.iter().any(|m| m == "Start Scan"),
+            "OCR should detect missing 'Start Scan' button label"
+        );
+    }
+
+    /// OCR verification should pass when all button labels are present in captured text.
+    #[test]
+    fn test_ocr_button_labels_found_when_visible() {
+        let ocr_text = "SCAN - No archives discovered - Start Scan - Scan with Artwork";
+        let (found, missing, _forbidden) = verify_ocr(ocr_text, "scan");
+        assert!(
+            found.iter().any(|f| f == "Start Scan"),
+            "OCR should find visible 'Start Scan' button label"
+        );
+        assert!(
+            found.iter().any(|f| f == "Scan with Artwork"),
+            "OCR should find visible 'Scan with Artwork' button label"
+        );
+        assert!(missing.is_empty(), "No required headers should be missing");
     }
 }
