@@ -353,6 +353,19 @@ Exits 0 only if all steps pass and the dependency audit is clean.
 | `cargo-llvm-cov` | Code coverage reporting | `cargo install cargo-llvm-cov` |
 | `cargo-watch` | Auto-run tests/lint on file changes | `cargo install cargo-watch` |
 | `criterion` | Benchmarking for performance regression detection | add to `Cargo.toml` dev-dependencies |
+| PowerShell 7 | Better shell for scripting (replaces 5.1) | `winget install Microsoft.PowerShell` |
+| Inno Setup | Windows installer creation (.iss → .exe) | `winget install JRSoftware.InnoSetup` |
+| SteamCMD | Steam appinfo queries for match testing | `winget install Valve.SteamCMD` |
+| GitHub CLI (`gh`) | GitHub releases, PRs, issues from CLI | `winget install GitHub.cli` |
+
+### Built-in CLI tools
+
+| Flag | Purpose |
+|------|---------|
+| `--quality-gate` | Full verification: check, clippy, test, build, dependency audit |
+| `--dependency-audit` | Outdated deps + RUSTSEC + license violations |
+| `--build-installer` | Build Windows installer via Inno Setup (`installer.iss`) |
+| `--steamcmd-check` | Verify SteamCMD + Steam installation status |
 
 ---
 

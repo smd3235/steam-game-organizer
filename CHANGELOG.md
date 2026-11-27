@@ -33,6 +33,16 @@ Each entry starts with a type prefix:
 - Installed external tools: cargo-audit v0.23.0, cargo-outdated v0.20.0, cargo-deny v0.22.1, cargo-watch v8.5.3, cargo-llvm-cov v0.9.2.
 - Test count: 351 → 379 (+28 new tests: 8 dependency_audit + 3 quality_gate + 17 library diagnostic tools).
 
+### 2026-11-27 — feat: installer build + SteamCMD integration tools
+
+- `src/tools/build_installer.rs`: New tool that builds a Windows installer (.exe) using Inno Setup's ISCC.exe compiler and `installer.iss`. Accessible via `steam-game-organizer.exe --build-installer`. Added 3 unit tests.
+- `src/tools/steamcmd_check.rs`: New tool that verifies SteamCMD availability, Steam installation status, and Steam library path. Accessible via `steam-game-organizer.exe --steamcmd-check`. Added 3 unit tests.
+- `installer.iss`: Inno Setup script that bundles the release exe, 7-Zip runtime, and assets into a redistributable installer.
+- `src/bin.rs`: Added `--build-installer` and `--steamcmd-check` CLI flags.
+- Installed external tools: PowerShell 7, Inno Setup 6.7.3, SteamCMD, GitHub CLI (gh).
+- AGENTS.md: Added PowerShell 7, Inno Setup, SteamCMD, and GitHub CLI to recommended tools table. Added built-in CLI tools table.
+- Test count: 379 → 385 (+6 new tests: 3 build_installer + 3 steamcmd_check).
+
 ### 2026-11-27 — feat: five new library diagnostic and recovery tools
 
 - `src/tools/duplicate_detector.rs`: Finds duplicate archives across library folders by normalized name + file size, catching the same game downloaded twice under different filenames. Added 2 unit tests.

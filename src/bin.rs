@@ -14,8 +14,10 @@ use steam_game_organizer::app::application::Application;
 use steam_game_organizer::core::config::AppConfig;
 use steam_game_organizer::core::logger::AppLogger;
 use steam_game_organizer::core::path_safety::safe_create_dir_all;
+use steam_game_organizer::tools::build_installer::build_installer;
 use steam_game_organizer::tools::dependency_audit::dependency_audit;
 use steam_game_organizer::tools::quality_gate::quality_gate;
+use steam_game_organizer::tools::steamcmd_check::check_steamcmd;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Steam Game Organizer", long_about = None)]
@@ -35,6 +37,14 @@ struct Args {
     /// Run dependency audit: check for outdated crates and security vulnerabilities
     #[arg(long)]
     dependency_audit: bool,
+
+    /// Build a Windows installer using Inno Setup
+    #[arg(long)]
+    build_installer: bool,
+
+    /// Check SteamCMD availability and Steam installation status
+    #[arg(long)]
+    steamcmd_check: bool,
 
     /// Print diagnostics report and exit
     #[arg(long)]
@@ -149,6 +159,48 @@ fn main() {
             }
             Err(e) => {
                 eprintln!("[ERROR] Dependency audit failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Build Windows installer using Inno Setup
+    if args.build_installer {
+        match build_installer(Path::new(".")) {
+            Ok(result) => {
+                println!("Installer built successfully:");
+                println!("  Path: {}", result.installer_path.display());
+                println!("  Size: {} bytes ({:.1} MB)", result.size_bytes, result.size_bytes as f64 / 1_048_576.0);
+                process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Installer build failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Check SteamCMD availability and Steam installation status
+    if args.steamcmd_check {
+        match check_steamcmd(Path::new(".")) {
+            Ok(result) => {
+                println!("SteamCMD Check:");
+                println!("  steamcmd found:       {}", result.steamcmd_found);
+                println!("  Steam installed:      {}", result.steam_installed);
+                println!("  appinfo query:        {}", result.appinfo_query_working);
+                if let Some(path) = &result.steam_library_path {
+                    println!("  Steam library:        {}", path);
+                }
+                if result.steamcmd_found && result.steam_installed {
+                    println!("\nSteamCMD check: ALL OK");
+                    process::exit(0);
+                } else {
+                    println!("\nSteamCMD check: ISSUES FOUND");
+                    process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("[ERROR] SteamCMD check failed: {}", e);
                 process::exit(1);
             }
         }
