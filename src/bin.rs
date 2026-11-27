@@ -6,7 +6,7 @@
 
 use clap::Parser;
 use chrono::Local;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::Arc;
 
@@ -14,6 +14,8 @@ use steam_game_organizer::app::application::Application;
 use steam_game_organizer::core::config::AppConfig;
 use steam_game_organizer::core::logger::AppLogger;
 use steam_game_organizer::core::path_safety::safe_create_dir_all;
+use steam_game_organizer::tools::dependency_audit::dependency_audit;
+use steam_game_organizer::tools::quality_gate::quality_gate;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Steam Game Organizer", long_about = None)]
@@ -25,6 +27,14 @@ struct Args {
     /// Run sandbox mode: simulate UI interactions end-to-end, read logs, report issues
     #[arg(long)]
     sandbox: bool,
+
+    /// Run the full quality gate: check, clippy, test, build, dependency audit
+    #[arg(long)]
+    quality_gate: bool,
+
+    /// Run dependency audit: check for outdated crates and security vulnerabilities
+    #[arg(long)]
+    dependency_audit: bool,
 
     /// Print diagnostics report and exit
     #[arg(long)]
@@ -101,6 +111,46 @@ fn main() {
             process::exit(1);
         }
         return;
+    }
+
+    // Quality gate: run check, clippy, test, build, dependency audit in one pass
+    if args.quality_gate {
+        match quality_gate(Path::new(".")) {
+            Ok(result) => {
+                result.report();
+                if result.is_clean() {
+                    println!("\nQuality gate: ALL CHECKS PASSED");
+                    process::exit(0);
+                } else {
+                    println!("\nQuality gate: CHECKS FAILED");
+                    process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Quality gate failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Dependency audit: check for outdated crates and security vulnerabilities
+    if args.dependency_audit {
+        match dependency_audit(Path::new(".")) {
+            Ok(audit) => {
+                audit.report();
+                if audit.is_clean() {
+                    println!("\nDependency audit: ALL CLEAN");
+                    process::exit(0);
+                } else {
+                    println!("\nDependency audit: ISSUES FOUND");
+                    process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Dependency audit failed: {}", e);
+                process::exit(1);
+            }
+        }
     }
 
     // Otherwise, run the GUI with real file logging

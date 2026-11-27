@@ -306,10 +306,53 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 - [ ] `cargo clippy --all-targets` passes.
 - [ ] `cargo test` reports `OK` with no new skips.
 - [ ] `cargo build --release` produces `target/release/steam-game-organizer.exe`.
+- [ ] `steam-game-organizer.exe --quality-gate` passes all steps (check, clippy, test, build, dependency audit).
+- [ ] `steam-game-organizer.exe --dependency-audit` reports all clean (no outdated deps, no vulnerabilities).
 - [ ] No `*.png` screenshots left in repo root; no writes to real `config/`, `cache/`, or `logs/` (use temp dirs in tests).
 - [ ] Committed and pushed to GitHub so the public repository reflects the change.
 
 **Quick verification after any change:** `cargo clippy --all-targets` passes, `cargo test` reports `OK` with no new skips, each doc still describes what the code actually does, and `CHANGELOG.md` has a new dated entry for the change.
+
+---
+
+## 🔍 Dependency Audit & Quality Gate (Mandatory)
+
+The project includes two built-in verification tools that must run clean before any change is considered complete:
+
+### `--dependency-audit`
+Checks every crate in `Cargo.toml` against crates.io for the latest version, and runs `cargo audit` (if installed) for known security vulnerabilities (RUSTSEC advisories).
+
+```
+steam-game-organizer.exe --dependency-audit
+```
+
+Exits 0 if all deps are current and no vulnerabilities found; exits 1 with a report if any are outdated or vulnerable.
+
+### `--quality-gate`
+Runs the full verification pipeline in one pass:
+
+1. `cargo check`
+2. `cargo clippy --all-targets`
+3. `cargo test`
+4. `cargo build --release`
+5. `dependency_audit` (outdated deps + security vulns)
+
+```
+steam-game-organizer.exe --quality-gate
+```
+
+Exits 0 only if all steps pass and the dependency audit is clean.
+
+### Recommended external tools (install separately)
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| `cargo-audit` | Security vulnerability scanning (RUSTSEC) | `cargo install cargo-audit` |
+| `cargo-outdated` | Check for outdated crate versions | `cargo install cargo-outdated` |
+| `cargo-deny` | License + advisory checking | `cargo install cargo-deny` |
+| `cargo-llvm-cov` | Code coverage reporting | `cargo install cargo-llvm-cov` |
+| `cargo-watch` | Auto-run tests/lint on file changes | `cargo install cargo-watch` |
+| `criterion` | Benchmarking for performance regression detection | add to `Cargo.toml` dev-dependencies |
 
 ---
 

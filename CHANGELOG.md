@@ -23,6 +23,15 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — feat: dependency audit + quality gate tools for dependency freshness and security
+
+- `src/tools/dependency_audit.rs`: New tool that queries crates.io for the latest version of each dependency in `Cargo.toml`, compares against pinned versions, and reports any outdated crates. Also shells out to `cargo audit` (if installed) for RUSTSEC security vulnerabilities. Accessible via `steam-game-organizer.exe --dependency-audit`. Added 6 unit tests covering dependency parsing, version comparison, and audit result logic.
+- `src/tools/quality_gate.rs`: New tool that runs the full verification pipeline in one pass: `cargo check` → `cargo clippy --all-targets` → `cargo test` → `cargo build --release` → `dependency_audit`. Returns non-zero exit if any step fails or audit is dirty. Accessible via `steam-game-organizer.exe --quality-gate`. Added 3 unit tests covering pass/fail/dirty states.
+- `src/bin.rs`: Added `--quality-gate` and `--dependency-audit` CLI flags, wired to the new tools.
+- `Cargo.toml`: Added `json` feature to `reqwest` (needed for `.json()` on blocking responses in dependency_audit).
+- AGENTS.md: Added Dependency Audit & Quality Gate section with recommended external tools (cargo-audit, cargo-outdated, cargo-deny, cargo-llvm-cov, cargo-watch, criterion). Updated Definition of Done to require `--quality-gate` and `--dependency-audit` to pass.
+- Test count: 351 → 360 (+9 new tests: 6 dependency_audit + 3 quality_gate).
+
 ### 2026-11-27 — test: OCR verification now checks button labels on captured screenshots
 
 - `src/tools/capture_screens.rs`: Added button labels to `OCR_SCREEN_HEADERS` for scan, review, organize, artwork, done, and setup views. OCR (`capture_screens --ocr`) now verifies button text is actually visible in the rendered PNG — catching invisible buttons caused by fill==background color collisions (e.g. secondary buttons that used panel2 fill matching card background).
