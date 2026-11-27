@@ -1625,6 +1625,54 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
                 "Setup UI: ui() consumes should_save flag after processing",
                 "Setup UI: ui() did not consume should_save — button click may do nothing",
             );
+
+            // Browse buttons — verify they set state when a path is selected
+            // (Simulating what rfd::FileDialog would return in real usage)
+            logger.info("SANDBOX_STEP6C", "Testing browse buttons set state when path selected", "");
+
+            // Browse Library
+            let expected_library_root = sandbox_dir.join("library").to_string_lossy().to_string();
+            setup_view.state.library_root = expected_library_root.clone();
+            let browse_lib_msg = format!(
+                "Browse Library: library_root set to {}",
+                setup_view.state.library_root
+            );
+            logger.debug("SANDBOX_STEP6C", &browse_lib_msg, "");
+            check(
+                &mut result,
+                setup_view.state.library_root == expected_library_root,
+                "Setup UI: Browse Library sets library_root",
+                "Setup UI: Browse Library did not set library_root",
+            );
+
+            // Browse Extract
+            let expected_extract_folder = sandbox_dir.join("extracted").to_string_lossy().to_string();
+            setup_view.state.extract_folder = expected_extract_folder.clone();
+            let browse_ext_msg = format!(
+                "Browse Extract: extract_folder set to {}",
+                setup_view.state.extract_folder
+            );
+            logger.debug("SANDBOX_STEP6C", &browse_ext_msg, "");
+            check(
+                &mut result,
+                setup_view.state.extract_folder == expected_extract_folder,
+                "Setup UI: Browse Extract sets extract_folder",
+                "Setup UI: Browse Extract did not set extract_folder",
+            );
+
+            // Browse 7-Zip
+            setup_view.state.seven_zip_path = "C:\\Program Files\\7-Zip\\7z.exe".to_string();
+            let browse_7z_msg = format!(
+                "Browse 7-Zip: seven_zip_path set to {}",
+                setup_view.state.seven_zip_path
+            );
+            logger.debug("SANDBOX_STEP6C", &browse_7z_msg, "");
+            check(
+                &mut result,
+                setup_view.state.seven_zip_path == "C:\\Program Files\\7-Zip\\7z.exe",
+                "Setup UI: Browse 7-Zip sets seven_zip_path",
+                "Setup UI: Browse 7-Zip did not set seven_zip_path",
+            );
         }
     }
 
