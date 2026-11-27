@@ -23,6 +23,19 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — feat: upgrade egui/eframe 0.32 → 0.37.0
+
+- `Cargo.toml`: Upgraded `egui` and `eframe` from 0.32 to 0.37.0. Switched `eframe` to `default-features = false, features = ["glow"]` to avoid pulling in `egui-wgpu`/`wgpu-hal`, which had a transitive `windows` crate version conflict (0.61 vs 0.62) that blocked the upgrade.
+- `src/ui/main_window.rs`: Migrated to egui 0.37 API:
+  - `eframe::App::update(ctx, frame)` → `eframe::App::ui(ui, frame)`
+  - `egui::TopBottomPanel::top()` → `egui::Panel::top()`
+  - `egui::SidePanel::left()` → `egui::Panel::left()`
+  - `.show(ctx, |ui| {` → `.show(ui, |ui| {` (first arg is now `&mut Ui`)
+  - `ctx.style()` → `ctx.style_of(Theme::Light)`, `ctx.set_style()` → `ctx.set_style_of()`
+  - `default_width()` → `default_size()`
+- AGENTS.md: Updated egui/eframe upgrade status from blocked to resolved.
+- Test count: 415 → 415 (no test changes needed, all UI tests pass).
+
 ### 2026-11-27 — feat: major testing and diagnostic tool improvements
 
 - `src/tools/library_health_scan.rs`: Made functional — walks library directories, identifies archive files (.zip/.rar/.7z), detects oversized archives (>50 GB), and identifies archives without Steam AppIDs in filenames. Added 6 unit tests.

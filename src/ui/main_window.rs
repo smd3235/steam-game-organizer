@@ -23,7 +23,7 @@ use crate::ui::theme::{
     card, constrained_content, ghost_button, nav_item, secondary_button, separator, Palette,
     SPACING, SPACING_XL,
 };
-use egui::RichText;
+use egui::{RichText, Theme};
 
 const NAV_ITEMS: &[(&str, &str, &str)] = &[
     ("scan", "🔍", "Scan"),
@@ -347,14 +347,14 @@ fn ctx_send_close(ctx: &egui::Context) {
 }
 
 impl eframe::App for MainWindow {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.logger.log("DEBUG", "MainWindow::update called", "");
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.logger.log("DEBUG", "MainWindow::ui called", "");
 
         // Style the context
-        ctx.set_visuals(egui::Visuals::dark());
+        ui.ctx().set_visuals(egui::Visuals::dark());
 
         // Make hover states visible for keyboard/mouse navigation
-        let mut style = (*ctx.style()).clone();
+        let mut style = (*ui.ctx().style_of(Theme::Light)).clone();
         style.visuals.widgets.hovered.bg_fill = self.palette.panel3;
         style.visuals.widgets.hovered.bg_stroke = egui::Stroke {
             width: 2.0,
@@ -362,7 +362,7 @@ impl eframe::App for MainWindow {
         };
         style.spacing.item_spacing = egui::vec2(SPACING, SPACING);
         style.spacing.button_padding = egui::vec2(16.0, 8.0);
-        ctx.set_style(style);
+        ui.ctx().set_style_of(Theme::Light, style);
 
         // Single-view mode: render only the requested view without sidebar or top bar
         if let Some(view) = self.single_view.clone() {
@@ -372,7 +372,7 @@ impl eframe::App for MainWindow {
                     fill: palette.bg,
                     ..Default::default()
                 })
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     constrained_content(ui, 1200.0, |ui| {
                         ui.add_space(SPACING);
                         match view.as_str() {
@@ -391,23 +391,23 @@ impl eframe::App for MainWindow {
         }
 
         // Top bar
-        egui::TopBottomPanel::top("top_bar")
+        egui::Panel::top("top_bar")
             .frame(egui::Frame {
                 fill: self.palette.panel,
                 ..Default::default()
             })
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 self.render_top_bar(ui);
             });
 
         // Main body: sidebar + content
-        egui::SidePanel::left("nav_sidebar")
-            .default_width(220.0)
+        egui::Panel::left("nav_sidebar")
+            .default_size(220.0)
             .frame(egui::Frame {
                 fill: self.palette.bg,
                 ..Default::default()
             })
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 self.render_nav_sidebar(ui);
             });
 
@@ -419,7 +419,7 @@ impl eframe::App for MainWindow {
                 fill: palette.bg,
                 ..Default::default()
             })
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 constrained_content(ui, 1200.0, |ui| {
                     ui.add_space(SPACING);
                     match self.current.as_str() {

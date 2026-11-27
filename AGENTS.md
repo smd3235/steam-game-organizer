@@ -391,14 +391,18 @@ steam-game-organizer.exe --steamcmd-check
 | SteamCMD | Steam appinfo queries for match testing | `winget install Valve.SteamCMD` |
 | GitHub CLI (`gh`) | GitHub releases, PRs, issues from CLI | `winget install GitHub.cli` |
 
-### Known dependency issue: egui/eframe 0.36+ upgrade blocked
+### Known dependency issue: egui/eframe 0.37 upgrade (resolved)
 
-egui/eframe 0.32 → 0.36+ is **blocked** by a transitive dependency conflict:
+egui/eframe 0.32 → 0.37.0 was **blocked** by a transitive dependency conflict:
 - `wgpu-hal` 30+ requires `windows` crate 0.62
 - `gpu-allocator` 0.28+ requires `windows` crate 0.61
 - These are incompatible versions (different `windows_core` types)
 
-This cannot be resolved from `Cargo.toml` alone. The egui/eframe upgrade must wait until the wgpu/gpu-allocator ecosystem aligns on a single `windows` version. Current egui/eframe 0.32.3 compiles and runs cleanly.
+**Resolved** by switching `eframe` to `default-features = false, features = ["glow"]` only,
+which avoids pulling in `egui-wgpu`/`wgpu-hal` entirely. The glow (OpenGL) backend
+is sufficient for the application's needs and avoids the windows crate conflict entirely.
+
+egui/eframe 0.37.0 compiles and runs cleanly with the glow backend.
 
 ### Built-in CLI tools
 
