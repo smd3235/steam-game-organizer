@@ -22,7 +22,7 @@ regex = "1"
 walkdir = "2.5.1"
 
 # ZIP archive reading for encryption checks
-zip = "0.6"
+zip = "9.8.2"
 
 # HTTP client for Steam API calls (blocking client for connection pool)
 reqwest = { version = "0.13.5", features = ["blocking"] }

@@ -419,7 +419,9 @@ impl ArchiveService {
                     let mut names = Vec::new();
                     for i in 0..handle.len() {
                         if let Ok(entry) = handle.by_index(i) {
-                            names.push(entry.name().to_string());
+                            if let Ok(name) = entry.name() {
+                                names.push(name.to_string());
+                            }
                         }
                     }
                     installer_from_names(&names)
