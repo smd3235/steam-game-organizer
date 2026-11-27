@@ -37,7 +37,14 @@ Each entry starts with a type prefix:
 - `src/ui/organize_view.rs`: Added `test_organize_start_organize_button_sets_state`, `test_organize_cancel_button_only_visible_when_converting`.
 - `src/ui/done_view.rs`: Added `test_done_open_library_button_sets_state`, `test_done_undo_button_sets_state`.
 - `src/ui/artwork_view.rs`: Added `test_artwork_view_loads_and_renders`.
-- Test count: 334 → 348 (+14 new button visibility/handler tests).
+- Test count: 334 → 351 (+17 new button visibility/handler/OCR tests).
+
+### 2026-11-27 — test: Three-layer UI visibility testing (color + handler + OCR)
+
+- Layer 1 — Color: `src/ui/theme.rs` tests verify `panel3` (secondary button fill) != `panel2` (card background), so buttons can never be invisible due to color collision.
+- Layer 2 — Handler: view tests verify button clicks set the correct state flags (scan: Start Scan/Scan with Artwork/Cancel Scan; review: Accept & Next/Skip/Wrong Match/Approve All/Continue to Organize; organize: Start Organize/Cancel; done: Open Library/Undo).
+- Layer 3 — OCR: `src/tools/capture_screens.rs` `OCR_SCREEN_HEADERS` now includes button labels per view; `capture_screens --ocr` verifies button text is readable in captured PNGs — failing if a button is invisible.
+- Test count: 334 → 351 (+17 tests).
 
 ### 2026-11-27 — fix: Sandbox mode — setup wizard browse buttons now open native file dialogs
 
