@@ -25,7 +25,7 @@ walkdir = "2.5.1"
 zip = "0.6"
 
 # HTTP client for Steam API calls (blocking client for connection pool)
-reqwest = { version = "0.11", features = ["blocking"] }
+reqwest = { version = "0.13.5", features = ["blocking"] }
 
 # Windows registry access for .html handler check (organizer_service)
 winreg = "0.56.0"
