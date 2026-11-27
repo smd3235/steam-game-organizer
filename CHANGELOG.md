@@ -23,6 +23,11 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — fix: Sandbox mode — setup wizard browse buttons now open native file dialogs
+
+- `src/ui/setup_view.rs`: Browse Library, Browse Extract, and Browse 7-Zip buttons now open native Windows file dialogs via `rfd` crate instead of just setting status text. Library root and extract folder use folder picker; 7-Zip path uses file picker filtered to `.exe` files.
+- `Cargo.toml`: Added `rfd = "0.13"` dependency for native file dialogs on Windows
+
 ### 2026-11-27 — feat: Sandbox mode — path traversal protection and category folder validation
 
 - `src/core/path_safety.rs`: Added `CreationGuard::resolve_path()` — resolves non-existent paths by canonicalizing the nearest existing ancestor and joining remaining components, preventing `../` path traversal attacks. Added `safe_write_path()` for validating write paths before creating files.

@@ -13,6 +13,7 @@ use crate::ui::theme::{
     card, heading, primary_button, secondary_button, section_header, separator, Palette,
 };
 use egui::{RichText, ScrollArea};
+use rfd::FileDialog;
 
 #[derive(Default, Clone)]
 pub struct SetupViewState {
@@ -97,8 +98,20 @@ impl SetupView {
                         .desired_width(400.0),
                 );
                 if secondary_button(ui, "Browse Library", &self.palette, true).clicked() {
-                    self.logger.log("SETUP", "Library root Browse clicked", "");
-                    self.state.status = "Browse for library root…".to_string();
+                    if let Some(folder) = FileDialog::new()
+                        .set_title("Select library root folder")
+                        .pick_folder()
+                    {
+                        self.state.library_root = folder.to_string_lossy().to_string();
+                        self.logger.log(
+                            "SETUP",
+                            &format!("Library root set to: {}", self.state.library_root),
+                            "",
+                        );
+                        self.state.status = format!("Library root: {}", self.state.library_root);
+                    } else {
+                        self.state.status = "Library root browse cancelled".to_string();
+                    }
                 }
             });
             ui.label(
@@ -117,9 +130,20 @@ impl SetupView {
                         .desired_width(400.0),
                 );
                 if secondary_button(ui, "Browse Extract", &self.palette, true).clicked() {
-                    self.logger
-                        .log("SETUP", "Extract folder Browse clicked", "");
-                    self.state.status = "Browse for extract folder…".to_string();
+                    if let Some(folder) = FileDialog::new()
+                        .set_title("Select extract folder")
+                        .pick_folder()
+                    {
+                        self.state.extract_folder = folder.to_string_lossy().to_string();
+                        self.logger.log(
+                            "SETUP",
+                            &format!("Extract folder set to: {}", self.state.extract_folder),
+                            "",
+                        );
+                        self.state.status = format!("Extract folder: {}", self.state.extract_folder);
+                    } else {
+                        self.state.status = "Extract folder browse cancelled".to_string();
+                    }
                 }
             });
             ui.label(
@@ -138,8 +162,21 @@ impl SetupView {
                         .desired_width(400.0),
                 );
                 if secondary_button(ui, "Browse 7-Zip", &self.palette, true).clicked() {
-                    self.logger.log("SETUP", "7-Zip path Browse clicked", "");
-                    self.state.status = "Browse for 7-Zip executable…".to_string();
+                    if let Some(file) = FileDialog::new()
+                        .set_title("Select 7-Zip executable")
+                        .add_filter("7-Zip executable", &["7z.exe"])
+                        .pick_file()
+                    {
+                        self.state.seven_zip_path = file.to_string_lossy().to_string();
+                        self.logger.log(
+                            "SETUP",
+                            &format!("7-Zip path set to: {}", self.state.seven_zip_path),
+                            "",
+                        );
+                        self.state.status = format!("7-Zip path: {}", self.state.seven_zip_path);
+                    } else {
+                        self.state.status = "7-Zip path browse cancelled".to_string();
+                    }
                 }
             });
             ui.label(
