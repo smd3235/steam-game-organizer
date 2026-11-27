@@ -11,6 +11,7 @@ use std::sync::Arc;
 use crate::core::errors::Watchdog;
 use crate::core::models::GameArchive;
 
+use crate::core::path_safety::{safe_create_dir_all, safe_write_path};
 use crate::ui::theme;
 use crate::ui::theme::{
     archive_row, card, danger_button, empty_state, heading, loading_card, primary_button,
@@ -312,15 +313,64 @@ impl OrganizeView {
             // Organize: move into category folder and convert to .7z
             archive.decision.accepted = true;
 
+            // Reject empty or whitespace-only category names
+            let category = archive.decision.category.trim();
+            if category.is_empty() {
+                self.state.activity.push(format!(
+                    "ERROR: Empty category for {}",
+                    archive.display_name
+                ));
+                self.state.failed_count += 1;
+                continue;
+            }
+
+            // Reject Windows reserved device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+            let category_upper = category.to_ascii_uppercase();
+            let is_reserved = category_upper == "CON"
+                || category_upper == "PRN"
+                || category_upper == "AUX"
+                || category_upper == "NUL"
+                || (category_upper.starts_with("COM")
+                    && category_upper.len() == 4
+                    && category_upper.chars().nth(3).unwrap().is_ascii_digit())
+                || (category_upper.starts_with("LPT")
+                    && category_upper.len() == 4
+                    && category_upper.chars().nth(3).unwrap().is_ascii_digit());
+            if is_reserved {
+                self.state.activity.push(format!(
+                    "ERROR: Reserved category name '{}' for {}",
+                    category, archive.display_name
+                ));
+                self.state.failed_count += 1;
+                continue;
+            }
+
             // Build organized path: <library_root>/<category>/<display_name>.7z
             let category_folder = self.state.library_root.join(&archive.decision.category);
+
+            // Validate category path doesn't escape library_root (path traversal protection)
+            if let Err(e) = safe_create_dir_all(
+                &category_folder,
+                &[self.state.library_root.to_str().unwrap_or("")],
+            ) {
+                self.state.activity.push(format!(
+                    "ERROR: Category path unsafe for {}: {}",
+                    archive.display_name, e
+                ));
+                self.state.failed_count += 1;
+                continue;
+            }
+
             let organized_file = category_folder.join(format!("{}.7z", archive.display_name));
 
-            // Create category folder if it doesn't exist
-            if let Err(e) = std::fs::create_dir_all(&category_folder) {
-                self.state
-                    .activity
-                    .push(format!("ERROR: Cannot create {}: {}", category_folder.display(), e));
+            // Validate organized file path stays within library_root
+            if let Err(e) = safe_write_path(&organized_file, &[
+                self.state.library_root.to_str().unwrap_or("")
+            ]) {
+                self.state.activity.push(format!(
+                    "ERROR: Organized path unsafe for {}: {}",
+                    archive.display_name, e
+                ));
                 self.state.failed_count += 1;
                 continue;
             }
@@ -489,7 +539,9 @@ mod tests {
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
         let mut view = OrganizeView::new(palette, logger, watchdog);
-        let archive = GameArchive::default();
+        let mut archive = GameArchive::default();
+        archive.decision.category = "Action".to_string();
+        view.state.library_root = std::env::temp_dir().join("organize_test_library");
         view.load(vec![archive]);
         view.state.converting = true;
         view.run_organize();

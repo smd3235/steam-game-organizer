@@ -23,6 +23,13 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — feat: Sandbox mode — path traversal protection and category folder validation
+
+- `src/core/path_safety.rs`: Added `CreationGuard::resolve_path()` — resolves non-existent paths by canonicalizing the nearest existing ancestor and joining remaining components, preventing `../` path traversal attacks. Added `safe_write_path()` for validating write paths before creating files.
+- `src/ui/organize_view.rs`: `run_organize()` now rejects empty category names and Windows reserved device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9) before creating directories. Uses `safe_create_dir_all()` and `safe_write_path()` with `library_root` as the allowed root to prevent path traversal via `../` in category names.
+- `src/tools/sandbox.rs`: Sandbox Step 3 now tests path traversal protection (archives with `../../../escape` categories are rejected) and invalid category name protection (empty, whitespace-only, and Windows reserved names like `CON` are rejected)
+- `src/tools/sandbox.rs`: Sandbox now runs 175 checks across 25 steps, all passing
+
 ### 2026-11-27 — feat: Sandbox mode — test zip conversion into category folders
 
 - `src/ui/organize_view.rs`: `run_organize()` now creates real `.7z` files in category folders (`<library_root>/<category>/<name>.7z`) and sets `archive.organized_path` accordingly

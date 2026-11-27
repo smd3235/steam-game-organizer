@@ -1087,6 +1087,130 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
         let cat_folder_msg = "Category folder placement verified for all archives";
         logger.debug("SANDBOX_STEP3", cat_folder_msg, "");
 
+        // Path traversal protection — archives with .. in category must be refused
+        logger.info("SANDBOX_STEP3", "Step 3b: Path traversal protection", "");
+        {
+            let palette = crate::ui::theme::Palette::default();
+            let watchdog = Arc::new(Watchdog::new(logger.clone(), 300000));
+            let mut traverse_view =
+                crate::ui::organize_view::OrganizeView::new(palette, Arc::clone(&logger), watchdog);
+
+            // Archives with path traversal in category names
+            let traversal_archives: Vec<GameArchive> = vec![
+                mock_archive("Traversal Game 1", "99991", "../../../escape", 1_000_000_000, true, false),
+                mock_archive("Traversal Game 2", "99992", "..\\..\\..\\escape", 1_000_000_000, true, false),
+                mock_archive("Traversal Game 3", "99993", "..\\escape", 1_000_000_000, true, false),
+                mock_archive("Valid Category Game", "99994", "Action", 1_000_000_000, true, false),
+            ];
+
+            traverse_view.state.archives = traversal_archives.clone();
+            traverse_view.state.library_root = sandbox_dir.join("library");
+            traverse_view.state.should_organize = true;
+            traverse_view.state.preview_only = false;
+            traverse_view.state.converting = true;
+            traverse_view.run_organize();
+
+            // All traversal archives should fail (0 converted from traversal ones)
+            // Only the valid category game should succeed
+            let valid_count = 1; // Only "Action" category is valid
+            let traversal_count = 3; // Three traversal archives should fail
+            check(
+                &mut result,
+                traverse_view.state.failed_count >= traversal_count,
+                &format!(
+                    "Path traversal: {} traversal archives failed",
+                    traverse_view.state.failed_count
+                ),
+                "Path traversal: traversal archives not rejected",
+            );
+            check(
+                &mut result,
+                traverse_view.state.converted_count >= valid_count,
+                &format!(
+                    "Path traversal: {} valid archive converted",
+                    traverse_view.state.converted_count
+                ),
+                "Path traversal: valid archive not converted",
+            );
+
+            // Verify no files escaped outside sandbox/library/
+            let outside_files = vec![
+                sandbox_dir.join("escape.txt"),
+                sandbox_dir.join("../../escape.txt"),
+                sandbox_dir.join("library/../../escape.txt"),
+            ];
+            for outside_file in &outside_files {
+                check(
+                    &mut result,
+                    !outside_file.exists(),
+                    &format!(
+                        "Path traversal: {} does not exist outside library",
+                        outside_file.display()
+                    ),
+                    &format!(
+                        "Path traversal: {} exists outside library — SECURITY BREACH",
+                        outside_file.display()
+                    ),
+                );
+            }
+
+            let traversal_result_msg = format!(
+                "Path traversal result: {} converted, {} failed",
+                traverse_view.state.converted_count, traverse_view.state.failed_count
+            );
+            logger.debug("SANDBOX_STEP3", &traversal_result_msg, "");
+        }
+
+        // Invalid category name protection — empty, spaces, Windows reserved names
+        logger.info("SANDBOX_STEP3", "Step 3c: Invalid category name protection", "");
+        {
+            let palette = crate::ui::theme::Palette::default();
+            let watchdog = Arc::new(Watchdog::new(logger.clone(), 300000));
+            let mut invalid_cat_view =
+                crate::ui::organize_view::OrganizeView::new(palette, Arc::clone(&logger), watchdog);
+
+            // Archives with invalid category names
+            let invalid_cat_archives: Vec<GameArchive> = vec![
+                mock_archive("Empty Cat Game", "99995", "", 1_000_000_000, true, false),
+                mock_archive("Spaces Cat Game", "99996", "   ", 1_000_000_000, true, false),
+                mock_archive("Reserved Cat Game", "99997", "CON", 1_000_000_000, true, false),
+                mock_archive("Valid Cat Game", "99998", "Strategy", 1_000_000_000, true, false),
+            ];
+
+            invalid_cat_view.state.archives = invalid_cat_archives.clone();
+            invalid_cat_view.state.library_root = sandbox_dir.join("library");
+            invalid_cat_view.state.should_organize = true;
+            invalid_cat_view.state.preview_only = false;
+            invalid_cat_view.state.converting = true;
+            invalid_cat_view.run_organize();
+
+            // Empty category should fail
+            check(
+                &mut result,
+                invalid_cat_view.state.failed_count >= 3,
+                &format!(
+                    "Invalid category: {} invalid categories failed",
+                    invalid_cat_view.state.failed_count
+                ),
+                "Invalid category: invalid categories not rejected",
+            );
+            check(
+                &mut result,
+                invalid_cat_view.state.converted_count >= 1,
+                &format!(
+                    "Invalid category: {} valid category converted",
+                    invalid_cat_view.state.converted_count
+                ),
+                "Invalid category: valid category not converted",
+            );
+
+            let invalid_cat_result_msg = format!(
+                "Invalid category result: {} converted, {} failed",
+                invalid_cat_view.state.converted_count, invalid_cat_view.state.failed_count
+            );
+            logger.debug("SANDBOX_STEP3", &invalid_cat_result_msg, "");
+        }
+
         // Archive row click selection
         let row_select_msg = "Setting selected_index = Some(0) (archive row click)";
         logger.debug("SANDBOX_STEP3", row_select_msg, "");
@@ -2648,6 +2772,7 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
         let mut organize_view =
             crate::ui::organize_view::OrganizeView::new(palette.clone(), Arc::clone(&logger), watchdog.clone());
         organize_view.state.archives = accepted_archives.clone();
+        organize_view.state.library_root = sandbox_dir.join("library");
         organize_view.state.should_organize = true;
         organize_view.state.converting = true;
         organize_view.run_organize();

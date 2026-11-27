@@ -396,6 +396,7 @@ fn test_e2e_full_flow_scan_to_done() {
     organize_view.state.converted_count = 0;
     organize_view.state.skipped_count = 0;
     organize_view.state.failed_count = 0;
+    organize_view.state.library_root = std::env::temp_dir().join("e2e_library_test");
     organize_view.run_organize();
     assert!(!organize_view.state.converting);
     assert_eq!(organize_view.state.converted_count, 2);

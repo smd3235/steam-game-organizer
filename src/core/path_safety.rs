@@ -297,20 +297,55 @@ impl CreationGuard {
     }
 
     /// True when `path` resolves inside one of the allowed roots.
+    ///
+    /// For non-existent paths, attempts to canonicalize the parent directory
+    /// and resolve `..` segments before checking prefix matching, to prevent
+    /// path traversal attacks.
     pub fn allowed(&self, path: &Path) -> bool {
-        let resolved = match path.canonicalize() {
-            Ok(p) => p,
-            Err(_) => {
-                // Path doesn't exist yet — check against string prefixes of allowed roots
-                return self.root_paths.iter().any(|root| {
-                    path.to_string_lossy().starts_with(&*root.to_string_lossy())
-                });
+        let resolved = self.resolve_path(path);
+        match resolved {
+            Ok(p) => {
+                self.root_paths.iter().any(|root| {
+                    let root_resolved = root.canonicalize().unwrap_or_else(|_| root.clone());
+                    p == root_resolved || p.starts_with(&root_resolved)
+                })
             }
-        };
-        self.root_paths.iter().any(|root| {
-            let root_resolved = root.canonicalize().unwrap_or_else(|_| root.clone());
-            resolved == root_resolved || resolved.starts_with(&root_resolved)
-        })
+            Err(_) => false,
+        }
+    }
+
+    /// Resolve a path to its canonical form, handling non-existent paths
+    /// by canonicalizing the nearest existing ancestor and joining
+    /// the remaining components. This prevents `..` path traversal.
+    fn resolve_path(&self, path: &Path) -> Result<PathBuf, std::io::Error> {
+        // Try direct canonicalize first (path exists)
+        if let Ok(p) = path.canonicalize() {
+            return Ok(p);
+        }
+
+        // Path doesn't exist — try to canonicalize the parent and join
+        // the remaining components
+        let mut current = path.to_path_buf();
+        let mut components: Vec<std::ffi::OsString> = Vec::new();
+
+        // Walk up until we find an existing ancestor
+        while !current.exists() && current.parent().is_some() {
+            if let Some(file_name) = current.file_name() {
+                components.push(file_name.to_os_string());
+            }
+            current = current.parent().unwrap().to_path_buf();
+        }
+
+        // Canonicalize the existing ancestor
+        let canonical = current.canonicalize()?;
+
+        // Join the remaining components in reverse order
+        let mut result = canonical;
+        for component in components.iter().rev() {
+            result = result.join(component);
+        }
+
+        Ok(result)
     }
 
     /// Refuse to create `path` if it is a protected system path, a drive root,
@@ -347,7 +382,9 @@ impl CreationGuard {
                 self.roots.join(", ")
             )));
         }
-        path.canonicalize().map_err(|_| {
+        // For non-existent paths, use resolve_path which handles `..` traversal
+        // by canonicalizing the nearest existing ancestor
+        self.resolve_path(path).map_err(|_| {
             PathOutsideAllowedRoot::new(&format!(
                 "{} refused: {:?} cannot be resolved",
                 operation, path
@@ -389,6 +426,16 @@ pub fn safe_write(
             path, e
         ))),
     }
+}
+
+/// Validate that `path` is within `roots` before writing — returns the
+/// path if safe, without writing. Useful for validating
+/// output paths before creating files. Non-existent paths are allowed
+/// as long as they're within the allowed roots (checked via prefix matching).
+pub fn safe_write_path(path: &Path, roots: &[&str]) -> Result<PathBuf, PathOutsideAllowedRoot> {
+    let guard = CreationGuard::new(roots)?;
+    guard.refuse_outside_create(path, "write_path")?;
+    Ok(path.to_path_buf())
 }
 
 #[cfg(test)]
@@ -467,5 +514,79 @@ mod tests {
     fn test_safe_write_refuses_drive_root() {
         let result = safe_write(Path::new("C:\\test.txt"), b"hello", &["C:\\allowed\\root"]);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_creation_guard_refuses_path_traversal() {
+        // Category names with ../ should be refused — they escape the library root
+        let tmp = std::env::temp_dir();
+        let root = tmp.join("creation_guard_test_traversal");
+        let _ = std::fs::create_dir_all(&root);
+        let guard = CreationGuard::new(&[root.to_string_lossy().as_ref()]).unwrap();
+
+        // ../escape outside root
+        let traversal_path = root.join("../outside.txt");
+        let result = guard.refuse_outside_create(&traversal_path, "create_dir_all");
+        assert!(
+            result.is_err(),
+            "Path traversal '../' should be refused, got: {:?}",
+            result
+        );
+
+        // ../../../../escape
+        let deep_traversal = root.join("../../../../escape.txt");
+        let result = guard.refuse_outside_create(&deep_traversal, "create_dir_all");
+        assert!(
+            result.is_err(),
+            "Deep path traversal '../../..' should be refused, got: {:?}",
+            result
+        );
+
+        // Category with backslash traversal (Windows)
+        let backslash_traversal = root.join("..\\..\\..\\escape.txt");
+        let result = guard.refuse_outside_create(&backslash_traversal, "create_dir_all");
+        assert!(
+            result.is_err(),
+            "Backslash path traversal '..\\\\' should be refused, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_creation_guard_allows_valid_category() {
+        // Valid category names should be allowed
+        let tmp = std::env::temp_dir();
+        let root = tmp.join("creation_guard_test_valid_cat");
+        let _ = std::fs::create_dir_all(&root);
+        let guard = CreationGuard::new(&[root.to_string_lossy().as_ref()]).unwrap();
+
+        let valid_cat = root.join("Action");
+        assert!(guard.allowed(&valid_cat));
+
+        let valid_cat_nested = root.join("Action/Subcat");
+        assert!(guard.allowed(&valid_cat_nested));
+    }
+
+    #[test]
+    fn test_safe_write_path_refuses_path_traversal() {
+        let tmp = std::env::temp_dir();
+        let root = tmp.join("safe_write_path_test");
+        let _ = std::fs::create_dir_all(&root);
+
+        let traversal = root.join("../outside.txt");
+        let result = safe_write_path(&traversal, &[root.to_string_lossy().as_ref()]);
+        assert!(result.is_err(), "safe_write_path should refuse path traversal");
+    }
+
+    #[test]
+    fn test_safe_write_path_allows_valid_category() {
+        let tmp = std::env::temp_dir();
+        let root = tmp.join("safe_write_path_valid_cat2");
+        let _ = std::fs::create_dir_all(&root);
+
+        let valid_cat = root.join("Action");
+        // valid_cat doesn't need to exist yet — safe_write_path validates via prefix matching
+        let result = safe_write_path(&valid_cat, &[root.to_string_lossy().as_ref()]);
+        assert!(result.is_ok(), "safe_write_path should allow valid category");
     }
 }
