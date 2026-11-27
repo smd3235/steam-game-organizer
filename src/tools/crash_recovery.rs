@@ -17,6 +17,7 @@ pub struct RecoveryAction {
     pub description: String,
 }
 
+#[derive(Debug)]
 pub enum RecoveryActionType {
     DeletedTempFile,
     DeletedPartialExtraction,
@@ -24,7 +25,6 @@ pub enum RecoveryActionType {
     DeletedStaleLock,
     VerifiedIntact,
 }
-
 /// Result of the crash recovery scan.
 pub struct RecoveryReport {
     pub actions: Vec<RecoveryAction>,
@@ -55,10 +55,13 @@ pub fn recover(library_dir: &Path) -> Result<RecoveryReport, String> {
     for entry in walkdir::WalkDir::new(library_dir)
         .into_iter()
         .filter_entry(|e| {
-            !e.file_name()
-                .to_string_lossy()
-                .starts_with('.')
-                && e.file_name() != "steamapps"
+            e.depth() == 0
+                || (
+                    !e.file_name()
+                        .to_string_lossy()
+                        .starts_with('.')
+                        && e.file_name() != "steamapps"
+                )
         })
         .filter_map(|e| e.ok())
     {

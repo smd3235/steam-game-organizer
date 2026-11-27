@@ -66,10 +66,14 @@ pub fn scan_encryption(library_dir: &Path) -> Result<EncryptionScanReport, Strin
     for entry in walkdir::WalkDir::new(library_dir)
         .into_iter()
         .filter_entry(|e| {
-            !e.file_name()
-                .to_string_lossy()
-                .starts_with('.')
-                && e.file_name() != "steamapps"
+            e.depth() == 0
+                || (
+                    // Skip hidden directories and system directories
+                    !e.file_name()
+                        .to_string_lossy()
+                        .starts_with('.')
+                        && e.file_name() != "steamapps"
+                )
         })
         .filter_map(|e| e.ok())
     {

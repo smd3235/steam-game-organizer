@@ -14,6 +14,7 @@
 use std::path::Path;
 
 /// A single health issue found in the library.
+#[derive(Debug)]
 pub struct HealthIssue {
     pub severity: HealthSeverity,
     pub category: HealthCategory,
@@ -21,12 +22,14 @@ pub struct HealthIssue {
     pub path: Option<std::path::PathBuf>,
 }
 
+#[derive(Debug)]
 pub enum HealthSeverity {
     Info,
     Warning,
     Error,
 }
 
+#[derive(Debug)]
 pub enum HealthCategory {
     Unidentified,
     Orphaned,
@@ -67,11 +70,14 @@ pub fn scan_library_health(library_dir: &Path) -> Result<HealthReport, String> {
     for entry in walkdir::WalkDir::new(library_dir)
         .into_iter()
         .filter_entry(|e| {
-            // Skip hidden directories and system directories
-            !e.file_name()
-                .to_string_lossy()
-                .starts_with('.')
-                && e.file_name() != "steamapps"
+            e.depth() == 0
+                || (
+                    // Skip hidden directories and system directories
+                    !e.file_name()
+                        .to_string_lossy()
+                        .starts_with('.')
+                        && e.file_name() != "steamapps"
+                )
         })
         .filter_map(|e| e.ok())
     {

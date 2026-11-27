@@ -14,9 +14,14 @@ use steam_game_organizer::app::application::Application;
 use steam_game_organizer::core::config::AppConfig;
 use steam_game_organizer::core::logger::AppLogger;
 use steam_game_organizer::core::path_safety::safe_create_dir_all;
+use steam_game_organizer::tools::archive_encryption_scanner::scan_encryption;
 use steam_game_organizer::tools::build_installer::build_installer;
+use steam_game_organizer::tools::crash_recovery::recover;
 use steam_game_organizer::tools::dependency_audit::dependency_audit;
+use steam_game_organizer::tools::duplicate_detector::find_duplicates;
+use steam_game_organizer::tools::library_health_scan::scan_library_health;
 use steam_game_organizer::tools::quality_gate::quality_gate;
+use steam_game_organizer::tools::steam_match_confidence::analyze_confidence;
 use steam_game_organizer::tools::steamcmd_check::check_steamcmd;
 use steam_game_organizer::tools::system_diagnostics::run_system_diagnostics;
 
@@ -46,6 +51,26 @@ struct Args {
     /// Check SteamCMD availability and Steam installation status
     #[arg(long)]
     steamcmd_check: bool,
+
+    /// Scan library for duplicate archives by normalized name + file size
+    #[arg(long)]
+    duplicate_detector: Option<String>,
+
+    /// Scan library for health issues (unidentified, orphaned, oversized)
+    #[arg(long)]
+    library_health_scan: Option<String>,
+
+    /// Scan archives for encryption/password protection
+    #[arg(long)]
+    archive_encryption_scan: Option<String>,
+
+    /// Analyze Steam match confidence distribution across archives
+    #[arg(long)]
+    steam_match_confidence: Option<String>,
+
+    /// Scan for interrupted operations and clean up temp/journal/lock files
+    #[arg(long)]
+    crash_recovery: Option<String>,
 
     /// Run full system diagnostics: dependency audit, library health,
     /// Steam match confidence, archive encryption, duplicates, crash recovery,
@@ -212,6 +237,111 @@ fn main() {
             }
             Err(e) => {
                 eprintln!("[ERROR] SteamCMD check failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Duplicate detector: find duplicate archives by normalized name + size
+    if let Some(dir) = &args.duplicate_detector {
+        match find_duplicates(Path::new(dir)) {
+            Ok(dupes) => {
+                println!("Duplicate Detector:");
+                if dupes.is_empty() {
+                    println!("  No duplicates found.");
+                } else {
+                    for group in &dupes {
+                        println!("  Group: {} ({} files, {} bytes total)", group.normalized_name, group.files.len(), group.total_size_bytes);
+                        for f in &group.files {
+                            println!("    {}", f.display());
+                        }
+                    }
+                }
+                process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Duplicate detector failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Library health scan: report unidentified, orphaned, oversized archives
+    if let Some(dir) = &args.library_health_scan {
+        match scan_library_health(Path::new(dir)) {
+            Ok(report) => {
+                println!("Library Health Scan:");
+                println!("  Archives scanned:   {}", report.archives_scanned);
+                println!("  Games matched:      {}", report.games_matched);
+                println!("  Games unidentified: {}", report.games_unidentified);
+                for issue in &report.issues {
+                    println!("  [{:?}] {}", issue.severity, issue.description);
+                }
+                process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Library health scan failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Archive encryption scan: detect encrypted/password-protected archives
+    if let Some(dir) = &args.archive_encryption_scan {
+        match scan_encryption(Path::new(dir)) {
+            Ok(report) => {
+                println!("Archive Encryption Scan:");
+                println!("  Total scanned:    {}", report.total_scanned);
+                println!("  Encrypted:        {}", report.encrypted_count);
+                for (ext, count) in &report.by_type {
+                    println!("  {}: {}", ext, count);
+                }
+                for archive in &report.encrypted_archives {
+                    println!("  ENCRYPTED: {} ({} bytes)", archive.path.display(), archive.size_bytes);
+                }
+                process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Archive encryption scan failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Steam match confidence: analyze match confidence distribution
+    if let Some(dir) = &args.steam_match_confidence {
+        match analyze_confidence(Path::new(dir)) {
+            Ok(report) => {
+                println!("Steam Match Confidence:");
+                println!("  High:   {}", report.high_count);
+                println!("  Medium: {}", report.medium_count);
+                println!("  Low:    {}", report.low_count);
+                println!("  None:   {}", report.none_count);
+                println!("  Total:  {}", report.entries.len());
+                process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Steam match confidence failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Crash recovery: clean up interrupted operations
+    if let Some(dir) = &args.crash_recovery {
+        match recover(Path::new(dir)) {
+            Ok(result) => {
+                println!("Crash Recovery:");
+                println!("  Issues found:   {}", result.issues_found);
+                println!("  Issues fixed:   {}", result.issues_fixed);
+                println!("  Space reclaimed: {} bytes", result.space_reclaimed_bytes);
+                for action in &result.actions {
+                    println!("  [{:?}] {}", action.action_type, action.description);
+                }
+                process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("[ERROR] Crash recovery failed: {}", e);
                 process::exit(1);
             }
         }

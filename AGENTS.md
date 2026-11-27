@@ -413,6 +413,11 @@ egui/eframe 0.37.0 compiles and runs cleanly with the glow backend.
 | `--build-installer` | Build Windows installer via Inno Setup (`installer.iss`) |
 | `--steamcmd-check` | Verify SteamCMD + Steam installation status |
 | `--system-diagnostics` | Full health check: all diagnostic tools in one pass |
+| `--duplicate-detector <dir>` | Find duplicate archives by normalized name + size |
+| `--library-health-scan <dir>` | Report unidentified/orphaned/duplicate/oversized archives |
+| `--archive-encryption-scan <dir>` | Detect encrypted/password-protected archives |
+| `--steam-match-confidence <dir>` | Analyze Steam match confidence distribution |
+| `--crash-recovery <dir>` | Clean up temp/journal/lock files from crashed ops |
 
 ---
 

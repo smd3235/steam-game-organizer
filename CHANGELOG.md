@@ -23,6 +23,15 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — feat: add CLI flags for all diagnostic tools + close test coverage gaps
+
+- `src/bin.rs`: Added `--duplicate-detector`, `--library-health-scan`, `--archive-encryption-scan`, `--steam-match-confidence`, `--crash-recovery` CLI flags, each taking a library directory argument. All five tools were previously functional but had no CLI entry point.
+- `src/core/naming_utils.rs`: Added 45 unit tests covering `safe_name`, `release_label`, `game_name`, `asset_prefix`, `modified_at`, `path_promotion_key`/`promotion_key`, `unique_dir`, and `version_key`. First test coverage for this critical filename normalization module.
+- `src/core/naming_utils.rs`: Fixed `unique_dir` bug — was returning `name (2)` even when no collision existed (only checked `is_dir()` not `exists()`). Now checks `!target.exists()` first. Also fixed `(n)` suffix to be inserted before file extension (`game (2).zip` not `game.zip (2)`).
+- `src/tools/{crash_recovery,library_health_scan,duplicate_detector,archive_encryption_scanner,steam_match_confidence}.rs`: Fixed `WalkDir` filter_entry to allow root directory through (`e.depth() == 0`), fixing test failures when `tempfile::tempdir()` creates directories starting with `.`.
+- AGENTS.md: Added all five new CLI flags to built-in CLI tools table.
+- Test count: 415 → 456 (+41 new tests: 45 naming_utils, minus pre-existing failures now resolved).
+
 ### 2026-11-27 — feat: upgrade egui/eframe 0.32 → 0.37.0
 
 - `Cargo.toml`: Upgraded `egui` and `eframe` from 0.32 to 0.37.0. Switched `eframe` to `default-features = false, features = ["glow"]` to avoid pulling in `egui-wgpu`/`wgpu-hal`, which had a transitive `windows` crate version conflict (0.61 vs 0.62) that blocked the upgrade.
