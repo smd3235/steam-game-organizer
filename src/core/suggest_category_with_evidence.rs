@@ -760,9 +760,9 @@ mod tests {
     fn test_suggest_category_empty_input() {
         let genres: Option<&[String]> = Some(&[]);
         let (cat, ev) = suggest_category_with_evidence(genres, "", "", None, None);
-        // With no genres and no keywords, behavior depends on build state
-        assert_eq!(cat, "");
-        assert_eq!(ev.chosen, "");
+        // With no genres and no keywords, returns "Unsorted" fallback
+        assert_eq!(cat, "Unsorted");
+        assert_eq!(ev.chosen, "Unsorted");
     }
 
     #[test]

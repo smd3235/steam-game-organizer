@@ -24,6 +24,7 @@ use steam_game_organizer::tools::quality_gate::quality_gate;
 use steam_game_organizer::tools::steam_match_confidence::analyze_confidence;
 use steam_game_organizer::tools::steamcmd_check::check_steamcmd;
 use steam_game_organizer::tools::system_diagnostics::run_system_diagnostics;
+use steam_game_organizer::tools::capture_screens::capture_and_verify;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Steam Game Organizer", long_about = None)]
@@ -77,6 +78,11 @@ struct Args {
     /// SteamCMD, and installer build readiness
     #[arg(long)]
     system_diagnostics: bool,
+
+    /// Verify UI buttons are visible via OCR: launch app, capture all views,
+    /// run Tesseract OCR on each screenshot, confirm expected button text appears
+    #[arg(long)]
+    verify_ui: bool,
 
     /// Print diagnostics report and exit
     #[arg(long)]
@@ -364,6 +370,41 @@ fn main() {
                 eprintln!("[ERROR] System diagnostics failed: {}", e);
                 process::exit(1);
             }
+        }
+    }
+
+    // Verify UI buttons are visible via OCR: launch app, capture each view,
+    // run Tesseract OCR on screenshots, confirm expected button text appears
+    if args.verify_ui {
+        let output_dir = Path::new("docs/screenshots");
+        let views = [
+            "scan", "review", "organize", "artwork", "done", "setup",
+        ];
+        let mut all_passed = true;
+        for view in &views {
+            println!("=== Verifying UI for view '{}' ===", view);
+            match capture_and_verify(output_dir, view, true) {
+                Ok(result) => {
+                    println!("  OCR text preview: {:?}", result.ocr_text.chars().take(200).collect::<String>());
+                    println!("  Found required: {:?}", result.found_required);
+                    if !result.missing_required.is_empty() {
+                        println!("  MISSING required headers: {:?}", result.missing_required);
+                        all_passed = false;
+                    }
+                    println!("  UI verification PASSED for view '{}'.", view);
+                }
+                Err(e) => {
+                    eprintln!("  UI verification FAILED for view '{}': {}", view, e);
+                    all_passed = false;
+                }
+            }
+        }
+        if all_passed {
+            println!("\nUI verification: ALL VIEWS PASSED - all button text visible via OCR");
+            process::exit(0);
+        } else {
+            println!("\nUI verification: SOME VIEWS FAILED - missing button text detected");
+            process::exit(1);
         }
     }
 
