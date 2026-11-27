@@ -7,6 +7,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use time::OffsetDateTime;
 
 use crate::app::application::Application;
 use crate::core::config::AppConfig;
@@ -307,7 +308,9 @@ pub fn main() -> i32 {
     let log_dir = root_path.join("logs");
     let root_path_str = root_path.to_str().unwrap_or("");
     let _ = safe_create_dir_all(&log_dir, &[root_path_str]);
-    let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+    let stamp = OffsetDateTime::now_utc()
+        .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
+        .unwrap_or_default();
     let log_path = log_dir.join(format!("organizer-{}.log", stamp));
     let logger = Arc::new(
         AppLogger::new(&log_path, "INFO", true, false).expect("failed to create log file"),

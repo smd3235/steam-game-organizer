@@ -7,7 +7,7 @@
 
 #![allow(clippy::all)]
 
-use chrono::Utc;
+use time::OffsetDateTime;
 use serde_json;
 use std::path::{Path, PathBuf};
 
@@ -28,7 +28,9 @@ pub fn write_extract_result(
 ) -> Option<PathBuf> {
     let path = Path::new(library_root).join(STATUS_NAME);
     let status = serde_json::json!({
-        "ran_at": Utc::now().format("%Y-%m-%d %H:%M").to_string(),
+        "ran_at": OffsetDateTime::now_utc()
+            .format(&time::format_description::parse_borrowed::<3>("[year]-[month]-[day] [hour]:[minute]").unwrap())
+            .unwrap_or_default(),
         "category": "",
         "destination": result.destination.to_string_lossy(),
         "total": 1,
@@ -84,7 +86,9 @@ mod tests {
             ..ExtractResult::default()
         };
         let status = serde_json::json!({
-            "ran_at": Utc::now().format("%Y-%m-%d %H:%M").to_string(),
+        "ran_at": OffsetDateTime::now_utc()
+            .format(&time::format_description::parse_borrowed::<3>("[year]-[month]-[day] [hour]:[minute]").unwrap())
+            .unwrap_or_default(),
             "category": "",
             "destination": result.destination.to_string_lossy(),
             "total": 1,

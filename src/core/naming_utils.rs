@@ -11,7 +11,7 @@
 //! `core/` module in the Rust conversion (one file at a time, tracked on the
 //! `Rust-Conversion` branch).
 
-use chrono::NaiveDate;
+use time::Date;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::path::{Path, PathBuf};
@@ -60,8 +60,11 @@ pub fn release_label(release_date: &str) -> String {
         "%B %d, %Y",
     ];
     for pattern in &patterns {
-        if let Ok(dt) = NaiveDate::parse_from_str(value, pattern) {
-            return dt.format("%Y-%m-%d").to_string();
+        let Ok(fmt) = time::format_description::parse_borrowed::<3>(pattern) else {
+            continue;
+        };
+        if let Ok(dt) = Date::parse(value, &fmt) {
+            return dt.format(&time::format_description::parse_borrowed::<3>("[year]-[month]-[day]").unwrap()).unwrap_or_else(|_| value.to_string());
         }
     }
     safe_name(value)

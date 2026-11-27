@@ -23,6 +23,19 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — fix: replace unmaintained chrono (RUSTSEC-2026-0543) with time crate
+
+- `Cargo.toml`: Removed `chrono = "0.4.45"` (unmaintained security advisory), added `time = "0.3.55"` with `formatting`, `parsing`, `macros`, `serde` features.
+- `src/core/config.rs`: Replaced `chrono::Utc::now()` with `time::OffsetDateTime::now_utc()`, custom format strings via `time::format_description::parse_borrowed::<3>()`.
+- `src/core/write_extract_result.rs`: Same replacement for `ran_at` timestamp.
+- `src/core/catalog_status.rs`: Same replacement for `installed_at` and `ran_at` timestamps.
+- `src/core/naming_utils.rs`: Replaced `chrono::NaiveDate` with `time::Date`, `parse_from_str` with `Date::parse()`.
+- `src/services/archive_service.rs`: Replaced `chrono::Utc::now().timestamp_millis()` with `OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000`.
+- `src/bin.rs`: Replaced `chrono::Local::now()` and `chrono::Utc::now()` with `OffsetDateTime::now_utc()`.
+- `src/entry.rs`: Same replacement for log timestamp.
+- AGENTS.md: Added chrono→time migration to dependency audit section as a security remediation example.
+- Test count: 394 → 394 (no test changes needed, all existing tests pass).
+
 ### 2026-11-27 — feat: dependency audit + quality gate tools for dependency freshness and security
 
 - `src/tools/dependency_audit.rs`: New tool that queries crates.io for the latest version of each dependency in `Cargo.toml`, compares against pinned versions, and reports any outdated crates. Shells out to `cargo audit` (RUSTSEC vulnerabilities), `cargo outdated` (outdated versions), and `cargo deny` (license + advisories) when installed. Accessible via `steam-game-organizer.exe --dependency-audit`. Added 8 unit tests covering dependency parsing, version comparison, external tool result merging, and audit result logic.

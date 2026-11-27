@@ -13,7 +13,7 @@
 //! 2026-11-25: Converted from `core/config.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
-use chrono::Utc;
+use time::OffsetDateTime;
 use serde_json;
 use std::collections::HashSet;
 use std::env;
@@ -126,7 +126,9 @@ impl AppConfig {
         if let Ok(test_log) = test_log {
             config.log_file = Some(PathBuf::from(test_log));
         } else if config.log_file.is_none() {
-            let stamp = Utc::now().format("%Y%m%d-%H%M%S");
+            let stamp = OffsetDateTime::now_utc()
+                                .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
+                .unwrap_or_default();
             config.log_file = Some(log_dir.join(format!("organizer-{}.log", stamp)));
             config._rotate_logs();
         }
@@ -477,7 +479,9 @@ impl AppConfig {
         summary: Option<&serde_json::Value>,
     ) -> Option<serde_json::Value> {
         let mut payload = summary.cloned().unwrap_or(serde_json::json!({}));
-        payload["recorded_at"] = serde_json::Value::Number(Utc::now().timestamp_millis().into());
+        payload["recorded_at"] = serde_json::Value::Number(
+            ((OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000) as i64).into(),
+        );
         match self.save_json_to_file(&self.state_file, &payload) {
             Ok(()) => Some(payload),
             Err(_) => None,

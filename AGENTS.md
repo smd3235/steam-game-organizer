@@ -328,6 +328,8 @@ steam-game-organizer.exe --dependency-audit
 
 Exits 0 if all deps are current and no vulnerabilities found; exits 1 with a report if any are outdated or vulnerable.
 
+**Example remediation:** `chrono` 0.4.45 was flagged as unmaintained (RUSTSEC-2026-0543). Replaced with `time` 0.3.55 across 7 files — no test changes needed, all 394 tests pass.
+
 ### `--quality-gate`
 Runs the full verification pipeline in one pass:
 

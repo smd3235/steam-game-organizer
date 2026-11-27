@@ -19,6 +19,7 @@
 
 use serde_json;
 use std::path::{Path, PathBuf};
+use time::OffsetDateTime;
 
 use crate::core::constants::APP_NAME;
 use crate::core::within::within;
@@ -207,7 +208,11 @@ pub fn mark_setup_done(
         obj.insert("setup_done".to_string(), serde_json::Value::Bool(true));
         obj.insert(
             "installed_at".to_string(),
-            serde_json::Value::String(chrono::Utc::now().format("%Y-%m-%d %H:%M").to_string()),
+            serde_json::Value::String(
+                OffsetDateTime::now_utc()
+                    .format(&time::format_description::parse_borrowed::<3>("[year]-[month]-[day] [hour]:[minute]").unwrap())
+                    .unwrap_or_default(),
+            ),
         );
     } else {
         return None;
@@ -300,7 +305,9 @@ pub fn status_from_run(
         0.0
     };
     serde_json::json!({
-        "ran_at": chrono::Utc::now().format("%Y-%m-%d %H:%M").to_string(),
+        "ran_at": OffsetDateTime::now_utc()
+            .format(&time::format_description::parse_borrowed::<3>("[year]-[month]-[day] [hour]:[minute]").unwrap())
+            .unwrap_or_default(),
         "category": plan_category,
         "destination": plan_destination,
         "total": plan_items_len,

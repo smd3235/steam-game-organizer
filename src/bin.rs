@@ -5,8 +5,8 @@
 //! Fixed `uri` default_value bug that forced headless CLI path instead of GUI.
 
 use clap::Parser;
-use chrono::Local;
 use std::path::{Path, PathBuf};
+use time::OffsetDateTime;
 use std::process;
 use std::sync::Arc;
 
@@ -114,7 +114,10 @@ fn main() {
         let log_dir = project_root.join("logs");
         let _ = safe_create_dir_all(&log_dir, &[project_root_str]);
 
-        let timestamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
+        let timestamp = OffsetDateTime::now_utc()
+            .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
+            .unwrap_or_default()
+            .to_string();
         let sandbox_log_name = format!("sandbox-{}.log", timestamp);
         let logger = match AppLogger::new(log_dir.join(&sandbox_log_name), "DEBUG", true, false) {
             Ok(l) => Arc::new(l),
@@ -252,7 +255,9 @@ fn main() {
     let log_dir = project_root.join("logs");
     let project_root_str = project_root.to_str().unwrap_or("");
     let _ = safe_create_dir_all(&log_dir, &[project_root_str]);
-    let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+    let stamp = OffsetDateTime::now_utc()
+        .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
+        .unwrap_or_default();
     let log_path = log_dir.join(format!("organizer-{}.log", stamp));
 
     let logger = match AppLogger::new(&log_path, "DEBUG", true, false) {

@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
+use time::OffsetDateTime;
 use zip::ZipArchive;
 
 use crate::core::constants::{
@@ -612,7 +613,8 @@ fn try_save_discovery_cache(library_root: &Path, dir_mtimes: &HashMap<String, u1
         dir_mtimes_json.insert(k.clone(), serde_json::json!(v));
     }
     existing["discovery_dir_mtimes"] = serde_json::Value::Object(dir_mtimes_json);
-    existing["recorded_at"] = serde_json::json!(chrono::Utc::now().timestamp_millis());
+    existing["recorded_at"] =
+        serde_json::json!(OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000);
     let _ = fs::create_dir_all(&config_dir);
     let config_dir = config_dir.clone();
     let temp_name = format!("scan-state.{}.tmp", std::process::id());
