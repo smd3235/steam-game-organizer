@@ -315,12 +315,17 @@ impl CreationGuard {
 
     /// Refuse to create `path` if it is a protected system path, a drive root,
     /// or outside every allowed root.
+    ///
+    /// Non-existent paths are not checked against protected roots — they cannot
+    /// be protected system paths yet. The allowed-root check still applies.
     pub fn refuse_outside_create(
         &self,
         path: &Path,
         operation: &str,
     ) -> Result<PathBuf, PathOutsideAllowedRoot> {
-        if is_protected(path) {
+        // Only check protected status for paths that exist — a non-existent path
+        // cannot be a protected system path yet.
+        if path.exists() && is_protected(path) {
             return Err(PathOutsideAllowedRoot::new(&format!(
                 "{} refused: {:?} is a protected system path",
                 operation, path
