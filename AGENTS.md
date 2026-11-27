@@ -366,6 +366,7 @@ Exits 0 only if all steps pass and the dependency audit is clean.
 | `--dependency-audit` | Outdated deps + RUSTSEC + license violations |
 | `--build-installer` | Build Windows installer via Inno Setup (`installer.iss`) |
 | `--steamcmd-check` | Verify SteamCMD + Steam installation status |
+| `--system-diagnostics` | Full health check: all diagnostic tools in one pass |
 
 ---
 

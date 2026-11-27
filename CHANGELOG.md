@@ -43,6 +43,13 @@ Each entry starts with a type prefix:
 - AGENTS.md: Added PowerShell 7, Inno Setup, SteamCMD, and GitHub CLI to recommended tools table. Added built-in CLI tools table.
 - Test count: 379 → 385 (+6 new tests: 3 build_installer + 3 steamcmd_check).
 
+### 2026-11-27 — feat: system diagnostics tool — one-command health check
+
+- `src/tools/system_diagnostics.rs`: New tool that runs all diagnostic checks in one pass: dependency audit, library health scan, Steam match confidence, archive encryption scan, duplicate detector, crash recovery, SteamCMD check, and installer build readiness. Accessible via `steam-game-organizer.exe --system-diagnostics`. Added 4 unit tests.
+- `src/bin.rs`: Added `--system-diagnostics` CLI flag, wired to the new tool.
+- AGENTS.md: Added `--system-diagnostics` to built-in CLI tools table.
+- Test count: 385 → 394 (+9 new tests: 4 system_diagnostics + 2 build_installer fixes + 3 steamcmd_check improvements).
+
 ### 2026-11-27 — feat: five new library diagnostic and recovery tools
 
 - `src/tools/duplicate_detector.rs`: Finds duplicate archives across library folders by normalized name + file size, catching the same game downloaded twice under different filenames. Added 2 unit tests.

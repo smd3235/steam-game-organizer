@@ -29,6 +29,7 @@ pub mod sandbox;
 pub mod search_backups;
 pub mod steam_match_confidence;
 pub mod steamcmd_check;
+pub mod system_diagnostics;
 pub mod tk_probe;
 pub mod validate_game_names;
 pub mod verify_archives;

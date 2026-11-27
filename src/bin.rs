@@ -18,6 +18,7 @@ use steam_game_organizer::tools::build_installer::build_installer;
 use steam_game_organizer::tools::dependency_audit::dependency_audit;
 use steam_game_organizer::tools::quality_gate::quality_gate;
 use steam_game_organizer::tools::steamcmd_check::check_steamcmd;
+use steam_game_organizer::tools::system_diagnostics::run_system_diagnostics;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Steam Game Organizer", long_about = None)]
@@ -45,6 +46,12 @@ struct Args {
     /// Check SteamCMD availability and Steam installation status
     #[arg(long)]
     steamcmd_check: bool,
+
+    /// Run full system diagnostics: dependency audit, library health,
+    /// Steam match confidence, archive encryption, duplicates, crash recovery,
+    /// SteamCMD, and installer build readiness
+    #[arg(long)]
+    system_diagnostics: bool,
 
     /// Print diagnostics report and exit
     #[arg(long)]
@@ -93,6 +100,7 @@ fn main() {
         || args.uri.is_some()
         || args.extract.is_some()
         || args.setup
+        || args.system_diagnostics
     {
         process::exit(entry_main());
     }
@@ -201,6 +209,26 @@ fn main() {
             }
             Err(e) => {
                 eprintln!("[ERROR] SteamCMD check failed: {}", e);
+                process::exit(1);
+            }
+        }
+    }
+
+    // Run full system diagnostics
+    if args.system_diagnostics {
+        match run_system_diagnostics(Path::new(".")) {
+            Ok(result) => {
+                result.report();
+                if result.is_clean() {
+                    println!("\nSystem diagnostics: ALL CHECKS PASSED");
+                    process::exit(0);
+                } else {
+                    println!("\nSystem diagnostics: SOME CHECKS FAILED");
+                    process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("[ERROR] System diagnostics failed: {}", e);
                 process::exit(1);
             }
         }
