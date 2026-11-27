@@ -167,8 +167,8 @@ impl SetupView {
                 );
                 if secondary_button(ui, "Browse 7-Zip", &self.palette, true).clicked() {
                     if let Some(file) = FileDialog::new()
-                        .set_title("Select 7-Zip executable")
-                        .add_filter("7-Zip executable", &["7z.exe"])
+                        .set_title("Select 7z.exe executable file")
+                        .add_filter("Executable", &["exe"])
                         .pick_file()
                     {
                         self.state.seven_zip_path = file.to_string_lossy().to_string();
@@ -184,7 +184,7 @@ impl SetupView {
                 }
             });
             ui.label(
-                RichText::new("Path to 7z.exe for archive operations")
+                RichText::new("Select the 7z.exe file (not the folder) for archive operations")
                     .small()
                     .color(self.palette.muted),
             );
