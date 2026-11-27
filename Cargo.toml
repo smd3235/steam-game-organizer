@@ -35,7 +35,7 @@ egui = "0.32"
 eframe = { version = "0.32", features = ["glow"] }
 
 # CLI argument parsing for headless binary
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4.6.10", features = ["derive"] }
 
 # Native file dialogs for browse buttons in setup view
 rfd = "0.13"
