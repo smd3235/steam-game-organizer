@@ -23,6 +23,10 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — fix: restore egui fonts after eframe default-features=false
+
+- `Cargo.toml`: Added `default_fonts`, `accesskit`, `clipboard`, `links`, `system_fonts` features to `eframe`. Using `default-features = false` to avoid `wgpu` (which conflicts with `gpu-allocator`'s `windows` crate version) had also disabled font loading, causing all UI text to render as squares. Restoring font features while keeping `wgpu` out fixes text rendering without reintroducing the dependency conflict.
+
 ### 2026-11-27 — feat: close test coverage gaps across core modules
 
 - `src/core/canonical_category.rs`: Added 6 unit tests covering exact match, case-insensitive matching, alias resolution, passthrough for unknown categories, and whitespace collapsing.
