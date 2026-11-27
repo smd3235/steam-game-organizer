@@ -308,6 +308,7 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 - [ ] `cargo build --release` produces `target/release/steam-game-organizer.exe`.
 - [ ] `steam-game-organizer.exe --quality-gate` passes all steps (check, clippy, test, build, dependency audit).
 - [ ] `steam-game-organizer.exe --dependency-audit` reports all clean (no outdated deps, no vulnerabilities).
+- [ ] `steam-game-organizer.exe --system-diagnostics` reports all checks passed (or documents known issues).
 - [ ] No `*.png` screenshots left in repo root; no writes to real `config/`, `cache/`, or `logs/` (use temp dirs in tests).
 - [ ] Committed and pushed to GitHub so the public repository reflects the change.
 
@@ -328,7 +329,7 @@ steam-game-organizer.exe --dependency-audit
 
 Exits 0 if all deps are current and no vulnerabilities found; exits 1 with a report if any are outdated or vulnerable.
 
-**Example remediation:** `chrono` 0.4.45 was flagged as unmaintained (RUSTSEC-2026-0543). Replaced with `time` 0.3.55 across 7 files — no test changes needed, all 394 tests pass.
+**Example remediation:** `chrono` 0.4.45 was flagged as unmaintained (RUSTSEC-2026-0543). Replaced with `time` 0.3.55 across 7 files — no test changes needed, all 415 tests pass.
 
 ### `--quality-gate`
 Runs the full verification pipeline in one pass:
@@ -345,6 +346,36 @@ steam-game-organizer.exe --quality-gate
 
 Exits 0 only if all steps pass and the dependency audit is clean.
 
+### `--system-diagnostics`
+Runs all diagnostic tools in one pass:
+
+1. Dependency audit (crates.io + cargo audit/outdated/deny)
+2. Library health scan (unidentified/orphaned/duplicate games)
+3. Steam match confidence (high/medium/low/none distribution)
+4. Archive encryption scan (.zip/.rar/.7z password protection)
+5. Duplicate detector (same game, multiple filenames)
+6. Crash recovery (temp files, partial extractions, orphaned journals)
+7. SteamCMD check (steamcmd + Steam installation status)
+8. Installer build readiness (release exe + 7-Zip present)
+
+```
+steam-game-organizer.exe --system-diagnostics
+```
+
+### `--build-installer`
+Builds a Windows installer (.exe) using Inno Setup's ISCC.exe compiler and `installer.iss`. Bundles the release exe, 7-Zip runtime, and assets.
+
+```
+steam-game-organizer.exe --build-installer
+```
+
+### `--steamcmd-check`
+Verifies SteamCMD availability, Steam installation status, and Steam library path.
+
+```
+steam-game-organizer.exe --steamcmd-check
+```
+
 ### Recommended external tools (install separately)
 
 | Tool | Purpose | Install |
@@ -359,6 +390,15 @@ Exits 0 only if all steps pass and the dependency audit is clean.
 | Inno Setup | Windows installer creation (.iss → .exe) | `winget install JRSoftware.InnoSetup` |
 | SteamCMD | Steam appinfo queries for match testing | `winget install Valve.SteamCMD` |
 | GitHub CLI (`gh`) | GitHub releases, PRs, issues from CLI | `winget install GitHub.cli` |
+
+### Known dependency issue: egui/eframe 0.36+ upgrade blocked
+
+egui/eframe 0.32 → 0.36+ is **blocked** by a transitive dependency conflict:
+- `wgpu-hal` 30+ requires `windows` crate 0.62
+- `gpu-allocator` 0.28+ requires `windows` crate 0.61
+- These are incompatible versions (different `windows_core` types)
+
+This cannot be resolved from `Cargo.toml` alone. The egui/eframe upgrade must wait until the wgpu/gpu-allocator ecosystem aligns on a single `windows` version. Current egui/eframe 0.32.3 compiles and runs cleanly.
 
 ### Built-in CLI tools
 

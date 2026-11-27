@@ -28,6 +28,9 @@ reqwest = { version = "0.13.5", features = ["blocking", "json"] }
 winreg = "0.56.0"
 
 # egui GUI framework for the UI layer
+# NOTE: egui/eframe 0.36+ blocked by transitive windows crate version conflict
+# (wgpu-hal needs windows 0.62, gpu-allocator needs windows 0.61).
+# See https://github.com/smd3235/steam-game-organizer/issues for tracking.
 egui = "0.32"
 eframe = { version = "0.32", features = ["glow"] }
 
