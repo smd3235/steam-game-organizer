@@ -515,7 +515,7 @@ fn test_e2e_full_flow_scan_to_done() {
     println!("✓ DONE VIEW: All buttons and controls verified");
 
     // ========== SETUP VIEW ==========
-    let mut setup_view = SetupView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut setup_view = SetupView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog), (*test_config()).clone());
 
     // Initial state
     assert!(setup_view.state.library_root.is_empty());
@@ -762,7 +762,7 @@ fn test_setup_with_invalid_paths() {
     let watchdog = test_watchdog(logger.clone());
     let palette = Palette::default();
 
-    let mut view = SetupView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog));
+    let mut view = SetupView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog), (*test_config()).clone());
 
     // Empty paths - validation should fail
     view.state.should_validate = true;

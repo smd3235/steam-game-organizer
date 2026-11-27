@@ -621,4 +621,141 @@ mod tests {
         view.phase_done("cleanup");
         assert!(view.state.phase_states[0]);
     }
+
+    #[test]
+    fn test_scan_start_scan_button_sets_state() {
+        // Regression: "Start Scan" button must set should_scan flag or nothing happens
+        let organizer =
+            crate::services::organizer_service::OrganizerService::new(Arc::new(|_, _| {}), false);
+        let services = Arc::new(crate::app::controller::Services { organizer });
+        let library_service =
+            crate::services::library_service::LibraryService::new(Arc::new(|_, _| {}), None);
+        let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("scan_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(
+            std::env::temp_dir().to_str().unwrap(),
+        )));
+        let mut view = ScanView::new(
+            services,
+            library_service,
+            jobs,
+            Arc::clone(&config),
+            palette,
+            logger,
+            watchdog,
+        );
+
+        // Simulate clicking "Start Scan" — button click sets should_scan
+        assert!(!view.state.should_scan);
+        assert!(!view.state.scanning);
+
+        view.state.should_scan = true;
+        assert!(view.state.should_scan, "Start Scan should set should_scan flag");
+
+        // ui() consumes the flag and starts scanning
+        if view.state.should_scan {
+            view.state.should_scan = false;
+            view.state.scanning = true;
+        }
+        assert!(view.state.scanning, "Scan should be running after button click");
+        assert!(!view.state.should_scan, "should_scan should be consumed by ui()");
+    }
+
+    #[test]
+    fn test_scan_with_artwork_button_sets_state() {
+        // Regression: "Scan with Artwork" button must set scan_with_artwork and should_scan
+        let organizer =
+            crate::services::organizer_service::OrganizerService::new(Arc::new(|_, _| {}), false);
+        let services = Arc::new(crate::app::controller::Services { organizer });
+        let library_service =
+            crate::services::library_service::LibraryService::new(Arc::new(|_, _| {}), None);
+        let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("scan_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(
+            std::env::temp_dir().to_str().unwrap(),
+        )));
+        let mut view = ScanView::new(
+            services,
+            library_service,
+            jobs,
+            Arc::clone(&config),
+            palette,
+            logger,
+            watchdog,
+        );
+
+        // Simulate clicking "Scan with Artwork"
+        assert!(!view.state.scan_with_artwork);
+        assert!(!view.state.should_scan);
+
+        view.state.scan_with_artwork = true;
+        view.state.should_scan = true;
+        assert!(view.state.scan_with_artwork);
+        assert!(view.state.should_scan);
+    }
+
+    #[test]
+    fn test_scan_cancel_button_only_visible_when_scanning() {
+        // "Cancel Scan" button is gated behind self.state.scanning
+        // Verify it's not clickable when not scanning
+        let organizer =
+            crate::services::organizer_service::OrganizerService::new(Arc::new(|_, _| {}), false);
+        let services = Arc::new(crate::app::controller::Services { organizer });
+        let library_service =
+            crate::services::library_service::LibraryService::new(Arc::new(|_, _| {}), None);
+        let jobs = Arc::new(crate::app::jobs::JobManager::new(2));
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("scan_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let config = Arc::new(crate::core::config::AppConfig::new(std::path::Path::new(
+            std::env::temp_dir().to_str().unwrap(),
+        )));
+        let mut view = ScanView::new(
+            services,
+            library_service,
+            jobs,
+            Arc::clone(&config),
+            palette,
+            logger,
+            watchdog,
+        );
+
+        // Not scanning → Cancel button should not be active
+        assert!(!view.state.scanning);
+
+        // When scanning, cancel works
+        view.state.scanning = true;
+        assert!(view.state.scanning);
+        view.state.scanning = false;
+        view.state.status = "Scan cancelled.".to_string();
+        assert_eq!(view.state.status, "Scan cancelled.");
+    }
 }

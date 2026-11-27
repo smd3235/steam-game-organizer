@@ -24,7 +24,6 @@ use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
 use crate::services::rollback_service::RollbackService;
 use crate::ui::phase_timeline::PhaseTimeline;
-use crate::ui::setup_window::SetupWindow;
 
 /// A sandbox test result: what was found, what was fixed, what remains.
 struct SandboxResult {
@@ -1455,7 +1454,7 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
         let watchdog = Arc::new(Watchdog::new(logger.clone(), 300000));
 
         let mut setup_view =
-            crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog);
+            crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog, (*config).clone());
 
         // Set valid paths
         setup_view.state.library_root = sandbox_dir.join("library").to_string_lossy().to_string();
@@ -1585,8 +1584,8 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
             let palette = crate::ui::theme::Palette::default();
             let logger_clone = Arc::clone(&logger);
             let watchdog = Arc::new(Watchdog::new(logger_clone.clone(), 300000));
-            let mut setup_view =
-                crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog);
+        let mut setup_view =
+            crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog, (*config).clone());
 
             // Set should_validate flag (simulates clicking Validate Configuration button)
             setup_view.state.should_validate = true;
@@ -1674,107 +1673,6 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
                 "Setup UI: Browse 7-Zip did not set seven_zip_path",
             );
         }
-    }
-
-    // ============================================================
-    // Step 6b: Setup Window — test browse, save, launch, checks
-    // ============================================================
-    logger.info("SANDBOX", "Step 6b: Setup window mega-test", "");
-    {
-        let palette = crate::ui::theme::Palette::default();
-        let setup_window_new_msg = "Constructing SetupWindow with palette";
-        logger.debug("SANDBOX_STEP6B", setup_window_new_msg, "");
-        let mut setup_window = SetupWindow::new(palette);
-        let setup_window_constructed_msg = "SetupWindow constructed successfully";
-        logger.debug("SANDBOX_STEP6B", setup_window_constructed_msg, "");
-
-        check(
-            &mut result,
-            setup_window.state.library_path.is_empty(),
-            "SetupWindow: library path starts empty",
-            "SetupWindow: library path not empty",
-        );
-        let lib_path_msg = format!("library_path verified=empty ({})", setup_window.state.library_path.is_empty());
-        logger.debug("SANDBOX_STEP6B", &lib_path_msg, "");
-        check(
-            &mut result,
-            !setup_window.state.saved,
-            "SetupWindow: not saved initially",
-            "SetupWindow: already saved",
-        );
-        let saved_msg = format!("saved verified=false ({})", setup_window.state.saved);
-        logger.debug("SANDBOX_STEP6B", &saved_msg, "");
-
-        // Set paths into sandbox dirs
-        let set_lib_msg = format!("Setting library_path to: {}", sandbox_dir.join("library").display());
-        logger.debug("SANDBOX_STEP6B", &set_lib_msg, "");
-        setup_window.state.library_path = sandbox_dir.join("library").to_string_lossy().to_string();
-        let set_app_msg = format!("Setting app_path to: {}", project_root.display());
-        logger.debug("SANDBOX_STEP6B", &set_app_msg, "");
-        setup_window.state.app_path = project_root.to_string_lossy().to_string();
-        let set_extract_msg = format!("Setting extract_path to: {}", sandbox_dir.join("extracted").display());
-        logger.debug("SANDBOX_STEP6B", &set_extract_msg, "");
-        setup_window.state.extract_path = sandbox_dir.join("extracted").to_string_lossy().to_string();
-
-        // Browse buttons
-        let browse_lib_msg = "Button: Browse Library — setting status='Library browse clicked'";
-        logger.debug("SANDBOX_STEP6B", browse_lib_msg, "");
-        setup_window.state.status = "Library browse clicked".to_string();
-        let browse_app_msg = "Button: Browse App — setting status='App browse clicked'";
-        logger.debug("SANDBOX_STEP6B", browse_app_msg, "");
-        setup_window.state.status = "App browse clicked".to_string();
-        let browse_extract_msg = "Button: Browse Extract — setting status='Extract browse clicked'";
-        logger.debug("SANDBOX_STEP6B", browse_extract_msg, "");
-        setup_window.state.status = "Extract browse clicked".to_string();
-
-        // Save setup
-        let save_setup_msg = "Button: Save setup — setting saved=true, status='Setup saved.'";
-        logger.debug("SANDBOX_STEP6B", save_setup_msg, "");
-        setup_window.state.saved = true;
-        setup_window.state.status = "Setup saved.".to_string();
-        check(
-            &mut result,
-            setup_window.state.saved,
-            "SetupWindow: Save setup marks saved",
-            "SetupWindow: Save did not mark saved",
-        );
-        let saved_verify_msg = format!("saved verified=true ({})", setup_window.state.saved);
-        logger.debug("SANDBOX_STEP6B", &saved_verify_msg, "");
-        check(
-            &mut result,
-            setup_window.state.status == "Setup saved.",
-            "SetupWindow: Save sets status",
-            "SetupWindow: Save did not set status",
-        );
-        let save_status_verify_msg = format!("status='{}'", setup_window.state.status);
-        logger.debug("SANDBOX_STEP6B", &save_status_verify_msg, "");
-
-        // Launch Steam Game Organizer (only after save)
-        let launch_msg = "Button: Launch Steam Game Organizer — setting status='Launch clicked'";
-        logger.debug("SANDBOX_STEP6B", launch_msg, "");
-        setup_window.state.status = "Launch clicked".to_string();
-        check(
-            &mut result,
-            setup_window.state.status == "Launch clicked",
-            "SetupWindow: Launch sets status",
-            "SetupWindow: Launch did not set status",
-        );
-        let launch_verify_msg = format!("status='{}'", setup_window.state.status);
-        logger.debug("SANDBOX_STEP6B", &launch_verify_msg, "");
-
-        // refresh_checks
-        let refresh_msg = "Button: Refresh Checks — calling refresh_checks()";
-        logger.debug("SANDBOX_STEP6B", refresh_msg, "");
-        setup_window.refresh_checks();
-        let checks_count = setup_window.state.checks.len();
-        let checks_detail_msg = format!("refresh_checks produced {} checks: {:?}", checks_count, setup_window.state.checks);
-        logger.debug("SANDBOX_STEP6B", &checks_detail_msg, "");
-        check(
-            &mut result,
-            setup_window.state.checks.len() == 3,
-            "SetupWindow: refresh_checks produces 3 checks",
-            "SetupWindow: refresh_checks wrong count",
-        );
     }
 
     // ============================================================
@@ -2347,7 +2245,7 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
         let palette = crate::ui::theme::Palette::default();
         let watchdog = Arc::new(Watchdog::new(logger.clone(), 300000));
         let mut setup_view =
-            crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog);
+            crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog, (*config).clone());
 
         let missing_library = sandbox_dir.join("library").join("does-not-exist-library");
         let missing_extract = sandbox_dir.join("extracted").join("does-not-exist-extract");
@@ -2514,7 +2412,7 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
         let palette = crate::ui::theme::Palette::default();
         let watchdog = Arc::new(Watchdog::new(logger.clone(), 300000));
         let mut setup_view =
-            crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog);
+            crate::ui::setup_view::SetupView::new(palette, Arc::clone(&logger), watchdog, (*config).clone());
 
         // Use sandbox/config paths — empty library_root and empty 7z path
         setup_view.state.library_root = String::new();
@@ -2921,6 +2819,87 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
             empty_config.extract_folder().is_empty()
         );
         logger.debug("SANDBOX_STEP22", &extract_path_msg, "");
+    }
+
+    // ============================================================
+    // Step 22a: ExtractService logging test
+    // ============================================================
+    logger.info("SANDBOX", "Step 22a: ExtractService logging simulation", "");
+    {
+        let logger_clone = Arc::clone(&logger);
+        let extract_service = crate::services::extract_service::ExtractService::new(
+            Some(Box::new(move |cat, msg| logger_clone.log(cat, msg, ""))),
+        );
+
+        let test_archive = sandbox_dir.join("library").join("Alpha Forge.zip");
+        let test_dest = sandbox_dir.join("extracted").join("Alpha Forge");
+        let _ = std::fs::create_dir_all(&test_dest);
+
+        let extract_msg = format!(
+            "ExtractService.extract: archive={} destination={}",
+            test_archive.display(),
+            test_dest.display()
+        );
+        logger.debug("SANDBOX_STEP22A", &extract_msg, "");
+
+        let extract_result = extract_service.extract(
+            &test_archive,
+            &test_dest,
+            "zip",
+            "",
+        );
+
+        check(
+            &mut result,
+            extract_result.ok,
+            "ExtractService: extract returns ok=true",
+            "ExtractService: extract returned ok=false",
+        );
+        check(
+            &mut result,
+            extract_result.code == 0,
+            "ExtractService: extract code=0",
+            "ExtractService: extract code!=0",
+        );
+
+        let result_msg = format!(
+            "ExtractService result: ok={} code={} message='{}'",
+            extract_result.ok, extract_result.code, extract_result.message
+        );
+        logger.debug("SANDBOX_STEP22A", &result_msg, "");
+    }
+
+    // ============================================================
+    {
+        let logger_for_catalog = Arc::clone(&logger);
+        let catalog_service = crate::services::catalog_service::CatalogService::new(
+            Arc::new(move |cat, msg| logger_for_catalog.log(cat, msg, "")),
+            &[sandbox_dir.join("extracted").as_path()],
+        );
+
+        let catalog_msg = format!(
+            "CatalogService.generate: library_root={}",
+            sandbox_dir.join("library").display()
+        );
+        logger.debug("SANDBOX_STEP22B", &catalog_msg, "");
+
+        let outputs = catalog_service.generate(
+            sandbox_dir.join("library").as_path(),
+            false,
+        );
+
+        check(
+            &mut result,
+            outputs.is_empty(),
+            "CatalogService: generate on empty library returns no outputs",
+            "CatalogService: generate on empty library returned outputs",
+        );
+
+        let catalog_result_msg = format!(
+            "CatalogService result: outputs={}",
+            outputs.len()
+        );
+        logger.debug("SANDBOX_STEP22B", &catalog_result_msg, "");
     }
 
     // ============================================================

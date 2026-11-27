@@ -187,7 +187,8 @@ pub fn primary_button(
     }
 }
 
-/// A styled secondary button with panel2 fill and accent border, with hover feedback.
+/// A styled secondary button with panel3 fill and accent border, with hover feedback.
+/// Uses panel3 (slightly lighter than card background panel2) so buttons are visible inside cards.
 pub fn secondary_button(
     ui: &mut egui::Ui,
     text: &str,
@@ -195,7 +196,7 @@ pub fn secondary_button(
     enabled: bool,
 ) -> egui::Response {
     let button = egui::Button::new(RichText::new(text).color(palette.accent).strong())
-        .fill(palette.panel2)
+        .fill(palette.panel3)
         .corner_radius(CORNER_RADIUS)
         .stroke(Stroke {
             width: 1.5_f32,
@@ -505,4 +506,55 @@ pub fn nav_item(
     }
     ui.add_space(SPACING / 2.0);
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Buttons must be visibly distinct from card backgrounds.
+    /// Card background = panel2; secondary buttons used panel2 fill — invisible inside cards.
+    #[test]
+    fn test_button_colors_distinct_from_card_background() {
+        let palette = Palette::default();
+
+        // Primary button fill must differ from card background
+        assert_ne!(
+            palette.accent, palette.panel2,
+            "primary button fill must differ from card background (panel2)"
+        );
+
+        // Secondary button fill (panel3) must differ from card background (panel2)
+        assert_ne!(
+            palette.panel3, palette.panel2,
+            "secondary button fill must differ from card background (panel2)"
+        );
+
+        // Danger button fill must differ from card background
+        assert_ne!(
+            palette.danger, palette.panel2,
+            "danger button fill must differ from card background (panel2)"
+        );
+
+        // Button text must contrast with button fill
+        assert_ne!(
+            Color32::WHITE, palette.accent,
+            "primary button text must contrast with accent fill"
+        );
+        assert_ne!(
+            Color32::WHITE, palette.danger,
+            "danger button text must contrast with danger fill"
+        );
+    }
+
+    /// Secondary buttons must not use panel2 fill (matches card background, invisible).
+    #[test]
+    fn test_secondary_button_not_invisible_in_card() {
+        let palette = Palette::default();
+        // Regression: secondary_button used panel2 fill == card background panel2 → invisible
+        assert_ne!(
+            palette.panel3, palette.panel2,
+            "secondary button panel3 fill must differ from card panel2 background"
+        );
+    }
 }

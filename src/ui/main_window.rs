@@ -137,7 +137,12 @@ impl MainWindow {
                 watchdog_for_artwork,
             ),
             done_view: DoneView::new(Palette::default(), logger_for_done, watchdog_for_done),
-            setup_view: SetupView::new(Palette::default(), logger_for_setup, watchdog_for_setup),
+            setup_view: SetupView::new(
+                Palette::default(),
+                logger_for_setup,
+                watchdog_for_setup,
+                (*config).clone(),
+            ),
             shared_archives: Vec::new(),
             single_view,
         }

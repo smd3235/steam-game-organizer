@@ -239,4 +239,28 @@ mod tests {
         assert_eq!(view.state.archives.len(), 2);
         assert_eq!(view.state.selected_index, Some(0));
     }
+
+    #[test]
+    fn test_artwork_view_loads_and_renders() {
+        // Regression: artwork view must construct and load archives without panicking
+        // Buttons (Open Folder, View Artwork, Scan Again, Review, Re-download Missing)
+        // are wired in ui() and verified by e2e tests
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("artwork_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ArtworkView::new(palette, logger, watchdog);
+        let archive = GameArchive::default();
+        view.load(vec![archive]);
+
+        assert_eq!(view.state.archives.len(), 1);
+        assert_eq!(view.state.selected_index, Some(0));
+    }
 }

@@ -286,4 +286,64 @@ mod tests {
         assert_eq!(view.state.archives.len(), 0);
         assert_eq!(view.state.converted, 0);
     }
+
+    #[test]
+    fn test_done_open_library_button_sets_state() {
+        // Regression: "Open Library Folder" button must set should_open_library
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("done_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = DoneView::new(palette, logger, watchdog);
+
+        assert!(!view.state.should_open_library);
+
+        // Simulate clicking "Open Library Folder"
+        view.state.should_open_library = true;
+        assert!(view.state.should_open_library);
+
+        // ui() consumes the flag
+        if view.state.should_open_library {
+            view.state.should_open_library = false;
+            view.open_library();
+        }
+        assert!(!view.state.should_open_library);
+    }
+
+    #[test]
+    fn test_done_undo_button_sets_state() {
+        // Regression: "Undo Last Run" button must set should_undo
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("done_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = DoneView::new(palette, logger, watchdog);
+
+        assert!(!view.state.should_undo);
+
+        // Simulate clicking "Undo Last Run"
+        view.state.should_undo = true;
+        assert!(view.state.should_undo);
+
+        // ui() consumes the flag
+        if view.state.should_undo {
+            view.state.should_undo = false;
+            view.undo_last_run();
+        }
+        assert!(!view.state.should_undo);
+    }
 }

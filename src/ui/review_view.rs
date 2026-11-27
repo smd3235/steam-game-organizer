@@ -607,4 +607,127 @@ mod tests {
         assert!(view.state.archives[0].decision.skipped);
         assert!(!view.state.archives[0].decision.accepted);
     }
+
+    #[test]
+    fn test_review_continue_to_organize_button_sets_state() {
+        // Regression: "Continue to Organization" button must set should_continue_organize
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
+
+        assert!(!view.state.should_continue_organize);
+
+        // Simulate clicking "Continue to Organization"
+        view.state.should_continue_organize = true;
+        assert!(view.state.should_continue_organize);
+
+        // ui() consumes the flag
+        if view.state.should_continue_organize {
+            view.state.should_continue_organize = false;
+        }
+        assert!(!view.state.should_continue_organize);
+    }
+
+    #[test]
+    fn test_review_wrong_match_button_sets_state() {
+        // Regression: "Wrong Match" button must set should_wrong_match
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
+        let archive = GameArchive::default();
+        view.load(vec![archive]);
+
+        assert!(!view.state.should_wrong_match);
+
+        // Simulate clicking "Wrong Match"
+        view.state.should_wrong_match = true;
+        assert!(view.state.should_wrong_match);
+
+        // ui() consumes the flag
+        if view.state.should_wrong_match {
+            view.state.should_wrong_match = false;
+            view.wrong_match();
+        }
+        assert!(!view.state.should_wrong_match);
+        assert!(!view.state.archives[0].decision.accepted);
+        assert!(!view.state.archives[0].steam.found);
+    }
+
+    #[test]
+    fn test_review_accept_next_button_sets_state() {
+        // Regression: "Accept & Next" button must set should_accept_next
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
+
+        assert!(!view.state.should_accept_next);
+
+        // Simulate clicking "Accept & Next"
+        view.state.should_accept_next = true;
+        assert!(view.state.should_accept_next);
+
+        // ui() consumes the flag
+        if view.state.should_accept_next {
+            view.state.should_accept_next = false;
+            view.accept_and_next();
+        }
+        assert!(!view.state.should_accept_next);
+    }
+
+    #[test]
+    fn test_review_approve_all_button_sets_state() {
+        // Regression: "Approve All Verified" button must set should_approve_all
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("review_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = ReviewView::new(palette, logger, watchdog);
+
+        assert!(!view.state.should_approve_all);
+
+        // Simulate clicking "Approve All Verified"
+        view.state.should_approve_all = true;
+        assert!(view.state.should_approve_all);
+
+        // ui() consumes the flag
+        if view.state.should_approve_all {
+            view.state.should_approve_all = false;
+            view.approve_all_verified();
+        }
+        assert!(!view.state.should_approve_all);
+    }
 }

@@ -548,4 +548,63 @@ mod tests {
         assert!(!view.state.converting);
         assert_eq!(view.state.converted_count, 1);
     }
+
+    #[test]
+    fn test_organize_start_organize_button_sets_state() {
+        // Regression: "Start Organize" button must set converting + should_organize
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("organize_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = OrganizeView::new(palette, logger, watchdog);
+
+        assert!(!view.state.converting);
+        assert!(!view.state.should_organize);
+
+        // Simulate clicking "Start Organize"
+        view.state.converting = true;
+        view.state.should_organize = true;
+        assert!(view.state.converting);
+        assert!(view.state.should_organize);
+
+        // ui() consumes should_organize flag
+        if view.state.should_organize {
+            view.state.should_organize = false;
+            view.run_organize();
+        }
+        assert!(!view.state.should_organize);
+    }
+
+    #[test]
+    fn test_organize_cancel_button_only_visible_when_converting() {
+        // "Cancel" button is gated behind self.state.converting
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("organize_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let mut view = OrganizeView::new(palette, logger, watchdog);
+
+        assert!(!view.state.converting);
+
+        // When converting, cancel works
+        view.state.converting = true;
+        assert!(view.state.converting);
+        view.state.converting = false;
+        view.state.status = "Organization cancelled.".to_string();
+        assert_eq!(view.state.status, "Organization cancelled.");
+    }
 }

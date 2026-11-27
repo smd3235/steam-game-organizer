@@ -52,17 +52,48 @@ impl CatalogService {
     }
 
     pub fn generate(&self, library_root: &Path, _write_launcher: bool) -> Vec<PathBuf> {
+        (self.logger)(
+            "CATALOG",
+            &format!(
+                "CATALOG_GENERATE_START library_root=[{}]",
+                library_root.display()
+            ),
+        );
+
         let library_root = match library_root.canonicalize() {
             Ok(r) => r,
-            Err(_) => return Vec::new(),
+            Err(_) => {
+                (self.logger)(
+                    "CATALOG",
+                    &format!(
+                        "CATALOG_GENERATE_FAILED library_root=[{}] error=[cannot canonicalize]",
+                        library_root.display()
+                    ),
+                );
+                return Vec::new();
+            }
         };
         if !library_root.is_dir() {
+            (self.logger)(
+                "CATALOG",
+                &format!(
+                    "CATALOG_GENERATE_FAILED library_root=[{}] error=[not a directory]",
+                    library_root.display()
+                ),
+            );
             return Vec::new();
         }
         // STUB: _collect() not yet implemented; return empty.
         let _categories: HashMap<String, Vec<GameArchive>> = HashMap::new();
         self._retain(&library_root, &_categories);
         if _categories.is_empty() {
+            (self.logger)(
+                "CATALOG",
+                &format!(
+                    "CATALOG_GENERATE_EMPTY library_root=[{}] reason=[no categories found]",
+                    library_root.display()
+                ),
+            );
             return Vec::new();
         }
         let path = library_root.join(CATALOG_NAME);
@@ -73,12 +104,24 @@ impl CatalogService {
                     let logger_opt: Option<&dyn Fn(&str, &str)> = Some(&*self.logger);
                     let _ = write_status(&library_root, &status_val, logger_opt);
                 }
+                (self.logger)(
+                    "CATALOG",
+                    &format!(
+                        "CATALOG_GENERATE_SUCCESS library_root=[{}] output=[{}]",
+                        library_root.display(),
+                        path.display()
+                    ),
+                );
                 vec![path]
             }
             Err(exc) => {
                 (self.logger)(
                     "CATALOG",
-                    &format!("WRITE_FAILED path=[{}] error={}", path.display(), exc),
+                    &format!(
+                        "CATALOG_GENERATE_WRITE_FAILED path=[{}] error={}",
+                        path.display(),
+                        exc
+                    ),
                 );
                 Vec::new()
             }

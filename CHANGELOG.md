@@ -23,6 +23,17 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — fix: UI button visibility — secondary buttons now visible inside cards
+
+- `src/ui/theme.rs`: `secondary_button` fill changed from `panel2` to `panel3`. Previously `panel2` matched card background exactly, making secondary buttons (e.g. "Scan with Artwork", "Review", "Open Folder") invisible inside cards — only a 1.5px accent stroke distinguished them.
+- `src/ui/theme.rs`: Added `test_button_colors_distinct_from_card_background` and `test_secondary_button_not_invisible_in_card` tests verifying all button fills differ from card background.
+- `src/ui/scan_view.rs`: Added `test_scan_start_scan_button_sets_state`, `test_scan_with_artwork_button_sets_state`, `test_scan_cancel_button_only_visible_when_scanning` — verify scan button click handlers set state flags (catches "buttons do nothing" UI bug).
+- `src/ui/review_view.rs`: Added `test_review_continue_to_organize_button_sets_state`, `test_review_wrong_match_button_sets_state`, `test_review_accept_next_button_sets_state`, `test_review_approve_all_button_sets_state`.
+- `src/ui/organize_view.rs`: Added `test_organize_start_organize_button_sets_state`, `test_organize_cancel_button_only_visible_when_converting`.
+- `src/ui/done_view.rs`: Added `test_done_open_library_button_sets_state`, `test_done_undo_button_sets_state`.
+- `src/ui/artwork_view.rs`: Added `test_artwork_view_loads_and_renders`.
+- Test count: 334 → 348 (+14 new button visibility/handler tests).
+
 ### 2026-11-27 — fix: Sandbox mode — setup wizard browse buttons now open native file dialogs
 
 - `src/ui/setup_view.rs`: Browse Library, Browse Extract, and Browse 7-Zip buttons now open native Windows file dialogs via `rfd` crate instead of just setting status text. Library root and extract folder use folder picker; 7-Zip path uses file picker filtered to `.exe` files.

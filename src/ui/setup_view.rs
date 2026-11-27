@@ -8,6 +8,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::core::config::AppConfig;
 use crate::core::path_safety::safe_create_dir_all;
 use crate::ui::theme::{
     card, heading, primary_button, secondary_button, section_header, separator, Palette,
@@ -48,6 +49,7 @@ pub struct SetupView {
     pub palette: Palette,
     pub logger: Arc<crate::core::logger::AppLogger>,
     pub watchdog: Arc<crate::core::errors::Watchdog>,
+    pub config: AppConfig,
 }
 
 impl SetupView {
@@ -55,12 +57,14 @@ impl SetupView {
         palette: Palette,
         logger: Arc<crate::core::logger::AppLogger>,
         watchdog: Arc<crate::core::errors::Watchdog>,
+        config: AppConfig,
     ) -> Self {
         SetupView {
             state: SetupViewState::new(),
             palette,
             logger,
             watchdog,
+            config,
         }
     }
 
@@ -392,6 +396,30 @@ impl SetupView {
             &format!("7-Zip path: {}", self.state.seven_zip_path),
             &corr,
         );
+
+        // Persist to AppConfig so scan and downstream views can use the paths
+        let lib_root = PathBuf::from(&self.state.library_root);
+        let extract = PathBuf::from(&self.state.extract_folder);
+        let seven_zip = PathBuf::from(&self.state.seven_zip_path);
+
+        if !self.state.library_root.is_empty() {
+            self.config.library_root = Some(lib_root);
+        }
+        if !self.state.extract_folder.is_empty() {
+            self.config.set_extract_folder(extract);
+        }
+        if !self.state.seven_zip_path.is_empty() {
+            if let Some(obj) = self.config.settings.as_object_mut() {
+                obj.insert(
+                    "seven_zip_path".to_string(),
+                    serde_json::Value::String(
+                        seven_zip.to_string_lossy().to_string(),
+                    ),
+                );
+            }
+        }
+        self.config.developer_mode = self.state.developer_mode;
+        self.config.save();
     }
 }
 
@@ -412,7 +440,7 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let _view = SetupView::new(palette, logger, watchdog);
+        let _view = SetupView::new(palette, logger, watchdog, AppConfig::default());
     }
 
     #[test]
@@ -428,7 +456,7 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog);
+        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
         view.validate_config();
         assert!(!view.state.validation_messages.is_empty());
         assert!(view
@@ -451,7 +479,7 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog);
+        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
         view.state.library_root = ".".to_string();
         view.state.extract_folder = std::env::temp_dir().to_string_lossy().to_string();
         view.validate_config();
@@ -478,7 +506,7 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let view = SetupView::new(palette, logger, watchdog);
+        let view = SetupView::new(palette, logger, watchdog, AppConfig::default());
 
         // Verify initial state is clean — all buttons start inactive
         assert!(!view.state.should_validate);
@@ -506,7 +534,7 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog);
+        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
 
         // Initially no actions pending
         assert!(!view.state.should_validate);
@@ -547,7 +575,7 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog);
+        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
 
         // Simulate clicking Browse Library
         view.state.status = "Browse for library root…".to_string();

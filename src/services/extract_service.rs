@@ -186,14 +186,23 @@ impl ExtractService {
         let tool = match tool {
             Some(t) => t,
             None => {
+                let msg = format!(
+                    "No extraction tool available: {}",
+                    reason.unwrap_or_default()
+                );
+                (self.logger.as_ref().unwrap())(
+                    "EXTRACT",
+                    &format!(
+                        "EXTRACT_FAILED archive=[{}] reason=[{}]",
+                        archive.display(),
+                        msg
+                    ),
+                );
                 return ExtractResult {
                     archive: archive.to_path_buf(),
                     destination: destination.to_path_buf(),
                     ok: false,
-                    message: format!(
-                        "No extraction tool available: {}",
-                        reason.unwrap_or_default()
-                    ),
+                    message: msg,
                     extracted_bytes: 0,
                     file_count: 0,
                     code: -1,
@@ -209,6 +218,14 @@ impl ExtractService {
             Ok(s) if s.success() => {
                 // Check for installer signature after extraction
                 let is_installer = find_installer(destination, None).is_some();
+                (self.logger.as_ref().unwrap())(
+                    "EXTRACT",
+                    &format!(
+                        "EXTRACT_SUCCESS archive=[{}] destination=[{}] code=0",
+                        archive.display(),
+                        destination.display()
+                    ),
+                );
                 ExtractResult {
                     archive: archive.to_path_buf(),
                     destination: destination.to_path_buf(),
@@ -220,26 +237,49 @@ impl ExtractService {
                     needs_install: is_installer,
                 }
             }
-            Ok(s) => ExtractResult {
-                archive: archive.to_path_buf(),
-                destination: destination.to_path_buf(),
-                ok: false,
-                message: format!("Extraction failed with exit code {:?}", s.code()),
-                extracted_bytes: 0,
-                file_count: 0,
-                code: s.code().unwrap_or(-1),
-                needs_install: false,
-            },
-            Err(e) => ExtractResult {
-                archive: archive.to_path_buf(),
-                destination: destination.to_path_buf(),
-                ok: false,
-                message: format!("Extraction error: {}", e),
-                extracted_bytes: 0,
-                file_count: 0,
-                code: -1,
-                needs_install: false,
-            },
+            Ok(s) => {
+                let code = s.code().unwrap_or(-1);
+                (self.logger.as_ref().unwrap())(
+                    "EXTRACT",
+                    &format!(
+                        "EXTRACT_FAILED archive=[{}] destination=[{}] code={}",
+                        archive.display(),
+                        destination.display(),
+                        code
+                    ),
+                );
+                ExtractResult {
+                    archive: archive.to_path_buf(),
+                    destination: destination.to_path_buf(),
+                    ok: false,
+                    message: format!("Extraction failed with exit code {:?}", s.code()),
+                    extracted_bytes: 0,
+                    file_count: 0,
+                    code,
+                    needs_install: false,
+                }
+            }
+            Err(e) => {
+                (self.logger.as_ref().unwrap())(
+                    "EXTRACT",
+                    &format!(
+                        "EXTRACT_ERROR archive=[{}] destination=[{}] error={}",
+                        archive.display(),
+                        destination.display(),
+                        e
+                    ),
+                );
+                ExtractResult {
+                    archive: archive.to_path_buf(),
+                    destination: destination.to_path_buf(),
+                    ok: false,
+                    message: format!("Extraction error: {}", e),
+                    extracted_bytes: 0,
+                    file_count: 0,
+                    code: -1,
+                    needs_install: false,
+                }
+            }
         }
     }
 

@@ -16,7 +16,6 @@ pub mod phase_timeline;
 pub mod review_view;
 pub mod scan_view;
 pub mod setup_view;
-pub mod setup_window;
 pub mod theme;
 pub mod widgets;
 
