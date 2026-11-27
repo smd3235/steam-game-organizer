@@ -6,20 +6,20 @@ license = "MIT"
 
 [dependencies]
 # JSON serialization for settings, rollback journal, scan state
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
 
 # Date parsing for Steam release dates (release_label)
-chrono = "0.4"
+chrono = "0.4.45"
 
 # Lazy static for compiled regexes reused across calls
-lazy_static = "1"
+lazy_static = "1.5.1"
 
 # Filename normalization tags (normalize_name)
 regex = "1"
 
 # Junction-safe recursive directory walk
-walkdir = "2"
+walkdir = "2.5.1"
 
 # ZIP archive reading for encryption checks
 zip = "0.6"
@@ -41,7 +41,7 @@ clap = { version = "4.6.10", features = ["derive"] }
 rfd = "0.13"
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = "3.27.0"
 [workspace]
 
 [[bin]]
