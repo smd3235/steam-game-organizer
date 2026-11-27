@@ -29,7 +29,7 @@ winreg = "0.56.0"
 
 # egui GUI framework for the UI layer
 egui = "0.37.0"
-eframe = { version = "0.37.0", default-features = false, features = ["glow"] }
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts", "accesskit", "clipboard", "links", "system_fonts"] }
 
 # CLI argument parsing for headless binary
 clap = { version = "4.6.10", features = ["derive"] }
