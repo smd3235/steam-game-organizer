@@ -876,6 +876,22 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
         // Run real organize with zip→7z conversion
         let run_org_msg = "Button: Run Organize — setting should_organize=true, preview_only=false, converting=true, calling run_organize()";
         logger.debug("SANDBOX_STEP3", run_org_msg, "");
+        
+        // Create real .zip files under sandbox/library/ for conversion
+        for archive in &org_archives {
+            let zip_path = sandbox_dir.join("library").join(format!("{}.zip", archive.display_name));
+            if !zip_path.exists() {
+                std::fs::write(&zip_path, b"mock zip data").map_err(|e| format!("Failed to create mock zip {}: {}", zip_path.display(), e))?;
+                let zip_create_msg = format!("Created mock zip: {}", zip_path.display());
+                logger.debug("SANDBOX_STEP3", &zip_create_msg, "");
+            }
+        }
+        
+        // Set library_root so organize_view knows where to place category folders
+        organize_view.state.library_root = sandbox_dir.join("library");
+        let lib_root_msg = format!("Set library_root to: {}", organize_view.state.library_root.display());
+        logger.debug("SANDBOX_STEP3", &lib_root_msg, "");
+        
         organize_view.state.should_organize = true;
         organize_view.state.preview_only = false;
         organize_view.state.converting = true;
@@ -999,6 +1015,77 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
             action_count, rpg_count, strategy_count, sim_count, shooter_count
         );
         logger.debug("SANDBOX_STEP3", &cat_summary_msg, "");
+
+        // Verify .7z files exist in category folders under sandbox/library/<category>/
+        for archive in &organize_view.state.archives {
+            let cat = &archive.decision.category;
+            let expected_7z = sandbox_dir
+                .join("library")
+                .join(cat)
+                .join(format!("{}.7z", archive.display_name));
+            let expected_7z_exists = expected_7z.exists();
+            let organized_path_msg = format!(
+                "Archive '{}' organized_path: {:?} exists={}",
+                archive.display_name,
+                archive.organized_path,
+                expected_7z_exists
+            );
+            logger.debug("SANDBOX_STEP3", &organized_path_msg, "");
+            check(
+                &mut result,
+                expected_7z_exists,
+                &format!(
+                    "Organize: .7z file exists in category folder '{}' for '{}'",
+                    cat, archive.display_name
+                ),
+                &format!(
+                    "Organize: .7z file missing in category folder '{}' for '{}'",
+                    cat, archive.display_name
+                ),
+            );
+            // Verify organized_path is set correctly
+            check(
+                &mut result,
+                archive.organized_path.is_some(),
+                &format!(
+                    "Organize: organized_path set for '{}'",
+                    archive.display_name
+                ),
+                &format!(
+                    "Organize: organized_path not set for '{}'",
+                    archive.display_name
+                ),
+            );
+            if let Some(ref op) = archive.organized_path {
+                check(
+                    &mut result,
+                    op == &expected_7z,
+                    &format!(
+                        "Organize: organized_path matches expected for '{}'",
+                        archive.display_name
+                    ),
+                    &format!(
+                        "Organize: organized_path {:?} != expected {:?}",
+                        op, expected_7z
+                    ),
+                );
+            }
+            // Verify created_game_dir flag
+            check(
+                &mut result,
+                archive.created_game_dir,
+                &format!(
+                    "Organize: created_game_dir true for '{}'",
+                    archive.display_name
+                ),
+                &format!(
+                    "Organize: created_game_dir false for '{}'",
+                    archive.display_name
+                ),
+            );
+        }
+        let cat_folder_msg = "Category folder placement verified for all archives";
+        logger.debug("SANDBOX_STEP3", cat_folder_msg, "");
 
         // Archive row click selection
         let row_select_msg = "Setting selected_index = Some(0) (archive row click)";

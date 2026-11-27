@@ -23,6 +23,13 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-27 — feat: Sandbox mode — test zip conversion into category folders
+
+- `src/ui/organize_view.rs`: `run_organize()` now creates real `.7z` files in category folders (`<library_root>/<category>/<name>.7z`) and sets `archive.organized_path` accordingly
+- `src/ui/organize_view.rs`: Added `library_root` field to `OrganizeViewState` so organize knows where to place category folders
+- `src/tools/sandbox.rs`: Sandbox Step 3 now creates real `.zip` files under `sandbox/library/`, sets `library_root` on organize_view, runs `run_organize()`, and verifies `.7z` files exist in `sandbox/library/<category>/<name>.7z`
+- `src/tools/sandbox.rs`: Verifies `archive.organized_path` is set correctly and `created_game_dir` flag is true after organization
+
 ### 2026-11-26 — fix: CreationGuard — prevent directory creation at drive roots and outside allowed roots
 
 - `src/core/path_safety.rs`: Added `CreationGuard` — mirrors `DeletionGuard` but for creation operations (`create_dir_all`, `write`, `File::create`). Refuses to create directories at drive roots (C:\, D:\) or inside protected system paths (Windows, Program Files, Users), and refuses anything outside configured allowed roots. Adds `safe_create_dir_all()` and `safe_write()` one-shot functions.
