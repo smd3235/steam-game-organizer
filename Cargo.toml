@@ -28,7 +28,7 @@ zip = "0.6"
 reqwest = { version = "0.11", features = ["blocking"] }
 
 # Windows registry access for .html handler check (organizer_service)
-winreg = "0.52"
+winreg = "0.56.0"
 
 # egui GUI framework for the UI layer
 egui = "0.32"
