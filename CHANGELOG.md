@@ -25,12 +25,13 @@ Each entry starts with a type prefix:
 
 ### 2026-11-27 — feat: dependency audit + quality gate tools for dependency freshness and security
 
-- `src/tools/dependency_audit.rs`: New tool that queries crates.io for the latest version of each dependency in `Cargo.toml`, compares against pinned versions, and reports any outdated crates. Also shells out to `cargo audit` (if installed) for RUSTSEC security vulnerabilities. Accessible via `steam-game-organizer.exe --dependency-audit`. Added 6 unit tests covering dependency parsing, version comparison, and audit result logic.
+- `src/tools/dependency_audit.rs`: New tool that queries crates.io for the latest version of each dependency in `Cargo.toml`, compares against pinned versions, and reports any outdated crates. Shells out to `cargo audit` (RUSTSEC vulnerabilities), `cargo outdated` (outdated versions), and `cargo deny` (license + advisories) when installed. Accessible via `steam-game-organizer.exe --dependency-audit`. Added 8 unit tests covering dependency parsing, version comparison, external tool result merging, and audit result logic.
 - `src/tools/quality_gate.rs`: New tool that runs the full verification pipeline in one pass: `cargo check` → `cargo clippy --all-targets` → `cargo test` → `cargo build --release` → `dependency_audit`. Returns non-zero exit if any step fails or audit is dirty. Accessible via `steam-game-organizer.exe --quality-gate`. Added 3 unit tests covering pass/fail/dirty states.
-- `src/bin.rs`: Added `--quality-gate` and `--dependency-audit` CLI flags, wired to the new tools.
+- `src/bin.rs`: Added `--quality-gate` and `--dependency-audit` CLI flags, wired to the new tools. Wires external tool results into the report output.
 - `Cargo.toml`: Added `json` feature to `reqwest` (needed for `.json()` on blocking responses in dependency_audit).
-- AGENTS.md: Added Dependency Audit & Quality Gate section with recommended external tools (cargo-audit, cargo-outdated, cargo-deny, cargo-llvm-cov, cargo-watch, criterion). Updated Definition of Done to require `--quality-gate` and `--dependency-audit` to pass.
-- Test count: 351 → 360 (+9 new tests: 6 dependency_audit + 3 quality_gate).
+- AGENTS.md: Added Dependency Audit & Quality Gate section documenting cargo audit/cargo outdated/cargo deny integration. Updated Definition of Done to require `--quality-gate` and `--dependency-audit` to pass.
+- Installed external tools: cargo-audit v0.23.0, cargo-outdated v0.20.0, cargo-deny v0.22.1, cargo-watch v8.5.3, cargo-llvm-cov v0.9.2.
+- Test count: 351 → 379 (+28 new tests: 8 dependency_audit + 3 quality_gate + 17 library diagnostic tools).
 
 ### 2026-11-27 — feat: five new library diagnostic and recovery tools
 

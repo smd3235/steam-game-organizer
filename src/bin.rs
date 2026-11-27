@@ -136,8 +136,9 @@ fn main() {
     // Dependency audit: check for outdated crates and security vulnerabilities
     if args.dependency_audit {
         match dependency_audit(Path::new(".")) {
-            Ok(audit) => {
+            Ok((audit, external)) => {
                 audit.report();
+                external.report();
                 if audit.is_clean() {
                     println!("\nDependency audit: ALL CLEAN");
                     process::exit(0);

@@ -21,6 +21,7 @@ struct GateStep {
 pub struct QualityGateResult {
     steps: Vec<GateStep>,
     dependency_audit: Option<crate::tools::dependency_audit::DependencyAudit>,
+    external_tools: Option<crate::tools::dependency_audit::ExternalToolResults>,
 }
 
 /// Run a cargo subcommand and capture output.
@@ -73,8 +74,8 @@ pub fn quality_gate(_root: &Path) -> Result<QualityGateResult, String> {
     steps.push(build);
 
     // Step 5: dependency audit
-    let audit = match crate::tools::dependency_audit::dependency_audit(Path::new(".")) {
-        Ok(audit) => Some(audit),
+    let (audit, external_tools) = match crate::tools::dependency_audit::dependency_audit(Path::new(".")) {
+        Ok((audit, external)) => (Some(audit), Some(external)),
         Err(e) => {
             return Err(format!("Dependency audit failed: {}", e));
         }
@@ -83,6 +84,7 @@ pub fn quality_gate(_root: &Path) -> Result<QualityGateResult, String> {
     Ok(QualityGateResult {
         steps,
         dependency_audit: audit,
+        external_tools,
     })
 }
 
@@ -106,6 +108,11 @@ impl QualityGateResult {
         match &self.dependency_audit {
             Some(audit) => audit.report(),
             None => println!("Dependency audit: not run"),
+        }
+
+        match &self.external_tools {
+            Some(tools) => tools.report(),
+            None => println!("External tools: not run"),
         }
     }
 
@@ -154,6 +161,11 @@ mod tests {
                 vulnerabilities: Vec::new(),
                 audited_count: 10,
             }),
+            external_tools: Some(crate::tools::dependency_audit::ExternalToolResults {
+                cargo_audit_ran: false,
+                cargo_outdated_ran: false,
+                cargo_deny_ran: false,
+            }),
         };
         assert!(result.is_clean());
     }
@@ -170,6 +182,11 @@ mod tests {
                 outdated: Vec::new(),
                 vulnerabilities: Vec::new(),
                 audited_count: 1,
+            }),
+            external_tools: Some(crate::tools::dependency_audit::ExternalToolResults {
+                cargo_audit_ran: false,
+                cargo_outdated_ran: false,
+                cargo_deny_ran: false,
             }),
         };
         assert!(!result.is_clean());
@@ -191,6 +208,11 @@ mod tests {
                 }],
                 vulnerabilities: Vec::new(),
                 audited_count: 1,
+            }),
+            external_tools: Some(crate::tools::dependency_audit::ExternalToolResults {
+                cargo_audit_ran: false,
+                cargo_outdated_ran: false,
+                cargo_deny_ran: false,
             }),
         };
         assert!(!result.is_clean());

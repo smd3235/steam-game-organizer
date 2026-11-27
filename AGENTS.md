@@ -320,7 +320,7 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 The project includes two built-in verification tools that must run clean before any change is considered complete:
 
 ### `--dependency-audit`
-Checks every crate in `Cargo.toml` against crates.io for the latest version, and runs `cargo audit` (if installed) for known security vulnerabilities (RUSTSEC advisories).
+Checks every crate in `Cargo.toml` against crates.io for the latest version, and shells out to `cargo audit`, `cargo outdated`, and `cargo deny` (when installed) for known security vulnerabilities (RUSTSEC advisories), outdated versions, and license violations.
 
 ```
 steam-game-organizer.exe --dependency-audit

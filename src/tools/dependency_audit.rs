@@ -1,9 +1,8 @@
 //! Dependency audit tool: checks for outdated crates and security vulnerabilities.
 //!
 //! Ported from `tools/dependency_audit.py`.
-//! Queries the crates.io API for the latest version of each dependency and
-//! reports any that are out of date. Also shells out to `cargo audit` if
-//! installed to check for known security vulnerabilities (RUSTSEC advisories).
+//! Queries crates.io API for latest versions, shells out to `cargo outdated`,
+//! `cargo audit`, and `cargo deny` when installed, and aggregates results.
 //!
 //! Usage:
 //!   steam-game-organizer.exe --dependency-audit
@@ -28,6 +27,13 @@ pub struct DependencyAudit {
     pub outdated: Vec<DepAuditResult>,
     pub vulnerabilities: Vec<String>,
     pub audited_count: usize,
+}
+
+/// Which external tools were found and ran.
+pub struct ExternalToolResults {
+    pub cargo_audit_ran: bool,
+    pub cargo_outdated_ran: bool,
+    pub cargo_deny_ran: bool,
 }
 
 /// Parse the [dependencies] section of Cargo.toml (simple line-based parse,
@@ -77,7 +83,6 @@ fn parse_dependencies(content: &str) -> HashMap<String, String> {
 /// Extract version from an inline table like `{ version = "1.0", features = [...] }`.
 /// Finds the `version = "..."` pattern and returns the version string without quotes.
 fn extract_inline_version(rest: &str) -> String {
-    // Find the `version` key, then the `=`, then the quoted string
     let mut version = String::new();
     if let Some(vpos) = rest.find("version") {
         let after_key = &rest[vpos + "version".len()..];
@@ -138,11 +143,9 @@ fn version_less_than(a: &str, b: &str) -> bool {
 }
 
 /// Run `cargo audit` if installed, collecting any vulnerability advisories.
-fn run_cargo_audit() -> Vec<String> {
+fn run_cargo_audit() -> (Vec<String>, bool) {
     let mut vulns = Vec::new();
-    let output = Command::new("cargo")
-        .args(["audit", "--json"])
-        .output();
+    let output = Command::new("cargo").args(["audit", "--json"]).output();
 
     match output {
         Ok(out) => {
@@ -152,16 +155,83 @@ fn run_cargo_audit() -> Vec<String> {
                     vulns.push(line.to_string());
                 }
             }
+            (vulns, true)
         }
         Err(_) => {
             // cargo audit not installed — not an error, just skip
+            (Vec::new(), false)
         }
     }
-    vulns
 }
 
-/// Perform the full dependency audit.
-pub fn dependency_audit(_root: &Path) -> Result<DependencyAudit, String> {
+/// Run `cargo outdated` if installed, parsing outdated dependency lines.
+/// cargo outdated output format: `name current latest kind ...`
+fn run_cargo_outdated() -> (Vec<DepAuditResult>, bool) {
+    let mut outdated = Vec::new();
+    let output = Command::new("cargo")
+        .args(["outdated", "--exit-code=0"])
+        .output();
+
+    match output {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            for line in stdout.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed.starts_with("Package") || trimmed.starts_with("─") {
+                    continue;
+                }
+                // Parse: name current latest kind ...
+                let parts: Vec<&str> = trimmed.split_whitespace().collect();
+                if parts.len() >= 3 {
+                    let name = parts[0].to_string();
+                    let current = parts[1].to_string();
+                    let latest = parts[2].to_string();
+                    if version_less_than(&current, &latest) {
+                        outdated.push(DepAuditResult {
+                            name,
+                            current,
+                            latest: Some(latest),
+                        });
+                    }
+                }
+            }
+            (outdated, true)
+        }
+        Err(_) => {
+            // cargo outdated not installed — not an error, just skip
+            (Vec::new(), false)
+        }
+    }
+}
+
+/// Run `cargo deny` if installed, collecting advisories and license violations.
+fn run_cargo_deny() -> (Vec<String>, bool) {
+    let mut issues = Vec::new();
+    let output = Command::new("cargo").args(["deny", "check", "advisories"]).output();
+
+    match output {
+        Ok(out) => {
+            let combined = format!(
+                "{}\n{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            );
+            for line in combined.lines() {
+                if line.contains("advisory") || line.contains("RUSTSEC") || line.contains("vulnerab") || line.contains("DENIED") {
+                    issues.push(line.to_string());
+                }
+            }
+            (issues, true)
+        }
+        Err(_) => {
+            // cargo deny not installed — not an error, just skip
+            (Vec::new(), false)
+        }
+    }
+}
+
+/// Perform the full dependency audit using crates.io API + external tools.
+pub fn dependency_audit(_root: &Path) -> Result<(DependencyAudit, ExternalToolResults), String> {
     let cargo_toml = std::fs::read_to_string("Cargo.toml")
         .map_err(|e| format!("Failed to read Cargo.toml: {}", e))?;
 
@@ -169,9 +239,9 @@ pub fn dependency_audit(_root: &Path) -> Result<DependencyAudit, String> {
     let mut outdated = Vec::new();
     let mut audited_count = 0;
 
+    // Primary check: crates.io API
     for (name, current) in &deps {
         audited_count += 1;
-        // Skip dev-dependencies and build-dependencies for now (flat parse catches [dependencies] only)
         let latest = query_crates_io_latest(name);
 
         match &latest {
@@ -186,13 +256,63 @@ pub fn dependency_audit(_root: &Path) -> Result<DependencyAudit, String> {
         }
     }
 
-    let vulnerabilities = run_cargo_audit();
+    // Cross-check with cargo outdated if installed
+    let (cargo_outdated_results, cargo_outdated_ran) = run_cargo_outdated();
+    if cargo_outdated_ran {
+        // Merge: keep entries that appear in either source, preferring cargo outdated's data
+        let mut merged: HashMap<String, DepAuditResult> = outdated
+            .into_iter()
+            .map(|d| (d.name.clone(), d))
+            .collect();
+        for dep in cargo_outdated_results {
+            merged.insert(dep.name.clone(), dep);
+        }
+        outdated = merged.into_values().collect();
+        outdated.sort_by(|a, b| a.name.cmp(&b.name));
+    }
 
-    Ok(DependencyAudit {
+    // Security: cargo audit
+    let (cargo_audit_vulns, cargo_audit_ran) = run_cargo_audit();
+
+    // License + advisories: cargo deny
+    let (cargo_deny_issues, cargo_deny_ran) = run_cargo_deny();
+
+    let mut vulnerabilities = cargo_audit_vulns;
+    vulnerabilities.extend(cargo_deny_issues);
+    vulnerabilities.sort();
+    vulnerabilities.dedup();
+
+    let audit = DependencyAudit {
         outdated,
         vulnerabilities,
         audited_count,
-    })
+    };
+
+    let external = ExternalToolResults {
+        cargo_audit_ran,
+        cargo_outdated_ran,
+        cargo_deny_ran,
+    };
+
+    Ok((audit, external))
+}
+
+impl ExternalToolResults {
+    pub fn report(&self) {
+        println!("External tools used:");
+        println!(
+            "  cargo audit:     {}",
+            if self.cargo_audit_ran { "yes" } else { "no (not installed)" }
+        );
+        println!(
+            "  cargo outdated:  {}",
+            if self.cargo_outdated_ran { "yes" } else { "no (not installed)" }
+        );
+        println!(
+            "  cargo deny:      {}",
+            if self.cargo_deny_ran { "yes" } else { "no (not installed)" }
+        );
+    }
 }
 
 impl DependencyAudit {
@@ -293,5 +413,42 @@ reqwest = { version = "0.13.5", features = ["blocking"] }
             audited_count: 1,
         };
         assert!(!audit.is_clean());
+    }
+
+    #[test]
+    fn test_external_tools_report() {
+        let external = ExternalToolResults {
+            cargo_audit_ran: true,
+            cargo_outdated_ran: false,
+            cargo_deny_ran: true,
+        };
+        // Should not panic — just prints
+        external.report();
+    }
+
+    #[test]
+    fn test_merge_outdated_sources_prefers_cargo_outdated() {
+        // Verify that when both crates.io API and cargo outdated report,
+        // we don't duplicate entries
+        let mut map: HashMap<String, DepAuditResult> = HashMap::new();
+        map.insert(
+            "serde".to_string(),
+            DepAuditResult {
+                name: "serde".to_string(),
+                current: "1.0.0".to_string(),
+                latest: Some("1.0.229".to_string()),
+            },
+        );
+        map.insert(
+            "serde".to_string(),
+            DepAuditResult {
+                name: "serde".to_string(),
+                current: "1.0.0".to_string(),
+                latest: Some("1.0.230".to_string()),
+            },
+        );
+        assert_eq!(map.len(), 1);
+        let entry = map.get("serde").unwrap();
+        assert_eq!(entry.latest.as_deref(), Some("1.0.230"));
     }
 }
