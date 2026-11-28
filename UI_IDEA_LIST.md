@@ -75,6 +75,17 @@ Every UI improvement idea lives here. Each idea has:
 | 111 | Figma design token import | Tooling | Hard | Idea | Export design tokens from Figma and diff against Rust theme constants |
 | 112 | Chromatic visual regression | Testing | Hard | Idea | Visual regression testing for egui widgets |
 | 113 | Playwright E2E test suite | Testing | Hard | Idea | End-to-end UI testing with real user flows |
+| 114 | UI theme persistence | UX | Easy | Idea | Save user's theme choice to config so it persists across launches |
+| 115 | Keyboard navigation audit | Accessibility | Easy | Idea | Verify all elements are keyboard-navigable with visible focus indicators |
+| 116 | Reduced motion option | Accessibility | Easy | Idea | Option to disable animations for users sensitive to motion |
+| 117 | Screenshot gallery viewer | Tooling | Medium | Idea | Web page to browse all captured screenshots |
+| 118 | Screenshot metadata search | Tooling | Medium | Idea | Search screenshots by view name, date, text content |
+| 119 | UI element position tracker | Testing | Medium | Idea | Track button positions across versions to detect drift |
+| 120 | Screenshot annotation tool | Tooling | Medium | Idea | Draw on screenshots to mark issues |
+| 121 | Batch screenshot capture | Testing | Medium | Idea | Capture all views in sequence automatically |
+| 122 | Screenshot comparison report | Testing | Medium | Idea | HTML report of all view changes |
+| 123 | Touch target size audit | Accessibility | Medium | Idea | Verify all buttons are 44px+ for touch devices |
+| 124 | Zoom level testing | Testing | Medium | Idea | Test UI at 125%, 150%, 200% system scaling |
 
 ---
 
@@ -82,13 +93,13 @@ Every UI improvement idea lives here. Each idea has:
 
 | Category | Implemented | In Progress | Idea Backlog | Total |
 |----------|-------------|-------------|--------------|-------|
-| Accessibility | 4 | 0 | 3 | 7 |
+| Accessibility | 4 | 0 | 6 | 10 |
 | Layout | 2 | 0 | 3 | 5 |
 | Performance | 0 | 0 | 0 | 0 |
-| Testing | 7 | 0 | 5 | 12 |
-| Tooling | 3 | 0 | 4 | 7 |
-| UX | 5 | 0 | 3 | 8 |
-| **Total** | **21** | **0** | **18** | **39** |
+| Testing | 7 | 0 | 9 | 16 |
+| Tooling | 3 | 0 | 7 | 10 |
+| UX | 5 | 0 | 4 | 9 |
+| **Total** | **21** | **0** | **31** | **60** |
 
 ---
 
@@ -96,10 +107,10 @@ Every UI improvement idea lives here. Each idea has:
 
 | Difficulty | Implemented | In Progress | Idea Backlog | Total |
 |------------|-------------|-------------|--------------|-------|
-| Easy | 6 | 0 | 3 | 9 |
-| Medium | 9 | 0 | 8 | 17 |
-| Hard | 6 | 0 | 7 | 13 |
-| **Total** | **21** | **0** | **18** | **39** |
+| Easy | 6 | 0 | 11 | 17 |
+| Medium | 9 | 0 | 12 | 21 |
+| Hard | 6 | 0 | 8 | 20 |
+| **Total** | **21** | **0** | **31** | **60** |
 
 ---
 
@@ -118,3 +129,4 @@ Every UI improvement idea lives here. Each idea has:
 - Ideas #6, #13, #14, #15 were originally placed on HOLD but have been moved to IDEA BACKLOG for consistency.
 - All implemented ideas have corresponding code changes committed to the `Rust-Conversion` branch.
 - The most recent batch (ideas #1-22) was implemented in a single session on 2026-11-28.
+- Ideas #114-124 were added from conversation review on 2026-11-28.
