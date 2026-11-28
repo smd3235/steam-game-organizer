@@ -21,9 +21,8 @@ use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::ScanView;
 use crate::ui::setup_view::SetupView;
 use crate::ui::theme::{
-    apply_accessibility, card, constrained_content, ghost_button, nav_item, secondary_button,
-    separator, AccessibilityConfig, AccessibilityMode, Palette, ThemeMode, SPACING, SPACING_XL,
-    CORNER_RADIUS,
+    apply_accessibility, card, ghost_button, nav_item, secondary_button, separator, AccessibilityConfig, AccessibilityMode, Palette,
+    ThemeMode, SPACING, SPACING_XL, CORNER_RADIUS,
 };
 use egui::{RichText, Theme};
 use serde::Serialize;
@@ -573,19 +572,17 @@ impl eframe::App for MainWindow {
                     ..Default::default()
                 })
                 .show(ui, |ui| {
-                    constrained_content(ui, 1400.0, |ui| {
-                        ui.add_space(SPACING);
-                        match view.as_str() {
-                            "scan" => self.render_scan(ui),
-                            "review" => self.render_review(ui),
-                            "organize" => self.render_organize(ui),
-                            "artwork" => self.render_artwork(ui),
-                            "done" => self.render_done(ui),
-                            "setup" => self.render_setup(ui),
-                            _ => self.render_scan(ui),
-                        }
-                        ui.add_space(SPACING_XL);
-                    });
+                    ui.add_space(SPACING);
+                    match view.as_str() {
+                        "scan" => self.render_scan(ui),
+                        "review" => self.render_review(ui),
+                        "organize" => self.render_organize(ui),
+                        "artwork" => self.render_artwork(ui),
+                        "done" => self.render_done(ui),
+                        "setup" => self.render_setup(ui),
+                        _ => self.render_scan(ui),
+                    }
+                    ui.add_space(SPACING_XL);
                 });
             return;
         }
@@ -611,8 +608,7 @@ impl eframe::App for MainWindow {
                 self.render_nav_sidebar(ui);
             });
 
-        // Main content: view stack — wrapped in centered max-width container
-        // so content doesn't stretch awkwardly on maximized / ultra-wide screens.
+        // Main body: sidebar + content — full width, no constraining
         let palette = self.palette.clone();
         egui::CentralPanel::default()
             .frame(egui::Frame {
@@ -620,19 +616,17 @@ impl eframe::App for MainWindow {
                 ..Default::default()
             })
             .show(ui, |ui| {
-                constrained_content(ui, 1400.0, |ui| {
-                    ui.add_space(SPACING);
-                    match self.current.as_str() {
-                        "scan" => self.render_scan(ui),
-                        "review" => self.render_review(ui),
-                        "organize" => self.render_organize(ui),
-                        "artwork" => self.render_artwork(ui),
-                        "done" => self.render_done(ui),
-                        "setup" => self.render_setup(ui),
-                        _ => self.render_scan(ui),
-                    }
-                    ui.add_space(SPACING_XL);
-                });
+                ui.add_space(SPACING);
+                match self.current.as_str() {
+                    "scan" => self.render_scan(ui),
+                    "review" => self.render_review(ui),
+                    "organize" => self.render_organize(ui),
+                    "artwork" => self.render_artwork(ui),
+                    "done" => self.render_done(ui),
+                    "setup" => self.render_setup(ui),
+                    _ => self.render_scan(ui),
+                }
+                ui.add_space(SPACING_XL);
             });
     }
 
