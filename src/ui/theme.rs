@@ -75,6 +75,14 @@ pub struct Palette {
     pub shadow: Color32,
 }
 
+/// Theme mode — user can switch between dark and light.
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum ThemeMode {
+    #[default]
+    Dark,
+    Light,
+}
+
 impl Default for Palette {
     fn default() -> Self {
         Palette {
@@ -84,8 +92,8 @@ impl Default for Palette {
             panel3: Color32::from_rgb(0x1f, 0x1f, 0x26),
             panel4: Color32::from_rgb(0x27, 0x27, 0x2f),
             text: Color32::from_rgb(0xf1, 0xf1, 0xf5),
-            text_secondary: Color32::from_rgb(0xa1, 0xa1, 0xaa),
-            muted: Color32::from_rgb(0xa1, 0xa1, 0xaa),
+            text_secondary: Color32::from_rgb(0xc0, 0xc0, 0xc8),
+            muted: Color32::from_rgb(0xc0, 0xc0, 0xc8),
             text_tertiary: Color32::from_rgb(0x71, 0x71, 0x79),
             border: Color32::from_rgb(0x2a, 0x2a, 0x33),
             border_focus: Color32::from_rgb(0x58, 0xa6, 0xff),
@@ -114,8 +122,194 @@ impl Default for Palette {
     }
 }
 
+/// Light mode palette — high contrast, clean, accessible.
+impl Palette {
+    pub fn light_mode() -> Self {
+        Palette {
+            bg: Color32::from_rgb(0xf8, 0xf9, 0xfb),
+            panel: Color32::from_rgb(0xff, 0xff, 0xff),
+            panel2: Color32::from_rgb(0xf1, 0xf3, 0xf5),
+            panel3: Color32::from_rgb(0xe9, 0xec, 0xef),
+            panel4: Color32::from_rgb(0xde, 0xe2, 0xe6),
+            text: Color32::from_rgb(0x11, 0x11, 0x13),
+            text_secondary: Color32::from_rgb(0x4a, 0x4a, 0x52),
+            muted: Color32::from_rgb(0x4a, 0x4a, 0x52),
+            text_tertiary: Color32::from_rgb(0x8a, 0x8a, 0x92),
+            border: Color32::from_rgb(0xd4, 0xd6, 0xda),
+            border_focus: Color32::from_rgb(0x25, 0x63, 0xeb),
+            accent: Color32::from_rgb(0x0e, 0x4d, 0xc9),
+            accent_hover: Color32::from_rgb(0x1a, 0x5f, 0xe8),
+            accent_hi: Color32::from_rgb(0x1a, 0x5f, 0xe8),
+            accent_active: Color32::from_rgb(0x0b, 0x3f, 0xa8),
+            accent_light: Color32::from_rgb(0x25, 0x63, 0xeb).linear_multiply(0.15),
+            green: Color32::from_rgb(0x1e, 0x7a, 0x3c),
+            green_light: Color32::from_rgb(0x1e, 0x7a, 0x3c).linear_multiply(0.15),
+            orange: Color32::from_rgb(0xd9, 0x77, 0x06),
+            orange_light: Color32::from_rgb(0xd9, 0x77, 0x06).linear_multiply(0.15),
+            red: Color32::from_rgb(0xc2, 0x2a, 0x2a),
+            red_light: Color32::from_rgb(0xc2, 0x2a, 0x2a).linear_multiply(0.15),
+            danger: Color32::from_rgb(0xb0, 0x20, 0x20),
+            entry_bg: Color32::from_rgb(0xf1, 0xf3, 0xf5),
+            entry_hover: Color32::from_rgb(0xe5, 0xe7, 0xeb),
+            entry_selected: Color32::from_rgb(0x0e, 0x4d, 0xc9).linear_multiply(0.2),
+            cyan: Color32::from_rgb(0x0e, 0x7c, 0x86),
+            sky: Color32::from_rgb(0x2b, 0x7a, 0xd8),
+            pink: Color32::from_rgb(0xd6, 0x33, 0x66),
+            purple: Color32::from_rgb(0x6b, 0x4c, 0xc9),
+            violet: Color32::from_rgb(0x7c, 0x5c, 0xd8),
+            shadow: Color32::from_rgb(0x00, 0x00, 0x00).linear_multiply(0.1),
+        }
+    }
+}
+
+/// Accessibility mode — for color blindness simulation and high contrast.
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum AccessibilityMode {
+    #[default]
+    Normal,
+    Protanopia,   // Red-green blindness (red deficient)
+    Deuteranopia, // Red-green blindness (green deficient)
+    Tritanopia,   // Blue-yellow blindness
+    HighContrast, // Maximum contrast for low vision
+}
+
+/// Accessibility configuration for the UI.
+#[derive(Clone, Copy)]
+pub struct AccessibilityConfig {
+    pub mode: AccessibilityMode,
+    pub screen_reader: bool,
+    pub high_contrast_text: bool,
+    pub large_text: bool,
+    pub reduce_motion: bool,
+}
+
+impl Default for AccessibilityConfig {
+    fn default() -> Self {
+        AccessibilityConfig {
+            mode: AccessibilityMode::Normal,
+            screen_reader: false,
+            high_contrast_text: false,
+            large_text: false,
+            reduce_motion: false,
+        }
+    }
+}
+
+/// Apply color blindness simulation to a color.
+/// Uses standard color blindness simulation matrices.
+fn apply_color_blindness(color: Color32, mode: AccessibilityMode) -> Color32 {
+    let r = color[0] as f32 / 255.0;
+    let g = color[1] as f32 / 255.0;
+    let b = color[2] as f32 / 255.0;
+
+    let (r_out, g_out, b_out) = match mode {
+        AccessibilityMode::Protanopia => {
+            // Protanopia simulation matrix
+            let r_out = 0.567 * r + 0.433 * g;
+            let g_out = 0.558 * r + 0.442 * g;
+            let b_out = 0.0 * r + 0.0 * g + 1.0 * b;
+            (r_out, g_out, b_out)
+        }
+        AccessibilityMode::Deuteranopia => {
+            // Deuteranopia simulation matrix
+            let r_out = 0.625 * r + 0.375 * g;
+            let g_out = 0.7 * r + 0.3 * g;
+            let b_out = 0.0 * r + 0.0 * g + 1.0 * b;
+            (r_out, g_out, b_out)
+        }
+        AccessibilityMode::Tritanopia => {
+            // Tritanopia simulation matrix
+            let r_out = 0.95 * r + 0.05 * g;
+            let g_out = 0.0 * r + 0.433 * g + 0.567 * b;
+            let b_out = 0.0 * r + 0.475 * g + 0.525 * b;
+            (r_out, g_out, b_out)
+        }
+        AccessibilityMode::HighContrast => {
+            // Increase contrast significantly
+            let luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+            let factor = if luminance > 0.5 { 1.0 / luminance } else { luminance / 0.5 };
+            let r_out = (r * factor).clamp(0.0, 1.0);
+            let g_out = (g * factor).clamp(0.0, 1.0);
+            let b_out = (b * factor).clamp(0.0, 1.0);
+            (r_out, g_out, b_out)
+        }
+        AccessibilityMode::Normal => (r, g, b),
+    };
+
+    Color32::from_rgb(
+        (r_out * 255.0).clamp(0.0, 255.0) as u8,
+        (g_out * 255.0).clamp(0.0, 255.0) as u8,
+        (b_out * 255.0).clamp(0.0, 255.0) as u8,
+    )
+}
+
+/// Calculate WCAG contrast ratio between two colors.
+/// Returns a value >= 1.0; higher means better contrast.
+/// WCAG AA requires 4.5:1 for normal text, 3:1 for large text.
+/// WCAG AAA requires 7:1 for normal text, 4.5:1 for large text.
+pub fn contrast_ratio(fg: Color32, bg: Color32) -> f32 {
+    let lum_fg = relative_luminance(fg);
+    let lum_bg = relative_luminance(bg);
+    let lighter = lum_fg.max(lum_bg);
+    let darker = lum_fg.min(lum_bg);
+    (lighter + 0.05) / (darker + 0.05)
+}
+
+/// Calculate relative luminance of a color (per WCAG spec).
+fn relative_luminance(color: Color32) -> f32 {
+    let srgb = |c: u8| {
+        let c = c as f32 / 255.0;
+        if c <= 0.03928 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * srgb(color[0]) + 0.7152 * srgb(color[1]) + 0.0722 * srgb(color[2])
+}
+
+/// Apply accessibility mode to a palette, returning a modified palette.
+pub fn apply_accessibility(palette: &Palette, config: &AccessibilityConfig) -> Palette {
+    let mut p = palette.clone();
+
+    match config.mode {
+        AccessibilityMode::Normal => {}
+        AccessibilityMode::Protanopia | AccessibilityMode::Deuteranopia | AccessibilityMode::Tritanopia => {
+            p.bg = apply_color_blindness(p.bg, config.mode);
+            p.panel = apply_color_blindness(p.panel, config.mode);
+            p.panel2 = apply_color_blindness(p.panel2, config.mode);
+            p.panel3 = apply_color_blindness(p.panel3, config.mode);
+            p.panel4 = apply_color_blindness(p.panel4, config.mode);
+            p.accent = apply_color_blindness(p.accent, config.mode);
+            p.green = apply_color_blindness(p.green, config.mode);
+            p.orange = apply_color_blindness(p.orange, config.mode);
+            p.red = apply_color_blindness(p.red, config.mode);
+            p.danger = apply_color_blindness(p.danger, config.mode);
+            p.cyan = apply_color_blindness(p.cyan, config.mode);
+            p.pink = apply_color_blindness(p.pink, config.mode);
+            p.purple = apply_color_blindness(p.purple, config.mode);
+            p.violet = apply_color_blindness(p.violet, config.mode);
+        }
+        AccessibilityMode::HighContrast => {
+            p.bg = apply_color_blindness(p.bg, config.mode);
+            p.panel = apply_color_blindness(p.panel, config.mode);
+            p.panel2 = apply_color_blindness(p.panel2, config.mode);
+            p.panel3 = apply_color_blindness(p.panel3, config.mode);
+            p.panel4 = apply_color_blindness(p.panel4, config.mode);
+            p.accent = apply_color_blindness(p.accent, config.mode);
+            p.border = apply_color_blindness(p.border, config.mode);
+            p.border_focus = apply_color_blindness(p.border_focus, config.mode);
+        }
+    }
+
+    p
+}
+
 /// Default corner radius for panels, buttons, and inputs.
 pub const CORNER_RADIUS: f32 = 10.0;
+
+/// Circular radius for step indicators and badges.
+pub const CIRCLE_RADIUS: f32 = 12.0;
 
 /// Small corner radius for pills and badges.
 pub const SMALL_RADIUS: f32 = 6.0;
@@ -176,7 +370,7 @@ pub fn primary_button(
     palette: &Palette,
     enabled: bool,
 ) -> egui::Response {
-    let button = egui::Button::new(RichText::new(text).color(Color32::WHITE).strong())
+    let button = egui::Button::new(RichText::new(text).color(Color32::WHITE).strong().size(14.0))
         .fill(palette.accent)
         .corner_radius(CORNER_RADIUS)
         .min_size(Vec2::new(110.0, 36.0));
@@ -195,7 +389,7 @@ pub fn secondary_button(
     palette: &Palette,
     enabled: bool,
 ) -> egui::Response {
-    let button = egui::Button::new(RichText::new(text).color(palette.accent).strong())
+    let button = egui::Button::new(RichText::new(text).color(palette.accent).strong().size(14.0))
         .fill(palette.panel3)
         .corner_radius(CORNER_RADIUS)
         .stroke(Stroke {
@@ -217,7 +411,7 @@ pub fn danger_button(
     palette: &Palette,
     enabled: bool,
 ) -> egui::Response {
-    let button = egui::Button::new(RichText::new(text).color(Color32::WHITE).strong())
+    let button = egui::Button::new(RichText::new(text).color(Color32::WHITE).strong().size(14.0))
         .fill(palette.danger)
         .corner_radius(CORNER_RADIUS)
         .min_size(Vec2::new(110.0, 36.0));
@@ -235,7 +429,7 @@ pub fn ghost_button(
     palette: &Palette,
     enabled: bool,
 ) -> egui::Response {
-    let button = egui::Button::new(RichText::new(text).color(palette.accent).strong())
+    let button = egui::Button::new(RichText::new(text).color(palette.accent).strong().size(14.0))
         .fill(palette.panel3)
         .corner_radius(CORNER_RADIUS)
         .stroke(Stroke {
@@ -257,7 +451,7 @@ pub fn small_button(
     palette: &Palette,
     enabled: bool,
 ) -> egui::Response {
-    let button = egui::Button::new(RichText::new(text).color(palette.text).strong())
+    let button = egui::Button::new(RichText::new(text).color(palette.text).strong().size(12.0))
         .fill(palette.panel3)
         .corner_radius(SMALL_RADIUS)
         .stroke(Stroke {
@@ -357,7 +551,7 @@ pub fn subheading(ui: &mut egui::Ui, palette: &Palette, text: &str) {
 
 /// Body text.
 pub fn body_text(ui: &mut egui::Ui, palette: &Palette, text: &str) {
-    ui.label(RichText::new(text).color(palette.text).small());
+    ui.label(RichText::new(text).color(palette.text).size(14.0));
     ui.add_space(SPACING);
 }
 

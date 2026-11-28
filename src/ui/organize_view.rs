@@ -135,7 +135,7 @@ impl OrganizeView {
 
             // Progress bar + stage
             ui.horizontal(|ui| {
-                ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
+                ui.add(egui::ProgressBar::new(self.state.progress));
                 ui.add_space(theme::SPACING);
                 ui.label(
                     RichText::new(&self.state.stage)
@@ -265,6 +265,7 @@ impl OrganizeView {
             "run_organize: beginning organization process",
             &corr,
         );
+        self.watchdog.check_timeouts();
 
         let total = self.state.archives.len();
         if total == 0 {
@@ -296,6 +297,7 @@ impl OrganizeView {
                 ),
                 &corr,
             );
+            self.watchdog.check_timeouts();
 
             if self.state.preview_only {
                 self.state

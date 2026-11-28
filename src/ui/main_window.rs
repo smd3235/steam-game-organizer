@@ -5,6 +5,7 @@
 //! All views share logger and archives flow from Scan → Review → Organize → Artwork → Done.
 //! Comprehensive logging and watchdog on all views.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::app::controller::{Services, StateStore};
@@ -20,10 +21,13 @@ use crate::ui::review_view::ReviewView;
 use crate::ui::scan_view::ScanView;
 use crate::ui::setup_view::SetupView;
 use crate::ui::theme::{
-    card, constrained_content, ghost_button, nav_item, secondary_button, separator, Palette,
-    SPACING, SPACING_XL,
+    apply_accessibility, card, constrained_content, ghost_button, nav_item, secondary_button,
+    separator, AccessibilityConfig, AccessibilityMode, Palette, ThemeMode, SPACING, SPACING_XL,
+    CORNER_RADIUS,
 };
 use egui::{RichText, Theme};
+use serde::Serialize;
+use crate::tools::capture_screens::capture_and_verify;
 
 const NAV_ITEMS: &[(&str, &str, &str)] = &[
     ("scan", "🔍", "Scan"),
@@ -33,6 +37,18 @@ const NAV_ITEMS: &[(&str, &str, &str)] = &[
     ("done", "✅", "Done"),
     ("setup", "⚙️", "Setup"),
 ];
+
+/// Metadata captured alongside each live screenshot for audit/review.
+#[derive(Serialize, Debug)]
+struct ScreenshotMetadata {
+    timestamp_secs: u64,
+    view: String,
+    theme_mode: String,
+    archive_count: usize,
+    shared_archive_count: usize,
+    window_title: String,
+    output_dir: String,
+}
 
 /// The egui application struct. Holds all shared state and renders views.
 pub struct MainWindow {
@@ -53,6 +69,10 @@ pub struct MainWindow {
     pub shared_archives: Vec<crate::core::models::GameArchive>,
     /// When set, renders only this view (scan/review/organize/artwork/done/setup) without sidebar or top bar.
     pub single_view: Option<String>,
+    /// Current UI theme mode (Dark or Light).
+    pub theme_mode: ThemeMode,
+    /// Accessibility configuration for color blindness and contrast.
+    pub accessibility_config: AccessibilityConfig,
 }
 
 impl MainWindow {
@@ -103,6 +123,16 @@ impl MainWindow {
         let jobs_for_scan = Arc::clone(&jobs);
         let config_for_scan = Arc::clone(&config);
         let initial_view = single_view.as_deref().unwrap_or("scan").to_string();
+        
+        // Compute palette based on theme mode
+        let palette = match ThemeMode::default() {
+            ThemeMode::Dark => Palette::default(),
+            ThemeMode::Light => Palette::light_mode(),
+        };
+
+        let accessibility_config = AccessibilityConfig::default();
+        let palette = apply_accessibility(&palette, &accessibility_config);
+
         MainWindow {
             state,
             bus,
@@ -111,40 +141,111 @@ impl MainWindow {
             jobs: jobs_for_field,
             config: config_for_scan,
             current: initial_view,
-            palette: Palette::default(),
+            palette: palette.clone(),
+            accessibility_config,
             scan_view: ScanView::new(
                 services_clone,
                 _library_service,
                 jobs_for_scan,
                 Arc::clone(&config),
-                Palette::default(),
+                palette.clone(),
                 logger_for_scan,
                 watchdog_for_scan,
             ),
             review_view: ReviewView::new(
-                Palette::default(),
+                palette.clone(),
                 logger_for_review,
                 watchdog_for_review,
             ),
             organize_view: OrganizeView::new(
-                Palette::default(),
+                palette.clone(),
                 logger_for_organize,
                 watchdog_for_organize,
             ),
             artwork_view: ArtworkView::new(
-                Palette::default(),
+                palette.clone(),
                 logger_for_artwork,
                 watchdog_for_artwork,
             ),
-            done_view: DoneView::new(Palette::default(), logger_for_done, watchdog_for_done),
+            done_view: DoneView::new(palette.clone(), logger_for_done, watchdog_for_done),
             setup_view: SetupView::new(
-                Palette::default(),
+                palette.clone(),
                 logger_for_setup,
                 watchdog_for_setup,
                 (*config).clone(),
             ),
             shared_archives: Vec::new(),
             single_view,
+            theme_mode: ThemeMode::default(),
+        }
+    }
+
+    /// Capture a live screenshot of the current view: 4x4 grid + full UI +
+    /// ASCII art + dead space audit + design review checklist + metadata JSON.
+    /// Saved to docs/screenshots/live-captures/ with descriptive naming.
+    fn capture_live_screenshot(&mut self) {
+        let output_dir = Path::new("docs/screenshots/live-captures");
+        let view_name = &self.current;
+
+        // Ensure output directory exists
+        if let Err(e) = std::fs::create_dir_all(output_dir) {
+            self.logger.log(
+                "SCREENSHOT",
+                &format!("Failed to create live-captures dir: {}", e),
+                "",
+            );
+            return;
+        }
+
+        // Capture screenshot with OCR verification (4x4 grid, ASCII, audit, checklist)
+        match capture_and_verify(output_dir, view_name, true) {
+            Ok(_result) => {
+                // Write metadata JSON alongside the screenshots
+                let metadata = ScreenshotMetadata {
+                    timestamp_secs: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                    view: view_name.clone(),
+                    theme_mode: format!("{:?}", self.theme_mode),
+                    archive_count: self.scan_view.state.discovered_archives.len(),
+                    shared_archive_count: self.shared_archives.len(),
+                    window_title: "Steam Game Organizer".to_string(),
+                    output_dir: output_dir.to_string_lossy().to_string(),
+                };
+
+                let metadata_path = output_dir.join(format!(
+                    "{} - Metadata - {}.json",
+                    view_name,
+                    metadata.timestamp_secs
+                ));
+                if let Err(e) = serde_json::to_writer_pretty(
+                    &std::fs::File::create(&metadata_path).unwrap(),
+                    &metadata,
+                ) {
+                    self.logger.log(
+                        "SCREENSHOT",
+                        &format!("Failed to write metadata: {}", e),
+                        "",
+                    );
+                }
+
+                self.logger.log(
+                    "SCREENSHOT",
+                    &format!(
+                        "Live screenshot captured for view '{}' -> {}",
+                        view_name, output_dir.display()
+                    ),
+                    "",
+                );
+            }
+            Err(e) => {
+                self.logger.log(
+                    "SCREENSHOT",
+                    &format!("Capture failed for view '{}': {}", view_name, e),
+                    "",
+                );
+            }
         }
     }
 
@@ -334,6 +435,107 @@ impl MainWindow {
             );
             ui.add_space(SPACING);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // Theme mode dropdown
+                ui.add_space(SPACING);
+                let theme_label = match self.theme_mode {
+                    ThemeMode::Dark => "Dark",
+                    ThemeMode::Light => "Light",
+                };
+                egui::ComboBox::from_label("Theme")
+                    .selected_text(theme_label)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.theme_mode,
+                            ThemeMode::Dark,
+                            "Dark",
+                        );
+                        ui.selectable_value(
+                            &mut self.theme_mode,
+                            ThemeMode::Light,
+                            "Light",
+                        );
+                    });
+                // Recompute palette when theme changes
+                self.palette = match self.theme_mode {
+                    ThemeMode::Dark => Palette::default(),
+                    ThemeMode::Light => Palette::light_mode(),
+                };
+                // Apply accessibility mode (color blindness simulation, high contrast)
+                self.palette = apply_accessibility(&self.palette, &self.accessibility_config);
+                // Propagate new palette to all views
+                self.scan_view.palette = self.palette.clone();
+                self.review_view.palette = self.palette.clone();
+                self.organize_view.palette = self.palette.clone();
+                self.artwork_view.palette = self.palette.clone();
+                self.done_view.palette = self.palette.clone();
+                self.setup_view.palette = self.palette.clone();
+
+                // Accessibility mode dropdown
+                ui.add_space(SPACING);
+                let acc_label = match self.accessibility_config.mode {
+                    AccessibilityMode::Normal => "Normal",
+                    AccessibilityMode::Protanopia => "Protanopia",
+                    AccessibilityMode::Deuteranopia => "Deuteranopia",
+                    AccessibilityMode::Tritanopia => "Tritanopia",
+                    AccessibilityMode::HighContrast => "High Contrast",
+                };
+                egui::ComboBox::from_label("Accessibility")
+                    .selected_text(acc_label)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.accessibility_config.mode,
+                            AccessibilityMode::Normal,
+                            "Normal",
+                        );
+                        ui.selectable_value(
+                            &mut self.accessibility_config.mode,
+                            AccessibilityMode::Protanopia,
+                            "Protanopia",
+                        );
+                        ui.selectable_value(
+                            &mut self.accessibility_config.mode,
+                            AccessibilityMode::Deuteranopia,
+                            "Deuteranopia",
+                        );
+                        ui.selectable_value(
+                            &mut self.accessibility_config.mode,
+                            AccessibilityMode::Tritanopia,
+                            "Tritanopia",
+                        );
+                        ui.selectable_value(
+                            &mut self.accessibility_config.mode,
+                            AccessibilityMode::HighContrast,
+                            "High Contrast",
+                        );
+                    });
+                // Screen reader toggle
+                ui.add_space(SPACING / 2.0);
+                ui.checkbox(
+                    &mut self.accessibility_config.screen_reader,
+                    "Screen Reader",
+                );
+                // High contrast text toggle
+                ui.add_space(SPACING / 2.0);
+                ui.checkbox(
+                    &mut self.accessibility_config.high_contrast_text,
+                    "High Contrast Text",
+                );
+                // Reapply accessibility after any change
+                self.palette = apply_accessibility(&self.palette, &self.accessibility_config);
+                // Propagate updated palette to all views
+                self.scan_view.palette = self.palette.clone();
+                self.review_view.palette = self.palette.clone();
+                self.organize_view.palette = self.palette.clone();
+                self.artwork_view.palette = self.palette.clone();
+                self.done_view.palette = self.palette.clone();
+                self.setup_view.palette = self.palette.clone();
+
+                // Screenshot capture button
+                ui.add_space(SPACING);
+                if secondary_button(ui, "📷 Capture Screen", &self.palette, true).clicked() {
+                    self.capture_live_screenshot();
+                }
+
                 if ghost_button(ui, "Quit", &self.palette, true).clicked() {
                     ctx_send_close(ui.ctx());
                 }
@@ -373,7 +575,7 @@ impl eframe::App for MainWindow {
                     ..Default::default()
                 })
                 .show(ui, |ui| {
-                    constrained_content(ui, 1200.0, |ui| {
+                    constrained_content(ui, 1400.0, |ui| {
                         ui.add_space(SPACING);
                         match view.as_str() {
                             "scan" => self.render_scan(ui),
@@ -402,7 +604,7 @@ impl eframe::App for MainWindow {
 
         // Main body: sidebar + content
         egui::Panel::left("nav_sidebar")
-            .default_size(220.0)
+            .default_size(260.0)
             .frame(egui::Frame {
                 fill: self.palette.bg,
                 ..Default::default()
@@ -420,7 +622,7 @@ impl eframe::App for MainWindow {
                 ..Default::default()
             })
             .show(ui, |ui| {
-                constrained_content(ui, 1200.0, |ui| {
+                constrained_content(ui, 1400.0, |ui| {
                     ui.add_space(SPACING);
                     match self.current.as_str() {
                         "scan" => self.render_scan(ui),

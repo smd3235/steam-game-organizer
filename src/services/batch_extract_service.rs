@@ -263,14 +263,42 @@ impl BatchExtractJob {
             }
         }
 
-        *self.finished_at.lock().unwrap() = Some(Instant::now());
-        let started = self.started_at.lock().unwrap().unwrap();
-        let finished = self.finished_at.lock().unwrap().unwrap();
+        if let Ok(mut g) = self.finished_at.lock() {
+            *g = Some(Instant::now());
+        } else {
+            (self.logger)("BATCH", "mutex poisoned: finished_at");
+        }
+        let started = self.started_at.lock()
+            .map_err(|e| { (self.logger)("BATCH", &format!("mutex poisoned: {}", e)); })
+            .ok()
+            .and_then(|g| g.as_ref().copied())
+            .unwrap_or(Instant::now());
+        let finished = self.finished_at.lock()
+            .map_err(|e| { (self.logger)("BATCH", &format!("mutex poisoned: {}", e)); })
+            .ok()
+            .and_then(|g| g.as_ref().copied())
+            .unwrap_or(Instant::now());
         let seconds = finished.duration_since(started).as_secs();
-        let succeeded = *self.succeeded.lock().unwrap();
-        let failed = *self.failed.lock().unwrap();
-        let skipped = *self.skipped.lock().unwrap();
-        let cancelled = *self.cancelled.lock().unwrap();
+        let succeeded = self.succeeded.lock()
+            .map_err(|e| { (self.logger)("BATCH", &format!("mutex poisoned: {}", e)); })
+            .ok()
+            .map(|g| *g)
+            .unwrap_or(0);
+        let failed = self.failed.lock()
+            .map_err(|e| { (self.logger)("BATCH", &format!("mutex poisoned: {}", e)); })
+            .ok()
+            .map(|g| *g)
+            .unwrap_or(0);
+        let skipped = self.skipped.lock()
+            .map_err(|e| { (self.logger)("BATCH", &format!("mutex poisoned: {}", e)); })
+            .ok()
+            .map(|g| *g)
+            .unwrap_or(0);
+        let cancelled = self.cancelled.lock()
+            .map_err(|e| { (self.logger)("BATCH", &format!("mutex poisoned: {}", e)); })
+            .ok()
+            .map(|g| *g)
+            .unwrap_or(0);
         (self.logger)(
             "BATCH",
             &format!(
@@ -285,11 +313,17 @@ impl BatchExtractJob {
 
     /// One sentence a person can act on, for the window and for the log.
     pub fn summary(&self) -> String {
-        let finished_at_guard = self.finished_at.lock().unwrap();
+        let finished_at_guard = match self.finished_at.lock() {
+            Ok(g) => g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
         let end = finished_at_guard.unwrap_or_else(Instant::now);
         drop(finished_at_guard);
 
-        let started_at_guard = self.started_at.lock().unwrap();
+        let started_at_guard = match self.started_at.lock() {
+            Ok(g) => g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
         let elapsed = if let Some(s) = started_at_guard.as_ref() {
             format!("{}s", end.duration_since(*s).as_secs())
         } else {
@@ -297,12 +331,30 @@ impl BatchExtractJob {
         };
         drop(started_at_guard);
 
-        let succeeded = *self.succeeded.lock().unwrap();
-        let skipped = *self.skipped.lock().unwrap();
-        let failed = *self.failed.lock().unwrap();
-        let cancelled = *self.cancelled.lock().unwrap();
-        let needs_install = *self.needs_install.lock().unwrap();
-        let written = *self.written.lock().unwrap();
+        let succeeded = match self.succeeded.lock() {
+            Ok(g) => *g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
+        let skipped = match self.skipped.lock() {
+            Ok(g) => *g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
+        let failed = match self.failed.lock() {
+            Ok(g) => *g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
+        let cancelled = match self.cancelled.lock() {
+            Ok(g) => *g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
+        let needs_install = match self.needs_install.lock() {
+            Ok(g) => *g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
+        let written = match self.written.lock() {
+            Ok(g) => *g,
+            Err(e) => return format!("BATCH summary error: mutex poisoned: {}", e),
+        };
 
         let mut parts = Vec::new();
         parts.push(format!("{} extracted", succeeded));

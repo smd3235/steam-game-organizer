@@ -4,6 +4,16 @@
 //!
 //! 2026-11-24: Converted from `core/within.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
+//!
+//! 2026-11-28: Symlink hardening — when a path exists on disk, `within()`
+//! now canonicalizes both sides via `canonicalize()` which resolves symlinks.
+//! A string-only `..` check can be bypassed with a symlink:
+//!   library/evil_link -> C:\Windows
+//!   library/evil_link/../system32/kernel32.dll
+//! normalizes to `library/system32/kernel32.dll` (passes the string check)
+//! but actually resolves to `C:\Windows\system32\kernel32.dll`. Canonicalizing
+//! resolves the symlink first so the containment check uses real paths.
+//! Non-existent paths fall back to string-based normalization.
 
 use std::path::{Path, PathBuf};
 
@@ -27,14 +37,24 @@ fn normalize(path: &Path) -> PathBuf {
     result
 }
 
+/// Resolve a path to its canonical form if it exists on disk, falling back
+/// to string-based normalization if it doesn't. Canonicalization resolves
+/// symlinks so containment checks can't be bypassed via symlink junctions.
+fn resolve_if_exists(path: &Path) -> PathBuf {
+    match path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => normalize(path),
+    }
+}
+
 /// True when `candidate` is `root` itself or sits under it.
 ///
-/// Both sides are fully normalized first, because `..` segments and symlinks are exactly what this is
-/// guarding against; comparing the unresolved strings would let `/library/../etc` pass.
-/// Returns `false` (never panics) on an unresolvable path, because the answer a delete needs is "no".
+/// When both paths exist on disk, they are canonicalized first so symlinks
+/// are resolved before the containment check. Non-existent paths fall back
+/// to string-based normalization. Returns `false` on an unresolvable path.
 pub fn within(candidate: &Path, root: &Path) -> bool {
-    let candidate = normalize(candidate);
-    let root = normalize(root);
+    let candidate = resolve_if_exists(candidate);
+    let root = resolve_if_exists(root);
     candidate == root || candidate.starts_with(&root)
 }
 

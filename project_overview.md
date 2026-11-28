@@ -12,12 +12,14 @@
 
 | If you want to… | Go to section |
 |-----------------|---------------|
-| Read this doc first (start here) | [📖 How to use this document](#-how-to-use-this-document) |
+| Read this doc first | [📖 How to use this document](#-how-to-use-this-document) |
 | Understand what the app does | [🎯 What it does](#-what-it-does) |
 | Trace a run through six phases | [🔄 Data flow](#-data-flow) |
 | See which decisions are locked | [🔒 Key decisions already made](#-key-decisions-already-made) |
 | Understand the catalog page mechanics | [🖼️ Game Library.html — catalog page mechanics](#-game-libraryhtml---catalog-page-mechanics) |
 | Understand URI / protocol handler | [🔌 URI / protocol handler](#-uri-protocol-handler) |
+| See the tools inventory | [🛠️ Tools inventory](#-tools-inventory) |
+| See safety & security design | [🛡️ Safety & security](#-safety--security) |
 | Run tests / lint / build | [🖥️ Commands](#-commands) |
 | Read the testing rules | [🧪 Testing conventions](#-testing-conventions) |
 | Module inventory + service wiring | [🏗️ ARCHITECTURE.md](ARCHITECTURE.md) |
@@ -42,27 +44,15 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 
 ---
 
-## 🦀 Rust Conversion (complete)
-
-This project has been converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch. All source code is now in Rust under `src/`.
-
-| Status | Meaning |
-|--------|---------|
-| `rust` | File is a `.rs` module in `src/` |
-
-Rust source lives in `src/` alongside this doc. `Cargo.toml` is at the project root. `cargo build --release` produces a self-contained `.exe` at `target/release/steam-game-organizer.exe`.
-
----
-
 ## 📖 How to use this document
 
-This file describes what the app does, how a run flows through its six phases, how the catalog page works, which design decisions are locked, and what commands/testing conventions apply. It is reference material — jump to a section by intent.
+This file describes what the app does, how a run flows through its phases, how the catalog page works, which design decisions are locked, what tools ship with the app, and what commands/testing conventions apply. It is reference material — jump to a section by intent.
 
 ---
 
 ## 🎯 What it does
 
-Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized into category folders), matches each archive against Steam's store API, files the archive into the right category alongside Steam links, metadata, and artwork, generates a clickable HTML catalog, and offers Undo for the whole run.
+Scans a user's game library (a folder full of `.zip`/`.rar`/`.7z` archives organized into category folders), matches each archive against Steam's store API, files the archive into the right category alongside Steam links, metadata, and artwork, generates a clickable HTML catalog, and offers Undo for the whole run.
 
 > [!IMPORTANT]
 > The app runs full-screen on Windows only, from a self-contained Rust exe. A "library" is a folder the user points the app at; the app itself lives in a project root beside it and writes its own state under `config/`, `cache/`, `logs/`. The app name (`USER_AGENT`) identifies itself to Steam's Store API on every request.
@@ -72,6 +62,7 @@ Scans a user's game library (a folder full of `.zip/.rar/.7z` archives organized
 - **Does not support piracy.** The app does not support or condone piracy. Use it only for games you own and have the right to organize. It does not provide — and does not explain — how to obtain games you do not own.
 - **Does not need Steam installed.** It queries the Steam Store API at runtime for metadata — no Steam client required.
 - **Does not delete games.** The app never deletes anything it didn't create. Empty categories and re-categorized leftovers are moved to `Archive/` for review.
+- **Does not ship with games.** The app is a library organizer, not a game store. It organizes archives you already own.
 
 ---
 
@@ -137,7 +128,7 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 ### Know the state of each game
 
 - **Hero stats**: total games, categories, with artwork, on-disk bytes, plus "Missing art", "To extract", "New version", "Hide extracted" — the last three are real toggle buttons when there is something to filter, plain tiles when there is nothing to act on.
-- **Each card shows**: artwork (Steam banner, or a generated name-keyed banner so no card is a flat grey block), release date, developer, archive created, archive file name + size, genre + tag chips (tags capped at four, overflow shown as `+N`), description truncated at 220 chars.
+- **Each card shows**: artwork (Steam banner, or a generated name-keyed banner so no card is a flat grey block), release date, developer, archive file name + size, genre + tag chips (tags capped at four, overflow shown as `+N`), description truncated at 220 chars.
 - **Status badges** drawn from the same predicate the batch planner skips on, so a badge never claims a game is done that Extract all would unpack again:
   - 🟢 **Unpacked** — archive unpacked into the configured destination folder
   - 🟡 **Needs install** — unpacked but still an installer repack (payload relocated to a `Needs Install` folder)
@@ -168,7 +159,7 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 - **Set up on this PC** → `steamgameorganizer://setup`, carrying the typed game folder and extract destination so the wizard starts on them. A command-line fallback shows if the protocol never opened.
 - **Refresh catalog** → `steamgameorganizer://refresh-catalog`: re-walks the library and rewrites the page so Unpacked badges match what is actually on disk now. Needed because an extraction done outside the app leaves stale badges until regenerated.
-- **run-status banner** shows the last batch run result (`Game Library.status.js`, rewritten by the app after every batch run), summarised as a one-line chip in the rail so it stays visible when scrolled past.
+- **Run-status banner** shows the last batch run result (`Game Library.status.js`, rewritten by the app after every batch run), summarised as a one-line chip in the rail so it stays visible when scrolled past.
 
 ### Why this is one HTML file with embedded JS
 
@@ -191,14 +182,104 @@ On a first run with no settings, `_needs_setup` detects a missing `settings.json
 
 ---
 
-## 🖥️ Commands
+## 🛠️ Tools inventory
 
-| Command | Purpose | Code |
-|---------|---------|------|
-| `cargo check` | Compile check | — |
-| `cargo clippy --all-targets` | Lint | [`Cargo.toml`](Cargo.toml) |
-| `cargo test` | Rust unit tests — expect `OK` with no new skips | `src/` |
-| `cargo build --release` | Build release exe — produces `target/release/steam-game-organizer.exe` | [`Cargo.toml`](Cargo.toml) |
+The project ships with three development/diagnostic tools built from `src/tools/`:
+
+| Tool | Role | CLI flags |
+|------|------|-----------|
+| [`capture_screens.rs`](src/tools/capture_screens.rs) | Screenshot capture + OCR verification. Captures the app window via PowerShell + Win32 API, preprocesses images natively (grayscale, threshold, contrast, upscale), runs multi-pass Tesseract OCR with PSM modes and word-level confidence via TSV output. Supports multi-region OCR (header/content/buttons/footer crops), per-view `--scenario` (empty/populated/error/loading), screenshot deduplication via perceptual hash (pHash), PNG metadata embedding (timestamp, view, scenario, region, capture type, confidence, word count, pHash), and live-text verification for sandbox mode. | `--view <name>`, `--scenario <name>`, `--ocr`, `--regions`, `--capture-intel`, `--capture-all`, `--out <dir>` |
+| [`sandbox.rs`](src/tools/sandbox.rs) | End-to-end sandbox mega-test. Constructs all UI views in-process, simulates button clicks, verifies state, runs real zip→7z conversion, checks logs for errors. Step 24b adds OCR verification: launches the app in mock mode per view, captures screenshots of the running app, runs OCR, and verifies live text (game names, categories, counts) is actually rendered — not just UI chrome. | `--sandbox` |
+| [`diag.rs`](src/bin/diag.rs) | Standalone diagnostic CLI with 14 subcommands: disk-space, cleanup-orphans, duplicates, steam-health, config-hash, backup-verify, png-verify, sandbox-isolate, log-health, ui-diff, archive-integrity, config-validate, perf-benchmark, ui-text-verify. | `--capture-all`, `--view`, `--scenario`, `--delete`, `--watch`, `--out`, `--iterations`, `--expected-text` |
+
+---
+
+## 🛡️ Safety & security
+
+### Archive safety (`src/core/archive_safety.rs`)
+
+Before any archive is extracted or converted, it passes safety checks:
+
+| Check | What it detects | Threshold |
+|-------|-----------------|-----------|
+| **Zip Slip** | Archive entries with `..` paths that write outside destination | Any `..` component → reject |
+| **Archive bomb** | Decompression ratio > 1000:1 (small file → huge output) | Ratio > 1000 → reject |
+| **Symlink entries** | Archives containing Unix symlinks that escape destination | Any symlink → reject |
+| **File count** | Too many files in a single archive (DoS) | > 50,000 files → reject |
+| **Uncompressed size** | Total uncompressed size > 1 GB | > 1 GB → reject |
+| **Disk space** | Less than required + 10% margin available | Insufficient → reject |
+
+### Window focus safety
+
+The `capture_screens` tool captures screenshots using `GetWindowRect` + `CopyFromScreen` / `PrintWindow` — it does **not** call `SetForegroundWindow`, so screenshots are taken without stealing focus from the user's active window.
+
+### Window focus safety (app side)
+
+When launched with `--mock --view`, the app calls `AllowSetForegroundWindow(ASFW_ANY)` so PowerShell capture can bring the window to the front when needed, without the app stealing focus on its own startup.
+
+### Rate limiting
+
+`src/core/connection_pool.rs` enforces a minimum interval (~1100ms, ~1 req/sec) between requests to the same Steam API host, preventing the app from overwhelming Steam's API and getting rate-limited or blocked.
+
+### Path safety
+
+`src/core/path_safety.rs` provides `DeletionGuard` with `unlink()` and `rmtree()` that refuse to operate outside allowed roots. Drive roots (`C:\`, `C:\\`, etc.) are refused. Junction-safe recursive directory walks are provided by `src/core/treewalk.rs`.
+
+### Error handling
+
+Three mechanisms exist for surfacing problems:
+- **Static UI dialogs** — user must see it now (missing library folder, no free space, wrong match)
+- **AppLogger** — background info that belongs in `logs/` (archive skipped, artwork failed, Steam lookup resolved)
+- **CancellationError / OrganizerError** — user cancelled or unexpected but recoverable condition
+
+Never `except Exception: pass` without logging or showing something — a swallowed exception leaves the user with a silent half-done run.
+
+---
+
+## 🔧 Commands
+
+| Command | Purpose |
+|---------|---------|
+| `cargo check` | Compile check |
+| `cargo clippy --all-targets` | Lint — must be clean |
+| `cargo test` | Rust unit tests — expect `OK` with no new skips |
+| `cargo build --release` | Build release exe — produces `target/release/steam-game-organizer.exe` |
+| `cargo build --release --bin capture_screens` | Build screenshot capture tool |
+| `cargo build --release --bin sg-diag` | Build diagnostic CLI tool |
+| `steam-game-organizer.exe --quality-gate` | Full verification: check, clippy, test, build, dependency audit |
+| `steam-game-organizer.exe --dependency-audit` | Outdated deps + RUSTSEC + license violations |
+| `steam-game-organizer.exe --system-diagnostics` | Full health check: all diagnostic tools in one pass |
+
+### capture_screens CLI flags
+
+| Flag | Purpose |
+|------|---------|
+| `--view <name>` | Capture a single view: `scan`, `review`, `organize`, `artwork`, `done`, `setup`, `catalog`, `batch-extract`, `extract-progress`, `extract-result` |
+| `--scenario <name>` | Mock scenario: `empty`, `populated`, `error`, `loading` (default: `populated`) |
+| `--ocr` | Run Tesseract OCR verification on captured screenshots |
+| `--regions` | Run multi-region OCR (crops header/content/buttons/footer) |
+| `--capture-intel` | Capture full OCR intel per view (all text, confidence, bounding boxes) |
+| `--capture-all` | Capture ALL views × ALL scenarios (comprehensive gap-finding sweep) |
+| `--out <dir>` | Output directory (default: `docs/screenshots`) |
+
+### sg-diag CLI flags
+
+| Flag | Purpose |
+|------|---------|
+| `disk-space <library_root>` | Pre-flight disk space check vs archive sizes |
+| `cleanup-orphans <dir> [--delete]` | Find orphaned temp files from crashed sessions |
+| `duplicates <library_root>` | Find duplicate archives by normalized name + size |
+| `steam-health [--interval <seconds>]` | Steam API rate limit / availability monitor |
+| `config-hash <config_path> [--watch]` | Config file tamper detection via SHA-256 hash watch |
+| `backup-verify <backup_path> [--extract-dir <tmp>]` | Verify backups are restorable |
+| `png-verify <screenshots_dir>` | Verify PNG screenshots are valid and not corrupted |
+| `sandbox-isolate <sandbox_dir> [--check-project-root]` | Test sandbox isolation doesn't leak files |
+| `log-health <logs_dir>` | Analyze log files for errors/warnings/patterns |
+| `ui-diff <before.png> <after.png>` | Pixel-level comparison of two screenshots |
+| `archive-integrity <archive_path>` | Deep verify an archive can be extracted |
+| `config-validate <config_path>` | Validate settings.json schema |
+| `perf-benchmark [--iterations N]` | Benchmark JSON parse, SHA-256, WalkDir |
+| `ui-text-verify <screenshot.png> <text>` | OCR a screenshot and verify expected text appears |
 
 ---
 

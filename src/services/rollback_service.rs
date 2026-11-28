@@ -40,7 +40,7 @@ impl RollbackService {
     ) -> Self {
         let journal = project_root.join("config").join("last-organization.json");
         let library_root = library_root.map(|l| l.to_path_buf());
-        let _ = fs::create_dir_all(journal.parent().unwrap());
+        let _ = fs::create_dir_all(journal.parent().unwrap_or(Path::new("")));
         RollbackService {
             journal,
             logger,
@@ -83,7 +83,7 @@ impl RollbackService {
         };
         let mut temp: Option<PathBuf> = None;
         let result = (|| -> Result<bool, std::io::Error> {
-            fs::create_dir_all(self.journal.parent().unwrap())?;
+            fs::create_dir_all(self.journal.parent().unwrap_or(Path::new("")))?;
             // A unique temp name: two instances of the app share this journal, and a
             // fixed name meant the loser's cleanup unlinked the winner's temp file before
             // it could be replaced - losing the record of a completed organize.
@@ -93,7 +93,7 @@ impl RollbackService {
                 .unwrap_or(0);
             let pid = std::process::id();
             let temp_name = format!("last-organization.{}.{}.tmp", pid, ts);
-            let temp_path = self.journal.parent().unwrap().join(&temp_name);
+            let temp_path = self.journal.parent().unwrap_or(Path::new("")).join(&temp_name);
             temp = Some(temp_path.clone());
             {
                 let mut f = fs::File::create(&temp_path)?;

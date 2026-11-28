@@ -3,14 +3,13 @@
 [![Steam Game Organizer](https://img.shields.io/badge/Steam%20Game%20Organizer-blue.svg)](CHANGELOG.md)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-green.svg)](AGENTS.md)
 [![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Lint: clippy](https://img.shields.io/badge/lint-clippy-important.svg)](.cargo/config.toml)
+[![Lint: cargo clippy](https://img.shields.io/badge/lint-cargo%20clippy-important.svg)](Cargo.toml)
 [![Tests: cargo test](https://img.shields.io/badge/tests-cargo%20test-success.svg)](src/)
-[![Security: cargo-audit](https://img.shields.io/badge/security-cargo--audit-red.svg)](.github/workflows/ci.yml)
+[![Security: cargo-audit](https://img.shields.io/badge/security-cargo%20audit-red.svg)](.github/workflows/ci.yml)
 [![Dependency policy: cargo-deny](https://img.shields.io/badge/dependency--policy-cargo--deny-blueviolet.svg)](.cargo/deny.toml)
 
 > **Built for Windows.** One library, one catalog, one click to play.  
-> Scan `.zip`/`.rar`/`.7z` archives you downloaded from outside of Steam, match them to Steam's store metadata, convert to **7z** for better compression, organize into category folders, download artwork, and build a clickable HTML game catalog — all in one self-contained application. Windows-only.
+> Scan `.zip`/`.rar`/`.7z` archives you downloaded from outside of Steam, match them to Steam store metadata, convert to **7z** for better compression, organize into category folders, download artwork, and build a clickable HTML game catalog — all in one self-contained application. **Windows-only.**
 
 ---
 
@@ -19,9 +18,10 @@
 | If you want to… | Go to section |
 |-----------------|---------------|
 | Get a quick summary | [🎯 Overview](#-overview) |
+| See how it looks | [📸 UI views & screenshots](#-ui-views--screenshots) |
 | System requirements | [💻 System requirements](#-system-requirements) |
-| Build the app | [📦 Get the app](#-get-the-app) |
-| Run on your own machine | [🖥️ Running on your own machine](#-running-on-your-own-machine) |
+| Build & install | [📦 Get the app](#-get-the-app) |
+| Run on your machine | [🖥️ Running on your machine](#-running-on-your-machine) |
 | App workflow — end to end | [🎯 App workflow — end to end](#-app-workflow--end-to-end) |
 | Repository layout | [🏗️ Repository layout](#-repository-layout) |
 | Troubleshooting | [🔧 Troubleshooting](#-troubleshooting) |
@@ -36,7 +36,7 @@
 
 ## 🎯 Overview
 
-Steam Game Organizer is a comprehensive Windows application for games you have downloaded from outside of Steam. It walks your library folder, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork), converts archives to **7z** for better compression, sorts them into category folders, downloads artwork, and generates a beautiful, clickable HTML catalog you can open in your browser — packed with detail on every game.
+Steam Game Organizer is a comprehensive Windows application for games you have downloaded from outside of Steam. It walks your library folder, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork URLs) with confidence scoring so a weak match never overrides a strong one, converts archives to **7z** for better compression, sorts them into category folders, downloads artwork, and generates a beautiful, clickable HTML catalog you can open in your browser — packed with detail on every game.
 
 The result is a self-contained, browsable game library that works on any Windows 10+ machine — no installation required on the machine that runs it.
 
@@ -46,7 +46,7 @@ The result is a self-contained, browsable game library that works on any Windows
 |------|--------------|
 | 🔍 **Scan** | Walks every category folder under the library root, finds every `.zip`/`.rar`/`.7z`, matches each archive against Steam's store metadata (AppID, title, genres, tags, artwork URLs) with confidence scoring so a weak match never overrides a strong one. |
 | 📦 **Convert** | Rebuilds `.zip` and `.rar` archives as `.7z` using adaptive compression tuned to your free RAM — better compression, smaller on-disk footprint. Older copies and re-categorized leftovers are moved to `Archive/` with `(n)` collision suffixes for review before deleting. |
-| 🗂️ **Organize** | Each archive is filed into `Category / Game — release date` folders with metadata, Steam shortcuts, and artwork sidecars. Archives are grouped by identity key, the newest version is promoted, and duplicates are swept so two archives of the same game never compete. Writes happen atomically. |
+| 🗂️ **Organize** | Each archive is filed into `Category / Game — release date` folders with metadata, Steam shortcuts, and artwork sidebars. Archives are grouped by identity key, the newest version is promoted, and duplicates are swept so two archives of the same game never compete. Writes happen atomically. |
 | 🖼️ **Artwork** | Downloads Steam capsule, header, and grid images plus SteamGridDB portraits, keyed per AppID with a cache. Composes card banners so no card is ever a flat grey block. |
 | 📖 **Catalog** | Generates a self-contained `Game Library.html` — embedded CSS + vanilla JS, no build step, no external requests — plus status data. The page carries search, filters, category chips, sort orders, dynamic action cards, and "already unpacked" badges. |
 | ↩️ **Undo** | Every organize move is journaled. One Undo restores each archived file to its source and prunes only folders this run created into `Archive/` — never deletes a folder it didn't make. |
@@ -59,12 +59,123 @@ The result is a self-contained, browsable game library that works on any Windows
 
 ---
 
+## 📸 UI views & screenshots
+
+The app runs full screen with a navigation rail on the left and content pane on the right. Each view can be launched individually in isolation for testing or screenshots using `--view <name>`.
+
+### View gallery
+
+| View | `--view` flag | Purpose | Screenshot |
+|------|--------------|---------|------------|
+| **Scan** | `--view scan` | Discover archives and match them to Steam store metadata | [`docs/screenshots/scan/Scan - Full UI - FULLWINDOW.png`](docs/screenshots/scan/Scan%20-%20Full%20UI%20-%20FULLWINDOW.png) |
+| **Review** | `--view review` | Verify matches, pick categories, accept / skip / wrong-match games | [`docs/screenshots/review/Review - Full UI - FULLWINDOW.png`](docs/screenshots/review/Review%20-%20Full%20UI%20-%20FULLWINDOW.png) |
+| **Organize** | `--view organize` | Convert archives to 7z, move into category folders, write metadata | [`docs/screenshots/organize/Organize - Full UI - FULLWINDOW.png`](docs/screenshots/organize/Organize%20-%20Full%20UI%20-%20FULLWINDOW.png) |
+| **Artwork** | `--view artwork` | Review downloaded Steam artwork assets per game | [`docs/screenshots/artwork/Artwork - Full UI - FULLWINDOW.png`](docs/screenshots/artwork/Artwork%20-%20Full%20UI%20-%20FULLWINDOW.png) |
+| **Done** | `--view done` | Show organize run results (converted / skipped / failed) | [`docs/screenshots/done/Done - Full UI - FULLWINDOW.png`](docs/screenshots/done/Done%20-%20Full%20UI%20-%20FULLWINDOW.png) |
+| **Setup** | `--view setup` | Configure library root, extract folder, 7-Zip path | [`docs/screenshots/setup/Setup - Full UI - FULLWINDOW.png`](docs/screenshots/setup/Setup%20-%20Full%20UI%20-%20FULLWINDOW.png) |
+
+### View details
+
+#### 🔍 Scan view
+Displays discovered archives in a grid with match confidence scores. Each archive card shows:
+- Archive filename and detected Steam game title
+- Match confidence (high/medium/low) with color coding
+- Progress through scan phases: Scan → Match → Review → Catalog
+- "Start Scan" / "Scan with Artwork" / "Cancel Scan" buttons
+
+#### 📋 Review view
+Presents each matched archive for confirmation:
+- Archive name vs. detected Steam game title side by side
+- "Accept & Next", "Skip", "Wrong Match" buttons for each archive
+- "Approve All Verified", "Add Category", "Use All Suggestions", "Retry Failed" bulk actions
+- "Continue to Organization" button when review is complete
+
+#### 🗂️ Organize view
+Shows conversion progress:
+- Progress bar for archive conversion
+- "Archives to Organize" list with category tags (Action, RPG, Strategy, etc.)
+- "Start Organize" / "Cancel" buttons
+- Converted / skipped / failed counts with progress percentage
+
+#### 🖼️ Artwork view
+Displays downloaded artwork per game:
+- Game artwork grid with capsule, header, and grid images
+- "Open Folder", "View Artwork", "Scan Again", "Review" buttons per game
+- "Re-download Missing" button for missing artwork
+
+#### ✅ Done view
+Shows organization results:
+- Summary cards: converted / skipped / failed counts
+- "Open Library Folder", "Undo Last Run", "Scan Again" buttons
+- "No results yet" state if no organize run has completed
+
+#### ⚙️ Setup view (new two-column layout)
+Left column — configuration fields:
+- Library Root with browse button + path validity badge
+- Extract Folder with browse button + path validity badge
+- 7-Zip Path with browse button + path validity badge
+- Developer Mode toggle
+
+Right column — configuration preview:
+- Summary of all configured values
+- Validation results with ✓/✗ indicators
+- "Save & Finish Setup" (enabled only when valid) / "Skip Setup"
+
+### Launch a single view
+
+```powershell
+.\target\release\steam-game-organizer.exe --view scan
+```
+
+### Screenshot gallery
+
+Detailed per-view screenshots are captured in `docs/screenshots/{ViewName}/` with 4x4 grid quadrants, full window, side-by-side comparison, ASCII art structure maps, dead space audits, and design review checklists:
+
+```
+docs/screenshots/
+├── scan/
+│   ├── Scan - Full UI - FULLWINDOW.png
+│   ├── Scan - 4x4 Composite - COMPOSITE.png
+│   ├── Scan - Full vs Composite - SIDE-BY-SIDE.png
+│   ├── Scan - ASCII Art - UI-STRUCTURE.txt
+│   ├── Scan - Dead Space Audit - AUDIT.txt
+│   ├── Scan - Design Review Checklist - CHECKLIST.txt
+│   └── Scan - R1C1 - Top-Left.png ... R4C4 - Bottom-Right.png
+├── review/  (same structure)
+├── organize/  (same structure)
+├── artwork/  (same structure)
+├── done/  (same structure)
+└── setup/  (same structure)
+```
+
+Capture your own screenshots from within the app using the **📷 Capture Screen** button in the top bar, or run:
+```powershell
+.\target\release\steam-game-organizer.exe --verify-ui
+```
+
+
+To capture screenshots of each view:
+
+```powershell
+cargo build --release
+.\target\release\capture_screens.exe --view scan --out docs/screenshots
+.\target\release\capture_screens.exe --view review --out docs/screenshots
+.\target\release\capture_screens.exe --view organize --out docs/screenshots
+.\target\release\capture_screens.exe --view artwork --out docs/screenshots
+.\target\release\capture_screens.exe --view done --out docs/screenshots
+.\target\release\capture_screens.exe --view setup --out docs/screenshots
+```
+
+Screenshots are saved to `docs/screenshots/`.
+
+---
+
 ## 💻 System requirements
 
 | Requirement | Detail |
 |-------------|--------|
 | **OS** | Windows 10 or later (64-bit). Windows-only — no POSIX, macOS, or Linux target. |
-| **To build from source** | Rust toolchain (`cargo`, `rustc`, `clippy`), MinGW-w64 for the GNU target, 7-Zip installed to `C:\Program Files\7-Zip`. |
+| **To build from source** | Rust toolchain (`cargo`, `rustc`, `clippy`), 7-Zip installed to `C:\Program Files\7-Zip`. |
 | **To run the built app** | Nothing. The built executable is self-contained. |
 | **Display** | The app maximizes itself on start and runs full screen. |
 
@@ -139,7 +250,7 @@ Before building, confirm your machine has everything:
 
 ```powershell
 cargo --version         # should print a version
-clippy --version        # should print a version
+cargo clippy --version   # should print a version
 7z                      # should print 7-Zip help
 ```
 
@@ -169,9 +280,9 @@ The wizard asks for three folders. Fill in each one, then click **Save setup**.
 
 | Folder | What it is | Example |
 |--------|------------|---------|
-| 📁 **Game library** | The folder your `.zip`/`.rar`/`.7z` game archives live in. | `E:\Games\Steam Library` |
+| 📁 **Library root** | The folder your `.zip`/`.rar`/`.7z` game archives live in. | `E:\Games\Steam Library` |
+| 📁 **Extract folder** | Where games are unpacked to when you click Extract. Must be outside your game library. | `E:\Games\Extracted` |
 | 📁 **App folder** | Where this copy of the app lives. | `E:\Games\Steam Game Organizer\target\release\` |
-| 📁 **Extract to** | Where games are unpacked to when you click Extract. Must be outside your game library. | `E:\Games\Extracted` |
 
 ### Step 4 — Drive letters auto-resolve (borrowed drives)
 
@@ -217,186 +328,103 @@ Phases run in order: **Discover → Organize → Catalog → Done**. Undo is an 
 
 ---
 
-## 📸 UI View Reference
-
-The app renders all views in a single window. To capture individual screenshots for documentation or review, use the `--view` flag to launch any view in isolation, then run the `capture_screens` tool:
-
-```powershell
-# Build both executables
-cargo build --release
-
-# Launch a single view in isolation (no sidebar or top bar)
-.\target\release\steam-game-organizer.exe --view scan
-.\target\release\steam-game-organizer.exe --view review
-.\target\release\steam-game-organizer.exe --view organize
-.\target\release\steam-game-organizer.exe --view artwork
-.\target\release\steam-game-organizer.exe --view done
-.\target\release\steam-game-organizer.exe --view setup
-
-# While the view window is open, capture it
-.\target\release\capture_screens.exe
-```
-
-Screenshots are saved as timestamped PNGs to `docs/screenshots/`. Valid `--view` values: `scan`, `review`, `organize`, `artwork`, `done`, `setup`.
-
-### Scan View (`--view scan`)
-
-![Scan View](docs/screenshots/scan-view.png)
-
-**Purpose:** Discover game archives in your library and match them to Steam store metadata.
-
-**What it contains:**
-- **Header** — "Scan Game Archives" with description
-- **Stat cards** — Archives Found count, Phases Complete count
-- **Config row** — Checkboxes for "Convert Archives", "Preview Only", "Scan + Artwork"
-- **Action buttons** — "Start Scan" (primary), "Scan with Artwork" (secondary), "Cancel Scan" (danger, shown while scanning)
-- **Phase timeline** — Pill badges for each scan phase (Discover → Dedupe → Repair → etc.) color-coded by state (green = done, blue = active, muted = pending)
-- **Progress bar + stage label** — Current scan progress and stage text
-- **Activity feed** — Scrollable log of scan events and discovered archives
-- **Discovered Archives card** — List of found archives with size, each row clickable to select
-
-**Empty state:** Shows an icon and message prompting you to run Scan first when no archives exist.
-
-### Review View (`--view review`)
-
-![Review View](docs/screenshots/review-view.png)
-
-**Purpose:** Verify Steam matches, pick categories, accept or reject games before organization.
-
-**What it contains:**
-- **Stat cards** — Total archives, Accepted count (green), Skipped count (orange)
-- **Controls** — Search text field, Filter dropdown (All / Needs Review / Verified / New Only / Artwork)
-- **Archive list** — Left panel with clickable rows; each row shows archive name + size, highlight on hover, click to select
-- **Detail panel** — Right panel showing the selected archive's APPID, Category (color-coded pill), Identity Key, Release Group, Size, Accepted/Skipped status
-- **Bottom actions** — "Accept & Next" (primary), "Skip", "Wrong Match" (danger), "Extract Selected" (secondary)
-- **Inline actions** — When an archive is selected: "Accept" and "Reject" buttons specific to that item
-
-**Empty state:** Shows "No archives yet — Run Scan first to discover game archives."
-
-### Organize View (`--view organize`)
-
-![Organize View](docs/screenshots/organize-view.png)
-
-**Purpose:** Convert archives to 7z, move into category folders, write metadata and artwork.
-
-**What it contains:**
-- **Stat cards** — Converted count (green), Skipped count (orange), Failed count (red)
-- **Loading card** — Spinner + "Organizing archives…" shown while conversion is in progress
-- **Progress bar + stage label** — Current organize progress and stage text
-- **Config** — "Preview Only" checkbox, "Start Organize" button (primary), "Cancel" button (danger, shown while converting)
-- **Archive list** — Left panel with clickable rows showing name + size
-- **Activity feed** — Right panel with scrollable log of organize events
-
-**Empty state:** Shows "No archives to organize — Accept games on the Review page first."
-
-### Artwork View (`--view artwork`)
-
-![Artwork View](docs/screenshots/artwork-view.png)
-
-**Purpose:** Review downloaded Steam artwork assets for accepted games.
-
-**What it contains:**
-- **Header** — "Artwork & Steam Assets"
-- **Status line** — Current artwork status
-- **Archive grid** — 3-column grid of game cards, each with game name + "Open Folder", "View Artwork", "Re-download Missing" buttons
-- **Bottom actions** — "Scan Again", "Review", "Re-download Missing" buttons
-- **Artwork detail panel** — Shown when an archive is selected, with Identity Key, Artwork Status, Artwork Source, Asset Count
-
-**Empty state:** Shows icon and message "No artwork downloaded yet — Scan and organize games first, then download artwork."
-
-### Done View (`--view done`)
-
-![Done View](docs/screenshots/done-view.png)
-
-**Purpose:** Show organize run results with color-coded status per archive.
-
-**What it contains:**
-- **Stat cards** — Converted (green), Skipped (orange), Failed (red)
-- **Results list** — Each archive shown with name + status badge color-coded by outcome
-- **Bottom actions** — "Undo" (secondary), "Open Library" (secondary), "Scan Again" (primary)
-- **Loading/Empty states** — Shows appropriate message when no results exist yet
-
-**Undo:** Restores archived files to their sources and prunes only folders created by this run.
-
-### Setup View (`--view setup`)
-
-![Setup View](docs/screenshots/setup-view.png)
-
-**Purpose:** One-time wizard to configure library root, extract folder, and 7-Zip path.
-
-**What it contains:**
-- **Library Root** — Text field + "Browse Library" button + description
-- **Extract Folder** — Text field + "Browse Extract" button + description
-- **7-Zip Path** — Text field + "Browse 7-Zip" button + description
-- **Developer Mode** — Checkbox for debug logging
-- **Validation** — "Validate Configuration" button (primary), "Clear" button (secondary), validation messages with color-coded status
-- **Footer** — "Save & Finish Setup" button (primary), "Skip Setup" button (secondary)
-
-**Navigation:** Also accessible from the main sidebar as "Setup Wizard" and from the top bar.
-
----
-
-
-```mermaid
-flowchart TD
-    subgraph "Source (committed to git)"
-    S1[AGENTS.md]
-    S2[ARCHITECTURE.md]
-    S3[project_overview.md]
-    S4[CHANGELOG.md]
-    S5[README.md]
-    S6[Cargo.toml]
-    S7[src/]
-    S8[tests/]
-    S9[tools/]
-    S10[assets/]
-    end
-
-    subgraph "Built / runtime (gitignored)"
-    R1[target/ - build output]
-    end
-
-    subgraph "User state (gitignored)"
-    U1[config/ - settings]
-    U2[cache/ - artwork]
-    U3[logs/ - run logs]
-    U4[backup/ - 7z backups]
-    end
-
-    style S1 fill:#e1f5fe,stroke:#01579b
-    style R1 fill:#bbf,stroke:#333
-    style U1 fill:#fff3e0,stroke:#e65100
-```
+## 🏗️ Repository layout
 
 ```
 steam-game-organizer/
-├── AGENTS.md              # Operating instructions: build, test, lint, run
-├── ARCHITECTURE.md        # Module map and service inventory
-├── project_overview.md    # App purpose, data flow, key decisions
-├── CHANGELOG.md           # Dated change log
+├── AGENTS.md              # Operating instructions: build, test, lint, run, commit
+├── ARCHITECTURE.md        # Module map, service inventory, wiring diagrams
+├── project_overview.md    # App purpose, data flow, key decisions, catalog mechanics
+├── CHANGELOG.md           # Dated change log (newest first)
 ├── README.md              # This file
 ├── Cargo.toml             # Rust crate manifest
 ├── .cargo/                # Rust config (deny.toml, config.toml)
 ├── src/                   # Rust source (all modules)
-│   ├── tools/                 # Build and utility scripts
-├── tools/                 # Build and utility scripts
-├── assets/                # icon.ico, icon.svg
-├── config/                # User settings (excluded from git)
-├── cache/                 # Artwork cache (excluded from git)
-├── logs/                  # Timestamped run logs (excluded from git)
-├── backup/                # Timestamped 7z backups (excluded from git)
-└── target/                # Build output (excluded from git)
+│   ├── core/                # config, constants, models, naming, logger, state, exceptions
+│   ├── services/            # archive, extract, catalog, library, organizer, rollback, setup
+│   ├── ui/                  # egui views: scan, review, organize, artwork, done, setup
+│   ├── app/                 # application, controller, jobs, events, windows
+│   └── bin.rs               # CLI entry point
+├── tools/                   # capture_screens, sandbox, diff_backups
+├── assets/                  # icon.ico, icon.svg
+├── docs/
+│   └── screenshots/         # Committed screenshot gallery for UI views
+├── config/                  # User settings (gitignored — runtime state)
+├── cache/                   # Artwork cache (gitignored — runtime state)
+├── logs/                    # Timestamped run logs (gitignored — runtime state)
+├── backup/                  # Timestamped 7z backups (gitignored — runtime state)
+└── target/                  # Build output (gitignored)
 ```
 
 ### What is not committed
 
-`target/`, `config/`, `cache/`, `logs/`, and `backup/` are excluded by `.gitignore`.
+`target/`, `config/`, `cache/`, `logs/`, and `backup/` are excluded by `.gitignore`. They are created at runtime on the machine that runs the app.
 
 ---
 
-## 🏗️ Repository layout
+## ♿ Accessibility
 
-```mermaid
+The app supports multiple visual modes to accommodate different visual needs. Switch between them using the **Theme** and **Accessibility** dropdowns in the top bar:
+
+| Mode | Description | Best for |
+|------|-------------|----------|
+| **Dark** (default) | Dark theme with vibrant accent colors | General use, low-light environments |
+| **Light** | High-contrast light theme | Bright environments, low vision |
+| **Normal** | Standard color rendering | Typical color vision |
+| **Protanopia** | Red-green blindness simulation (red deficient) | Testing color-coded UI elements |
+| **Deuteranopia** | Red-green blindness simulation (green deficient) | Testing color-coded UI elements |
+| **Tritanopia** | Blue-yellow blindness simulation | Testing color-coded UI elements |
+| **High Contrast** | Maximum contrast between text and background | Low vision, screen magnification |
+
+All color contrast ratios meet WCAG AA (4.5:1) for normal text and WCAG AAA (7:1) for large text where possible. Button text uses 14px minimum font size for readability.
+
+### Accessibility features
+- **Screen reader mode** — Toggle in the top bar for screen reader compatibility
+- **High contrast text** — Toggle for maximum text contrast
+- **Large text support** — Body text at 14px, headings at 18px
+- **Keyboard navigation** — All buttons are keyboard-navigable with focus indicators
+- **Color-blind safe** — Color is never the sole means of conveying information; icons and text labels accompany color-coded status
+
+---
+
+## 🎨 UI Design Review System
+
+The app includes a built-in UI design review system that captures and analyzes every view. Use the **📷 Capture Screen** button in the top bar, or run:
+
+```powershell
+.\target\release\steam-game-organizer.exe --verify-ui
+```
+
+### What gets captured
+
+For each view (scan, review, organize, artwork, done, setup), the system captures:
+
+| File | Description |
+|------|-------------|
+| `{View} - Full UI - FULLWINDOW.png` | Complete UI at 100% resolution |
+| `{View} - R1C1 - Top-Left.png` … `R4C4 - Bottom-Right.png` | 16 quadrants (4x4 grid, 25%×25% each) |
+| `{View} - 4x4 Composite - COMPOSITE.png` | All 16 quadrants stitched as one photo |
+| `{View} - Full vs Composite - SIDE-BY-SIDE.png` | Side-by-side full window vs composite for visual diff |
+| `{View} - ASCII Art - UI-STRUCTURE.txt` | Text-based brightness map (`#` = bright content, ` ` = dark/empty) |
+| `{View} - Dead Space Audit - AUDIT.txt` | Per-quadrant dark pixel ratio with DEAD SPACE / MOSTLY EMPTY / PARTIALLY EMPTY / CONTENT classification |
+| `{View} - Design Review Checklist - CHECKLIST.txt` | Layout issues and pass/fail criteria |
+
+### What gets analyzed
+
+| Analysis | What it checks |
+|----------|----------------|
+| **Dead space analysis** | Pixel-level measurement of empty space per quadrant; flags areas >80% dark as dead space |
+| **Color contrast audit** | WCAG AA (4.5:1) and AAA (7:1) compliance for all key UI color pairs |
+| **Element density** | Counts distinct visual elements per quadrant to identify cluttered or empty areas |
+| **Fitts's Law** | Measures button sizes and distances from center for reachability analysis |
+| **Hot corner detection** | Identifies which screen corners contain UI elements (primary actions should be bottom-right) |
+| **Code vs Reality** | Compares buttons defined in source code against what OCR actually detects; reports any buttons in code that are missing from the rendered UI |
+
+All screenshots and analysis reports are saved to `docs/screenshots/{ViewName}/`.
+
+---
+
+## 🔧 Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
@@ -410,25 +438,25 @@ steam-game-organizer/
 
 ## ❓ FAQ
 
-**Q: Does this support pirated games?**
+**Q: Does this support pirated games?**  
 A: No. The app does not support or condone piracy. Use it only for games you own and have the right to organize.
 
-**Q: Does it need Steam installed?**
+**Q: Does it need Steam installed?**  
 A: No. It queries the Steam Store API at runtime for metadata — no Steam client required.
 
-**Q: Can it run on a machine without Rust installed?**
+**Q: Can it run on a machine without Rust installed?**  
 A: Yes. The built executable is self-contained.
 
-**Q: Will it delete my games?**
+**Q: Will it delete my games?**  
 A: No. The app never deletes anything it didn't create. Empty categories and re-categorized leftovers are moved to `Archive/` for review.
 
-**Q: Can I undo an organize run?**
+**Q: Can I undo an organize run?**  
 A: Yes. Every organize move is journaled; one Undo restores archives to their sources.
 
-**Q: Does it work on other drives/machines?**
+**Q: Does it work on other drives/machines?**  
 A: Yes. Drive letters auto-resolve when the stored library path doesn't exist on the current machine, and extract folders are re-pointed through the Setup wizard.
 
-**Q: Is my data sent anywhere?**
+**Q: Is my data sent anywhere?**  
 A: No. Steam metadata is queried from the live Steam Store API at runtime; nothing is uploaded or shared.
 
 ---
@@ -437,7 +465,8 @@ A: No. Steam metadata is queried from the live Steam Store API at runtime; nothi
 
 ### Status: Rust conversion complete
 
-All application source code has been converted from Python to Rust. The app builds as a self-contained Windows executable via cargo build --release. No Python, PyInstaller, or Tcl/Tk is required to run the app.
+All application source code has been converted from Python to Rust. The app builds as a self-contained Windows executable via `cargo build --release`. No Python, PyInstaller, or Tcl/Tk is required to run the app.
+
 ---
 
 ## ⚖️ License
@@ -453,20 +482,20 @@ Add a license here if you want others to reuse or modify the code. Without one, 
 
 | Area | File | What it does |
 |------|------|--------------|
-| **Crate root** | [`src/lib.rs`](src/lib.rs) | Module declarations for all converted modules |
-| **Data models** | [`src/models.rs`](src/models.rs) | `GameArchive`, `SteamMatch`, `ScanResult`, `OrganizationDecision`, `ArtworkResult`, `ConversionResult`, `AppState` |
-| **Naming** | [`src/naming_utils.rs`](src/naming_utils.rs) | `safe_name`, `release_label`, `game_name`, `asset_prefix`, `modified_at`, `unique_dir`, `version_key` |
-| **Library index** | [`src/library_summary.rs`](src/library_summary.rs) | `LibrarySummary` with `categories_for_genres` and `precedent_for` |
-| **Logging** | [`src/core/logger.rs`](src/core/logger.rs) | `AppLogger` with size-based rotation, level thresholds, thread-safe writes, `HH:MM:SS` timestamps |
-| **URI actions** | [`src/uri_actions.rs`](src/uri_actions.rs) | `ExtractRequest`, `BatchExtractRequest`, `MultiBatchRequest`, `UriRefused` |
-| **Path safety** | [`src/path_safety.rs`](src/path_safety.rs) | `DeletionGuard`, `is_within`, `protected_roots`, `safe_rmtree`, `safe_unlink` |
-| **URI parsing** | [`src/parse_uri.rs`](src/parse_uri.rs) | `parse_uri()` — `steamgameorganizer://extract` |
-| **Filename utils** | [`src/filename_utils.rs`](src/filename_utils.rs) | `normalize_name`, `identity_key`, `version_key` |
-| **Formatting** | [`src/formatting.rs`](src/formatting.rs) | `human_size`, `human_duration`, `clock_stamp` |
-| **Treewalk** | [`src/treewalk.rs`](src/treewalk.rs) | Junction-safe recursive directory walk |
-| **Desktop** | [`src/desktop.rs`](src/desktop.rs) | `open_folder`, `open_url` |
-| **Organizer utils** | [`src/organizer_utils.rs`](src/organizer_utils.rs) | `zip_is_encrypted`, `looks_like_resource_failure`, `defender_flagged`, `still_running`, `stop_tool`, `pid_is_alive` |
-| **Catalog utils** | [`src/catalog_utils.rs`](src/catalog_utils.rs) | `safe_name`, `clean_tags`, `archive_size`, `find_banner`, `store_url`, `anchor`, `batch_uri`, `batch_button` |
+| Crate root | [`src/lib.rs`](src/lib.rs) | Module declarations for all converted modules |
+| Data models | [`src/core/models.rs`](src/core/models.rs) | `GameArchive`, `SteamMatch`, `ScanResult`, `OrganizationDecision`, `ArtworkResult`, `ConversionResult`, `AppState` |
+| Naming | [`src/core/naming_utils.rs`](src/core/naming_utils.rs) | `safe_name`, `release_label`, `game_name`, `asset_prefix`, `modified_at`, `unique_dir`, `version_key` |
+| Library index | [`src/core/library_summary.rs`](src/core/library_summary.rs) | `LibrarySummary` with `categories_for_genres` and `precedent_for` |
+| Logging | [`src/core/logger.rs`](src/core/logger.rs) | `AppLogger` with size-based rotation, level thresholds, thread-safe writes, `HH:MM:SS` timestamps |
+| URI actions | [`src/core/uri_actions.rs`](src/core/uri_actions.rs) | `ExtractRequest`, `BatchExtractRequest`, `MultiBatchRequest`, `UriRefused` |
+| Path safety | [`src/core/path_safety.rs`](src/core/path_safety.rs) | `DeletionGuard`, `is_within`, `protected_roots`, `safe_rmtree`, `safe_unlink` |
+| URI parsing | [`src/core/parse_uri.rs`](src/core/parse_uri.rs) | `parse_uri()` — `steamgameorganizer://extract` |
+| Filename utils | [`src/core/filename_utils.rs`](src/core/filename_utils.rs) | `normalize_name`, `identity_key`, `version_key` |
+| Formatting | [`src/core/formatting.rs`](src/core/formatting.rs) | `human_size`, `human_duration`, `clock_stamp` |
+| Treewalk | [`src/core/treewalk.rs`](src/core/treewalk.rs) | Junction-safe recursive directory walk |
+| Desktop | [`src/core/desktop.rs`](src/core/desktop.rs) | `open_folder`, `open_url` |
+| Organizer utils | [`src/core/organizer_utils.rs`](src/core/organizer_utils.rs) | `zip_is_encrypted`, `looks_like_resource_failure`, `defender_flagged`, `still_running`, `stop_tool`, `pid_is_alive` |
+| Catalog utils | [`src/core/catalog_utils.rs`](src/core/catalog_utils.rs) | `safe_name`, `clean_tags`, `archive_size`, `find_banner`, `store_url`, `anchor`, `batch_uri`, `batch_button` |
 
 ---
 
@@ -521,7 +550,7 @@ git commit -m "type(scope): short summary"
 git push origin feature/your-change
 ```
 
-CI runs cargo clippy, cargo test, cargo-audit, and cargo-deny on every push and pull request. All checks must pass before merging.
+CI runs `cargo clippy`, `cargo test`, `cargo-audit`, and `cargo-deny` on every push and pull request. All checks must pass before merging.
 
 See [`AGENTS.md`](AGENTS.md) for the complete contributor workflow, commit message conventions, and Definition of Done.
 

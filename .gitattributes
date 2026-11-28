@@ -1,0 +1,24 @@
+# Normalize line endings to LF in the repository, checkout as CRLF on Windows.
+* text=auto eol=lf
+
+# Explicit file types
+*.rs text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.iss text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+
+# Binary files — do not normalize
+*.png binary
+*.ico binary
+*.svg binary
+*.exe binary
+*.dll binary
+*.7z binary
+*.zip binary
+*.rar binary
+*.lock binary

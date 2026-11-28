@@ -5,7 +5,7 @@
 //! conversion (one file at a time, tracked on the `Rust-Conversion` branch).
 
 use crate::core::canonical_category::canonical_category;
-use crate::core::category_evidence::CategoryEvidence;
+use crate::core::category_evidence::{unsorted_evidence, CategoryEvidence};
 use crate::core::constants::IGNORED_AUTO_CATEGORIES;
 
 /// Choose a specific Steam genre using genre, tag, category, title, and description evidence,
@@ -703,8 +703,11 @@ pub fn suggest_category_with_evidence(
         }
     }
 
-    if best == "Unsorted" {
-        return ("Unsorted".to_string(), CategoryEvidence::default());
+    if best == "Unsorted" || best.is_empty() || best_score == i32::MIN / 2 {
+        return (
+            "Unsorted".to_string(),
+            unsorted_evidence(),
+        );
     }
 
     let mut standings: Vec<(String, i32)> = Vec::new();

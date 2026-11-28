@@ -54,20 +54,20 @@ impl EventBus {
         let handler: Arc<dyn Fn(&Event) + Send + Sync> = Arc::new(handler);
         self.handlers
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .entry(name.clone())
             .or_default()
             .push(Arc::clone(&handler));
         let handlers = Arc::clone(&self.handlers);
         Box::new(move || {
-            if let Some(list) = handlers.lock().unwrap().get_mut(&name) {
+            if let Some(list) = handlers.lock().unwrap_or_else(|e| e.into_inner()).get_mut(&name) {
                 list.retain(|h| !Arc::ptr_eq(h, &handler));
             }
         })
     }
 
     pub fn unsubscribe(&self, name: &str, handler: Arc<dyn Fn(&Event) + Send + Sync>) {
-        if let Some(list) = self.handlers.lock().unwrap().get_mut(name) {
+        if let Some(list) = self.handlers.lock().unwrap_or_else(|e| e.into_inner()).get_mut(name) {
             list.retain(|h| !Arc::ptr_eq(h, &handler));
         }
     }
@@ -77,7 +77,7 @@ impl EventBus {
     /// the list being walked.
     pub fn emit(&self, event: &Event) {
         let handlers = {
-            let map = self.handlers.lock().unwrap();
+            let map = self.handlers.lock().unwrap_or_else(|e| e.into_inner());
             map.get(&event.name)
                 .map(|list| list.iter().map(Arc::clone).collect::<Vec<_>>())
                 .unwrap_or_default()

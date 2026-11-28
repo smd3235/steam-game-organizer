@@ -23,6 +23,7 @@ use crate::services::catalog_service::CatalogService;
 use crate::services::library_service::LibraryService;
 use crate::services::organizer_service::OrganizerService;
 use crate::services::rollback_service::RollbackService;
+use crate::tools::capture_screens::{capture_intel_for_view, format_ocr_intel_report, verify_live_text};
 use crate::ui::phase_timeline::PhaseTimeline;
 
 /// A sandbox test result: what was found, what was fixed, what remains.
@@ -115,6 +116,126 @@ fn check(
         result.checks_failed += 1;
         result.issues_found.push(fail_msg.to_string());
     }
+}
+
+/// Find the built steam-game-organizer.exe by checking common build output locations.
+fn find_app_exe() -> Option<PathBuf> {
+    let candidates = [
+        PathBuf::from("target/release/steam-game-organizer.exe"),
+        PathBuf::from("target/debug/steam-game-organizer.exe"),
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_default()
+            .join("steam-game-organizer.exe"),
+    ];
+    for candidate in &candidates {
+        if candidate.is_file() {
+            return Some(candidate.clone());
+        }
+    }
+    None
+}
+
+/// Sandbox OCR intel gathering: launch the app in mock mode for each view,
+/// capture screenshots of the actual running app, run full OCR per region,
+/// and produce intel reports showing ALL text visible on screen — not just
+/// expected headers. This fills gaps by discovering text that static
+/// verification might miss (rendered game names, dynamic counts, status text,
+/// error messages, etc.).
+///
+/// Returns (checks_passed, checks_failed, issues) for live-text verification.
+fn run_sandbox_ocr_verification(
+    logger: &Arc<AppLogger>,
+    exe_path: &Path,
+    output_dir: &Path,
+) -> (usize, usize, Vec<String>) {
+    let mut checks_passed = 0usize;
+    let mut checks_failed = 0usize;
+    let mut issues = Vec::new();
+
+    let views = ["scan", "review", "organize", "artwork", "done", "setup"];
+
+    for view in &views {
+        let step_msg = format!(
+            "OCR-INTEL: capturing mock view '{}' screenshot and extracting all visible text",
+            view
+        );
+        logger.debug("SANDBOX_OCR", &step_msg, "");
+
+        match capture_intel_for_view(exe_path, view, output_dir) {
+            Ok(report) => {
+                // Print the full intel report so the operator sees all rendered text
+                println!("{}", format_ocr_intel_report(&report));
+
+                // Also verify live text (real content) appears — pass/fail check
+                let (live_found, live_missing) = verify_live_text(&report.full_ocr_text, view);
+
+                let ocr_msg = format!(
+                    "OCR view '{}': confidence={:.1}%, total_words={}, live_text found={}/{}",
+                    view,
+                    report.avg_confidence,
+                    report.total_words,
+                    live_found.len(),
+                    live_found.len() + live_missing.len()
+                );
+                logger.info("SANDBOX_OCR", &ocr_msg, "");
+
+                if !live_missing.is_empty() {
+                    checks_failed += 1;
+                    let issue = format!(
+                        "OCR live text missing for view '{}': {:?}",
+                        view, live_missing
+                    );
+                    issues.push(issue.clone());
+                    logger.warning("SANDBOX_OCR", &issue, "");
+                } else {
+                    checks_passed += 1;
+                    let pass_msg = format!(
+                        "OCR view '{}': all live text visible ({:.1}% confidence, {} words)",
+                        view, report.avg_confidence, report.total_words
+                    );
+                    logger.info("SANDBOX_OCR", &pass_msg, "");
+                }
+
+                // Log low-confidence words as potential rendering problems
+                if !report.low_confidence_words.is_empty() {
+                    let low_conf: Vec<String> = report
+                        .low_confidence_words
+                        .iter()
+                        .map(|w| format!("'{:?}'", w.text))
+                        .collect();
+                    let low_conf_msg = format!(
+                        "OCR view '{}': {} low-confidence words (<50): {:?}",
+                        view,
+                        report.low_confidence_words.len(),
+                        low_conf
+                    );
+                    logger.warning("SANDBOX_OCR", &low_conf_msg, "");
+                }
+
+                // Log region-level confidence for intel
+                for ri in &report.region_intel {
+                    let region_msg = format!(
+                        "OCR region '{}/{}': words={} avg_conf={:.1}%",
+                        view, ri.region_name, ri.word_count, ri.avg_confidence
+                    );
+                    logger.debug("SANDBOX_OCR", &region_msg, "");
+                }
+            }
+            Err(e) => {
+                checks_failed += 1;
+                let issue = format!(
+                    "OCR intel capture failed for view '{}': {}",
+                    view, e
+                );
+                issues.push(issue.clone());
+                logger.warning("SANDBOX_OCR", &issue, "");
+            }
+        }
+    }
+
+    (checks_passed, checks_failed, issues)
 }
 
 /// Run sandbox mode: end-to-end mega-test of every UI view, button, service, and process.
@@ -2983,6 +3104,29 @@ pub fn run_sandbox(logger: Arc<AppLogger>, output_dir: &Path) -> Result<(), Stri
         logger.warning("SANDBOX", "Log file not found for checking", "");
         result.issues_found.push("Log file not found".to_string());
         result.checks_failed += 1;
+    }
+
+    // ============================================================
+    // Step 24b: OCR verification — screenshots of app running in mock mode
+    // ============================================================
+    logger.info("SANDBOX", "Step 24b: OCR verification of running app in mock mode", "");
+    if let Some(exe_path) = find_app_exe() {
+        let exe_msg = format!("Found app exe at: {}", exe_path.display());
+        logger.debug("SANDBOX_OCR", &exe_msg, "");
+        let (ocr_passed, ocr_failed, ocr_issues) =
+            run_sandbox_ocr_verification(&logger, &exe_path, output_dir);
+        result.checks_passed += ocr_passed;
+        result.checks_failed += ocr_failed;
+        result.issues_found.extend(ocr_issues);
+        let ocr_summary_msg = format!(
+            "OCR verification: {} passed, {} failed",
+            ocr_passed, ocr_failed
+        );
+        logger.info("SANDBOX_OCR", &ocr_summary_msg, "");
+    } else {
+        let no_exe_msg = "App exe not found (target/release/steam-game-organizer.exe or target/debug/steam-game-organizer.exe) — skipping OCR verification of running app";
+        logger.warning("SANDBOX_OCR", no_exe_msg, "");
+        result.issues_found.push(no_exe_msg.to_string());
     }
 
     // ============================================================

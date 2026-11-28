@@ -97,7 +97,6 @@ impl LibraryService {
     }
 
     fn _save_scan_state(&self, library_root: &Path, folder_mtimes: &HashMap<String, u64>) {
-        let _ = library_root;
         let config_dir = self._config_dir_for(library_root);
         let state_file = config_dir.join("scan-state.json");
         let mut existing: serde_json::Value = serde_json::Value::Null;
@@ -127,13 +126,34 @@ impl LibraryService {
                 .unwrap(),
             );
         }
-        if fs::create_dir_all(&config_dir).is_err() {
+        if let Err(e) = fs::create_dir_all(&config_dir) {
+            (self.logger)(
+                "LIBRARY",
+                &format!(
+                    "SCAN_STATE_SAVE_FAILED library_root=[{}] error=cannot create config dir: {}",
+                    library_root.display(),
+                    e
+                ),
+            );
             return;
         }
-        let _ = fs::write(
+        match fs::write(
             &state_file,
             serde_json::to_string_pretty(&existing).unwrap(),
-        );
+        ) {
+            Ok(()) => {}
+            Err(e) => {
+                (self.logger)(
+                    "LIBRARY",
+                    &format!(
+                        "SCAN_STATE_WRITE_FAILED library_root=[{}] state_file=[{}] error={}",
+                        library_root.display(),
+                        state_file.display(),
+                        e
+                    ),
+                );
+            }
+        }
     }
 
     fn _get_folder_mtime(&self, folder: &Path) -> u64 {
@@ -645,12 +665,14 @@ impl LibraryService {
         summary
     }
 
-    fn _move_to_archive(&self, folder: &Path, library_root: &Path) -> PathBuf {
+    fn _move_to_archive(&self, folder: &Path, library_root: &Path) -> Result<PathBuf, String> {
         let archive_dir = Path::new(library_root)
             .canonicalize()
             .unwrap_or_else(|_| library_root.to_path_buf())
             .join("Archive");
-        let _ = fs::create_dir_all(&archive_dir);
+        fs::create_dir_all(&archive_dir).map_err(|e| format!(
+            "cannot create archive dir {}: {}", archive_dir.display(), e
+        ))?;
         let mut target = archive_dir.join(folder.file_name().unwrap_or_default());
         let mut n = 2;
         while target.exists() {
@@ -661,8 +683,10 @@ impl LibraryService {
             ));
             n += 1;
         }
-        let _ = fs::rename(folder, &target);
-        target
+        fs::rename(folder, &target).map_err(|e| format!(
+            "cannot move {} to {}: {}", folder.display(), target.display(), e
+        ))?;
+        Ok(target)
     }
 
     fn _sweep_empty_categories(&self, library_root: &Path) -> HashMap<String, u64> {
@@ -726,33 +750,57 @@ impl LibraryService {
                             continue;
                         }
                         if game_folder_is_prunable(&game_dir) {
-                            let target = self._move_to_archive(&game_dir, library_root);
-                            let _ = target;
-                            _pruned += 1;
-                            (self.logger)(
-                                "LIBRARY",
-                                &format!(
-                                    "EMPTY_GAME_FOLDER_ARCHIVED path=[{}] destination=[{}]",
-                                    game_dir.display(),
-                                    target.display()
-                                ),
-                            );
+                            match self._move_to_archive(&game_dir, library_root) {
+                                Ok(target) => {
+                                    _pruned += 1;
+                                    (self.logger)(
+                                        "LIBRARY",
+                                        &format!(
+                                            "EMPTY_GAME_FOLDER_ARCHIVED path=[{}] destination=[{}]",
+                                            game_dir.display(),
+                                            target.display()
+                                        ),
+                                    );
+                                }
+                                Err(e) => {
+                                    (self.logger)(
+                                        "LIBRARY",
+                                        &format!(
+                                            "EMPTY_GAME_FOLDER_ARCHIVE_FAILED path=[{}] error={}",
+                                            game_dir.display(),
+                                            e
+                                        ),
+                                    );
+                                }
+                            }
                         }
                     }
                 }
                 if !root_has_archive && fs::read_dir(&category_dir).map_or(true, |e| e.count() == 0)
                 {
-                    let target = self._move_to_archive(&category_dir, library_root);
-                    let _ = target;
-                    removed += 1;
-                    (self.logger)(
-                        "LIBRARY",
-                        &format!(
-                            "EMPTY_CATEGORY_ARCHIVED path=[{}] destination=[{}]",
-                            category_dir.display(),
-                            target.display()
-                        ),
-                    );
+                    match self._move_to_archive(&category_dir, library_root) {
+                        Ok(target) => {
+                            removed += 1;
+                            (self.logger)(
+                                "LIBRARY",
+                                &format!(
+                                    "EMPTY_CATEGORY_ARCHIVED path=[{}] destination=[{}]",
+                                    category_dir.display(),
+                                    target.display()
+                                ),
+                            );
+                        }
+                        Err(e) => {
+                            (self.logger)(
+                                "LIBRARY",
+                                &format!(
+                                    "EMPTY_CATEGORY_ARCHIVE_FAILED path=[{}] error={}",
+                                    category_dir.display(),
+                                    e
+                                ),
+                            );
+                        }
+                    }
                 }
             }
         }

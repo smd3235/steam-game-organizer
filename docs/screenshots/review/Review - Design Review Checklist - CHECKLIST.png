@@ -1,0 +1,36 @@
+
+═════════════════════════════════════════════════════════════════════════
+UI DESIGN REVIEW CHECKLIST: REVIEW
+═════════════════════════════════════════════════════════════════════════
+
+📊 Summary:
+   Content quadrants: 0/16  |  Dead space: 16/16  |  Mostly empty: 0/16
+
+⚠️  DEAD SPACE QUADRANTS (needs content or removal):
+      r1c1 (Top-Left): 100% dark — Consider adding content or removing this area
+      r1c2 (Top-Center-Left): 100% dark — Consider adding content or removing this area
+      r1c3 (Top-Center-Right): 100% dark — Consider adding content or removing this area
+      r1c4 (Top-Right): 100% dark — Consider adding content or removing this area
+      r2c1 (Mid-Top-Left): 99.028625% dark — Consider adding content or removing this area
+      r2c2 (Mid-Top-Center-Left): 99.715904% dark — Consider adding content or removing this area
+      r2c3 (Mid-Top-Center-Right): 99.715904% dark — Consider adding content or removing this area
+      r2c4 (Mid-Top-Right): 99.72297% dark — Consider adding content or removing this area
+      r3c1 (Mid-Bottom-Left): 98.02945% dark — Consider adding content or removing this area
+      r3c2 (Mid-Bottom-Center-Left): 99.53813% dark — Consider adding content or removing this area
+      r3c3 (Mid-Bottom-Center-Right): 99.666504% dark — Consider adding content or removing this area
+      r3c4 (Mid-Bottom-Right): 99.72297% dark — Consider adding content or removing this area
+      r4c1 (Bottom-Left): 89.65627% dark — Consider adding content or removing this area
+      r4c2 (Bottom-Center-Left): 100% dark — Consider adding content or removing this area
+      r4c3 (Bottom-Center-Right): 100% dark — Consider adding content or removing this area
+      r4c4 (Bottom-Right): 100% dark — Consider adding content or removing this area
+
+📐 Layout Issues:
+      - Top-right corner is empty: Consider adding user profile, help, or settings
+      - Bottom-right corner is empty: Consider adding status bar, credits, or quick actions
+
+✅ PASS CRITERIA:
+      - No quadrant should be >80% dark unless intentional (empty state)
+      - Content should be distributed across all quadrants, not clustered
+      - Buttons should be in bottom quadrants (r3/r4) for easy reach
+      - Titles should be in top quadrants (r1/r2) for visibility
+

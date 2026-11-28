@@ -9,11 +9,15 @@
 //! 2026-11-25: Converted from `services/extract_service.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::core::archive_safety::{ensure_disk_space, validate_archive_safety};
 use crate::core::extract_result::ExtractResult;
 use crate::core::installer_detect::find_installer;
+use crate::core::path_safety::CreationGuard;
+use sha2::{Digest, Sha256};
 
 pub fn app_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..")
@@ -190,14 +194,16 @@ impl ExtractService {
                     "No extraction tool available: {}",
                     reason.unwrap_or_default()
                 );
-                (self.logger.as_ref().unwrap())(
-                    "EXTRACT",
-                    &format!(
-                        "EXTRACT_FAILED archive=[{}] reason=[{}]",
-                        archive.display(),
-                        msg
-                    ),
-                );
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_FAILED archive=[{}] reason=[{}]",
+                            archive.display(),
+                            msg
+                        ),
+                    );
+                }
                 return ExtractResult {
                     archive: archive.to_path_buf(),
                     destination: destination.to_path_buf(),
@@ -211,21 +217,164 @@ impl ExtractService {
             }
         };
 
+        // --- Destination path guard: refuse extraction outside safe roots ---
+        // The extraction destination must be within the project root or the
+        // library root. A misconfigured or malicious extract_folder must not
+        // write outside safe areas.
+        let project_root = crate::core::cli_args::resolve_project_root();
+        let project_root_str = project_root.to_str().unwrap_or("");
+        let extraction_roots = &[project_root_str];
+        let destination_guard = match CreationGuard::new(extraction_roots) {
+            Ok(g) => g,
+            Err(e) => {
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_FAILED archive=[{}] reason=[cannot create path guard: {}]",
+                            archive.display(),
+                            e
+                        ),
+                    );
+                }
+                return ExtractResult {
+                    archive: archive.to_path_buf(),
+                    destination: destination.to_path_buf(),
+                    ok: false,
+                    message: format!("Cannot create path guard: {}", e),
+                    extracted_bytes: 0,
+                    file_count: 0,
+                    code: -1,
+                    needs_install: false,
+                };
+            }
+        };
+        if let Err(e) = destination_guard.refuse_outside_create(destination, "extract") {
+            if let Some(logger) = self.logger.as_ref() {
+                logger(
+                    "EXTRACT",
+                    &format!(
+                        "EXTRACT_REJECTED archive=[{}] destination=[{}] reason=[{}]",
+                        archive.display(),
+                        destination.display(),
+                        e
+                    ),
+                );
+            }
+            return ExtractResult {
+                archive: archive.to_path_buf(),
+                destination: destination.to_path_buf(),
+                ok: false,
+                message: format!("Destination outside allowed roots: {}", e),
+                extracted_bytes: 0,
+                file_count: 0,
+                code: -1,
+                needs_install: false,
+            };
+        }
+
+        // --- TOCTOU protection: fingerprint the archive before validation ---
+        // Hash the archive now, then re-check the hash right before extraction.
+        // If the file was swapped between validation and extraction, abort.
+        let archive_hash = Self::hash_archive(archive);
+
         let args = ExtractService::command(&tool, archive, destination, suffix, password);
+
+        // --- Safety validation before extraction ---
+        // Validate archive contents (Zip Slip, archive bomb, symlinks, file count)
+        // for ZIP, RAR, and 7z archives.
+        if let Err(e) = validate_archive_safety(archive) {
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_REJECTED archive=[{}] reason=[{}]",
+                            archive.display(),
+                            e
+                        ),
+                    );
+                }
+                return ExtractResult {
+                    archive: archive.to_path_buf(),
+                    destination: destination.to_path_buf(),
+                    ok: false,
+                    message: format!("Archive rejected: {}", e),
+                    extracted_bytes: 0,
+                    file_count: 0,
+                    code: -1,
+                    needs_install: false,
+                };
+        }
+
+        // Check disk space before extraction (need at least archive size * 2 as a rough estimate)
+        if let Ok(metadata) = fs::metadata(archive) {
+            let archive_size = metadata.len();
+            if let Err(e) = ensure_disk_space(destination, archive_size * 2) {
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_REJECTED archive=[{}] reason=[{}]",
+                            archive.display(),
+                            e
+                        ),
+                    );
+                }
+                return ExtractResult {
+                    archive: archive.to_path_buf(),
+                    destination: destination.to_path_buf(),
+                    ok: false,
+                    message: format!("Insufficient disk space: {}", e),
+                    extracted_bytes: 0,
+                    file_count: 0,
+                    code: -1,
+                    needs_install: false,
+                };
+            }
+        }
+
+        // --- TOCTOU re-check: confirm archive hasn't been swapped ---
+        if let Some(expected_hash) = &archive_hash {
+            if let Err(e) = Self::verify_archive_hash(archive, expected_hash) {
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_REJECTED archive=[{}] reason=[archive changed between safety check and extraction: {}]",
+                            archive.display(),
+                            e
+                        ),
+                    );
+                }
+                return ExtractResult {
+                    archive: archive.to_path_buf(),
+                    destination: destination.to_path_buf(),
+                    ok: false,
+                    message: "Archive changed between safety check and extraction".to_string(),
+                    extracted_bytes: 0,
+                    file_count: 0,
+                    code: -1,
+                    needs_install: false,
+                };
+            }
+        }
+
         let status = Command::new(&tool).args(&args[1..]).status();
 
         match status {
             Ok(s) if s.success() => {
                 // Check for installer signature after extraction
                 let is_installer = find_installer(destination, None).is_some();
-                (self.logger.as_ref().unwrap())(
-                    "EXTRACT",
-                    &format!(
-                        "EXTRACT_SUCCESS archive=[{}] destination=[{}] code=0",
-                        archive.display(),
-                        destination.display()
-                    ),
-                );
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_SUCCESS archive=[{}] destination=[{}] code=0",
+                            archive.display(),
+                            destination.display()
+                        ),
+                    );
+                }
                 ExtractResult {
                     archive: archive.to_path_buf(),
                     destination: destination.to_path_buf(),
@@ -239,15 +388,17 @@ impl ExtractService {
             }
             Ok(s) => {
                 let code = s.code().unwrap_or(-1);
-                (self.logger.as_ref().unwrap())(
-                    "EXTRACT",
-                    &format!(
-                        "EXTRACT_FAILED archive=[{}] destination=[{}] code={}",
-                        archive.display(),
-                        destination.display(),
-                        code
-                    ),
-                );
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_FAILED archive=[{}] destination=[{}] code={}",
+                            archive.display(),
+                            destination.display(),
+                            code
+                        ),
+                    );
+                }
                 ExtractResult {
                     archive: archive.to_path_buf(),
                     destination: destination.to_path_buf(),
@@ -260,15 +411,17 @@ impl ExtractService {
                 }
             }
             Err(e) => {
-                (self.logger.as_ref().unwrap())(
-                    "EXTRACT",
-                    &format!(
-                        "EXTRACT_ERROR archive=[{}] destination=[{}] error={}",
-                        archive.display(),
-                        destination.display(),
-                        e
-                    ),
-                );
+                if let Some(logger) = self.logger.as_ref() {
+                    logger(
+                        "EXTRACT",
+                        &format!(
+                            "EXTRACT_ERROR archive=[{}] destination=[{}] error={}",
+                            archive.display(),
+                            destination.display(),
+                            e
+                        ),
+                    );
+                }
                 ExtractResult {
                     archive: archive.to_path_buf(),
                     destination: destination.to_path_buf(),
@@ -298,6 +451,46 @@ impl ExtractService {
                 .join(NEEDS_INSTALL_DIRNAME)
                 .join(destination.file_name().unwrap_or_default())
         }
+    }
+
+    /// Compute SHA-256 hash of an archive file for TOCTOU protection.
+    /// Returns `None` if the file can't be read (caller handles gracefully).
+    fn hash_archive(path: &Path) -> Option<String> {
+        let metadata = fs::metadata(path).ok()?;
+        let mut file = fs::File::open(path).ok()?;
+        let mut hasher = Sha256::new();
+        let mut buffer = [0u8; 65536];
+        loop {
+            match std::io::Read::read(&mut file, &mut buffer) {
+                Ok(0) => break,
+                Ok(n) => hasher.update(&buffer[..n]),
+                Err(_) => return None,
+            }
+        }
+        // Also fold in file size + modification time for extra discrimination
+        let size = metadata.len();
+        let mtime = metadata.modified().ok()?;
+        let mtime_nanos = mtime.duration_since(std::time::UNIX_EPOCH).ok()?.as_nanos();
+        let mut combined = hasher.finalize().to_vec();
+        combined.extend_from_slice(&size.to_le_bytes());
+        combined.extend_from_slice(&mtime_nanos.to_le_bytes());
+        let hex: String = combined.iter().map(|b| format!("{:02x}", b)).collect();
+        Some(hex)
+    }
+
+    /// Re-verify that the archive's current hash matches the expected hash.
+    /// Returns Ok if they match, Err if they differ or the file changed.
+    fn verify_archive_hash(path: &Path, expected: &str) -> Result<(), String> {
+        let current = Self::hash_archive(path).ok_or_else(|| {
+            format!("cannot re-read archive {} for TOCTOU verification", path.display())
+        })?;
+        if current != *expected {
+            return Err(format!(
+                "archive hash mismatch: expected {}, got {}",
+                expected, current
+            ));
+        }
+        Ok(())
     }
 }
 

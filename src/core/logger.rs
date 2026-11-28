@@ -17,7 +17,9 @@ use std::backtrace::Backtrace;
 use std::fs::{remove_file, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, Once};
+
+static PANIC_HOOK_INSTALLED: Once = Once::new();
 
 use crate::core::path_safety::safe_create_dir_all;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -253,10 +255,13 @@ impl AppLogger {
     }
 
     /// Route uncaught panics through this logger with detailed backtrace.
+    /// Uses `Once` so calling this multiple times does not replace an already
+    /// installed hook with a different logger's path.
     pub fn install_panic_hook(&self) {
-        let logger_path = self.path.clone();
-        let console = self.console;
-        std::panic::set_hook(Box::new(move |info| {
+        PANIC_HOOK_INSTALLED.call_once(|| {
+            let logger_path = self.path.clone();
+            let console = self.console;
+            std::panic::set_hook(Box::new(move |info| {
             let ts = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map(|d| {
@@ -299,6 +304,8 @@ impl AppLogger {
                 let _ = std::io::stderr().write_all(line.as_bytes());
             }
         }));
+    });
+
     }
 
     /// Start tracking an operation for timing.

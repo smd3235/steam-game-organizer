@@ -7,6 +7,7 @@
 //! 2026-11-24: Converted from `core/organizer_utils.py` to Rust in the Rust conversion
 //! (one file at a time, tracked on the `Rust-Conversion` branch).
 
+use std::io::Read;
 use std::os::raw::c_void;
 use std::time::{Duration, Instant};
 
@@ -27,10 +28,16 @@ pub fn zip_is_encrypted(path: &std::path::Path) -> bool {
         Ok(a) => a,
         Err(_) => return true,
     };
-    // Try to iterate all entries - if any fail, archive may be encrypted
+    // Try to read the first byte of each non-directory entry.
+    // Encrypted entries cannot be read without a password.
     for i in 0..archive.len() {
-        if archive.by_index(i).is_err() {
-            return true;
+        if let Ok(mut entry) = archive.by_index(i) {
+            if !entry.is_dir() {
+                let mut buf = [0u8; 1];
+                if entry.read(&mut buf).is_err() {
+                    return true;
+                }
+            }
         }
     }
     false

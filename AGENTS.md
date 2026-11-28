@@ -6,74 +6,38 @@
 [![Lint: cargo clippy](https://img.shields.io/badge/lint-cargo%20clippy-important.svg)](Cargo.toml)
 [![Tests: cargo test](https://img.shields.io/badge/tests-cargo%20test-success.svg)](src/)
 
-> [!IMPORTANT]
-> **Windows is the only platform.** There is no second environment to keep green. Anything that branches on platform should raise or return a refusal rather than keep a second implementation.
-
----
-
-## 📖 Table of contents
-
-| If you want to… | Go to section |
-|-----------------|---------------|
-| Read this doc first (start here) | [⚠️ Rules at a Glance](#-rules-at-a-glance) |
-| Set up the dev environment | [🛠️ Prerequisites & Setup](#-prerequisites--setup) |
-| Make a code change (step-by-step) | [🔄 The Change Workflow](#-the-change-workflow) |
-| Build the release exe | [🏗️ Build — Release Exe](#-build--release-exe) |
-| Understand logging | [📝 Logging](#-logging) |
-| Understand test hygiene | [🧪 Testing](#-testing) |
-| Run lint checks | [🧹 Lint](#-lint) |
-| Run long-running commands | [⏱️ Long-Running Commands](#-long-running-commands) |
-| Git/GitHub workflow | [🔀 Git / GitHub Workflow](#-git--github-workflow) |
-| Keep docs accurate | [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) |
-| Verify a task is complete | [✅ Definition of Done (Mandatory)](#-definition-of-done-mandatory) |
-| Write comments | [🏷️ Comment Style](#-comment-style) |
-| See how docs relate to each other | [🗂️ Documentation Map](#-documentation-map) |
-
 ---
 
 ## 🗂️ Documentation map
 
-This file is one of four project docs. If a reader acts on any of them, they must match the code — update all four together when behavior changes.
-
 | File | Purpose | Link |
 |------|---------|------|
-| **AGENTS.md** | Operating manual: how to build, test, lint, run, commit, and push on Windows | [`AGENTS.md`](AGENTS.md) |
-| **ARCHITECTURE.md** | Module map and service inventory: what each module does and how they wire together | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
-| **project_overview.md** | What the app does, its data flow, key decisions, and the catalog page mechanics | [`project_overview.md`](project_overview.md) |
-| **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
+| **AGENTS.md** | Operating manual: build, test, lint, run, commit, push — Windows only | [`AGENTS.md`](AGENTS.md) |
+| **ARCHITECTURE.md** | Module map, service inventory, wiring diagrams | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| **project_overview.md** | App purpose, data flow, key decisions, catalog mechanics | [`project_overview.md`](project_overview.md) |
+| **README.md** | User-facing install, run, workflow, other-PC instructions | [`README.md`](README.md) |
 | **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
-**Rule:** when a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate).
-
----
-
-## 🦀 Rust Conversion
-
-This project has been converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch. All source code is now in Rust under `src/`.
-
-| Status | Meaning |
-|--------|---------|
-| `rust` | File is a `.rs` module in `src/` |
-
-Rust source lives in `src/` alongside this doc. `Cargo.toml` is at the project root. `cargo build --release` produces a self-contained `.exe` at `target/release/steam-game-organizer.exe`.
+**Rule:** when a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change — not later.
 
 ---
 
 ## ⚠️ Rules at a Glance
 
-These are the non-negotiable rules. Every change to this project must satisfy all of them.
+These are non-negotiable. Every change to this project must satisfy all of them.
 
 | Rule | What it means |
 |------|---------------|
-| **Windows only** | No POSIX-specific code paths. Refuse or raise rather than keep a second implementation. Applies to Rust `std::os::windows` too. |
+| **Windows only** | No POSIX-specific code paths. Refuse or raise rather than keep a second implementation. Applies to `std::os::windows` too. |
 | **Comment on every change** | Every changed file must include a comment explaining what changed and why. |
 | **Push to GitHub on every change** | After commit + local verification, push so the public repo reflects the current state. Never leave work committed locally only. |
-| **Clippy clean** | `cargo clippy --all-targets` must report zero new warnings. Fix warnings — do not add `#[allow]` to suppress them unless the code is a known stub awaiting future implementation. |
+| **Clippy clean** | `cargo clippy --all-targets` must report zero new warnings. Fix warnings — do not add `#[allow]` unless the code is a known stub. |
 | **Build artifacts** | `target/`, `dist/`, `cache/`, `logs/`, `config/` are build/test outputs — never commit them. |
+| **Build in project folder only** | Always run `cargo build`, `cargo check`, `cargo clippy`, `cargo test` from `E:\steam-game-organizer-rust`. **Never** use `--target-dir` pointing outside the project (e.g., temp directories). The release exe must be at `target/release/steam-game-organizer.exe`. |
 | **Tests must not pollute repo state** | Rust tests must not write under real `config/`, `cache/`, or `logs/` — use temp dirs. |
 | **Atomic writes** | Follow temp-file + atomic rename via `std::fs::rename` for config/state files. |
 | **No screenshots left behind** | Delete any `*.png` screenshots created during checks. None in repo root when finished. |
-| **Scratch files stay in the project** | Never create temp files outside this repository. Put throwaway scripts under `temp\` at the project root (gitignored), and delete them when finished. The only exception is `docs/screenshots/`, which is the committed README gallery. |
+| **Scratch files stay in the project** | Never create temp files outside this repository. Put throwaway scripts under `temp\` at the project root (gitignored), and delete them when finished. The only exception is `docs/screenshots/`, the committed README gallery. |
 | **Docs stay accurate** | If a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change. |
 
 ---
@@ -84,8 +48,8 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 
 | You want to… | What you need | How to get it |
 |--------------|---------------|---------------|
-| **Run the release exe** (`target/release/steam-game-organizer.exe`) | **Nothing.** Self-contained — ships with Rust runtime embedded. | Download latest release from GitHub, or build it yourself. |
-| **Run from source** (`cargo run`) | Rust toolchain. | [rust-lang.org](https://www.rust-lang.org/). |
+| **Run the release exe** | Nothing. Self-contained — ships with Rust runtime embedded. | Download latest release from GitHub, or build it yourself. |
+| **Run from source** | Rust toolchain. | [rust-lang.org](https://www.rust-lang.org/). |
 | **Develop / change code** | Rust (`cargo`, `rustc`, `clippy`). | See Development toolchain below. |
 
 ### Development toolchain
@@ -95,7 +59,7 @@ These are the non-negotiable rules. Every change to this project must satisfy al
 
 ### Verify your setup
 
-> Run verification commands in **Git Bash**, not PowerShell. PowerShell interprets Rust's `<` and `>` as redirection operators and will break commands like `cargo check`.
+Run verification commands in **Git Bash**, not PowerShell:
 
 ```bash
 cargo --version   # should print a Rust version
@@ -112,15 +76,17 @@ cargo clippy --all-targets  # lint
 cargo test         # Rust unit tests
 ```
 
+All commands must be run from the project folder (`E:\steam-game-organizer-rust`). Never use `--target-dir` pointing outside the project.
+
 ### Rust crates (Cargo.toml dependencies)
 
-Each module adds the crates it needs to `Cargo.toml` at the project root. Crates chosen so far:
+Each module adds the crates it needs to `Cargo.toml` at the project root:
 
 | Crate | Purpose | First used by |
 |-------|---------|---------------|
 | `serde` | JSON serialization for settings, rollback journal, scan state | `src/core/models.rs`, `src/core/config.rs` |
 | `thiserror` | Typed error types (`OrganizerError`, `CancellationError`) | `src/core/errors.rs` |
-| `chrono` | Date parsing for Steam release dates (`release_label`) | `src/core/naming_utils.rs` |
+| `time` | Date parsing for Steam release dates (`release_label`) | `src/core/naming_utils.rs` |
 | `lazy_static` | Compiled regexes reused across calls | `src/core/naming_utils.rs` |
 | `regex` | Filename normalization tags (`normalize_name`) | `src/core/filename_utils.rs` |
 | `walkdir` | Junction-safe recursive directory walk | `src/core/treewalk.rs` |
@@ -129,6 +95,8 @@ Each module adds the crates it needs to `Cargo.toml` at the project root. Crates
 | `winreg` | Windows registry access for .html handler check | `src/services/organizer_service.rs` |
 | `egui` + `eframe` | GUI framework for the UI layer | `src/ui/main_window.rs` |
 | `clap` | CLI argument parsing for headless binary | `src/bin.rs` |
+| `sha2` | SHA-256 hashing for config tamper detection | `src/bin/diag.rs` |
+| `image` | Native image preprocessing for OCR screenshots | `src/tools/capture_screens.rs` |
 
 Add a crate only when a converted module actually imports it — do not pre-install the whole list.
 
@@ -198,14 +166,16 @@ Work through this checklist in order:
 | 1 | **Comment** | Add a comment explaining the change in every modified file. See [🏷️ Comment Style](#-comment-style). |
 | 2 | **Changelog** | Add a dated entry under `CHANGELOG.md` (newest first). |
 | 3 | **Docs** | Update `AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, or `README.md` if behavior changed. |
-| 4 | **Lint** | `cargo clippy --all-targets` — must pass for Rust `src/` with zero new warnings. See [🧹 Lint](#-lint). Run in Git Bash. |
-| 5 | **Tests** | `cargo test` for Rust `src/` — must report `OK` with no new skips. See [🧪 Testing](#-testing). |
-| 6 | **Build** | `cargo build --release` — verify `target/release/steam-game-organizer.exe` exists. See [🏗️ Build](#-build--release-exe). |
-| 7 | **Commit + push** | `git add -A` the changed source, docs, and changelog; commit with a descriptive conventional message; push to GitHub. **Update all affected markdown docs BEFORE pushing.** See [🔀 Git / GitHub Workflow](#-git--github-workflow). |
+| 4 | **Lint** | `cargo clippy --all-targets` — must pass for Rust `src/` with zero new warnings. Run in Git Bash. |
+| 5 | **Tests** | `cargo test` for Rust `src/` — must report `OK` with no new skips. |
+| 6 | **Build** | `cargo build --release` — verify `target/release/steam-game-organizer.exe` exists. |
+| 7 | **Commit + push** | `git add -A` the changed source, docs, and changelog; commit with a descriptive conventional message; push to GitHub. **Update all affected markdown docs BEFORE pushing.** |
 
 ---
 
 ## 🏗️ Build — Release Exe
+
+**Build in the project folder only.** Always run `cargo build --release` from `E:\steam-game-organizer-rust`. Never use `--target-dir` pointing outside the project (e.g., `C:\Users\...\Temp\kilo\target`). The release exe must be at `target/release/steam-game-organizer.exe`.
 
 After any code change, build the release exe:
 
@@ -228,16 +198,134 @@ The exe resolves its project root as `Path(__file__).resolve().parent` and walks
 
 ---
 
-## 📦 Release Process (Summary)
+## 🔍 Dependency Audit & Quality Gate (Mandatory)
 
-When you're ready to cut a release:
+The project includes two built-in verification tools that must run clean before any change is considered complete:
 
-1. **Update `CHANGELOG.md`** — move all unreleased entries under a new release heading with a date.
-2. **Build the release exe** — `cargo build --release`.
-3. **Create a GitHub Release** — tag the release, paste the changelog notes, upload the release exe zip.
-4. **Start a fresh `## Unreleased` section** in `CHANGELOG.md` for new changes.
+### `--dependency-audit`
 
-Note: version numbers (`9.33` etc.) have been removed from the codebase; releases are identified by date tag only.
+Checks every crate in `Cargo.toml` against crates.io for the latest version, and shells out to `cargo audit`, `cargo outdated`, and `cargo deny` (when installed) for known security vulnerabilities (RUSTSEC advisories), outdated versions, and license violations.
+
+```
+steam-game-organizer.exe --dependency-audit
+```
+
+Exits 0 if all deps are current and no vulnerabilities found; exits 1 with a report if any are outdated or vulnerable.
+
+### `--quality-gate`
+
+Runs the full verification pipeline in one pass:
+
+1. `cargo check`
+2. `cargo clippy --all-targets`
+3. `cargo test`
+4. `cargo build --release`
+5. `dependency_audit` (outdated deps + security vulns)
+
+```
+steam-game-organizer.exe --quality-gate
+```
+
+Exits 0 only if all steps pass and the dependency audit is clean.
+
+### `--system-diagnostics`
+
+Runs all diagnostic tools in one pass:
+
+1. Dependency audit (crates.io + cargo audit/outdated/deny)
+2. Library health scan (unidentified/orphaned/duplicate games)
+3. Steam match confidence (high/medium/low/none distribution)
+4. Archive encryption scan (.zip/.rar/.7z password protection)
+5. Duplicate detector (same game, multiple filenames)
+6. Crash recovery (temp files, partial extractions, orphaned journals)
+7. SteamCMD check (steamcmd + Steam installation status)
+8. Installer build readiness (release exe + 7-Zip present)
+
+```
+steam-game-organizer.exe --system-diagnostics
+```
+
+### `--build-installer`
+
+Builds a Windows installer (.exe) using Inno Setup's ISCC.exe compiler and `installer.iss`. Bundles the release exe, 7-Zip runtime, and assets.
+
+```
+steam-game-organizer.exe --build-installer
+```
+
+### `--steamcmd-check`
+
+Verifies SteamCMD availability, Steam installation status, and Steam library path.
+
+```
+steam-game-organizer.exe --steamcmd-check
+```
+
+### `--duplicate-detector <dir>`
+
+Find duplicate archives by normalized name + size.
+
+```
+steam-game-organizer.exe --duplicate-detector <dir>
+```
+
+### `--library-health-scan <dir>`
+
+Report unidentified/orphaned/duplicate/oversized archives.
+
+```
+steam-game-organizer.exe --library-health-scan <dir>
+```
+
+### `--archive-encryption-scan <dir>`
+
+Detect encrypted/password-protected archives.
+
+```
+steam-game-organizer.exe --archive-encryption-scan <dir>
+```
+
+### `--steam-match-confidence <dir>`
+
+Analyze Steam match confidence distribution.
+
+```
+steam-game-organizer.exe --steam-match-confidence <dir>
+```
+
+### `--crash-recovery <dir>`
+
+Clean up temp/journal/lock files from crashed ops.
+
+```
+steam-game-organizer.exe --crash-recovery <dir>
+```
+
+### Recommended external tools (install separately)
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| `cargo-audit` | Security vulnerability scanning (RUSTSEC) | `cargo install cargo-audit` |
+| `cargo-outdated` | Check for outdated crate versions | `cargo install cargo-outdated` |
+| `cargo-deny` | License + advisory checking | `cargo install cargo-deny` |
+| `cargo-llvm-cov` | Code coverage reporting | `cargo install cargo-llvm-cov` |
+| `cargo-watch` | Auto-run tests/lint on file changes | `cargo install cargo-watch` |
+| `criterion` | Benchmarking for performance regression detection | add to `Cargo.toml` dev-dependencies |
+| PowerShell 7 | Better shell for scripting (replaces 5.1) | `winget install Microsoft.PowerShell` |
+| Inno Setup | Windows installer creation (.iss → .exe) | `winget install JRSoftware.InnoSetup` |
+| SteamCMD | Steam appinfo queries for match testing | `winget install Valve.SteamCMD` |
+| GitHub CLI (`gh`) | GitHub releases, PRs, issues from CLI | `winget install GitHub.cli` |
+
+### Known dependency issue: egui/eframe 0.37 upgrade (resolved)
+
+egui/eframe 0.32 → 0.37.0 was **blocked** by a transitive dependency conflict:
+- `wgpu-hal` 30+ requires `windows` crate 0.62
+- `gpu-allocator` 0.28+ requires `windows` crate 0.61
+- These are incompatible versions (different `windows_core` types)
+
+**Resolved** by switching `eframe` to `default-features = false, features = ["glow"]` only, which avoids pulling in `egui-wgpu`/`wgpu-hal` entirely. The glow (OpenGL) backend is sufficient for the application's needs and avoids the windows crate conflict entirely.
+
+egui/eframe 0.37.0 compiles and runs cleanly with the glow backend.
 
 ---
 
@@ -248,16 +336,14 @@ This project lives on GitHub at `https://github.com/smd3235/steam-game-organizer
 > [!IMPORTANT]
 > **Update GitHub on every change.** After any file is changed, committed locally, and verified, push to GitHub so the public repository always reflects the current state. Never leave work committed locally only.
 
----
-
 > [!IMPORTANT]
 > **Push the full project — never selected files.** Before you push:
 > 1. **Update ALL affected markdown docs** (`AGENTS.md`, `ARCHITECTURE.md`, `project_overview.md`, `README.md`, `CHANGELOG.md`) **BEFORE pushing**. If behavior changed, docs changed too — in the same commit.
 > 2. **`git add -A`** the entire project — source, docs, changelog, everything. Never push only selected files.
 > 3. **Commit** with a descriptive conventional message.
 > 4. **`git push origin main`** so GitHub always reflects the current state.
-> 
-> Never leave work committed locally only. Never push source changes without updated docs. Never push docs without source changes. The public repository must always match what runs on your machine.
+
+Never leave work committed locally only. Never push source changes without updated docs. Never push docs without source changes. The public repository must always match what runs on your machine.
 
 | Rule | What it means |
 |------|---------------|
@@ -316,116 +402,12 @@ Before considering any task complete, verify every rule in [**Rules at a Glance*
 
 ---
 
-## 🔍 Dependency Audit & Quality Gate (Mandatory)
+## 🏷️ Comment Style
 
-The project includes two built-in verification tools that must run clean before any change is considered complete:
-
-### `--dependency-audit`
-Checks every crate in `Cargo.toml` against crates.io for the latest version, and shells out to `cargo audit`, `cargo outdated`, and `cargo deny` (when installed) for known security vulnerabilities (RUSTSEC advisories), outdated versions, and license violations.
-
-```
-steam-game-organizer.exe --dependency-audit
-```
-
-Exits 0 if all deps are current and no vulnerabilities found; exits 1 with a report if any are outdated or vulnerable.
-
-**Example remediation:** `chrono` 0.4.45 was flagged as unmaintained (RUSTSEC-2026-0543). Replaced with `time` 0.3.55 across 7 files — no test changes needed, all 415 tests pass.
-
-### `--quality-gate`
-Runs the full verification pipeline in one pass:
-
-1. `cargo check`
-2. `cargo clippy --all-targets`
-3. `cargo test`
-4. `cargo build --release`
-5. `dependency_audit` (outdated deps + security vulns)
-
-```
-steam-game-organizer.exe --quality-gate
-```
-
-Exits 0 only if all steps pass and the dependency audit is clean.
-
-### `--system-diagnostics`
-Runs all diagnostic tools in one pass:
-
-1. Dependency audit (crates.io + cargo audit/outdated/deny)
-2. Library health scan (unidentified/orphaned/duplicate games)
-3. Steam match confidence (high/medium/low/none distribution)
-4. Archive encryption scan (.zip/.rar/.7z password protection)
-5. Duplicate detector (same game, multiple filenames)
-6. Crash recovery (temp files, partial extractions, orphaned journals)
-7. SteamCMD check (steamcmd + Steam installation status)
-8. Installer build readiness (release exe + 7-Zip present)
-
-```
-steam-game-organizer.exe --system-diagnostics
-```
-
-### `--build-installer`
-Builds a Windows installer (.exe) using Inno Setup's ISCC.exe compiler and `installer.iss`. Bundles the release exe, 7-Zip runtime, and assets.
-
-```
-steam-game-organizer.exe --build-installer
-```
-
-### `--steamcmd-check`
-Verifies SteamCMD availability, Steam installation status, and Steam library path.
-
-```
-steam-game-organizer.exe --steamcmd-check
-```
-
-### Recommended external tools (install separately)
-
-| Tool | Purpose | Install |
-|------|---------|---------|
-| `cargo-audit` | Security vulnerability scanning (RUSTSEC) | `cargo install cargo-audit` |
-| `cargo-outdated` | Check for outdated crate versions | `cargo install cargo-outdated` |
-| `cargo-deny` | License + advisory checking | `cargo install cargo-deny` |
-| `cargo-llvm-cov` | Code coverage reporting | `cargo install cargo-llvm-cov` |
-| `cargo-watch` | Auto-run tests/lint on file changes | `cargo install cargo-watch` |
-| `criterion` | Benchmarking for performance regression detection | add to `Cargo.toml` dev-dependencies |
-| PowerShell 7 | Better shell for scripting (replaces 5.1) | `winget install Microsoft.PowerShell` |
-| Inno Setup | Windows installer creation (.iss → .exe) | `winget install JRSoftware.InnoSetup` |
-| SteamCMD | Steam appinfo queries for match testing | `winget install Valve.SteamCMD` |
-| GitHub CLI (`gh`) | GitHub releases, PRs, issues from CLI | `winget install GitHub.cli` |
-
-### Known dependency issue: egui/eframe 0.37 upgrade (resolved)
-
-egui/eframe 0.32 → 0.37.0 was **blocked** by a transitive dependency conflict:
-- `wgpu-hal` 30+ requires `windows` crate 0.62
-- `gpu-allocator` 0.28+ requires `windows` crate 0.61
-- These are incompatible versions (different `windows_core` types)
-
-**Resolved** by switching `eframe` to `default-features = false, features = ["glow"]` only,
-which avoids pulling in `egui-wgpu`/`wgpu-hal` entirely. The glow (OpenGL) backend
-is sufficient for the application's needs and avoids the windows crate conflict entirely.
-
-egui/eframe 0.37.0 compiles and runs cleanly with the glow backend.
-
-### Built-in CLI tools
-
-| Flag | Purpose |
-|------|---------|
-| `--quality-gate` | Full verification: check, clippy, test, build, dependency audit |
-| `--dependency-audit` | Outdated deps + RUSTSEC + license violations |
-| `--build-installer` | Build Windows installer via Inno Setup (`installer.iss`) |
-| `--steamcmd-check` | Verify SteamCMD + Steam installation status |
-| `--system-diagnostics` | Full health check: all diagnostic tools in one pass |
-| `--duplicate-detector <dir>` | Find duplicate archives by normalized name + size |
-| `--library-health-scan <dir>` | Report unidentified/orphaned/duplicate/oversized archives |
-| `--archive-encryption-scan <dir>` | Detect encrypted/password-protected archives |
-| `--steam-match-confidence <dir>` | Analyze Steam match confidence distribution |
-| `--crash-recovery <dir>` | Clean up temp/journal/lock files from crashed ops |
-
----
-
-## 📝 Operational notes
-
-These are details that trip up new contributors. Read them before your first change.
-
-### Comment examples
+- **Docstrings** (`///`) state *what* a module/class/function does and its contract.
+- **`//` comments** (Rust `//`) state *why* a specific line does something (bug, edge case, platform quirk) — inline with implementation.
+- Do not convert `//` comments into docstrings; they are not interchangeable.
+- Every changed file must include at least one comment explaining what changed and why.
 
 **Good** (explains *why*, not *what*):
 
@@ -444,28 +426,6 @@ i = i + 1;
 
 ---
 
-## 🏷️ Comment Style
-
-- **Docstrings** (`///`) state *what* a module/class/function does and its contract.
-- **`#` comments** (Rust `//`) state *why* a specific line does something (bug, edge case, platform quirk) — inline with implementation.
-- Do not convert `//` comments into docstrings; they are not interchangeable.
-- Every changed file must include at least one comment explaining what changed and why.
-
----
-
-## ➕ Adding a New UI Screen
-
-Adding a screen means four things:
-
-1. **Create the view class** in `src/ui/` (e.g., `src/ui/my_view.rs`), implementing `eframe::App`.
-2. **Register it in `src/ui/main_window.rs`** — add it to the view stack and wire its navigation button.
-3. **Wire navigation** in `src/ui/main_window.rs` — add a tab/button that switches to the new screen.
-4. **Add test coverage** in `src/ui/my_view.rs` (`#[cfg(test)] mod tests`) so the screen's behavior is verified in CI.
-
-Before adding a new screen, check whether an existing screen can absorb the feature. The app already has scan, review, organize, artwork, catalog, done, setup, batch-extract, and extract-result screens.
-
----
-
 ## 🔍 Steam Match Troubleshooting
 
 When an archive doesn't match a Steam game:
@@ -497,39 +457,3 @@ When you're ready to cut a release:
 4. **Start a fresh `## Unreleased` section** in `CHANGELOG.md` for new changes.
 
 Note: version numbers (`9.33` etc.) have been removed from the codebase; releases are identified by date tag only.
-
----
-
-## 🔍 Steam Match Troubleshooting
-
-When an archive doesn't match a Steam game:
-
-1. **Check the archive filename** — `normalize_name()` strips release groups (tenoke, dodi, fitgirl, etc.) from both start and end. If the game title isn't recognized, the match will fail.
-2. **Check the Steam search** — the app queries Steam's storesearch API with multiple name variants (original, "X, The", leading-article stripped, edition words stripped, subtitle stripped).
-3. **Check for an internal AppID** — archives with `steam_settings/steam_appid.txt` or `appmanifest_*.acf` are matched by AppID first, before any text search.
-4. **Use the "Wrong Match" button** on the review screen if Steam identified the wrong game — this clears the Steam match and lets you re-search.
-5. **Use "Search Again"** to retry with a different search term.
-6. **Check the logs** — `logs/` shows every Steam API call and its result. Look for `Steam identification required` warnings.
-
-Common naming patterns that match:
-- `Game Name - 12345.zip` (AppID in filename)
-- `Game.Name.12345.rar` (AppID in filename)
-- `Game [12345].7z` (AppID in filename)
-- `tenoke-ball.x.pit.risen.ballbylon.zip` (release group stripped from start)
-- `Ultimate Edition: Game Name.zip` (leading edition words stripped)
-- `Game Name - Subtitle.zip` (subtitle stripped)
-
----
-
-## 📦 Release Process (Summary)
-
-When you're ready to cut a release:
-
-1. **Update `CHANGELOG.md`** — move all unreleased entries under a new release heading with a date.
-2. **Build the release exe** — `cargo build --release`.
-3. **Create a GitHub Release** — tag the release, paste the changelog notes, upload the release exe zip.
-4. **Start a fresh `## Unreleased` section** in `CHANGELOG.md` for new changes.
-
-Note: version numbers (`9.33` etc.) have been removed from the codebase; releases are identified by date tag only.
-
----

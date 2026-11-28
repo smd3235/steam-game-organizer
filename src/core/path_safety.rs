@@ -366,13 +366,16 @@ impl CreationGuard {
                 operation, path
             )));
         }
-        // Refuse drive roots (C:\, D:\, E:\) — they have no parent to create under
+        // Refuse drive roots (C:\, C:\\, D:\, etc.) — they have no parent to create under
         let path_str = path.to_string_lossy().to_string();
-        if path_str.len() <= 3 && path_str.ends_with('\\') {
-            return Err(PathOutsideAllowedRoot::new(&format!(
-                "{} refused: {:?} is a drive root — directory creation at drive root is prohibited",
-                operation, path
-            )));
+        if path_str.ends_with('\\') {
+            let stripped = path_str.trim_end_matches('\\');
+            if stripped.len() <= 2 {
+                return Err(PathOutsideAllowedRoot::new(&format!(
+                    "{} refused: {:?} is a drive root — directory creation at drive root is prohibited",
+                    operation, path
+                )));
+            }
         }
         if !self.allowed(path) {
             return Err(PathOutsideAllowedRoot::new(&format!(

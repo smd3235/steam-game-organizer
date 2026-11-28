@@ -1,9 +1,9 @@
 //! Setup view: initial configuration wizard for library root, extract folder, and 7z path.
-//! Redesigned with new theme system: cards, section headers, pill badges, styled buttons.
-//! All buttons log actions through the logger.
+//! Redesigned with two-column layout, step progress, path status badges, real-time
+//! validation, configuration preview, and save-disabled-until-valid.
 //!
-//! 2026-11-26: egui setup view with new theme and wired button actions.
-//! All buttons log actions through the logger.
+//! 2026-11-28: Complete UI overhaul — step progress, two-column layout, path status
+//! badges, real-time validation, configuration preview, save-disabled-until-valid.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -11,9 +11,10 @@ use std::sync::Arc;
 use crate::core::config::AppConfig;
 use crate::core::path_safety::safe_create_dir_all;
 use crate::ui::theme::{
-    card, heading, primary_button, secondary_button, section_header, separator, Palette,
+    card, heading, info_card, pill, primary_button, secondary_button, section_header, separator,
+    Palette, SPACING, SPACING_LG,
 };
-use egui::{RichText, ScrollArea};
+use egui::{Color32, RichText, ScrollArea};
 use rfd::FileDialog;
 
 #[derive(Default, Clone)]
@@ -26,6 +27,13 @@ pub struct SetupViewState {
     pub validation_messages: Vec<String>,
     pub should_validate: bool,
     pub should_save: bool,
+    pub current_step: usize,
+    pub library_root_valid: bool,
+    pub extract_folder_valid: bool,
+    pub seven_zip_valid: bool,
+    pub library_root_msg: String,
+    pub extract_folder_msg: String,
+    pub seven_zip_msg: String,
 }
 
 impl SetupViewState {
@@ -39,7 +47,30 @@ impl SetupViewState {
             validation_messages: Vec::new(),
             should_validate: false,
             should_save: false,
+            current_step: 1,
+            library_root_valid: false,
+            extract_folder_valid: false,
+            seven_zip_valid: false,
+            library_root_msg: "".to_string(),
+            extract_folder_msg: "".to_string(),
+            seven_zip_msg: "".to_string(),
         }
+    }
+
+    pub fn all_required_valid(&self) -> bool {
+        self.library_root_valid && self.extract_folder_valid
+    }
+
+    pub fn progress_percent(&self) -> f32 {
+        let completed = [
+            self.library_root_valid,
+            self.extract_folder_valid,
+            self.seven_zip_valid,
+        ]
+        .iter()
+        .filter(|v| **v)
+        .count();
+        (completed as f32 / 3.0) * 100.0
     }
 }
 
@@ -59,8 +90,42 @@ impl SetupView {
         watchdog: Arc<crate::core::errors::Watchdog>,
         config: AppConfig,
     ) -> Self {
+        // Pre-fill from existing config
+        let library_root = config
+            .library_root
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let extract_folder = config
+            .extract_folder()
+            .to_string_lossy()
+            .to_string();
+        let seven_zip_path = config
+            .settings
+            .get("seven_zip_path")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let developer_mode = config.developer_mode;
+
         SetupView {
-            state: SetupViewState::new(),
+            state: SetupViewState {
+                library_root,
+                extract_folder,
+                seven_zip_path,
+                developer_mode,
+                status: "Setup wizard — configure your Steam Game Organizer".to_string(),
+                validation_messages: Vec::new(),
+                should_validate: false,
+                should_save: false,
+                current_step: 1,
+                library_root_valid: false,
+                extract_folder_valid: false,
+                seven_zip_valid: false,
+                library_root_msg: "".to_string(),
+                extract_folder_msg: "".to_string(),
+                seven_zip_msg: "".to_string(),
+            },
             palette,
             logger,
             watchdog,
@@ -69,7 +134,7 @@ impl SetupView {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        // Process pending actions (set by button clicks in previous frame)
+        // Process pending actions
         if self.state.should_validate {
             self.state.should_validate = false;
             self.validate_config();
@@ -79,29 +144,64 @@ impl SetupView {
             self.save_config();
         }
 
-        card(ui, &self.palette, |ui| {
-            // Header
-            heading(ui, &self.palette, "Setup Wizard");
-            ui.label("Configure Steam Game Organizer paths and settings");
-            separator(ui);
+        let palette = self.palette.clone();
 
-            // Status line
+        // Two-column layout: left = inputs, right = preview + validation
+        ui.horizontal(|ui| {
+            // Left column: input form (60% width)
+            ui.vertical(|ui| {
+                ui.set_min_width(420.0);
+                self.render_input_form(ui, &palette);
+            });
+
+            ui.add_space(SPACING_LG);
+
+            // Right column: preview + validation (40% width)
+            ui.vertical(|ui| {
+                ui.set_min_width(300.0);
+                self.render_preview_panel(ui, &palette);
+            });
+        });
+
+        // Full-width bottom: status bar
+        separator(ui);
+        ui.add_space(SPACING);
+        ui.horizontal(|ui| {
             ui.label(
                 RichText::new(&self.state.status)
                     .small()
-                    .color(self.palette.muted),
+                    .color(palette.text_secondary),
             );
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(
+                    RichText::new(format!("Progress: {:.0}%", self.state.progress_percent()))
+                        .small()
+                        .color(palette.text_secondary),
+                );
+            });
+        });
+    }
+
+    fn render_input_form(&mut self, ui: &mut egui::Ui, palette: &Palette) {
+        card(ui, palette, |ui| {
+            // Header
+            heading(ui, palette, "Setup Wizard");
+            ui.label("Configure Steam Game Organizer paths and settings");
+            separator(ui);
+
+            // Step progress
+            self.render_step_progress(ui, palette);
             separator(ui);
 
             // Library Root
-            section_header(ui, &self.palette, "LIBRARY ROOT");
+            section_header(ui, palette, "1. LIBRARY ROOT");
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.state.library_root)
                         .hint_text("e.g. C:\\SteamLibrary")
-                        .desired_width(400.0),
+                        .desired_width(320.0),
                 );
-                if secondary_button(ui, "Browse Library", &self.palette, true).clicked() {
+                if secondary_button(ui, "Browse", palette, true).clicked() {
                     if let Some(folder) = FileDialog::new()
                         .set_title("Select library root folder")
                         .pick_folder()
@@ -113,27 +213,42 @@ impl SetupView {
                             "",
                         );
                         self.state.status = format!("Library root: {}", self.state.library_root);
-                    } else {
-                        self.state.status = "Library root browse cancelled".to_string();
+                        self.validate_single_field_library_root();
                     }
                 }
+            });
+            // Status badge + hint
+            ui.horizontal(|ui| {
+                if self.state.library_root_valid {
+                    pill(ui, "✓ Valid", "good", palette);
+                } else if !self.state.library_root.is_empty() {
+                    pill(ui, "✗ Invalid", "bad", palette);
+                } else {
+                    pill(ui, "○ Required", "muted", palette);
+                }
+                ui.add_space(SPACING);
+                ui.label(
+                    RichText::new(&self.state.library_root_msg)
+                        .small()
+                        .color(palette.text_secondary),
+                );
             });
             ui.label(
                 RichText::new("Where your game archives are stored")
                     .small()
-                    .color(self.palette.muted),
+                    .color(palette.text_secondary),
             );
             separator(ui);
 
             // Extract Folder
-            section_header(ui, &self.palette, "EXTRACT FOLDER");
+            section_header(ui, palette, "2. EXTRACT FOLDER");
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.state.extract_folder)
                         .hint_text("e.g. C:\\Extracted")
-                        .desired_width(400.0),
+                        .desired_width(320.0),
                 );
-                if secondary_button(ui, "Browse Extract", &self.palette, true).clicked() {
+                if secondary_button(ui, "Browse", palette, true).clicked() {
                     if let Some(folder) = FileDialog::new()
                         .set_title("Select extract folder")
                         .pick_folder()
@@ -145,27 +260,41 @@ impl SetupView {
                             "",
                         );
                         self.state.status = format!("Extract folder: {}", self.state.extract_folder);
-                    } else {
-                        self.state.status = "Extract folder browse cancelled".to_string();
+                        self.validate_single_field_extract_folder();
                     }
                 }
+            });
+            ui.horizontal(|ui| {
+                if self.state.extract_folder_valid {
+                    pill(ui, "✓ Valid", "good", palette);
+                } else if !self.state.extract_folder.is_empty() {
+                    pill(ui, "✗ Invalid", "bad", palette);
+                } else {
+                    pill(ui, "○ Required", "muted", palette);
+                }
+                ui.add_space(SPACING);
+                ui.label(
+                    RichText::new(&self.state.extract_folder_msg)
+                        .small()
+                        .color(palette.text_secondary),
+                );
             });
             ui.label(
                 RichText::new("Where extracted game files go")
                     .small()
-                    .color(self.palette.muted),
+                    .color(palette.text_secondary),
             );
             separator(ui);
 
             // 7-Zip Path
-            section_header(ui, &self.palette, "7-ZIP PATH");
+            section_header(ui, palette, "3. 7-ZIP PATH");
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.state.seven_zip_path)
                         .hint_text("e.g. C:\\Program Files\\7-Zip\\7z.exe")
-                        .desired_width(400.0),
+                        .desired_width(320.0),
                 );
-                if secondary_button(ui, "Browse 7-Zip", &self.palette, true).clicked() {
+                if secondary_button(ui, "Browse", palette, true).clicked() {
                     if let Some(file) = FileDialog::new()
                         .set_title("Select 7z.exe executable file")
                         .add_filter("Executable", &["exe"])
@@ -178,57 +307,113 @@ impl SetupView {
                             "",
                         );
                         self.state.status = format!("7-Zip path: {}", self.state.seven_zip_path);
-                    } else {
-                        self.state.status = "7-Zip path browse cancelled".to_string();
+                        self.validate_single_field_seven_zip();
                     }
                 }
+            });
+            ui.horizontal(|ui| {
+                if !self.state.seven_zip_path.is_empty() {
+                    if self.state.seven_zip_valid {
+                        pill(ui, "✓ Valid", "good", palette);
+                    } else {
+                        pill(ui, "✗ Not found", "bad", palette);
+                    }
+                } else {
+                    pill(ui, "○ Optional", "muted", palette);
+                }
+                ui.add_space(SPACING);
+                ui.label(
+                    RichText::new(&self.state.seven_zip_msg)
+                        .small()
+                        .color(palette.text_secondary),
+                );
             });
             ui.label(
                 RichText::new("Select the 7z.exe file (not the folder) for archive operations")
                     .small()
-                    .color(self.palette.muted),
+                    .color(palette.text_secondary),
             );
             separator(ui);
 
-            // Developer Mode
+            // Developer Mode (advanced)
+            section_header(ui, palette, "4. ADVANCED");
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.state.developer_mode, "Developer Mode");
                 ui.label(
                     RichText::new("Enable debug logging and extra diagnostics")
                         .small()
-                        .color(self.palette.muted),
+                        .color(palette.text_secondary),
                 );
             });
+            ui.label(
+                RichText::new("Shows additional log output and diagnostic tools")
+                    .small()
+                    .color(palette.text_secondary),
+            );
             separator(ui);
 
-            // Validation section
-            section_header(ui, &self.palette, "VALIDATION");
+            // Action buttons
             ui.horizontal(|ui| {
-                if primary_button(ui, "Validate Configuration", &self.palette, true).clicked() {
-                    self.logger
-                        .log("SETUP", "Validate Configuration button clicked", "");
-                    self.state.should_validate = true;
+                if primary_button(
+                    ui,
+                    "Save & Finish Setup",
+                    palette,
+                    self.state.all_required_valid(),
+                )
+                .clicked()
+                {
+                    self.logger.log("SETUP", "Save & Finish Setup button clicked", "");
+                    self.state.should_save = true;
                 }
-                if secondary_button(ui, "Clear", &self.palette, true).clicked() {
-                    self.logger.log("SETUP", "Clear validation clicked", "");
-                    self.state.validation_messages.clear();
-                    self.state.status = "Validation cleared".to_string();
+                if secondary_button(ui, "Skip Setup", palette, true).clicked() {
+                    self.logger.log("SETUP", "Skip Setup button clicked", "");
+                    self.state.status = "Setup skipped — using defaults".to_string();
                 }
             });
+        });
+    }
 
-            // Validation messages
-            if !self.state.validation_messages.is_empty() {
+    fn render_preview_panel(&mut self, ui: &mut egui::Ui, palette: &Palette) {
+        card(ui, palette, |ui| {
+            heading(ui, palette, "Configuration Preview");
+            separator(ui);
+
+            info_card(ui, palette, "Library Root", &self.state.library_root);
+            info_card(ui, palette, "Extract Folder", &self.state.extract_folder);
+            info_card(ui, palette, "7-Zip Path", &self.state.seven_zip_path);
+            info_card(
+                ui,
+                palette,
+                "Developer Mode",
+                if self.state.developer_mode {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                },
+            );
+
+            separator(ui);
+
+            // Validation summary
+            section_header(ui, palette, "VALIDATION");
+            if self.state.validation_messages.is_empty() {
+                ui.label(
+                    RichText::new("No validation run yet")
+                        .small()
+                        .color(palette.text_secondary),
+                );
+            } else {
                 ScrollArea::vertical()
                     .id_salt("setup_validation")
                     .max_height(150.0)
                     .show(ui, |ui| {
                         for msg in &self.state.validation_messages {
-                            let color = if msg.starts_with("ERROR") || msg.starts_with("✗") {
-                                self.palette.red
+                            let color = if msg.starts_with("✗") || msg.starts_with("ERROR") {
+                                palette.red
                             } else if msg.starts_with("✓") || msg.starts_with("OK") {
-                                self.palette.green
+                                palette.green
                             } else {
-                                self.palette.orange
+                                palette.orange
                             };
                             ui.label(RichText::new(msg).small().color(color));
                         }
@@ -237,26 +422,120 @@ impl SetupView {
 
             separator(ui);
 
-            // Save button
-            ui.horizontal(|ui| {
-                if primary_button(ui, "Save & Finish Setup", &self.palette, true).clicked() {
-                    self.logger
-                        .log("SETUP", "Save & Finish Setup button clicked", "");
-                    self.state.should_save = true;
-                }
-                if secondary_button(ui, "Skip Setup", &self.palette, true).clicked() {
-                    self.logger.log("SETUP", "Skip Setup button clicked", "");
-                    self.state.status = "Setup skipped — using defaults".to_string();
-                }
-            });
-
-            separator(ui);
-            ui.label(
-                RichText::new(&self.state.status)
-                    .color(self.palette.muted)
-                    .small(),
-            );
+            // Save readiness
+            section_header(ui, palette, "SAVE READINESS");
+            if self.state.all_required_valid() {
+                ui.label(
+                    RichText::new("✓ All required fields valid")
+                        .color(palette.green)
+                        .strong(),
+                );
+            } else {
+                ui.label(
+                    RichText::new("✗ Fix required fields before saving")
+                        .color(palette.red)
+                        .strong(),
+                );
+            }
         });
+    }
+
+    fn render_step_progress(&mut self, ui: &mut egui::Ui, palette: &Palette) {
+        let steps = [
+            ("1", "Library Root"),
+            ("2", "Extract Folder"),
+            ("3", "7-Zip Path"),
+            ("4", "Advanced"),
+        ];
+        ui.horizontal(|ui| {
+            for (i, (num, label)) in steps.iter().enumerate() {
+                let completed = self.state.current_step > i + 1;
+                let current = self.state.current_step == i + 1;
+                let (bg, fg, stroke) = if completed {
+                    (palette.green, palette.bg, None)
+                } else if current {
+                    (palette.accent, Color32::WHITE, None)
+                } else {
+                    (palette.panel3, palette.text_secondary, Some(palette.border))
+                };
+                ui.add(
+                    egui::Button::new(
+                        RichText::new(*num).color(fg).strong().small(),
+                    )
+                    .fill(bg)
+                    .corner_radius(crate::ui::theme::CIRCLE_RADIUS)
+                    .min_size(egui::Vec2::new(24.0, 24.0))
+                    .stroke(egui::Stroke::new(1.0, stroke.unwrap_or(palette.border))),
+                );
+                ui.add_space(SPACING / 2.0);
+                ui.label(
+                    RichText::new(*label)
+                        .color(if completed || current {
+                            palette.text
+                        } else {
+                            palette.text_secondary
+                        })
+                        .small(),
+                );
+                if i < steps.len() - 1 {
+                    ui.add_space(SPACING);
+                    ui.label(
+                        RichText::new("›")
+                            .color(palette.text_secondary)
+                            .small(),
+                    );
+                    ui.add_space(SPACING);
+                }
+            }
+        });
+    }
+
+    fn validate_single_field_library_root(&mut self) {
+        if self.state.library_root.is_empty() {
+            self.state.library_root_valid = false;
+            self.state.library_root_msg = "Required".to_string();
+            return;
+        }
+        let path = PathBuf::from(&self.state.library_root);
+        if path.is_dir() {
+            self.state.library_root_valid = true;
+            self.state.library_root_msg = format!("Exists: {}", self.state.library_root);
+        } else {
+            self.state.library_root_valid = false;
+            self.state.library_root_msg = format!("Not found: {}", self.state.library_root);
+        }
+    }
+
+    fn validate_single_field_extract_folder(&mut self) {
+        if self.state.extract_folder.is_empty() {
+            self.state.extract_folder_valid = false;
+            self.state.extract_folder_msg = "Required".to_string();
+            return;
+        }
+        let path = PathBuf::from(&self.state.extract_folder);
+        if path.is_dir() {
+            self.state.extract_folder_valid = true;
+            self.state.extract_folder_msg = format!("Exists: {}", self.state.extract_folder);
+        } else {
+            self.state.extract_folder_valid = true; // extract folder can be created
+            self.state.extract_folder_msg = format!("Will be created: {}", self.state.extract_folder);
+        }
+    }
+
+    fn validate_single_field_seven_zip(&mut self) {
+        if self.state.seven_zip_path.is_empty() {
+            self.state.seven_zip_valid = true; // optional
+            self.state.seven_zip_msg = "Optional — archive operations disabled".to_string();
+            return;
+        }
+        let path = PathBuf::from(&self.state.seven_zip_path);
+        if path.is_file() {
+            self.state.seven_zip_valid = true;
+            self.state.seven_zip_msg = format!("Found: {}", self.state.seven_zip_path);
+        } else {
+            self.state.seven_zip_valid = false;
+            self.state.seven_zip_msg = format!("Not found: {}", self.state.seven_zip_path);
+        }
     }
 
     pub(crate) fn validate_config(&mut self) {
@@ -359,7 +638,17 @@ impl SetupView {
         if !self.state.extract_folder.is_empty() {
             let path = PathBuf::from(&self.state.extract_folder);
             if !path.exists() {
-                let parent_root = path.parent().unwrap_or(&path).to_str().unwrap_or("");
+                let parent_root = match path.parent() {
+                    Some(p) => p.to_str().unwrap_or(""),
+                    None => {
+                        self.state.validation_messages.push(format!(
+                            "✗ Cannot determine parent path: {}",
+                            self.state.extract_folder
+                        ));
+                        self.state.status = "Save failed".to_string();
+                        return;
+                    }
+                };
                 match safe_create_dir_all(&path, &[parent_root]) {
                     Ok(()) => {
                         self.state.validation_messages.push(format!(
@@ -440,7 +729,8 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let _view = SetupView::new(palette, logger, watchdog, AppConfig::default());
+        let config = AppConfig::new(std::env::current_dir().unwrap_or_default().as_path());
+        let _view = SetupView::new(palette, logger, watchdog, config);
     }
 
     #[test]
@@ -456,7 +746,11 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
+        let config = AppConfig::new(std::env::current_dir().unwrap_or_default().as_path());
+        let mut view = SetupView::new(palette, logger, watchdog, config);
+        view.state.library_root = "".to_string();
+        view.state.extract_folder = "".to_string();
+        view.state.seven_zip_path = "".to_string();
         view.validate_config();
         assert!(!view.state.validation_messages.is_empty());
         assert!(view
@@ -479,7 +773,8 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
+        let config = AppConfig::new(std::env::current_dir().unwrap_or_default().as_path());
+        let mut view = SetupView::new(palette, logger, watchdog, config);
         view.state.library_root = ".".to_string();
         view.state.extract_folder = std::env::temp_dir().to_string_lossy().to_string();
         view.validate_config();
@@ -506,7 +801,8 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let view = SetupView::new(palette, logger, watchdog, AppConfig::default());
+        let config = AppConfig::new(std::env::current_dir().unwrap_or_default().as_path());
+        let view = SetupView::new(palette, logger, watchdog, config);
 
         // Verify initial state is clean — all buttons start inactive
         assert!(!view.state.should_validate);
@@ -534,7 +830,8 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
+        let config = AppConfig::new(std::env::current_dir().unwrap_or_default().as_path());
+        let mut view = SetupView::new(palette, logger, watchdog, config);
 
         // Initially no actions pending
         assert!(!view.state.should_validate);
@@ -575,7 +872,8 @@ mod tests {
             .unwrap(),
         );
         let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
-        let mut view = SetupView::new(palette, logger, watchdog, AppConfig::default());
+        let config = AppConfig::new(std::env::current_dir().unwrap_or_default().as_path());
+        let mut view = SetupView::new(palette, logger, watchdog, config);
 
         // Simulate clicking Browse Library
         view.state.status = "Browse for library root…".to_string();
@@ -597,5 +895,34 @@ mod tests {
             view.state.status.contains("7-Zip"),
             "Browse 7-Zip should set 7-Zip status"
         );
+    }
+
+    #[test]
+    fn test_setup_progress_percent() {
+        let palette = Palette::default();
+        let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
+            crate::core::logger::AppLogger::new(
+                std::env::temp_dir().join(format!("setup_test_{}.log", std::process::id())),
+                "INFO",
+                false,
+                false,
+            )
+            .unwrap(),
+        );
+        let watchdog = Arc::new(crate::core::errors::Watchdog::new(logger.clone(), 1000));
+        let config = AppConfig::new(std::env::current_dir().unwrap_or_default().as_path());
+        let mut view = SetupView::new(palette, logger, watchdog, config);
+
+        // Initially nothing valid
+        assert!((view.state.progress_percent() - 0.0).abs() < 0.001);
+
+        // Library root valid
+        view.state.library_root_valid = true;
+        assert!((view.state.progress_percent() - 33.33).abs() < 0.01);
+
+        // All three valid
+        view.state.extract_folder_valid = true;
+        view.state.seven_zip_valid = true;
+        assert!((view.state.progress_percent() - 100.0).abs() < 0.01);
     }
 }

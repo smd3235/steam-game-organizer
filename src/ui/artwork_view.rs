@@ -10,8 +10,10 @@ use std::sync::Arc;
 use crate::core::errors::Watchdog;
 use crate::core::models::GameArchive;
 
+use crate::ui::theme;
 use crate::ui::theme::{
-    card, empty_state, heading, info_card, secondary_button, section_header, separator, Palette,
+    card, empty_state, heading, info_card, secondary_button, section_header, separator, stat_card,
+    Palette,
 };
 use egui::{RichText, ScrollArea};
 
@@ -68,19 +70,32 @@ impl ArtworkView {
             );
             separator(ui);
 
+            // Summary stat cards
+            let total = self.state.archives.len();
+            let downloaded = 0; // placeholder — tracked per-archive in future
+            let missing = total;
+            ui.horizontal(|ui| {
+                stat_card(ui, &self.palette, &total.to_string(), "Total Games", self.palette.accent);
+                stat_card(ui, &self.palette, &downloaded.to_string(), "Downloaded", self.palette.green);
+                stat_card(ui, &self.palette, &missing.to_string(), "Missing", self.palette.orange);
+            });
+            ui.add_space(theme::SPACING);
+
             // Archive grid
             section_header(ui, &self.palette, "ARCHIVES");
             ScrollArea::vertical()
                 .id_salt("artwork_grid")
                 .show(ui, |ui| {
                     if self.state.archives.is_empty() {
-                        empty_state(
-                            ui,
-                            &self.palette,
-                            "🖼️",
-                            "No artwork downloaded yet",
-                            "Scan and organize games first, then download artwork.",
-                        );
+                        ui.vertical_centered(|ui| {
+                            empty_state(
+                                ui,
+                                &self.palette,
+                                "🖼️",
+                                "No artwork downloaded yet",
+                                "Scan and organize games first, then download artwork.",
+                            );
+                        });
                     } else {
                         egui::Grid::new("artwork_grid")
                             .num_columns(3)
@@ -123,7 +138,7 @@ impl ArtworkView {
                                                 format!("Viewing artwork for {}", name);
                                         }
                                     });
-                                    if i < self.state.archives.len() - 1 {
+                                    if i + 1 < self.state.archives.len() {
                                         ui.end_row();
                                     }
                                 }
@@ -154,7 +169,8 @@ impl ArtworkView {
 
             // Artwork detail panel
             if let Some(i) = self.state.selected_index {
-                let archive = &self.state.archives[i];
+                if i < self.state.archives.len() {
+                    let archive = &self.state.archives[i];
                 section_header(
                     ui,
                     &self.palette,
@@ -180,6 +196,7 @@ impl ArtworkView {
                     &format!("{}", archive.artwork.assets.len()),
                 );
                 separator(ui);
+            }
             }
         });
     }

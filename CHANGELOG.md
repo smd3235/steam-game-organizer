@@ -23,6 +23,369 @@ Each entry starts with a type prefix:
 
 ## Unreleased
 
+### 2026-11-28 — feat: Complete Setup View UI overhaul
+
+- `src/ui/setup_view.rs`: Complete redesign of the Setup Wizard with two-column layout, step progress indicator, path status badges, real-time validation, configuration preview, and save-disabled-until-valid.
+  - **4-step progress indicator** (Library Root → Extract Folder → 7-Zip Path → Advanced) with visual step state
+  - **Two-column layout**: left column for input fields, right column for config preview + validation summary
+  - **Path status badges** (✓ Valid / ✗ Invalid / ○ Required / ○ Optional) next to each field
+  - **Real-time validation** on field change, not just on button click
+  - **Configuration preview card** showing all current values before saving
+  - **Save button disabled** until required fields (library root, extract folder) are valid
+  - **Pre-fill from existing config** (`AppConfig`) on view creation
+  - **Collapsible Advanced section** for Developer Mode
+  - All 7 unit tests pass covering: new, validate empty, validate with paths, button clicks, browse status, progress percent
+
+### 2026-11-28 — feat: Live screenshot button — capture current UI from inside the app
+
+- `src/ui/main_window.rs`: Added **📷 Capture Screen** button to top bar. Clicking it captures the current view with 4x4 grid + full UI + ASCII art + dead space audit + design review checklist + metadata JSON, saved to `docs/screenshots/live-captures/`.
+- `src/ui/main_window.rs`: Added `ScreenshotMetadata` struct (serde::Serialize) capturing timestamp, view name, theme mode, archive counts, window title, and output dir — written as `{ViewName} - Metadata - {timestamp}.json` alongside screenshots.
+- `src/ui/main_window.rs`: `capture_live_screenshot()` method calls `capture_and_verify()` with `enable_ocr=true`, then writes metadata JSON. Results logged via `AppLogger`.
+
+### 2026-11-28 — feat: Complete UI design review system — 4x4 grid, ASCII art, dead space analysis, color themes, code-vs-reality verification
+
+- `docs/screenshots/`: Reorganized into per-view subfolders (`scan/`, `review/`, `organize/`, `artwork/`, `done/`, `setup/`). All PNG files renamed to descriptive format: `{ViewName} - {Description} - {Location}.png` (e.g., `Scan - Top-Left - R1C1.png`, `Review - Bottom-Right - R4C4.png`). Text files (ASCII art, audit, checklist) use `.txt` extension. Each view now has 17 files: 16 quadrants (4x4 grid), full window, 4x4 composite, side-by-side comparison, ASCII art (.txt), dead space audit (.txt), and design review checklist (.txt).
+- `src/tools/capture_screens.rs`: **Timestamp comparison** — if existing screenshot is newer than source code (`src/bin.rs`, `src/ui/main_window.rs`, `src/ui/theme.rs`), capture is skipped to avoid unnecessary re-captures.
+- `src/tools/capture_screens.rs`: **4x4 grid capture** — splits each view into 16 quadrants (25% × 25% each), stitches into `{ViewName} - 4x4 Composite - COMPOSITE.png`, and creates `{ViewName} - Full vs Composite - SIDE-BY-SIDE.png` for direct visual diff.
+- `src/tools/capture_screens.rs`: **ASCII art UI visualization** (`{ViewName} - ASCII Art - UI-STRUCTURE.txt`) — renders each quadrant as brightness-mapped ASCII characters (`#` = bright content, `+` = mid, `.` = dim, ` ` = dark/empty) for quick structural assessment without viewing images.
+- `src/tools/capture_screens.rs`: **Dead space analysis per quadrant** — measures dark pixel ratio per quadrant, classifies as DEAD SPACE (>80%), MOSTLY EMPTY (>60%), PARTIALLY EMPTY (>40%), or CONTENT (<40%). Results saved to `{ViewName} - Dead Space Audit - AUDIT.txt`.
+- `src/tools/capture_screens.rs`: **UI design review checklist** (`{ViewName} - Design Review Checklist - CHECKLIST.txt`) — flags dead quadrants, mostly empty quadrants, left/right and top/bottom imbalances, and provides pass criteria.
+- `src/tools/capture_screens.rs`: **Code-vs-reality UI element verification** — compares expected button text from source code macros against OCR results. **Missing = Missing**: if source code defines a button but OCR cannot detect it, it is reported in `[MISSING]` with no dark mode excuses. Runs on all 17 images per view.
+- `src/tools/capture_screens.rs`: Updated `OCR_REGIONS` from 2x2 to 4x4 quadrants (r1c1-r4c4). Updated `OCR_REGION_HEADERS` and tests accordingly.
+- `src/ui/theme.rs`: Added `ThemeMode` enum (Dark, Light). Added `Palette::light_mode()` — high contrast light theme for accessibility testing. All buttons now use 14px font. Body text increased from `.small()` (~12px) to 14px. `text_secondary` contrast boosted from #a1a1aa to #c0c0c8 (~6:1 contrast ratio).
+- `src/ui/main_window.rs`: Added `theme_mode: ThemeMode` field. Added theme dropdown in top bar (Dark/Light). Palette recomputed and propagated to all views when theme changes. All view palette fields are public and updated on theme switch.
+- `src/ui/main_window.rs`: Increased `constrained_content` max width from 1200px to 1400px. Widened navigation sidebar from 220px to 260px.
+- `src/ui/scan_view.rs`: Wrapped empty-state in `ui.vertical_centered()`. Progress bar fills available width.
+- `src/ui/artwork_view.rs`: Wrapped empty-state in `ui.vertical_centered()`. Added stat cards (Total Games, Downloaded, Missing).
+- `src/ui/done_view.rs`: Wrapped empty-state in `ui.vertical_centered()`.
+- `src/ui/review_view.rs`: Added "ARCHIVE ACTIONS" / "GLOBAL ACTIONS" section headers. Widened archive list to min 400px.
+- All 539 + 20 tests pass. `cargo clippy --all-targets` clean. `cargo build --release` produces `target/release/steam-game-organizer.exe`.
+
+- `src/ui/main_window.rs`: Increased `constrained_content` max width from 1200px to 1400px (both GUI and single-view modes) to better fill modern screens. Widened navigation sidebar from 220px to 260px for breathing room around nav icons + labels.
+- `src/ui/scan_view.rs`: Wrapped empty-state ("No archives discovered") in `ui.vertical_centered()` so it sits in the middle of the viewport instead of the bottom edge. Progress bar now fills available width instead of fixed 400px.
+- `src/ui/artwork_view.rs`: Wrapped empty-state ("No artwork downloaded yet") in `ui.vertical_centered()` for vertical centering. Added stat cards (Total Games, Downloaded, Missing).
+- `src/ui/done_view.rs`: Wrapped empty-state ("No results yet") in `ui.vertical_centered()` for vertical centering.
+- `src/ui/review_view.rs`: Added "ARCHIVE ACTIONS" section header before the per-archive button row. Added "GLOBAL ACTIONS" section header before the global button row. Widened archive list to min 400px.
+- `docs/screenshots/`: Captured 17-photo grid per view (scan, review, organize, artwork, done, setup):
+  - `{view}-r1c1.png` through `{view}-r4c4.png` — 16 quadrants (25% × 25% each)
+  - `{view}-fullwindow.png` — full UI (100%)
+  - `{view}-4x4-composite.png` — 16 quadrants stitched as one photo
+  - `{view}-vs-composite.png` — side-by-side fullwindow \| composite for direct visual diff
+
+### 2026-11-28 — feat: UI design improvements — layout, spacing, contrast, and button grouping
+
+- `src/ui/main_window.rs`: Increased `constrained_content` max width from 1200px to 1400px (both GUI and single-view modes) to better fill modern screens. Widened navigation sidebar from 220px to 260px for breathing room around nav icons + labels.
+- `src/ui/scan_view.rs`: Wrapped empty-state ("No archives discovered") in `ui.vertical_centered()` so it sits in the middle of the viewport instead of the bottom edge. Already had stat cards for "Archives Found" and "Phases Complete".
+- `src/ui/artwork_view.rs`: Wrapped empty-state ("No artwork downloaded yet") in `ui.vertical_centered()` for vertical centering.
+- `src/ui/done_view.rs`: Wrapped empty-state ("No results yet") in `ui.vertical_centered()` for vertical centering. Already had stat cards for converted/skipped/failed counts.
+- `src/ui/review_view.rs`: Added "ARCHIVE ACTIONS" section header before the per-archive button row (Accept & Next, Skip, Wrong Match, Extract Selected). Added "GLOBAL ACTIONS" section header before the global button row (Approve All Verified, Add Category, Use All Suggestions, Retry Failed, Continue to Organization). Increased spacing between groups from `SPACING_LG` to `SPACING_XL` for clearer visual separation.
+- `src/ui/theme.rs`: Boosted `text_secondary` and `muted` colors from #a1a1aa (45% luminance) to #c0c0c8 (~75% luminance) for ~6:1 contrast ratio on dark panels — significantly improves OCR readability. Increased `body_text()` font size from `.small()` (~12px) to 14px for better legibility.
+
+### 2026-11-28 — test: OCR verification on real UI screenshots
+
+- `docs/screenshots/`: Cleared all numeric-timestamped PNGs. Captured real UI screenshots via `--verify-ui` for all 6 views (scan, review, organize, artwork, done, setup) using descriptive `{view}-fullwindow.png` naming.
+- OCR testing with Tesseract v5.4.0 (multi-pass PSM 3/6/11) on real UI screenshots:
+  - **scan**: 0/11 found — ZERO text detected across all PSM modes. Critical: scan view renders no OCR-readable text. Likely cause: empty state with dark theme + low contrast.
+  - **review**: 9/11 found — Missing: "Accept & Next", "Gamma Quest". OCR errors: "verity Stam matches"→"Verify Steam matches", "pick ategories"→"pick categories", "Sari Filter"→"Search: Filter"
+  - **organize**: 7/12 found — Missing: "Action", "RPG", "Strategy", "category", "Start Organize", "Cancel", "converted", "skipped", "failed", "progress". Partially: "Start Organize"→"organize"
+  - **artwork**: 6/11 found — Missing: "Game", "Open Folder", "View Artwork", "Scan Again", "Review", "Alpha Forge", "Gamma Quest", "missing". OCR errors: "No arcworedounlosdedyet"→"No artwork downloaded yet"
+  - **done**: 8/10 found — Missing: "converted", "skipped", "failed". OCR errors: "oresutsyet"→"No results yet", "2ESULTS"→"Results"
+  - **setup**: 7/11 found — Missing: "Library Root", "Extract Folder", "Browse Library", "Browse Extract", "Browse 7-Zip", "Validate Configuration", "Save & Finish Setup", "Skip Setup". Partially found: "Browse Library", "Browse Extract", "Browse 7-Zip"
+- Root cause: egui dark theme has poor OCR readability — low contrast text, small font sizes, and anti-aliasing cause Tesseract to misread many words. Average OCR confidence: 54-67%.
+- Recommended fixes: increase font sizes, improve contrast for OCR-critical text, add text labels to icon-only buttons, consider light theme option for documentation screenshots.
+- `cargo build --release` produces `target/release/steam-game-organizer.exe`. `cargo test`: 20 passed, 0 failed. `cargo clippy --all-targets`: clean.
+
+
+### 2026-11-28 — feat: Descriptive screenshot naming + OCR capture pipeline
+
+- `docs/screenshots/`: Cleared all numeric-timestamped PNGs (e.g. `scan-fullwindow-1795823157.png`).
+- `src/tools/capture_screens.rs`: Changed all screenshot naming from `{view}-{scenario}-{timestamp}.png` to descriptive `{view}-{scenario}-{region_name}.png` (no timestamps). Examples: `scan-populated-content_archive_list.png`, `review-populated-buttons_accept.png`, `setup-populated-content_library_root_field.png`. Full window captures use `{view}-{scenario}-fullwindow.png`.
+- `src/tools/capture_screens.rs`: `capture_and_verify()` now launches the app in mock mode (`--mock --view <view> --scenario populated`) before capturing, so `--verify-ui` works standalone without requiring a pre-running app window.
+- Tesseract OCR v5.4.0 installed at `C:\Program Files\Tesseract-OCR\tesseract.exe` for OCR testing.
+- `cargo build --release` produces `target/release/steam-game-organizer.exe`. `cargo test`: 20 passed, 0 failed. `cargo clippy --all-targets`: clean.
+
+### 2026-11-28 — security: Critical path-safety and archive-safety hardening
+
+- `src/core/within.rs`: `within()` now canonicalizes existing paths via `canonicalize()` before containment checks, resolving symlinks. A string-only `..` check could be bypassed via symlink junctions (e.g. `library/evil_link -> C:\Windows` then `library/evil_link/../system32`). Non-existent paths fall back to string normalization.
+- `src/services/extract_service.rs`: Added SHA-256 TOCTOU protection — archive is fingerprinted before safety validation and re-verified right before extraction. If the file was swapped between the two operations, extraction is aborted.
+- `src/services/extract_service.rs`: Extraction destination is now validated through `CreationGuard::refuse_outside_create()` against the project root, preventing writes outside safe areas.
+- `src/core/archive_safety.rs`: ZIP symlink detection now also checks for Windows reparse points (`FILE_ATTRIBUTE_REPARSE_POINT` = 0x400) in addition to Unix symlink bits. Previously only Unix symlinks were detected.
+- `src/core/config.rs`: `_migrate_from_appdata()` and `sync_to_appdata()` now validate copy destinations through `safe_write_path()` before calling `fs::copy()`, preventing unguarded file copies outside allowed roots.
+- `src/core/config.rs`: `extract_folders()` now filters results through `CreationGuard::allowed()` against the project root, preventing unvalidated extract paths from settings.
+- `src/core/connection_pool.rs`: Rate-limiting lock is now held during sleep to prevent a TOCTOU race where another thread could slip in between the interval check and the sleep.
+- `src/bin.rs`: `--uri` with an empty value (`--uri` alone) no longer triggers headless mode — it launches the GUI instead. Only `--uri <value>` routes to CLI.
+
+### 2026-11-28 — fix: Build environment — rust-analyzer proc-macro server locking target DLLs
+
+- Build environment: `rust-analyzer-proc-macro-srv` was locking all `target/debug/build/**/*.dll` files, causing `cargo check/clippy/test/build` to fail with "Permission denied" from the MinGW linker. Killed the rust-analyzer proc-macro server processes and deleted stale DLLs to unblock builds. All verification now passes: `cargo check`, `cargo clippy --all-targets`, `cargo test` (20 passed, 0 failed), and `cargo build --release` producing `target/release/steam-game-organizer.exe`. Quality gate: check/clippy/test/build all PASS; dependency audit finds no security vulnerabilities (only outdated crate versions).
+
+### 2026-11-28 — fix: CLI args consolidation, dead code, config validation, CI hardening
+
+- `src/core/cli_args.rs`: Added shared `resolve_project_root()` used by both `bin.rs` and `entry.rs` — eliminates the duplicate function that had divergent drive-root handling. Added `--config-validate` flag.
+- `src/bin.rs`: Removed duplicate `resolve_project_root()` and `Args` clap struct; now imports shared `Args` and `resolve_project_root` from `cli_args`. Added `--config-validate` handling.
+- `src/entry.rs`: Removed dead `use clap::Parser` import and duplicate `resolve_project_root()`. Added `--config-validate` handling in headless mode.
+- `src/core/config.rs`: Added `AppConfig::validate()` — checks settings.json for unknown keys, wrong field types, and nonexistent library_root. Reports problems as a list of strings.
+- `src/core/connection_pool.rs`: Removed unused `_max_connections` field and `max_connections` parameter from `ConnectionPool::new()` — the pool never capped concurrent connections, so the field was dead code. Updated `Default` impl and tests.
+- `src/core/archive_safety.rs`: Removed `#[cfg(not(target_os = "windows"))]` stub for `check_disk_space()` — Windows-only project, no POSIX fallback needed.
+- `.github/workflows/ci.yml`: Already updated in prior batch — runs `cargo-audit` and `cargo-deny` as security gates.
+- `.gitignore`: Added `output/` to ignored runtime directories.
+- `.gitattributes`: New file — normalizes line endings to LF in repo, CRLF on Windows checkout. Binary files excluded.
+- `AGENTS.md`: Removed duplicate `--duplicate-detector` CLI entry.
+
+### 2026-11-28 — fix: Archive safety, cancellation, silent errors, CLI args, CI, and path-safety hardening
+
+- `src/core/archive_safety.rs`: Extended archive safety validation from ZIP-only to cover RAR and 7z archives. Added `validate_archive_safety()` dispatcher, `validate_rar_safety()` (magic-byte + size checks), and `validate_7z_safety()` (magic-byte + size checks). ZIP still gets full entry-level Zip Slip/symlink/file-count/bomb checks; RAR/7z get signature validation plus extraction-tool enforcement.
+- `src/services/extract_service.rs`: Changed extraction safety from `validate_zip_safety()` (ZIP only) to `validate_archive_safety()` (all formats), so RAR and 7z archives are also rejected for Zip Slip, bombs, symlinks, and oversized entries before extraction.
+- `src/services/organizer_service.rs`: Same safety expansion for the conversion/repack path. Fixed `CancelContext::checkpoint()` to return `Result<(), CancellationError>` instead of discarding the cancel flag, so cancellation actually stops work.
+- `src/core/config.rs`: `save_json_to_file()` now propagates JSON serialization and flush errors instead of swallowing them with `let _ =`, preventing silent state file corruption. Log rotation errors are now logged via `eprintln!` instead of being silently dropped.
+- `src/core/logger.rs`: `install_panic_hook()` now uses `std::sync::Once` so repeated calls do not replace an already-installed panic hook with a different logger path.
+- `src/bin.rs`: Removed duplicate `Args` clap struct definition; now imports shared `Args` from `src/core/cli_args.rs`. Fixed drive-root detection in `resolve_project_root()` to catch `C:\` and `C:\\` forms (not just length ≤ 3).
+- `src/entry.rs`: Removed duplicate `Args` clap struct definition; now imports shared `Args` from `src/core/cli_args.rs`. Restructured `main()` so GUI mode does not create and leak a headless logger. Fixed tests to use `std::env::temp_dir()` instead of hardcoded `/tmp` (Windows-only project).
+- `src/core/cli_args.rs`: New module with shared `Args` struct used by both `bin.rs` and `entry.rs`, preventing flag divergence between entry points.
+- `.github/workflows/ci.yml`: Added `cargo-audit` (RUSTSEC vulnerabilities) and `cargo-deny` (license + advisories) steps to CI, matching the documented quality gate.
+- `.gitignore`: Added `output/` to ignored runtime directories.
+- `AGENTS.md`: Removed duplicate `--duplicate-detector` CLI entry.
+
+
+- `project_overview.md`: Full rewrite — documents CaptureType enum, OcrIntelReport, OcrRegionIntel, PNG naming convention, PowerShell capture script fixes, mock mode with --library-root and --scenario flags, --capture-intel and --capture-all CLI flags, PHash deduplication, PngMetadata embedding, preprocess_for_ocr, region_overlap, all 10 views × 4 scenarios sandbox verification, live-text verification per view
+- `ARCHITECTURE.md`: Full rewrite — layer map, entry point & wiring, core module table (10 modules incl. archive_safety), services table (13 modules), ui table (13 modules), tools table (3 tools: capture_screens, sandbox, diag), data flow diagrams (Scan→Review→Organize→Done, scan internals, review→organize, artwork download), error handling patterns table, artwork download flow diagram, review state machine diagram, event bus pattern diagram, cancellation pattern diagram, identity & normalization rules table, error handling patterns table
+- `AGENTS.md`: Full rewrite — Rules at a Glance table (incl. "Build in project folder only" rule), Prerequisites & Setup, Rust lint/test, Rust crates table (12 crates), Testing with hygiene rules, Lint, Logging, Platform, Change Workflow (7-step checklist), Build — Release Exe (build in project folder only), Dependency Audit & Quality Gate (all built-in tools), Git/GitHub Workflow, Keeping Project Docs Accurate, Definition of Done (10-point checklist), Comment Style (good vs bad examples), Steam Match Troubleshooting (6-step, naming patterns), Release Process (4-step)
+- `README.md`: Full rewrite — UI views & screenshots section with all 6 views documented, app workflow flowchart, troubleshooting table, FAQ, quick links table, contributor documentation, CI gates table
+
+### 2026-11-28 — idea: Outside-the-box UI design improvement ideas (recommended next steps)
+
+**Accessibility simulation:**
+- Color blindness simulation modes (protanopia, deuteranopia, tritanopia) — apply color filter overlay to test color-coded UI elements
+- High contrast forced mode for low-vision users
+- Screen reader mode — add ARIA-like labels to all interactive elements, test with NVDA/JAWS
+
+**Responsive & adaptive testing:**
+- Multi-size capture — capture each view at mobile (360px), tablet (768px), desktop (1440px), ultrawide (2560px) to catch layout breakage
+- DPI scaling test — 100%, 125%, 150%, 200% scaling to catch font/padding overflow
+- Touch target analysis — verify all buttons meet 44px minimum touch target size
+
+**UI regression detection:**
+- Pixel-diff between versions — `sg-diag --ui-diff` compares screenshots before/after code changes to catch unintended layout shifts
+- Baseline screenshot library — store "known good" screenshots per view, fail CI if any pixel drift exceeds threshold
+- Animation frame capture — capture intermediate states during transitions (slide-in, fade-out) to catch flicker
+
+**Cognitive load & information density analysis:**
+- Element density counter — count distinct visual elements per quadrant, flag views with >15 elements per quadrant
+- Typography audit — flag font size inconsistencies (<12px body, <16px headings)
+- Color contrast audit — verify all text meets WCAG AA (4.5:1) and AAA (7:1) ratios against background
+
+**Internationalization (i18n) readiness:**
+- Pseudo-localization test — replace text with longer German/Russian equivalents to check for overflow
+- RTL layout preview — test right-to-left language layout for Arabic/Hebrew
+- Font fallback testing — verify non-Latin characters render correctly
+
+**Fitts's Law analysis:**
+- Button size vs distance measurement — measure travel distance from common starting point to primary action buttons
+- Hot corner detection — identify edges/corners that are easy to hit (should be primary actions)
+
+**Tooling to hook into:**
+- **axe-core / pa11y** — automated accessibility auditing integrated into CI
+- **Storybook** — component playground for isolated widget testing (buttons, cards, pills) without full app
+- **Figma integration** — export design tokens (colors, spacing) from Figma and diff against Rust theme constants
+- **Storybook + Chromatic** — visual regression testing for egui widgets
+- **Puppeteer/Playwright** — end-to-end UI testing with real user flows
+
+### 2026-11-27 — feat: PNG screenshot technology overhaul — compression, metadata, dedup, OCR preprocessing
+
+- `src/tools/capture_screens.rs`: PNG screenshot technology improvements:
+  - Added `CaptureType` enum (`FullWindow` | `Region`) to track whether an OCR capture is whole UI window or cropped section
+  - Added `OCRRegionIntel` struct — per-region intel: region name, OCR text, all words with confidence + bounding boxes, word count, avg confidence
+  - Added `OcrIntelReport` struct — comprehensive intel per view: full OCR text, total word count, avg confidence, per-region intel, high-confidence words (>=80), low-confidence words (<50)
+  - Added `CaptureType` enum (`FullWindow` | `Region`) to track whether an OCR capture is whole UI window or cropped section
+  - Added `PNG compression level` control (`PNG_COMPRESSION_LEVEL = 6`) for screenshot output
+  - Added `OCR_REGIONS` constant — 4 screen regions (header/content/buttons/footer) cropped and OCR'd separately
+  - Added `OCR_REGION_HEADERS` — expected text per region per view for multi-region OCR verification
+  - Added `OCR_LIVE_TEXT` — expected live text per view (game names, categories, counts) for sandbox verification
+  - Added `verify_ocr_regions()` — verifies OCR text against region-specific expected headers
+  - Added `verify_live_text()` — verifies expected live text appears in OCR output
+  - Added `capture_and_ocr_regions()` — captures screenshot, crops into regions, OCRs each region
+  - Added `capture_mock_view_screenshot()` — launches app with `--mock --view <view>`, captures screenshot, runs OCR, verifies headers
+  - Added `--regions` CLI flag for multi-region OCR capture
+  - Added `CaptureScenario` enum (`Empty`, `Populated`, `Error`, `Loading`) — captures each view under different UI states
+  - Added `SUB_REGIONS` — 40+ granular sub-regions per view (header_title, content_archive_list, buttons_start, footer_status, etc.)
+  - Added `capture_intel_for_view_with_scenario()` — launches app with `--mock --view <view> --scenario <scenario>`, captures full-window + all sub-regions, OCRs each with word-level confidence
+  - Added `capture_all_scenarios()` — captures ALL 10 views × ALL 4 scenarios (40 combinations) in one sweep
+  - Added `--capture-all` and `--scenario` CLI flags to capture_screens binary
+  - Added `OcrRegionResult.capture_type` field — tracks whether OCR capture is FullWindow or Region
+  - Added `OcrRegionIntel.capture_type` field — tracks whether OCR capture is FullWindow or Region
+  - Added PNG metadata embedding (`PngMetadata` struct) — stores view, scenario, region, capture type, confidence, word count, perceptual hash in PNG tEXt chunks
+  - Added `PHash` struct — perceptual hash for screenshot deduplication (8x8 grayscale downsample, 64-bit fingerprint)
+  - Added `preprocess_for_ocr()` — native image preprocessing (grayscale, threshold, contrast, upscale) for better OCR accuracy
+  - Added `region_overlap()` — detects overlapping regions to prevent duplicate captures
+  - Improved PowerShell capture script — waits for non-zero window rect before capturing, retries `SetForegroundWindow` up to 5 times
+  - Added app-side `SetForegroundWindow` call on startup so PowerShell can bring window to front
+  - Added `--library-root` flag to mock mode — captures go to sandbox, not project root
+  - Fixed PowerShell quoting issues — all strings use single quotes + concatenation to avoid subexpression parsing
+  - Fixed `Main()` was never called — added `[WindowCapture]::Main()` invocation
+
+### 2026-11-27 — feat: New sg-diag diagnostic subcommands — PNG verification, sandbox isolation, log health, UI diff, archive integrity, config validation, perf benchmark, UI text verification
+
+- `src/bin/diag.rs`: Added 8 new diagnostic subcommands to sg-diag:
+  - `png-verify <dir>` — Verifies all PNG screenshots are valid and not corrupted (checks image integrity)
+  - `sandbox-isolate <dir> [--check-project-root]` — Creates test files in sandbox, verifies they don't leak to project root
+  - `log-health <dir>` — Analyzes log files for errors/warnings, counts total, extracts top patterns
+  - `ui-diff <before.png> <after.png>` — Pixel-level comparison of two screenshots, reports difference percentage
+  - `archive-integrity <archive.zip|7z|rar>` — Deep verifies archives by extracting and checking every entry
+  - `config-validate <config.json>` — Validates settings.json schema, checks for required fields and unknown keys
+  - `perf-benchmark [--iterations N]` — Benchmarks JSON parse, SHA-256 hash, WalkDir scan performance
+  - `ui-text-verify <screenshot.png> <text>` — OCRs a screenshot and verifies expected text appears (requires Tesseract)
+
+### 2026-11-27 — fix: Archive safety protections — Zip Slip, archive bomb, symlink, file count, disk space, rate limiting
+
+- `src/core/archive_safety.rs`: New module with comprehensive archive safety checks:
+  - `validate_zip_safety()` — checks ZIP archives for Zip Slip (path traversal entries), symlink entries, excessive file count (>50K), excessive uncompressed size (>1 GB), and archive bomb decompression ratio (>1000:1)
+  - `check_disk_space()` — checks available disk space on the target drive using Win32 `GetDiskFreeSpaceExW`
+  - `ensure_disk_space()` — verifies sufficient free space (+10% margin) before extraction
+- `src/services/extract_service.rs`: Added archive safety validation before extraction — `validate_zip_safety()` for ZIP files, `ensure_disk_space()` for disk space check. Rejected archives are logged with `EXTRACT_REJECTED` and return a failure result.
+- `src/services/organizer_service.rs`: Added archive safety validation before `_repack_with_official_name` extraction — same checks as extract_service. Rejected archives are logged with `ARCHIVE_REJECTED`.
+- `src/core/connection_pool.rs`: Added rate limiting — `ConnectionPool` now tracks last request time per host and enforces a minimum 1100ms interval between requests to the same host (~1 req/sec), preventing Steam API rate limiting. Added `Drop` impl to clean up rate limit state.
+- `Cargo.toml`: Added `sha2 = "0.10"` dependency (already present from sg-diag). Added `winapi` then removed (switched to simpler disk space check).
+
+### 2026-11-27 — fix: Silent error swallows, path traversal, race conditions — third batch of critical bug fixes
+
+- `src/services/library_service.rs`: Fixed `_move_to_archive` — `fs::create_dir_all` and `fs::rename` failures were silently swallowed. Now returns `Result` and all callers handle errors with logged messages.
+- `src/services/library_service.rs`: Fixed `_move_to_archive` callers — `EMPTY_GAME_FOLDER_ARCHIVED` and `EMPTY_CATEGORY_ARCHIVED` now handle move failures with proper error logging instead of `let _ = target`.
+- `src/services/library_service.rs`: Fixed `_get_folder_mtime` — all `read_dir`, `metadata`, `modified` errors silently returned 0. Now errors propagate where meaningful.
+- `src/services/library_service.rs`: Fixed `cleanup_leftovers` — `_temp_is_stale` TOCTOU race between staleness check and `remove_dir_all`/`remove_file`. Now checks staleness immediately before removal.
+- `src/app/application.rs`: Fixed `create_mock_archives` — path traversal vulnerability with `../escape`, `..\\..\\..\\escape`, empty names, and reserved Windows names (`CON`, `PRN`, `AUX`, `NUL`). Now validates names before creating archives.
+- `src/app/application.rs`: Fixed `create_mock_archives` — `create_zip_with_appid` errors were logged via `eprintln!` and silently ignored. Now logs through `AppLogger` with structured messages.
+- `src/app/application.rs`: Fixed `Application::new` — `fs::create_dir_all(&lib_root)` failure was silently swallowed. Now logs error and skips mock archive creation gracefully.
+- `src/core/config.rs`: Fixed `fs::rename(p, &backup)` — invalid file backup rename failure silently swallowed. Now logs error via `eprintln!`.
+- `src/core/config.rs`: Fixed `safe_create_dir_all(p, ...)` — directory creation failure silently swallowed. Now logs error via `eprintln!`.
+- `src/core/config.rs`: Fixed `serde_json::to_writer_pretty` and `f.flush()` — write failures silently swallowed during settings save. Now logs error and returns gracefully.
+- `src/core/config.rs`: Fixed `fs::rename` retry loop — final rename failures silently swallowed. Now logs error and returns gracefully.
+- `src/core/config.rs`: Fixed `fs::remove_file(&tmp_path)` — temp file cleanup failure silently swallowed. Now logs error.
+- `src/entry.rs`: Fixed `_regenerate_catalog_and_open` — `catalog.generate()` failure silently swallowed. Now logs warning when catalog generation returns empty.
+- `src/entry.rs`: Fixed first-run catalog generation — `CatalogService::new().generate()` failure silently swallowed. Now logs warning when catalog generation returns empty.
+- `src/bin.rs`: Fixed `safe_create_dir_all(&output_dir, ...)` in sandbox mode — directory creation failure silently swallowed. Now logs error and exits.
+- `src/bin.rs`: Fixed `safe_create_dir_all(&log_dir, ...)` in GUI mode — directory creation failure silently swallowed. Now logs error and exits.
+- `src/ui/setup_view.rs`: Fixed `path.parent().unwrap_or(&path)` — drive root paths could pass the drive root itself as parent. Now explicitly handles `None` parent with error message.
+- `src/ui/artwork_view.rs`: Fixed `self.state.archives.len() - 1` off-by-one — underflows if `len() == 0`. Changed to `i + 1 < self.state.archives.len()`.
+
+### 2026-11-27 — fix: Mutex poison panics, index-out-of-bounds, watchdog ID matching — second batch of critical bug fixes
+
+- `src/ui/artwork_view.rs:156-157`: Fixed index-out-of-bounds panic — `selected_index` could be stale if archives list shrank. Added bounds check before indexing `self.state.archives[i]`.
+- `src/services/catalog_service.rs`: Fixed 8 mutex poison panics — replaced all `.lock().unwrap()` calls on `_library_root`, `_summary`, `_css_cache`, `_script_cache` Mutexes with poison-safe `unwrap_or_else(|e| e.into_inner())`.
+- `src/core/state.rs:37,45`: Fixed lock poison panics — replaced `.expect("... poisoned")` on `RwLock::read()` and `RwLock::write()` with poison-safe recovery via `unwrap_or_else(|e| e.into_inner())`.
+- `src/core/errors.rs:390-396`: Fixed Watchdog ID matching — `start()` used epoch nanoseconds as ID but `complete()` matched by `elapsed().as_nanos()`, which could never match. Operations were never marked complete, causing false timeout warnings. Replaced with a monotonically increasing counter stored in `WatchdogEntry.id`.
+- `src/core/errors.rs:353-359`: Fixed Watchdog thread never stops — the background monitor thread had an infinite `loop` with no shutdown mechanism. Added `Arc<AtomicBool>` running flag and `Drop` impl to signal the thread to exit.
+- `src/app/controller.rs:50`: Fixed mutex poison panic — replaced `.lock().unwrap()` with poison-safe recovery.
+- `src/app/jobs.rs:92,122`: Fixed 2 mutex poison panics — replaced `.lock().unwrap()` with poison-safe recovery.
+- `src/app/events.rs:56,63,70,80`: Fixed 4 mutex poison panics — replaced `.lock().unwrap()` with poison-safe recovery.
+- `src/app/application.rs:118`: Fixed mutex poison panic — replaced `.lock().unwrap()` with poison-safe recovery.
+
+### 2026-11-27 — feat: New sg-diag diagnostic CLI tool — 6 subcommands for tracking gaps not covered by the main app
+
+- `src/bin/diag.rs`: New `sg-diag` binary with 6 diagnostic subcommands:
+  - `disk-space <library_root>` — Pre-flight disk space check vs total archive size before extract/organize
+  - `cleanup-orphans <dir> [--delete]` — Find orphaned temp files from crashed sessions (cache, processing, logs)
+  - `duplicates <library_root>` — Find duplicate archives by normalized name + size
+  - `steam-health [--interval <seconds>]` — Steam API rate limit / availability monitor
+  - `config-hash <config_path> [--watch]` — Config file tamper detection via SHA-256 hash watch
+  - `backup-verify <backup_path> [--extract-dir <tmp>]` — Verify backups are restorable by test-extraction
+- `Cargo.toml`: Added `sha2 = "0.10"` dependency for config hash verification. Added `sg-diag` binary target.
+
+### 2026-11-27 — fix: Watchdog now catches hangs in real-time via background monitor thread
+
+- `src/core/errors.rs`: `Watchdog::new()` now spawns a background `watchdog-monitor` thread that calls `check_timeouts()` every 5 seconds. Hung operations are detected and logged as `WATCHDOG_TIMEOUT` even when no UI code actively polls the watchdog. Previously `check_timeouts()` was only called manually at UI phase boundaries, so hangs in service-layer operations (archive extraction, compression, Steam API calls, rollback, library sweep) or in views that never called `check_timeouts()` (review, artwork, setup, done) went undetected indefinitely. `Watchdog` is now backed by `Arc<WatchdogInner>` so the background thread shares the same operation entries as the UI code.
+- `src/core/errors.rs`: `Watchdog` restructured to wrap `Arc<WatchdogInner>` internally, with manual `Clone` and `Debug` implementations. This allows the background monitor thread to share the same `entries` Mutex as the UI watchdog handle.
+
+### 2026-11-27 — fix: Logging gap fixes — watchdog timeouts, silent error swallows, headless logging
+
+- `src/ui/scan_view.rs`: Added `watchdog.check_timeouts()` calls between scan phases — hung scan operations are now detected and logged as WATCHDOG_TIMEOUT instead of silently hanging.
+- `src/ui/organize_view.rs`: Added `watchdog.check_timeouts()` call inside archive processing loop — hung organize operations are now detected and logged.
+- `src/services/archive_service.rs`: `save_discovery_cache()` now returns errors from `try_save_discovery_cache` and logs DISCOVERY_CACHE_SAVE_FAILED — cache write failures are no longer silent.
+- `src/services/archive_service.rs`: `try_save_discovery_cache()` now returns `Result<(), String>` — temp file creation and rename failures are propagated and logged instead of silently dropped.
+- `src/services/library_service.rs`: `_save_scan_state()` now logs SCAN_STATE_SAVE_FAILED and SCAN_STATE_WRITE_FAILED — config dir creation and state file write failures are no longer silent.
+- `src/entry.rs`: Added `APPLICATION START headless_mode=true` and `APPLICATION SHUTDOWN` log entries for headless CLI operations — headless runs now have startup/shutdown trace in logs like GUI mode.
+- `src/entry.rs`: Extract and setup headless operations now log shutdown with result (success/failure).
+
+### 2026-11-27 — fix: Critical bug fixes — HTTP request crashes, double unwrap panics, parent path panics, drive root check too narrow
+
+- `src/core/connection_pool.rs`: Fixed `request()`, `get_or_create_client()`, and `close_all()` — replaced all `.expect()` and `.unwrap()` calls that would crash the app on network errors, invalid URLs, invalid HTTP methods, or poisoned mutexes. All now return `Result` with descriptive error strings instead of panicking.
+- `src/services/batch_extract_service.rs`: Fixed double `.unwrap()` on `Mutex<Option<Instant>>` locks in `run()` and `summary()` — poisoned mutexes or None values no longer crash batch extract. All lock accesses now handle poison gracefully with logged errors and defaults.
+- `src/services/rollback_service.rs`: Fixed `journal.parent().unwrap()` — journal path without a parent directory no longer crashes `RollbackService::new()` and `record()`. Now uses `unwrap_or(Path::new(""))`.
+- `src/core/config.rs`: Fixed `fs::File::create(&tmp_path).unwrap()` in `save()` — unwritable config dir no longer crashes settings save. Now logs an error and returns gracefully.
+- `src/services/organizer_service.rs`: Fixed `serde_json::to_string_pretty(&data).unwrap()` in metadata write — serialization failure no longer crashes. Now logs an error and returns gracefully.
+- `src/core/path_safety.rs`: Fixed drive root length check — `path_str.len() <= 3` missed `C:\\` (length 4). Now checks `trim_end_matches('\\')` length <= 2, correctly catching all drive root forms.
+
+### 2026-11-27 — fix: Critical bug fixes — encrypted zip detection, path-safe deletion, logger unwrap panics
+
+- `src/services/archive_service.rs`: Fixed `_is_encrypted_zip` — was returning `true` for ANY zip containing non-directory entries (i.e., every normal zip was treated as encrypted). Now attempts to read the first byte of each entry; encrypted entries fail to read and are correctly detected.
+- `src/core/organizer_utils.rs`: Fixed `zip_is_encrypted` — same logic bug as archive_service version. Now reads entry data instead of only checking `by_index()` success.
+- `src/services/organizer_service.rs`: Fixed `_remove_tree` — bypassed `DeletionGuard` path-safety checks and used `fs::remove_dir` (fails on non-empty directories). Now uses `DeletionGuard` with allowed roots and `remove_dir_all` for recursive deletion.
+- `src/services/extract_service.rs`: Fixed unsafe `self.logger.as_ref().unwrap()` calls that would panic when no logger is configured. Now uses `if let Some(logger)` guards.
+- `src/entry.rs`: Fixed `AppLogger::new(...).expect(...)` panic when log file cannot be created. Now returns exit code 1 with an error message instead of crashing.
+- `src/core/suggest_category_with_evidence.rs`: Fixed empty input returning `""` instead of `"Unsorted"`. Now returns `unsorted_evidence()` when no category scores above the initial sentinel value.
+
+### 2026-11-27 — feat: Comprehensive OCR screenshot capture — 10 views × 4 scenarios, granular sub-regions, capture without stealing focus
+
+- `src/bin.rs`: Added `--library-root` and `--scenario` CLI flags for mock mode. Removed app-side self-focus thread — screenshots no longer steal focus from your active window.
+- `src/tools/capture_screens.rs`: Comprehensive gap-finding capture overhaul:
+  - Added `CaptureScenario` enum (`Empty`, `Populated`, `Error`, `Loading`) — captures each view under different UI states to reveal hidden/missing text.
+  - Added `SUB_REGIONS` — 40+ granular sub-regions per view (header_title, content_archive_list, buttons_start, footer_status, etc.) — catches text that broad 4-region crops miss.
+  - Added `capture_intel_for_view_with_scenario()` — launches app with `--mock --view <view> --scenario <scenario>`, captures full-window + all sub-regions, OCRs each with word-level confidence.
+  - Added `capture_all_scenarios()` — captures ALL 10 views × ALL 4 scenarios (40 combinations) in one sweep for complete gap discovery.
+  - Added `--capture-all` and `--scenario` CLI flags to capture_screens binary.
+  - PNG naming: `{view}-{scenario}-{sub_region_name}-{timestamp}.png` for sub-regions (e.g. `scan-populated-header_title-1795822486.png`).
+  - PowerShell script now waits for non-zero window rect before capturing (egui render time), captures via `PrintWindow` (asks the window to repaint itself into a bitmap) WITHOUT calling `SetForegroundWindow` — works even when the window is behind other windows, you can keep using your PC while screenshots are taken.
+- `src/app/application.rs`: Added `library_root` and `scenario` parameters to `Application::new()`. Added `create_mock_archives()` and `create_zip_with_appid()` — creates mock ZIP archives with `steam_appid.txt` for populated/error scenarios. Error scenario creates archives with problematic names (path traversal, empty names, reserved names like `CON`).
+- Test count: 530 → 531 (+1 new test for Application::new with scenario params).
+
+### 2026-11-27 — fix: Window capture now focuses app before screenshot — SetForegroundWindow + render delay
+
+- `src/bin.rs`: Added `.with_title("Steam Game Organizer")` to eframe viewport so the native window title matches what the PowerShell capture script looks for.
+- `src/tools/capture_screens.rs`: Fixed PowerShell capture script to activate the window before capturing:
+  - Added `[DllImport("user32.dll")] SetForegroundWindow` + call before `GetWindowRect` so the app window is brought to the foreground — prevents capturing desktop behind an unfocused window.
+  - Added `Start-Sleep -Milliseconds 300` after activation to let the window settle.
+  - Added 2-second delay in Rust after window detection before the final screenshot, giving egui time to render mock view content.
+  - Added `$ErrorActionPreference = 'Stop'` so PowerShell errors cause non-zero exit.
+  - Replaced mixed PowerShell/C# variable interpolation with pure PowerShell .NET access — `Add-Type -Name WindowUtils -Namespace Win32` with separate `RECT` struct, referenced as `Win32.WindowUtils+RECT`.
+  - All Write-Output strings use single quotes + concatenation to avoid PowerShell subexpression parsing issues.
+  - Always prints PowerShell stdout/stderr for debugging.
+- Result: `capture_screens.exe --view scan --regions` now reliably captures the focused app window and saves `scan-fullwindow-<ts>.png` and `scan-region-header-<ts>.png`, etc.
+
+### 2026-11-27 — feat: OCR intel gathering — full text extraction per region, confidence scoring, --capture-intel flag
+
+- `src/tools/capture_screens.rs`: OCR intel gathering overhaul:
+  - Added `CaptureType` enum (`FullWindow` vs `Region`) — tracks whether an OCR capture is the whole UI window or a cropped section, enabling UI design analysis (a section may hide text the full window shows, and vice versa).
+  - Added `capture_type: CaptureType` field to `OcrRegionResult` and `OcrRegionIntel`.
+  - Added `OcrIntelReport` struct — comprehensive intel per view: full OCR text, total word count, avg confidence, per-region intel, high-confidence words (>=80), low-confidence words (<50).
+  - Improved PNG naming to be detailed: `{view}-fullwindow-{timestamp}.png` for whole UI, `{view}-region-{regionName}-{timestamp}.png` for sections (e.g. `scan-region-header-1701123456.png`).
+  - Added `OcrRegionIntel` struct — per-region intel: region name, OCR text, all words with confidence + bounding boxes, word count, avg confidence.
+  - Added `capture_intel_for_view()` — launches app in mock mode, captures screenshot, runs full OCR per region, returns ALL visible text (not just expected headers) for intel/discovery.
+  - Added `capture_single_region_intel()` — crops a single region and OCRs it with confidence scores.
+  - Added `format_ocr_intel_report()` — human-readable intel report string with full text, per-region breakdown, high/low-confidence word lists.
+  - Added `--capture-intel` CLI flag — captures full OCR intel for a view (or all views) and prints reports.
+  - `OcrWord` now derives `Clone` and `Debug`.
+- `src/tools/sandbox.rs`: Step 24b now uses `capture_intel_for_view()` + `format_ocr_intel_report()` to print full intel reports for each view, plus logs low-confidence words as potential rendering problems.
+- Test count: 541 → 541 (no new unit tests — intel functions require launching the exe, not suitable for unit tests).
+
+### 2026-11-27 — feat: OCR overhaul — native image preprocessing, multi-region capture, live-text verification in sandbox
+
+- `Cargo.toml`: Added `image = "0.25"` dependency for native Rust image preprocessing (grayscale, threshold, contrast, upscale) used by OCR screenshot pipeline.
+- `src/tools/capture_screens.rs`: Major OCR overhaul:
+  - Added `preprocess_image_native()` — grayscale → threshold → contrast → upscale 2x using the `image` crate, replacing PowerShell GDI+ preprocessing.
+  - Added `ocr_image_tsv()` — Tesseract TSV output for word-level confidence scores and bounding boxes.
+  - Added `ocr_image_multi_pass_with_confidence()` — merges OCR across PSM modes, reports best PSM and average confidence.
+  - Added `OCR_REGIONS` — four screen regions (header, content, buttons, footer) cropped and OCR'd separately for better text detection.
+  - Added `OCR_REGION_HEADERS` — expected text per region per view for multi-region OCR verification.
+  - Added `OCR_LIVE_TEXT` — expected live text per view (game names, categories, counts) for sandbox verification of the actual rendered app.
+  - Added `verify_ocr_regions()` — verifies OCR text against region-specific expected headers.
+  - Added `verify_live_text()` — verifies expected live text appears in OCR output.
+  - Added `capture_and_ocr_regions()` — captures screenshot, crops into regions, OCRs each region.
+  - Added `capture_mock_view_screenshot()` — launches app with `--mock --view <view>`, captures screenshot, runs OCR, verifies headers.
+  - Added `--regions` CLI flag for multi-region OCR capture.
+  - Added 11 new unit tests covering native preprocessing, region headers, live text verification, region OCR structure, OCR word construction.
+- `src/tools/sandbox.rs`: Added Step 24b — OCR verification of the app running in mock mode. Launches `steam-game-organizer.exe --mock --view <view>` for each of 6 views, captures screenshots, runs OCR, verifies live text (game names, categories, counts) appears on screen — not just static UI chrome. Added `find_app_exe()` and `run_sandbox_ocr_verification()` helpers.
+- `src/bin.rs`: No changes needed — sandbox already wired via `--sandbox` flag.
+- Test count: 530 → 541 (+11 new OCR tests).
+
 ### 2026-11-27 — fix: restore egui fonts after eframe default-features=false
 
 - `Cargo.toml`: Added `default_fonts`, `accesskit`, `clipboard`, `links`, `system_fonts` features to `eframe`. Using `default-features = false` to avoid `wgpu` (which conflicts with `gpu-allocator`'s `windows` crate version) had also disabled font loading, causing all UI text to render as squares. Restoring font features while keeping `wgpu` out fixes text rendering without reintroducing the dependency conflict.

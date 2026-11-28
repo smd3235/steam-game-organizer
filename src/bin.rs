@@ -10,7 +10,18 @@ use time::OffsetDateTime;
 use std::process;
 use std::sync::Arc;
 
+// Win32 FFI for window foreground management (Windows only)
+// Allows PowerShell capture tool to call SetForegroundWindow on this process later
+#[link(name = "user32")]
+extern "system" {
+    fn AllowSetForegroundWindow(dwProcessId: u32) -> i32;
+}
+
+// ASFW_ANY = 0xFFFFFFFF (-1) - allow any process to call SetForegroundWindow
+const ASFW_ANY: u32 = 0xFFFFFFFF;
+
 use steam_game_organizer::app::application::Application;
+use steam_game_organizer::core::cli_args::{Args, resolve_project_root};
 use steam_game_organizer::core::config::AppConfig;
 use steam_game_organizer::core::logger::AppLogger;
 use steam_game_organizer::core::path_safety::safe_create_dir_all;
@@ -26,109 +37,17 @@ use steam_game_organizer::tools::steamcmd_check::check_steamcmd;
 use steam_game_organizer::tools::system_diagnostics::run_system_diagnostics;
 use steam_game_organizer::tools::capture_screens::capture_and_verify;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about = "Steam Game Organizer", long_about = None)]
-struct Args {
-    /// Run deterministic mock data; no real library changes
-    #[arg(long)]
-    mock: bool,
-
-    /// Run sandbox mode: simulate UI interactions end-to-end, read logs, report issues
-    #[arg(long)]
-    sandbox: bool,
-
-    /// Run the full quality gate: check, clippy, test, build, dependency audit
-    #[arg(long)]
-    quality_gate: bool,
-
-    /// Run dependency audit: check for outdated crates and security vulnerabilities
-    #[arg(long)]
-    dependency_audit: bool,
-
-    /// Build a Windows installer using Inno Setup
-    #[arg(long)]
-    build_installer: bool,
-
-    /// Check SteamCMD availability and Steam installation status
-    #[arg(long)]
-    steamcmd_check: bool,
-
-    /// Scan library for duplicate archives by normalized name + file size
-    #[arg(long)]
-    duplicate_detector: Option<String>,
-
-    /// Scan library for health issues (unidentified, orphaned, oversized)
-    #[arg(long)]
-    library_health_scan: Option<String>,
-
-    /// Scan archives for encryption/password protection
-    #[arg(long)]
-    archive_encryption_scan: Option<String>,
-
-    /// Analyze Steam match confidence distribution across archives
-    #[arg(long)]
-    steam_match_confidence: Option<String>,
-
-    /// Scan for interrupted operations and clean up temp/journal/lock files
-    #[arg(long)]
-    crash_recovery: Option<String>,
-
-    /// Run full system diagnostics: dependency audit, library health,
-    /// Steam match confidence, archive encryption, duplicates, crash recovery,
-    /// SteamCMD, and installer build readiness
-    #[arg(long)]
-    system_diagnostics: bool,
-
-    /// Verify UI buttons are visible via OCR: launch app, capture all views,
-    /// run Tesseract OCR on each screenshot, confirm expected button text appears
-    #[arg(long)]
-    verify_ui: bool,
-
-    /// Print diagnostics report and exit
-    #[arg(long)]
-    diagnostics: bool,
-
-    /// Print health text and exit
-    #[arg(long)]
-    health: bool,
-
-    /// Print version and exit
-    #[arg(short, long)]
-    version: bool,
-
-    /// Handle a steamgameorganizer:// link. Empty means launch the GUI.
-    #[arg(long, num_args = 0..=1)]
-    uri: Option<String>,
-
-    /// Extract an archive to the extract folder, then exit
-    #[arg(long)]
-    extract: Option<String>,
-
-    /// Open the setup wizard, then exit
-    #[arg(long)]
-    setup: bool,
-
-    /// Destination folder for --extract (default: the extract folder)
-    #[arg(long)]
-    dest: Option<String>,
-
-    /// Password for an encrypted .zip or .rar
-    #[arg(long, default_value = "")]
-    zip_password: String,
-
-    /// Launch a single UI view in isolation (scan, review, organize, artwork, done, setup) for testing/screenshots
-    #[arg(long)]
-    view: Option<String>,
-}
-
 fn main() {
     let args = Args::parse();
 
-    // If any headless flag is present, delegate to the CLI entry point
+    // If any headless flag is present, delegate to the CLI entry point.
+    // --uri with an empty value (--uri alone) launches the GUI, not headless.
+    // --uri with a value (--uri steamgameorganizer://...) processes the URI headless.
+    // No --uri flag at all also launches GUI.
     if args.version
         || args.diagnostics
         || args.health
-        || args.uri.is_some()
+        || (args.uri.is_some() && args.uri.as_deref() != Some(""))
         || args.extract.is_some()
         || args.setup
         || args.system_diagnostics
@@ -141,9 +60,23 @@ fn main() {
         let project_root = resolve_project_root();
         let project_root_str = project_root.to_str().unwrap_or("");
         let output_dir = project_root.join("docs/screenshots");
-        let _ = safe_create_dir_all(&output_dir, &[project_root_str]);
+        if let Err(e) = safe_create_dir_all(&output_dir, &[project_root_str]) {
+            eprintln!(
+                "[ERROR] Failed to create output dir {}: {}",
+                output_dir.display(),
+                e
+            );
+            process::exit(1);
+        }
         let log_dir = project_root.join("logs");
-        let _ = safe_create_dir_all(&log_dir, &[project_root_str]);
+        if let Err(e) = safe_create_dir_all(&log_dir, &[project_root_str]) {
+            eprintln!(
+                "[ERROR] Failed to create log dir {}: {}",
+                log_dir.display(),
+                e
+            );
+            process::exit(1);
+        }
 
         let timestamp = OffsetDateTime::now_utc()
             .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
@@ -203,6 +136,23 @@ fn main() {
                 eprintln!("[ERROR] Dependency audit failed: {}", e);
                 process::exit(1);
             }
+        }
+    }
+
+    // Validate settings.json schema
+    if args.config_validate {
+        let project_root = resolve_project_root();
+        let config = AppConfig::new(project_root.as_path());
+        let problems = config.validate();
+        if problems.is_empty() {
+            println!("Config validation: ALL CLEAN");
+            process::exit(0);
+        } else {
+            println!("Config validation: ISSUES FOUND");
+            for problem in &problems {
+                println!("  - {problem}");
+            }
+            process::exit(1);
         }
     }
 
@@ -411,9 +361,11 @@ fn main() {
     // Otherwise, run the GUI with real file logging
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
+            .with_title("Steam Game Organizer")
             .with_inner_size([1400.0, 900.0])
             .with_min_inner_size([1100.0, 680.0])
-            .with_visible(true),
+            .with_visible(true)
+            .with_maximized(true),
         ..Default::default()
     };
 
@@ -425,7 +377,14 @@ fn main() {
     // Create a timestamped log file under logs/ with HH:MM:SS timestamps
     let log_dir = project_root.join("logs");
     let project_root_str = project_root.to_str().unwrap_or("");
-    let _ = safe_create_dir_all(&log_dir, &[project_root_str]);
+    if let Err(e) = safe_create_dir_all(&log_dir, &[project_root_str]) {
+        eprintln!(
+            "[ERROR] Failed to create log dir {}: {}",
+            log_dir.display(),
+            e
+        );
+        process::exit(1);
+    }
     let stamp = OffsetDateTime::now_utc()
         .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
         .unwrap_or_default();
@@ -445,10 +404,22 @@ fn main() {
     logger.info("APPLICATION", "START gui_mode=true", "");
 
     // Create Application and wire its controller's config
-    let mut app = Application::new(project_root.as_path(), args.mock, Arc::clone(&logger));
+    let library_root_path = args.library_root.as_ref().map(PathBuf::from);
+    let mut app = Application::new(
+        project_root.as_path(),
+        args.mock,
+        Arc::clone(&logger),
+        library_root_path,
+        &args.scenario,
+    );
     app.controller.set_config(Arc::clone(&config));
 
     let logger_for_shutdown = Arc::clone(&logger);
+
+    // Allow PowerShell capture tool to bring this window to foreground later
+    unsafe {
+        AllowSetForegroundWindow(ASFW_ANY);
+    }
 
     let run_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         eframe::run_native(
@@ -510,28 +481,4 @@ fn main() {
 
 fn entry_main() -> i32 {
     steam_game_organizer::entry::main()
-}
-
-/// Find the project root by walking up from the exe directory looking for Cargo.toml.
-fn resolve_project_root() -> PathBuf {
-    let exe_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-
-    let mut root = exe_dir.clone();
-    for candidate in exe_dir.ancestors() {
-        if candidate.join("Cargo.toml").is_file() {
-            root = candidate.to_path_buf();
-            break;
-        }
-    }
-
-    // Refuse to resolve to a drive root (e.g. C:\, E:\) — creating config/logs there
-    // would pollute the drive root instead of the project directory.
-    let root_str = root.to_string_lossy().to_string();
-    if root_str.len() <= 3 && root_str.ends_with('\\') {
-        return exe_dir.parent().unwrap_or(&std::env::current_dir().unwrap_or_default()).to_path_buf();
-    }
-    root
 }

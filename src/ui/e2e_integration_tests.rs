@@ -517,6 +517,12 @@ fn test_e2e_full_flow_scan_to_done() {
     // ========== SETUP VIEW ==========
     let mut setup_view = SetupView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog), (*test_config()).clone());
 
+    // Clear pre-filled values from config to test with empty state
+    setup_view.state.library_root = "".to_string();
+    setup_view.state.extract_folder = "".to_string();
+    setup_view.state.seven_zip_path = "".to_string();
+    setup_view.state.developer_mode = false;
+
     // Initial state
     assert!(setup_view.state.library_root.is_empty());
     assert!(setup_view.state.extract_folder.is_empty());
@@ -763,6 +769,11 @@ fn test_setup_with_invalid_paths() {
     let palette = Palette::default();
 
     let mut view = SetupView::new(palette, Arc::clone(&logger), Arc::clone(&watchdog), (*test_config()).clone());
+
+    // Clear pre-filled values from config to test with empty state
+    view.state.library_root = "".to_string();
+    view.state.extract_folder = "".to_string();
+    view.state.seven_zip_path = "".to_string();
 
     // Empty paths - validation should fail
     view.state.should_validate = true;

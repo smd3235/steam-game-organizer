@@ -35,6 +35,9 @@ use crate::core::organizer_utils::{
     defender_flagged, looks_like_resource_failure, pid_is_alive, still_running, stop_tool,
     zip_is_encrypted,
 };
+use crate::core::path_safety::DeletionGuard;
+use crate::core::errors::CancellationError;
+use crate::core::archive_safety::{ensure_disk_space, validate_archive_safety};
 use crate::services::archive_service::ArchiveService;
 use crate::services::extract_service::ExtractService;
 
@@ -80,8 +83,11 @@ impl CancelContext {
             .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
-    pub fn checkpoint(&self) {
-        let _ = self.cancelled();
+    pub fn checkpoint(&self) -> Result<(), CancellationError> {
+        if self.cancelled() {
+            return Err(CancellationError);
+        }
+        Ok(())
     }
 }
 
@@ -297,7 +303,21 @@ impl OrganizerService {
             },
         });
         let path = game_dir.join(".game-info.json");
-        if let Err(exc) = fs::write(&path, serde_json::to_string_pretty(&data).unwrap()) {
+        let content = match serde_json::to_string_pretty(&data) {
+            Ok(c) => c,
+            Err(e) => {
+                (self.logger)(
+                    "ORGANIZER",
+                    &format!(
+                        "METADATA_SERIALIZE_FAILED path=[{}] error={}",
+                        path.display(),
+                        e
+                    ),
+                );
+                return;
+            }
+        };
+        if let Err(exc) = fs::write(&path, content) {
             (self.logger)(
                 "ORGANIZER",
                 &format!(
@@ -995,7 +1015,11 @@ impl OrganizerService {
         );
     }
 
-    fn _remove_tree(&self, directory: &Path) {
+    fn _remove_tree(&self, directory: &Path, allowed_roots: &[&str]) {
+        let guard = match DeletionGuard::new(allowed_roots) {
+            Ok(g) => g,
+            Err(_) => return,
+        };
         let mut children: Vec<PathBuf> = Vec::new();
         for entry in WalkDir::new(directory).into_iter().filter_map(|e| e.ok()) {
             children.push(entry.path().to_path_buf());
@@ -1003,12 +1027,12 @@ impl OrganizerService {
         children.sort_by_key(|a| std::cmp::Reverse(a.components().count()));
         for child in children {
             let _ = if child.is_file() || child.is_symlink() {
-                fs::remove_file(&child)
+                guard.unlink(&child, true)
             } else {
-                fs::remove_dir(&child)
+                guard.rmtree(&child, true)
             };
         }
-        let _ = fs::remove_dir(directory);
+        let _ = guard.rmtree(directory, true);
     }
 
     // --- stale build dir sweep ---
@@ -1057,7 +1081,7 @@ impl OrganizerService {
                 .filter(|item| item.file_type().is_file())
                 .map(|item| item.metadata().map_or(0, |m| m.len()))
                 .sum();
-            self._remove_tree(&folder);
+            self._remove_tree(&folder, &[library_root.to_str().unwrap_or("")]);
             if folder.exists() {
                 (self.logger)(
                     "ORGANIZER",
@@ -1283,6 +1307,57 @@ impl OrganizerService {
                 ),
             );
             return path.to_path_buf();
+        }
+
+        // --- Archive safety validation before extraction ---
+        // Validate ZIP, RAR, and 7z archives for Zip Slip, archive bomb,
+        // symlinks, file count, and size before extraction.
+        if let Err(e) = validate_archive_safety(path) {
+            (self.logger)(
+                "ORGANIZER",
+                &format!(
+                    "ARCHIVE_REJECTED path=[{}] reason=[{}]",
+                    path.file_name().unwrap_or_default().to_string_lossy(),
+                    e
+                ),
+            );
+            if let Some(on_progress) = on_progress {
+                on_progress(
+                    &format!(
+                        "{} rejected: {}",
+                        path.file_name().unwrap_or_default().to_string_lossy(),
+                        e
+                    ),
+                    "rejected",
+                );
+            }
+            return path.to_path_buf();
+        }
+
+        // Check disk space before extraction
+        if let Ok(metadata) = fs::metadata(path) {
+            let archive_size = metadata.len();
+            if let Err(e) = ensure_disk_space(path.parent().unwrap_or(path), archive_size * 2) {
+                (self.logger)(
+                    "ORGANIZER",
+                    &format!(
+                        "ARCHIVE_REJECTED path=[{}] reason=[{}]",
+                        path.file_name().unwrap_or_default().to_string_lossy(),
+                        e
+                    ),
+                );
+                if let Some(on_progress) = on_progress {
+                    on_progress(
+                        &format!(
+                            "{} rejected: {}",
+                            path.file_name().unwrap_or_default().to_string_lossy(),
+                            e
+                        ),
+                        "rejected",
+                    );
+                }
+                return path.to_path_buf();
+            }
         }
 
         if suffix == "zip" && self.convert_archives() && !self._unlock_zip(path, ctx) {

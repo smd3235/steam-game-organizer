@@ -15,7 +15,7 @@ use egui::{RichText, ScrollArea};
 use crate::ui::theme;
 use crate::ui::theme::{
     archive_row, card, category_pill, danger_button, empty_state, heading, primary_button,
-    secondary_button, separator, stat_card, Palette,
+    secondary_button, separator, section_header, stat_card, Palette,
 };
 
 #[derive(Default, Clone)]
@@ -212,6 +212,7 @@ impl ReviewView {
             ui.horizontal(|ui| {
                 // Left: archive list
                 ui.vertical(|ui| {
+                    ui.set_min_width(400.0);
                     ui.label(RichText::new("Archives").strong().color(self.palette.muted));
                     ScrollArea::vertical()
                         .id_salt("review_list")
@@ -306,7 +307,8 @@ impl ReviewView {
 
             ui.add_space(theme::SPACING);
 
-            // Bottom actions
+            // Archive actions group
+            section_header(ui, &self.palette, "ARCHIVE ACTIONS");
             ui.horizontal(|ui| {
                 if secondary_button(ui, "Accept & Next", &self.palette, true).clicked() {
                     self.logger
@@ -355,7 +357,8 @@ impl ReviewView {
             }
 
             // Global action buttons
-            ui.add_space(theme::SPACING_LG);
+            ui.add_space(theme::SPACING_XL);
+            section_header(ui, &self.palette, "GLOBAL ACTIONS");
             ui.horizontal(|ui| {
                 if primary_button(ui, "Approve All Verified", &self.palette, true).clicked() {
                     self.logger

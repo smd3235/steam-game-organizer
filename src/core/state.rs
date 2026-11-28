@@ -34,7 +34,10 @@ impl StateStore {
 
     /// Returns a clone of the current state.
     pub fn get(&self) -> AppState {
-        self.state.read().expect("state read lock poisoned").clone()
+        self.state
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Applies changes and returns a clone of the updated state.
@@ -42,7 +45,7 @@ impl StateStore {
     where
         F: FnOnce(&mut AppState),
     {
-        let mut state = self.state.write().expect("state write lock poisoned");
+        let mut state = self.state.write().unwrap_or_else(|e| e.into_inner());
         changes(&mut state);
         state.clone()
     }

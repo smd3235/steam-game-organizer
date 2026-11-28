@@ -89,7 +89,7 @@ impl JobManager {
         {
             self.jobs
                 .lock()
-                .unwrap()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(job_id.clone(), ctx.clone());
         }
 
@@ -119,7 +119,12 @@ impl JobManager {
 
     /// Request cancellation of every in-flight job.
     pub fn cancel_all(&self) {
-        for ctx in self.jobs.lock().unwrap().values() {
+        for ctx in self
+            .jobs
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+        {
             ctx.cancel();
         }
     }

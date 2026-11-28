@@ -47,7 +47,7 @@ impl StateStore {
         job_id: &str,
         scan_result: Option<ScanResult>,
     ) {
-        let mut s = self.state.lock().unwrap();
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         s.phase = phase.to_string();
         s.cancel_requested = cancel_requested;
         s.job_id = job_id.to_string();

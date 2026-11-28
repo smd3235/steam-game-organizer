@@ -217,7 +217,7 @@ impl ScanView {
 
             // Progress bar + stage label
             ui.horizontal(|ui| {
-                ui.add(egui::ProgressBar::new(self.state.progress).desired_width(400.0));
+                ui.add(egui::ProgressBar::new(self.state.progress));
                 ui.add_space(theme::SPACING);
                 ui.label(
                     RichText::new(&self.state.stage)
@@ -259,13 +259,15 @@ impl ScanView {
 
         // Show discovered archives in separate card
         if self.state.discovered_archives.is_empty() {
-            empty_state(
-                ui,
-                &self.palette,
-                "🔍",
-                "No archives discovered",
-                "Run Scan to find game archives in your library.",
-            );
+            ui.vertical_centered(|ui| {
+                empty_state(
+                    ui,
+                    &self.palette,
+                    "🔍",
+                    "No archives discovered",
+                    "Run Scan to find game archives in your library.",
+                );
+            });
         } else {
             card(ui, &self.palette, |ui| {
                 section_header(ui, &self.palette, "DISCOVERED ARCHIVES");
@@ -310,6 +312,7 @@ impl ScanView {
         self.state.status = "Cleanup complete".to_string();
         self.logger
             .log("SCAN", "Phase 1/6: Cleanup complete", &corr);
+        self.watchdog.check_timeouts();
 
         // Phase: Dedupe
         self.state.current_phase = 1;
@@ -317,6 +320,7 @@ impl ScanView {
         self.state.stage = "Dedupe".to_string();
         self.state.status = "Dedupe complete".to_string();
         self.logger.log("SCAN", "Phase 2/6: Dedupe complete", &corr);
+        self.watchdog.check_timeouts();
 
         // Phase: Repair
         self.state.current_phase = 2;
@@ -324,6 +328,7 @@ impl ScanView {
         self.state.stage = "Repair".to_string();
         self.state.status = "Repair complete".to_string();
         self.logger.log("SCAN", "Phase 3/6: Repair complete", &corr);
+        self.watchdog.check_timeouts();
 
         // Phase: Discover
         self.state.current_phase = 3;
@@ -331,6 +336,7 @@ impl ScanView {
         self.state.status = "Discovering archives…".to_string();
         self.logger
             .log("SCAN", "Phase 4/6: Discovering archives", &corr);
+        self.watchdog.check_timeouts();
 
         // Try to use ArchiveService to discover real archives
         if let Some(library_root) = self.get_library_root() {

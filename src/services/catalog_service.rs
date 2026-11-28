@@ -129,8 +129,9 @@ impl CatalogService {
     }
 
     fn _retain(&self, library_root: &Path, _categories: &HashMap<String, Vec<GameArchive>>) {
-        *self._library_root.lock().unwrap() = Some(library_root.to_path_buf());
-        *self._summary.lock().unwrap() = Some(LibrarySummary::default());
+        *self._library_root.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some(library_root.to_path_buf());
+        *self._summary.lock().unwrap_or_else(|e| e.into_inner()) = Some(LibrarySummary::default());
         (self.logger)("CATALOG", "INDEX_BUILT categories=0 games=0 developers=0");
     }
 
@@ -140,12 +141,26 @@ impl CatalogService {
                 Ok(r) => r,
                 Err(_) => return LibrarySummary::default(),
             };
-            let retained_root = self._library_root.lock().unwrap().clone();
-            if self._summary.lock().unwrap().is_none() || retained_root.as_ref() != Some(&root) {
+            let retained_root = self
+                ._library_root
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone();
+            if self
+                ._summary
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .is_none()
+                || retained_root.as_ref() != Some(&root)
+            {
                 return self.rebuild_summary(&root);
             }
         }
-        self._summary.lock().unwrap().clone().unwrap_or_default()
+        self._summary
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+            .unwrap_or_default()
     }
 
     pub fn rebuild_summary(&self, library_root: &Path) -> LibrarySummary {
@@ -153,7 +168,7 @@ impl CatalogService {
             Ok(r) => r,
             Err(_) => return LibrarySummary::default(),
         };
-        *self._library_root.lock().unwrap() = Some(root.clone());
+        *self._library_root.lock().unwrap_or_else(|e| e.into_inner()) = Some(root.clone());
         if !root.is_dir() {
             (self.logger)(
                 "CATALOG",
@@ -162,11 +177,12 @@ impl CatalogService {
                     root.display()
                 ),
             );
-            *self._summary.lock().unwrap() = Some(LibrarySummary::default());
+            *self._summary.lock().unwrap_or_else(|e| e.into_inner()) =
+                Some(LibrarySummary::default());
             return LibrarySummary::default();
         }
         let summary = LibrarySummary::default();
-        *self._summary.lock().unwrap() = Some(summary.clone());
+        *self._summary.lock().unwrap_or_else(|e| e.into_inner()) = Some(summary.clone());
         summary
     }
 

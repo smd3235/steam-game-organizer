@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::core::constants::APP_NAME;
-use crate::core::path_safety::safe_create_dir_all;
+use crate::core::path_safety::{CreationGuard, safe_create_dir_all, safe_write_path};
 
 pub const ROTATED_LOGS: u32 = 10;
 
@@ -169,7 +169,13 @@ impl AppConfig {
             mb.cmp(&ma)
         });
         for old in logs.iter().skip(ROTATED_LOGS as usize) {
-            let _ = fs::remove_file(old);
+            if let Err(e) = fs::remove_file(old) {
+                eprintln!(
+                    "warning: log rotation failed: path={} error={}",
+                    old.display(),
+                    e
+                );
+            }
         }
     }
 
@@ -212,7 +218,10 @@ impl AppConfig {
             for item in entries.filter_map(|e| e.ok()) {
                 if item.path().is_file() {
                     let dest = self.config_dir.join(item.file_name());
-                    let _ = fs::copy(item.path(), dest);
+                    // Validate destination before copying (path-safety guard)
+                    if safe_write_path(&dest, &[project_root_str]).is_ok() {
+                        let _ = fs::copy(item.path(), dest);
+                    }
                 }
             }
         }
@@ -230,7 +239,11 @@ impl AppConfig {
             if let Ok(entries) = fs::read_dir(&self.config_dir) {
                 for item in entries.filter_map(|e| e.ok()) {
                     if item.path().is_file() {
-                        let _ = fs::copy(item.path(), appdata.join(item.file_name()));
+                        let dest = appdata.join(item.file_name());
+                        // Validate destination before copying (path-safety guard)
+                        if safe_write_path(&dest, &[appdata_root]).is_ok() {
+                            let _ = fs::copy(item.path(), dest);
+                        }
                     }
                 }
             }
@@ -242,6 +255,78 @@ impl AppConfig {
             .get("convert_archives")
             .and_then(|v| v.as_bool())
             .unwrap_or(true)
+    }
+
+    /// Validate the settings schema. Returns a list of human-readable problems.
+    /// Unknown keys, wrong types, and invalid paths are reported so a hand-edited
+    /// settings.json never silently creates shadow settings.
+    pub fn validate(&self) -> Vec<String> {
+        let mut problems: Vec<String> = Vec::new();
+
+        if let Some(obj) = self.settings.as_object() {
+            let known_keys: &[&str] = &[
+                "library_root",
+                "developer_mode",
+                "convert_archives",
+                "extract_folders",
+                "extract_folder",
+                "zip_password",
+            ];
+
+            for key in obj.keys() {
+                if !known_keys.contains(&key.as_str()) {
+                    problems.push(format!("unknown settings key: {key}"));
+                }
+            }
+
+            if let Some(v) = obj.get("library_root") {
+                if !v.is_string() && !v.is_null() {
+                    problems.push("library_root must be a string".to_string());
+                }
+            }
+            if let Some(v) = obj.get("developer_mode") {
+                if !v.is_boolean() {
+                    problems.push("developer_mode must be a boolean".to_string());
+                }
+            }
+            if let Some(v) = obj.get("convert_archives") {
+                if !v.is_boolean() {
+                    problems.push("convert_archives must be a boolean".to_string());
+                }
+            }
+            if let Some(v) = obj.get("extract_folders") {
+                if !v.is_array() {
+                    problems.push("extract_folders must be an array of strings".to_string());
+                } else if let Some(arr) = v.as_array() {
+                    for (i, item) in arr.iter().enumerate() {
+                        if !item.is_string() {
+                            problems.push(format!("extract_folders[{i}] must be a string"));
+                        }
+                    }
+                }
+            }
+            if let Some(v) = obj.get("extract_folder") {
+                if !v.is_string() {
+                    problems.push("extract_folder must be a string".to_string());
+                }
+            }
+            if let Some(v) = obj.get("zip_password") {
+                if !v.is_string() {
+                    problems.push("zip_password must be a string".to_string());
+                }
+            }
+        }
+
+        if let Some(root) = &self.library_root {
+            if !root.is_dir() {
+                problems.push(format!(
+                    "library_root does not exist: {}",
+                    root.display()
+                ));
+            }
+        }
+
+        problems
     }
 
     pub fn set_convert_archives(&mut self, value: bool) {
@@ -266,13 +351,18 @@ impl AppConfig {
                 v
             }
         };
+        let project_root_str = self.project_root.to_str().unwrap_or("");
+        let guard = CreationGuard::new(&[project_root_str]).unwrap_or_else(|_| {
+            // Fallback: empty guard rejects everything
+            CreationGuard::new(&[self.project_root.to_str().unwrap_or("")]).unwrap()
+        });
         let mut cleaned: Vec<PathBuf> = Vec::new();
         let mut seen: HashSet<String> = HashSet::new();
         for value in values {
             if let Some(s) = value.as_str() {
                 let path = PathBuf::from(s);
                 let key = path.to_string_lossy().to_string();
-                if !seen.contains(&key) {
+                if !seen.contains(&key) && guard.allowed(&path) {
                     seen.insert(key);
                     cleaned.push(path);
                 }
@@ -331,10 +421,23 @@ impl AppConfig {
                         p.with_file_name(format!("{}.invalid-file-backup-{suffix}", file_name));
                     suffix += 1;
                 }
-                let _ = fs::rename(p, &backup);
+                if let Err(e) = fs::rename(p, &backup) {
+                    eprintln!(
+                        "warning: invalid file backup failed: path={} backup={} error={}",
+                        p.display(),
+                        backup.display(),
+                        e
+                    );
+                }
             }
             let project_root_str = self.project_root.to_str().unwrap_or("");
-            let _ = safe_create_dir_all(p, &[project_root_str]);
+            if let Err(e) = safe_create_dir_all(p, &[project_root_str]) {
+                eprintln!(
+                    "warning: config dir create failed: path={} error={}",
+                    p.display(),
+                    e
+                );
+            }
         }
     }
 
@@ -448,9 +551,31 @@ impl AppConfig {
         let tmp_name = format!("settings.{}.tmp", std::process::id());
         let tmp_path = config_dir.join(&tmp_name);
         {
-            let mut f = fs::File::create(&tmp_path).unwrap();
-            let _ = serde_json::to_writer_pretty(&mut f, &data);
-            let _ = f.flush();
+            let mut f = match fs::File::create(&tmp_path) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Failed to create settings temp file: {}", e);
+                    return;
+                }
+            };
+            if let Err(e) = serde_json::to_writer_pretty(&mut f, &data) {
+                eprintln!(
+                    "warning: config serialize failed: path={} error={}",
+                    tmp_path.display(),
+                    e
+                );
+                let _ = fs::remove_file(&tmp_path);
+                return;
+            }
+            if let Err(e) = f.flush() {
+                eprintln!(
+                    "warning: config flush failed: path={} error={}",
+                    tmp_path.display(),
+                    e
+                );
+                let _ = fs::remove_file(&tmp_path);
+                return;
+            }
         }
         let mut attempt = 0;
         loop {
@@ -459,18 +584,40 @@ impl AppConfig {
                 Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
                     attempt += 1;
                     if attempt >= 4 {
-                        let _ = fs::rename(&tmp_path, &self.settings_file);
+                        if let Err(e) = fs::rename(&tmp_path, &self.settings_file) {
+                            eprintln!(
+                                "warning: config save failed: path={} error={}",
+                                self.settings_file.display(),
+                                e
+                            );
+                            let _ = fs::remove_file(&tmp_path);
+                            return;
+                        }
                         break;
                     }
                     std::thread::sleep(std::time::Duration::from_millis(50 * attempt as u64));
                 }
                 Err(_e) => {
-                    let _ = fs::rename(&tmp_path, &self.settings_file);
+                    if let Err(e) = fs::rename(&tmp_path, &self.settings_file) {
+                        eprintln!(
+                            "warning: config save failed: path={} error={}",
+                            self.settings_file.display(),
+                            e
+                        );
+                        let _ = fs::remove_file(&tmp_path);
+                        return;
+                    }
                     break;
                 }
             }
         }
-        let _ = fs::remove_file(&tmp_path);
+        if let Err(e) = fs::remove_file(&tmp_path) {
+            eprintln!(
+                "warning: config temp remove failed: path={} error={}",
+                tmp_path.display(),
+                e
+            );
+        }
         self.sync_to_appdata();
     }
 
@@ -515,8 +662,14 @@ impl AppConfig {
         let tmp_path = parent.join(&tmp_name);
         {
             let mut f = fs::File::create(&tmp_path)?;
-            let _ = serde_json::to_writer_pretty(&mut f, data);
-            let _ = f.flush();
+            serde_json::to_writer_pretty(&mut f, data).map_err(|e| {
+                let _ = fs::remove_file(&tmp_path);
+                std::io::Error::new(std::io::ErrorKind::Other, e)
+            })?;
+            f.flush().map_err(|e| {
+                let _ = fs::remove_file(&tmp_path);
+                e
+            })?;
         }
         for _ in 0..4 {
             match fs::rename(&tmp_path, path) {
@@ -549,7 +702,7 @@ mod tests {
 
     #[test]
     fn test_convert_archives_default_true() {
-        let config = AppConfig::new(std::path::Path::new("/tmp"));
+        let config = AppConfig::new(std::env::temp_dir().as_path());
         assert!(config.convert_archives());
     }
 }

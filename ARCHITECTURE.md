@@ -12,11 +12,13 @@
 
 | If you want to… | Go to section |
 |-----------------|---------------|
-| Read this doc first (start here) | [📖 How to use this document](#-how-to-use-this-document) |
+| Read this doc first | [📖 How to use this document](#-how-to-use-this-document) |
 | Find where a behavior lives | [🗺️ Layer map](#-layer-map) |
 | Trace a service call through the app | [🚪 Entry point & wiring](#-entry-point--wiring) |
 | Read what a specific module does | [🔧 core](#-core) · [🛠️ services](#-services) · [🖼️ ui](#-ui) · [🛠️ tools](#-tools) |
 | See service interactions and safety invariants | [🔗 Service interactions](#-service-interactions) |
+| See data flow diagrams | [🔄 Data flow diagrams](#-data-flow-diagrams) |
+| Review error handling patterns | [🔧 Error handling patterns](#-error-handling-patterns) |
 
 ---
 
@@ -32,7 +34,7 @@ This file is one of four project docs. If a reader acts on any of them, they mus
 | **README.md** | User-facing install, run, workflow, other-PC, and development-check instructions | [`README.md`](README.md) |
 | **CHANGELOG.md** | Dated change log (newest first) | [`CHANGELOG.md`](CHANGELOG.md) |
 
-**Rule:** when a change alters behavior, architecture, commands, test counts, or frozen build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) in [`AGENTS.md`](AGENTS.md).
+**Rule:** when a change alters behavior, architecture, commands, test counts, or build layout, update the affected doc(s) in the same change — not later. See [📐 Keeping Project Docs Accurate](#-keeping-project-docs-accurate) in [`AGENTS.md`](AGENTS.md).
 
 ---
 
@@ -53,7 +55,7 @@ These come from [`AGENTS.md`](AGENTS.md) and apply here too:
 
 ---
 
-## 🦀 Rust Conversion (complete)
+## 🦀 Rust conversion (complete)
 
 This project has been converted from Python to Rust, **one file at a time**, tracked on the `Rust-Conversion` branch. All source code is now in Rust under `src/`.
 
@@ -74,7 +76,7 @@ The app is organized in four layers. Data flows from the entry point into `app/`
 | Entry point | `src/` | `src/bin.rs` — CLI flags, protocol-handler target; `src/entry.rs` — CLI dispatch logic |
 | Composition / lifecycle | `src/app/` | `application.rs` (builds services, owns window), `controller.rs` (phase orchestration, journals moves), `jobs.rs` (cancellable workers), `events.rs` (progress observer) |
 | Core | `src/core/` | `config.rs`, `constants.rs`, `models.rs`, `uri_actions.rs`, `logger.rs`, `state.rs`, `exceptions.rs`, `diagnostics.rs` |
-| Business services | `src/services/` | `archive_service.rs`, `batch_extract_service.rs`, `catalog_service.rs`, `catalog_status.rs`, `extract_service.rs`, `installer_detect.rs`, `library_service.rs`, `organizer_service.rs`, `rollback_service.rs`, `setup_service.rs` |
+| Business services | `src/services/` | `archive_service.rs`, `batch_extract_service.rs`, `catalog_service.rs`, `catalog_status.rs`, `extract_service.rs`, `installer_detect.rs`, `library_service.rs`, `organizer_service.rs`, `rollback_service.rs`, `setup_service.rs`, `steam_service.rs`, `artwork_service.rs`, `banner_art.rs` |
 | UI | `src/ui/` | `main_window.rs` (shell + nav rail), `scan_view.rs`, `review_view.rs`, `organize_view.rs`, `artwork_view.rs`, `done_view.rs`, `setup_window.rs`, `phase_timeline.rs`, `extract_result_window.rs`, `batch_extract_window.rs`, `theme.rs`, `widgets/` |
 | Build / repair scripts | `tools/` | Visual audits, backup tools, misc |
 | Tests | `src/*/tests/` | Inline `#[cfg(test)]` modules in each Rust module |
@@ -93,26 +95,15 @@ The app is organized in four layers. Data flows from the entry point into `app/`
 | `--diagnostics` | Runs `src/core/diagnostics.rs` health output |
 | `--health` | Health check output |
 | `--mock` | Mock Steam backend (no network) |
+| `--view <name>` | Launches a single UI view in isolation (`scan`, `review`, `organize`, `artwork`, `done`, `setup`) |
+| `--scenario <name>` | Mock scenario: `empty`, `populated`, `error`, `loading` |
+| `--sandbox` | Runs the sandbox mega-test (end-to-end UI simulation) |
+| `--verify-ui` | Runs `tools/capture_screens.exe` OCR verification |
 | no flags | Launches egui `MainWindow`, maximized |
 
 **Composition root:** `src/app/application.rs` builds all services (`catalog`, `extract`, `library`, `organizer`, `rollback`, `setup`) and owns the main window. `src/app/controller.rs` orchestrates the phases (cleanup → dedupe → cross-category duplicate sweep → discover → audit → catalog) and journals every move via `rollback_service.rs` so the whole run can be undone. Progress is published on `src/app/events.rs`; cancellable work runs through `src/app/jobs.rs`.
 
 **Core dependency direction:** services read `src/core/config.rs` for project-root-derived paths and `src/core/constants.rs` for version/archive-extensions/categories. `src/core/uri_actions.rs` owns `SCHEME` and `SYSTEM_PATHS` (the folders a typed destination may not sit inside) and parses `steamgameorganizer://` URIs into `ExtractRequest` objects. `src/core/logger.rs` provides `AppLogger`; `src/core/state.rs` provides `StateStore`; `src/core/exceptions.rs` provides `OrganizerError` and `CancellationError`.
-
-**Service interactions:**
-
-| Service | Interacts with | Safety invariants |
-|---------|---------------|-------------------|
-| `catalog_service.rs` | `src/core/config.rs`, `src/core/constants.rs`, `services/banner_art.rs`, `services/catalog_status.rs` | `LibrarySummary` index retained so screens can ask placement questions without re-walking; `_COLLECT_CACHE` cleared on regeneration |
-| `extract_service.rs` | `src/core/constants.rs`, `src/core/uri_actions.rs` | Archive integrity confirmed — no silent data loss; `.sgo-extract-info` markers written beside extracted content |
-| `organizer_service.rs` | `src/core/config.rs`, `src/core/constants.rs`, `services/archive_service.rs`, `services/library_service.rs` | Never deletes — `rmtree` only a fallback when `library_root` is unknown; `_manifest_cache` keyed by `(path, size, mtime_ns)` |
-| `library_service.rs` | `src/core/config.rs`, `services/artwork_service.rs`, `services/organizer_service.rs` | Whole-library audit: Steam link normalization, artwork refresh, empty-category sweep to `Archive/` |
-| `rollback_service.rs` | `src/core/config.rs`, `services/organizer_service.rs` | JSON transaction journal: `last-organization.json`; restores archived files to source on Undo; ownership gating via `created_game_dir` |
-| `setup_service.rs` | `src/core/config.rs`, `src/core/uri_actions.rs` | Validates three folders (library with no games, app with no entry point, extract folder inside library are refused); registers `steamgameorganizer://` under `HKCU` (registry write injectable for tests) |
-| `steam_service.rs` | `src/core/constants.rs`, `src/core/uri_actions.rs` | Direct Steam Store search/details API with mock backend; `_appid_in_archive_cache` keyed by `(path, size, mtime_ns)` |
-| `artwork_service.rs` | `src/core/config.rs` | Cached Steam artwork retrieval with source fallback; 10-day expiry cache; stale entries deleted on re-init |
-| `banner_art.rs` | `src/core/constants.rs` | Composes the banner image; falls back to generated name-keyed banner so no card is ever a flat grey block |
-| `installer_detect.rs` | `src/core/constants.rs` | Recognizes Windows installer archives (`setup.exe` + `.bin`, or mountable `.iso`) → `Needs Install` |
 
 ---
 
@@ -130,6 +121,7 @@ The app is organized in four layers. Data flows from the entry point into `app/`
 | [`src/core/state.rs`](src/core/state.rs) | `StateStore` — thread-safe in-memory app state. | `get()` returns a clone so callers can rearrange without touching concurrent state |
 | [`src/core/exceptions.rs`](src/core/exceptions.rs) | `OrganizerError`, `CancellationError`. | `CancellationError` propagates through all worker layers without being swallowed |
 | [`src/core/diagnostics.rs`](src/core/diagnostics.rs) | Diagnostics and health report output. | Backs `--diagnostics` and `--health` CLI flags; prints environment info, Rust version, 7-Zip availability, runtime paths |
+| [`src/core/archive_safety.rs`](src/core/archive_safety.rs) | Pre-extraction archive safety: Zip Slip path-traversal detection, archive-bomb decompression-ratio check (>1000:1), symlink rejection, file-count cap (>50K), uncompressed-size cap (>1 GB), disk-space pre-check (`ensure_disk_space`). | All checks run before any bytes are written to disk; archives failing any check are rejected with a named error |
 
 ---
 
@@ -141,12 +133,15 @@ The app is organized in four layers. Data flows from the entry point into `app/`
 | [`src/services/batch_extract_service.rs`](src/services/batch_extract_service.rs) | Plans and runs batch extractions outside the library: smallest-first sort, `(n)` collision handling, installer archives routed to `Needs Install`, skip-if-already-extracted. | Skip logic skips games already unpacked to the destination |
 | [`src/services/catalog_service.rs`](src/services/catalog_service.rs) | Generates `Game Library.html` + banner art; holds embedded HTML/CSS/JS; `LibrarySummary` index; clears `_COLLECT_CACHE` on regeneration. | Single self-contained HTML file (embedded CSS + vanilla JS, no build step, no external requests) |
 | [`src/services/catalog_status.rs`](src/services/catalog_status.rs) | Writes `Game Library.status.js` after every batch/run; `.sgo-extract-info` marker helpers (`read_extract_marker`, `resolve_extracted_root`, `archive_has_changed_since_extraction`, `get_launch_target`, `update_extract_marker`, `mark_setup_done`); `discover_game_launchers()` scans extracted root (max depth 3, 250 candidates) filtering non-game executables. | Launcher discovery filters installers/uninstallers/crash handlers/redistributables/helper tools; scores by depth/name/size |
-| [`src/services/extract_service.rs`](src/services/extract_service.rs) | Finds the archive tool and performs extraction; writes `.sgo-extract-info`; preserves `launch_target`/`setup_done`/`installed_at` across re-extract. Collects destination files once via `rglob("*")` and reuses across installer detection and wrapper flattening. | Finds tool via `find_tool()` / `find_unrar()` — checking `PATH` then real install folders (`C:\Program Files\7-Zip`, `%ProgramFiles%\WinRAR`) |
+| [`src/services/extract_service.rs`](src/services/extract_service.rs) | Finds the archive tool and performs extraction; writes `.sgo-extract-info`; preserves `launch_target`/`setup_done`/`installed_at` across re-extract. Collects destination files once via `rglob("*")` and reuses across installer detection and wrapper flattening. | Runs `validate_zip_safety()` and `ensure_disk_space()` before every extraction; finds tool via `find_tool()` / `find_unrar()` — checking `PATH` then real install folders (`C:\Program Files\7-Zip`, `%ProgramFiles%\WinRAR`) |
 | [`src/services/installer_detect.rs`](src/services/installer_detect.rs) | Recognizes Windows installer archives (setup.exe + .bin, or mountable .iso) → `Needs Install`. | Archives that unpack to an installer repack are routed to a `Needs Install` subfolder with an amber badge |
 | [`src/services/library_service.rs`](src/services/library_service.rs) | Whole-library audit (Steam link normalization, artwork refresh); `_sweep_empty_categories()` moves empty game folders/categories to `Archive/`; `convert_pending_archives()` accepts pre-computed candidates to avoid double-walking. | Empty game folders and empty categories moved to `Archive/` rather than deleted |
-| [`src/services/organizer_service.rs`](src/services/organizer_service.rs) | Category moves, collision-safe filenames, zip/rar → 7z conversion; empty source folders moved to `Archive/` not deleted; `_manifest_cache` keyed by `(path, size, mtime_ns)`. | Older copies and re-categorized leftovers go to `Archive/` (with `(n)` collision suffixes) for review before deleting |
+| [`src/services/organizer_service.rs`](src/services/organizer_service.rs) | Category moves, collision-safe filenames, zip/rar → 7z conversion; empty source folders moved to `Archive/` not deleted; `_manifest_cache` keyed by `(path, size, mtime_ns)`. | Runs `validate_zip_safety()` and `ensure_disk_space()` before repack; older copies and re-categorized leftovers go to `Archive/` (with `(n)` collision suffixes) for review before deleting |
 | [`src/services/rollback_service.rs`](src/services/rollback_service.rs) | JSON transaction journal: writes/reads `last-organization.json`, restores archived files to source on Undo, prunes emptied folders this run created into `Archive/` (never deletes a folder it didn't make). | Ownership gating via `created_game_dir` — pre-existing folders belong to the user whatever they hold |
 | [`src/services/setup_service.rs`](src/services/setup_service.rs) | Setup wizard checks and answers: validates the three folders (library with no games, app with no entry point, extract folder inside library are refused), saves library root + extract folder, registers `steamgameorganizer://` under `HKCU` (registry write is injectable for tests). | Registry write reads the value back afterwards to confirm the write succeeded |
+| [`src/services/steam_service.rs`](src/core/steam_service.rs) | Direct Steam Store search/details API with mock backend; `_appid_in_archive_cache` keyed by `(path, size, mtime_ns)`. | Connection pool enforces ~1 req/sec per host rate limit; matches by AppID first, then text search with multiple name variants |
+| [`src/services/artwork_service.rs`](src/core/artwork_service.rs) | Cached Steam artwork retrieval with source fallback; 10-day expiry cache; stale entries deleted on re-init. | Artwork cached keyed by Steam AppID; falls back to generated name-keyed banner |
+| [`src/services/banner_art.rs`](src/core/banner_art.rs) | Composes the banner image; falls back to generated name-keyed banner so no card is ever a flat grey block. | Banner composited from hero + grid artwork |
 
 ---
 
@@ -177,6 +172,8 @@ Development and installation scripts, not part of the application:
 
 | Tool | Role |
 |------|------|
+| [`src/tools/capture_screens.rs`](src/tools/capture_screens.rs) | Screenshot capture + OCR verification. Captures the app window via PowerShell + Win32 API, preprocesses images natively (grayscale, threshold, contrast, upscale), runs multi-pass Tesseract OCR with PSM modes and word-level confidence via TSV output. Supports multi-region OCR (header/content/buttons/footer crops), per-view `--scenario` (empty/populated/error/loading), screenshot deduplication via perceptual hash (pHash), PNG metadata embedding (timestamp, view, scenario, region, capture type, confidence, word count, pHash), and live-text verification for sandbox mode. Wired into `--verify-ui` CLI flag. |
+| [`src/tools/sandbox.rs`](src/tools/sandbox.rs) | End-to-end sandbox mega-test. Constructs all UI views in-process, simulates button clicks, verifies state, runs real zip→7z conversion, checks logs for errors. Step 24b adds OCR verification: launches the app in mock mode per view, captures screenshots of the running app, runs OCR, and verifies live text (game names, categories, counts) is actually rendered — not just UI chrome. |
 | [`tools/`](tools/) | Build and repair scripts. `diff_backups.rs` shows differences between two backup manifests. |
 
 ---
@@ -231,24 +228,7 @@ flowchart TD
     I -->|Game Library.html| J[library root]
 ```
 
----
-
-## 🔧 Error handling patterns
-
-Three mechanisms exist for surfacing problems; use the right one:
-
-| Mechanism | When to use | Where |
-|-----------|-------------|-------|
-| `egui` dialog / `println!` | User must see it now (missing library folder, no free space, wrong match) | `ui/review_view.rs`, `ui/organize_view.rs`, `ui/setup_window.rs` |
-| `src/core/logger.rs` `AppLogger` | Background info that belongs in `logs/` (archive skipped, artwork failed, Steam lookup resolved) | All `services/` modules |
-| `raise CancellationError` | User cancelled the run; unwind the worker cleanly | `app/controller.rs`, `app/jobs.rs`, `services/*` |
-| `raise OrganizerError` | Unexpected but recoverable condition | `core/exceptions.rs` |
-
-**Never** `except Exception: pass` without logging or showing something — a swallowed exception leaves the user with a silent half-done run. Log at `WARN` or show a dialog so the user knows something didn't happen.
-
----
-
-## 🖼️ Artwork download flow
+### Artwork download flow
 
 ```mermaid
 flowchart TD
@@ -336,3 +316,16 @@ Never `except CancellationError: pass` — it must propagate so the run stops cl
 Identity keys are used to group multi-archive games (part1.zip + part2.zip → one `identity_key`) so accepting one accepts all.
 
 ---
+
+## 🔧 Error handling patterns
+
+Three mechanisms exist for surfacing problems; use the right one:
+
+| Mechanism | When to use | Where |
+|-----------|-------------|-------|
+| `egui` dialog / `println!` | User must see it now (missing library folder, no free space, wrong match) | `ui/review_view.rs`, `ui/organize_view.rs`, `ui/setup_window.rs` |
+| `src/core/logger.rs` `AppLogger` | Background info that belongs in `logs/` (archive skipped, artwork failed, Steam lookup resolved) | All `services/` modules |
+| `raise CancellationError` | User cancelled the run; unwind the worker cleanly | `app/controller.rs`, `app/jobs.rs`, `services/*` |
+| `raise OrganizerError` | Unexpected but recoverable condition | `core/exceptions.rs` |
+
+**Never** `except Exception: pass` without logging or showing something — a swallowed exception leaves the user with a silent half-done run. Log at `WARN` or show a dialog so the user knows something didn't happen.

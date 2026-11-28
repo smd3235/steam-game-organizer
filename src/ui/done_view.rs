@@ -112,13 +112,15 @@ impl DoneView {
                 .id_salt("done_results")
                 .show(ui, |ui| {
                     if self.state.archives.is_empty() {
-                        empty_state(
-                            ui,
-                            &self.palette,
-                            "✅",
-                            "No results yet",
-                            "Run Scan → Review → Organize to see results here.",
-                        );
+                        ui.vertical_centered(|ui| {
+                            empty_state(
+                                ui,
+                                &self.palette,
+                                "✅",
+                                "No results yet",
+                                "Run Scan → Review → Organize to see results here.",
+                            );
+                        });
                     } else {
                         for archive in &self.state.archives {
                             let name = if archive.display_name.is_empty() {

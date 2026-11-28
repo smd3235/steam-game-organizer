@@ -6,6 +6,8 @@
 
 use std::backtrace::Backtrace;
 use std::fmt;
+use std::fmt::Debug;
+use std::sync::Arc;
 
 /// Severity levels for error classification.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,6 +305,7 @@ macro_rules! trace_op {
 /// Watchdog entry for tracking long-running operations.
 #[derive(Debug, Clone)]
 pub struct WatchdogEntry {
+    pub id: u64,
     pub operation: String,
     pub component: String,
     pub correlation_id: String,
@@ -312,10 +315,32 @@ pub struct WatchdogEntry {
 }
 
 /// Watchdog system for detecting hung operations.
-pub struct Watchdog {
+pub struct Watchdog(Arc<WatchdogInner>);
+
+struct WatchdogInner {
     entries: std::sync::Mutex<Vec<WatchdogEntry>>,
+    next_id: std::sync::Mutex<u64>,
+    running: std::sync::atomic::AtomicBool,
     logger: std::sync::Arc<crate::core::logger::AppLogger>,
     default_timeout_ms: u64,
+}
+
+impl Clone for Watchdog {
+    fn clone(&self) -> Self {
+        Watchdog(self.0.clone())
+    }
+}
+
+impl Debug for Watchdog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Watchdog").finish()
+    }
+}
+
+impl Drop for Watchdog {
+    fn drop(&mut self) {
+        self.0.running.store(false, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 impl Watchdog {
@@ -323,14 +348,35 @@ impl Watchdog {
         logger: std::sync::Arc<crate::core::logger::AppLogger>,
         default_timeout_ms: u64,
     ) -> Self {
-        Watchdog {
+        let inner = Arc::new(WatchdogInner {
             entries: std::sync::Mutex::new(Vec::new()),
+            next_id: std::sync::Mutex::new(0),
+            running: std::sync::atomic::AtomicBool::new(true),
             logger,
             default_timeout_ms,
-        }
+        });
+        // Spawn a background monitor thread for real-time hang detection.
+        // It calls check_timeouts() every 5 seconds so hung operations are
+        // caught even when no UI code is actively polling the watchdog.
+        let monitor = inner.clone();
+        std::thread::Builder::new()
+            .name("watchdog-monitor".into())
+            .spawn(move || {
+                let interval = std::time::Duration::from_secs(5);
+                while monitor.running.load(std::sync::atomic::Ordering::Relaxed) {
+                    std::thread::sleep(interval);
+                    if !monitor.running.load(std::sync::atomic::Ordering::Relaxed) {
+                        break;
+                    }
+                    Watchdog(monitor.clone()).check_timeouts();
+                }
+            })
+            .expect("failed to spawn watchdog monitor thread");
+        Watchdog(inner)
     }
 
-    /// Register a new operation to watch.
+    /// Register a new operation to watch. Returns a monotonically increasing ID
+    /// that can be passed to `complete()` to mark the operation as done.
     pub fn start(
         &self,
         operation: &str,
@@ -338,29 +384,28 @@ impl Watchdog {
         correlation_id: &str,
         timeout_ms: Option<u64>,
     ) -> u64 {
-        let id = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos() as u64;
+        let id = {
+            let mut next = self.0.next_id.lock().unwrap_or_else(|e| e.into_inner());
+            *next += 1;
+            *next
+        };
         let entry = WatchdogEntry {
+            id,
             operation: operation.to_string(),
             component: component.to_string(),
             correlation_id: correlation_id.to_string(),
             started_at: std::time::Instant::now(),
-            timeout_ms: timeout_ms.unwrap_or(self.default_timeout_ms),
+            timeout_ms: timeout_ms.unwrap_or(self.0.default_timeout_ms),
             completed: false,
         };
-        self.entries.lock().unwrap().push(entry);
+        self.0.entries.lock().unwrap_or_else(|e| e.into_inner()).push(entry);
         id
     }
 
     /// Mark an operation as completed.
     pub fn complete(&self, id: u64) {
-        let mut entries = self.entries.lock().unwrap();
-        if let Some(entry) = entries.iter_mut().find(|e| {
-            let started_ns = e.started_at.elapsed().as_nanos() as u64;
-            started_ns == id
-        }) {
+        let mut entries = self.0.entries.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(entry) = entries.iter_mut().find(|e| e.id == id) {
             entry.completed = true;
         }
     }
@@ -368,12 +413,12 @@ impl Watchdog {
     /// Check for timed-out operations and log warnings.
     pub fn check_timeouts(&self) {
         let now = std::time::Instant::now();
-        let entries = self.entries.lock().unwrap();
+        let entries = self.0.entries.lock().unwrap();
         for entry in entries.iter() {
             if !entry.completed {
                 let elapsed = now.duration_since(entry.started_at).as_millis() as u64;
                 if elapsed > entry.timeout_ms {
-                    self.logger.write(
+                    self.0.logger.write(
                         "WARN",
                         &entry.component,
                         &format!(
@@ -389,7 +434,7 @@ impl Watchdog {
 
     /// Clean up completed entries.
     pub fn cleanup(&self) {
-        let mut entries = self.entries.lock().unwrap();
+        let mut entries = self.0.entries.lock().unwrap();
         entries.retain(|e| !e.completed);
     }
 }

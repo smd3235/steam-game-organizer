@@ -10,6 +10,7 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 
 use crate::app::application::Application;
+use crate::core::cli_args::{Args, resolve_project_root};
 use crate::core::config::AppConfig;
 use crate::core::logger::AppLogger;
 use crate::core::path_safety::safe_create_dir_all;
@@ -64,12 +65,22 @@ pub fn _handle_open_extracted_uri(_uri: &str, _config: &AppConfig, logger: &AppL
 }
 
 /// Regenerate catalog after a state-changing action and open it (best-effort).
-pub fn _regenerate_catalog_and_open(config: &AppConfig, _logger: &AppLogger) {
+pub fn _regenerate_catalog_and_open(config: &AppConfig, logger: &AppLogger) {
     if let Some(library_root) = &config.library_root {
         let folders: Vec<PathBuf> = config.extract_folders();
         let extract_refs: Vec<&Path> = folders.iter().map(|p| p.as_path()).collect();
         let catalog = CatalogService::new(Arc::new(noop_log), &extract_refs);
-        let _ = catalog.generate(library_root, false);
+        let result = catalog.generate(library_root, false);
+        if result.is_empty() {
+            logger.warning(
+                "CATALOG",
+                &format!(
+                    "CATALOG_GENERATE_FAILED library_root=[{}]",
+                    library_root.display()
+                ),
+                "",
+            );
+        }
     }
 }
 
@@ -162,46 +173,6 @@ pub fn _needs_setup(config: &AppConfig) -> bool {
 pub fn main() -> i32 {
     use clap::Parser;
 
-    #[derive(Parser, Debug)]
-    #[command(author, version, about = APP_NAME, long_about = None)]
-    struct Args {
-        /// Run deterministic mock data; no real library changes
-        #[arg(long)]
-        mock: bool,
-
-        /// Print diagnostics report and exit
-        #[arg(long)]
-        diagnostics: bool,
-
-        /// Print health text and exit
-        #[arg(long)]
-        health: bool,
-
-        /// Print version and exit
-        #[arg(short, long)]
-        version: bool,
-
-        /// Handle a steamgameorganizer:// link. Empty means launch the GUI.
-        #[arg(long, num_args = 0..=1)]
-        uri: Option<String>,
-
-        /// Extract an archive to the extract folder, then exit
-        #[arg(long)]
-        extract: Option<PathBuf>,
-
-        /// Open the setup wizard, then exit
-        #[arg(long)]
-        setup: bool,
-
-        /// Destination folder for --extract (default: the extract folder)
-        #[arg(long)]
-        dest: Option<PathBuf>,
-
-        /// Password for an encrypted .zip or .rar
-        #[arg(long, default_value = "")]
-        zip_password: String,
-    }
-
     let args = Args::parse();
 
     if args.version {
@@ -212,130 +183,156 @@ pub fn main() -> i32 {
     let root_path = resolve_project_root();
     let headless = args.diagnostics || args.health || args.uri.is_some() || args.extract.is_some();
 
-    let log_file = if headless {
-        let log_dir = root_path.join("logs");
-        find_recent_log(&log_dir)
-    } else {
-        None
-    };
-
     let mut config = AppConfig::new(&root_path);
     config.mock_mode = args.mock;
     config.ensure_directories();
 
-    let log_path = log_file.as_deref().unwrap_or_else(|| Path::new(""));
-    let logger = match AppLogger::new(log_path, "INFO", headless, false) {
-        Ok(l) => Arc::new(l),
-        Err(_) => {
-            eprintln!("Failed to initialize logger.");
-            return 1;
+    if headless {
+        let log_dir = root_path.join("logs");
+        let log_file = find_recent_log(&log_dir);
+        let log_path = log_file.as_deref().unwrap_or_else(|| Path::new(""));
+        let logger = match AppLogger::new(log_path, "INFO", true, false) {
+            Ok(l) => Arc::new(l),
+            Err(_) => {
+                eprintln!("Failed to initialize logger.");
+                return 1;
+            }
+        };
+        logger.install_panic_hook();
+        logger.info("APPLICATION", "START headless mode=true", "");
+
+        if args.diagnostics {
+            println!("Diagnostics not yet available in Rust.");
+            return 0;
         }
-    };
-    logger.install_panic_hook();
 
-    if args.diagnostics {
-        println!("Diagnostics not yet available in Rust.");
-        return 0;
-    }
-
-    if args.health {
-        use crate::core::debug::print_health_report;
-        print_health_report(&logger);
-        return 0;
-    }
-
-    // URI handler
-    if let Some(ref uri) = args.uri {
-        if !uri.is_empty() {
-            eprintln!("URI handling not yet implemented in CLI");
-            return 2;
+        if args.health {
+            use crate::core::debug::print_health_report;
+            print_health_report(&logger);
+            return 0;
         }
-    }
 
-    // Extract
-    if let Some(ref archive) = args.extract {
-        return _extract_to_disk(
-            archive,
-            args.dest.clone(),
-            &config,
-            &logger,
-            &args.zip_password,
+        // Validate settings.json schema
+        if args.config_validate {
+            let problems = config.validate();
+            if problems.is_empty() {
+                logger.info("CONFIG", "VALIDATION_ALL_CLEAN", "");
+                println!("Config validation: ALL CLEAN");
+                return 0;
+            } else {
+                logger.warning("CONFIG", &format!("VALIDATION_ISSUES_FOUND count={}", problems.len()), "");
+                println!("Config validation: ISSUES FOUND");
+                for problem in &problems {
+                    println!("  - {problem}");
+                }
+                return 1;
+            }
+        }
+
+        // URI handler
+        if let Some(ref uri) = args.uri {
+            if !uri.is_empty() {
+                eprintln!("URI handling not yet implemented in CLI");
+                return 2;
+            }
+        }
+
+        // Extract
+        if let Some(ref archive) = args.extract {
+            let dest_path = args.dest.as_ref().map(|d| PathBuf::from(d));
+            let result = _extract_to_disk(
+                Path::new(archive),
+                dest_path,
+                &config,
+                &logger,
+                &args.zip_password,
+            );
+            logger.info("APPLICATION", &format!("SHUTDOWN headless mode=true extract={}", Path::new(archive).display()), "");
+            return result;
+        }
+
+        // Setup wizard
+        if args.setup {
+            let service = SetupService::new(Arc::new(noop_log), None, None);
+            let (saved, rows) = service.apply(
+                &config,
+                config
+                    .library_root
+                    .as_deref()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or(""),
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or(""),
+                config.extract_folder().to_str().unwrap_or(""),
+            );
+            for (level, msg) in &rows {
+                eprintln!("[SETUP] [{}] {}", level, msg);
+            }
+            logger.info("APPLICATION", &format!("SHUTDOWN headless mode=true setup={}", if saved { "success" } else { "failure" }), "");
+            return if saved { 0 } else { 1 };
+        }
+
+        // First-run setup if needed (headless)
+        let needed_setup = config
+            .library_root
+            .as_ref()
+            .map(|p| !p.exists())
+            .unwrap_or(true);
+        if needed_setup {
+            config.save();
+            if let Some(library_root) = &config.library_root {
+                let folders: Vec<PathBuf> = config.extract_folders();
+                let extract_refs: Vec<&Path> = folders.iter().map(|p| p.as_path()).collect();
+                type NoopLogFn = Arc<dyn Fn(&str, &str) + Send + Sync>;
+                let noop_catalog: NoopLogFn = Arc::new(noop_log);
+                let result = CatalogService::new(noop_catalog, &extract_refs).generate(library_root, false);
+                if result.is_empty() {
+                    logger.warning(
+                        "CATALOG",
+                        &format!(
+                            "CATALOG_GENERATE_FAILED library_root=[{}]",
+                            library_root.display()
+                        ),
+                        "",
+                    );
+                }
+            }
+        }
+
+        logger.info("APPLICATION", "SHUTDOWN", "");
+        0
+    } else {
+        // GUI mode: create a single logger and launch the GUI
+        let log_dir = root_path.join("logs");
+        let root_path_str = root_path.to_str().unwrap_or("");
+        let _ = safe_create_dir_all(&log_dir, &[root_path_str]);
+        let stamp = OffsetDateTime::now_utc()
+            .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
+            .unwrap_or_default();
+        let log_path = log_dir.join(format!("organizer-{}.log", stamp));
+        let logger = match AppLogger::new(&log_path, "INFO", true, false) {
+            Ok(l) => Arc::new(l),
+            Err(_) => {
+                eprintln!("Failed to initialize logger for GUI mode.");
+                return 1;
+            }
+        };
+        logger.install_panic_hook();
+        logger.info("APPLICATION", "START gui_mode=true", "");
+        let _ = Application::new(
+            &root_path,
+            args.mock,
+            Arc::clone(&logger),
+            args.library_root.map(PathBuf::from),
+            &args.scenario,
         );
+        logger.info("APPLICATION", "SHUTDOWN", "");
+        0
     }
-
-    // Setup wizard
-    if args.setup {
-        let service = SetupService::new(Arc::new(noop_log), None, None);
-        let (saved, rows) = service.apply(
-            &config,
-            config
-                .library_root
-                .as_deref()
-                .and_then(|p| p.to_str())
-                .unwrap_or(""),
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or(""),
-            config.extract_folder().to_str().unwrap_or(""),
-        );
-        for (level, msg) in &rows {
-            eprintln!("[SETUP] [{}] {}", level, msg);
-        }
-        return if saved { 0 } else { 1 };
-    }
-
-    // First-run setup if needed
-    let needed_setup = config
-        .library_root
-        .as_ref()
-        .map(|p| !p.exists())
-        .unwrap_or(true);
-    if needed_setup {
-        config.save();
-        if let Some(library_root) = &config.library_root {
-            let folders: Vec<PathBuf> = config.extract_folders();
-            let extract_refs: Vec<&Path> = folders.iter().map(|p| p.as_path()).collect();
-            type NoopLogFn = Arc<dyn Fn(&str, &str) + Send + Sync>;
-            let noop_catalog: NoopLogFn = Arc::new(noop_log);
-            let _ = CatalogService::new(noop_catalog, &extract_refs).generate(library_root, false);
-        }
-    }
-
-    // Launch GUI (egui)
-    let log_dir = root_path.join("logs");
-    let root_path_str = root_path.to_str().unwrap_or("");
-    let _ = safe_create_dir_all(&log_dir, &[root_path_str]);
-    let stamp = OffsetDateTime::now_utc()
-        .format(&time::format_description::parse_borrowed::<3>("[year][month][day][hour][minute][second]").unwrap())
-        .unwrap_or_default();
-    let log_path = log_dir.join(format!("organizer-{}.log", stamp));
-    let logger = Arc::new(
-        AppLogger::new(&log_path, "INFO", true, false).expect("failed to create log file"),
-    );
-    logger.info("APPLICATION", "START gui_mode=true", "");
-    let _ = Application::new(&root_path, args.mock, Arc::clone(&logger));
-    logger.info("APPLICATION", "SHUTDOWN", "");
-    0
-}
-
-/// Resolve the project root by searching upward for Cargo.toml.
-fn resolve_project_root() -> PathBuf {
-    let exe_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-
-    let mut root_path = exe_dir.clone();
-    for candidate in exe_dir.ancestors() {
-        if candidate.join("Cargo.toml").is_file() {
-            root_path = candidate.to_path_buf();
-            break;
-        }
-    }
-    root_path
 }
 
 /// Find the most recent log file in a directory.
@@ -383,28 +380,29 @@ mod tests {
     fn test_needs_setup_no_settings() {
         // After AppConfig::new, library_root is set to default which may exist.
         // Test with a manually constructed config where library_root is None.
+        let tmp = std::env::temp_dir();
         let config = AppConfig {
-            project_root: std::path::PathBuf::from("/tmp"),
+            project_root: tmp.clone(),
             library_root: None,
             developer_mode: false,
             mock_mode: false,
             settings: serde_json::json!({}),
             settings_version: 0,
             log_file: None,
-            config_dir: std::path::PathBuf::from("/tmp/config"),
-            cache_dir: std::path::PathBuf::from("/tmp/cache"),
-            artwork_dir: std::path::PathBuf::from("/tmp/cache/artwork"),
-            log_dir: std::path::PathBuf::from("/tmp/logs"),
-            debug_dir: std::path::PathBuf::from("/tmp/debug"),
-            settings_file: std::path::PathBuf::from("/tmp/config/settings.json"),
-            state_file: std::path::PathBuf::from("/tmp/config/scan-state.json"),
+            config_dir: tmp.join("config"),
+            cache_dir: tmp.join("cache"),
+            artwork_dir: tmp.join("cache/artwork"),
+            log_dir: tmp.join("logs"),
+            debug_dir: tmp.join("debug"),
+            settings_file: tmp.join("config/settings.json"),
+            state_file: tmp.join("config/scan-state.json"),
         };
         assert!(_needs_setup(&config));
     }
 
     #[test]
     fn test_open_setup_stub() {
-        let config = AppConfig::new(std::path::Path::new("/tmp"));
+        let config = AppConfig::new(std::env::temp_dir().as_path());
         let log_path = std::env::temp_dir().join(format!("test_entry2_{}.log", std::process::id()));
         let logger = AppLogger::new(&log_path, "INFO", false, false).unwrap();
         let result = _open_setup(&config, &logger, None);

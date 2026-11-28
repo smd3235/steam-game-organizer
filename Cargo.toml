@@ -45,6 +45,12 @@ clap = { version = "4.6.10", features = ["derive"] }
 # Native file dialogs for browse buttons in setup view
 rfd = "0.18.0"
 
+# Image processing for OCR screenshot preprocessing (grayscale, threshold, contrast, upscale)
+image = "0.25"
+
+# SHA-256 for config hash verification
+sha2 = "0.10"
+
 # Date/time — replacement for unmaintained chrono (RUSTSEC-2026-0543)
 time = { version = "0.3.55", features = ["formatting", "parsing", "macros", "serde"] }
 
@@ -59,3 +65,7 @@ path = "src/bin.rs"
 [[bin]]
 name = "capture_screens"
 path = "src/tools/capture_screens.rs"
+
+[[bin]]
+name = "sg-diag"
+path = "src/bin/diag.rs"

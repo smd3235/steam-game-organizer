@@ -1,0 +1,23 @@
+UI Audit: Artwork
+Timestamp: 1795850595
+
+Quadrant    | Description            | Dark %  | Status
+------------|------------------------|---------|----------------
+r1c1       | Top-Left              |  100.0% | DEAD SPACE
+r1c2       | Top-Center-Left       |  100.0% | DEAD SPACE
+r1c3       | Top-Center-Right      |  100.0% | DEAD SPACE
+r1c4       | Top-Right             |  100.0% | DEAD SPACE
+r2c1       | Mid-Top-Left          |   98.8% | DEAD SPACE
+r2c2       | Mid-Top-Center-Left   |   99.4% | DEAD SPACE
+r2c3       | Mid-Top-Center-Right  |   99.4% | DEAD SPACE
+r2c4       | Mid-Top-Right         |   99.4% | DEAD SPACE
+r3c1       | Mid-Bottom-Left       |   98.0% | DEAD SPACE
+r3c2       | Mid-Bottom-Center-Left|   98.8% | DEAD SPACE
+r3c3       | Mid-Bottom-Center-Right|   99.1% | DEAD SPACE
+r3c4       | Mid-Bottom-Right      |   99.4% | DEAD SPACE
+r4c1       | Bottom-Left           |  100.0% | DEAD SPACE
+r4c2       | Bottom-Center-Left    |  100.0% | DEAD SPACE
+r4c3       | Bottom-Center-Right   |  100.0% | DEAD SPACE
+r4c4       | Bottom-Right          |  100.0% | DEAD SPACE
+
+Overall dead space: 100.0% of quadrants are >80%% dark

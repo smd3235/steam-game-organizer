@@ -8,7 +8,7 @@ use regex::Regex;
 use serde_json;
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -58,7 +58,16 @@ impl ArchiveService {
     }
 
     fn save_discovery_cache(&self, library_root: &Path, dir_mtimes: &HashMap<String, u128>) {
-        try_save_discovery_cache(library_root, dir_mtimes);
+        if let Err(e) = try_save_discovery_cache(library_root, dir_mtimes) {
+            (self.logger)(
+                "ARCHIVE",
+                &format!(
+                    "DISCOVERY_CACHE_SAVE_FAILED library_root=[{}] error={}",
+                    library_root.display(),
+                    e
+                ),
+            );
+        }
     }
 
     fn walk_changed_files(
@@ -477,9 +486,14 @@ impl ArchiveService {
         match ZipArchive::new(file) {
             Ok(mut source) => {
                 for i in 0..source.len() {
-                    if let Ok(entry) = source.by_index(i) {
+                    if let Ok(mut entry) = source.by_index(i) {
                         if !entry.is_dir() {
-                            return true;
+                            // Encrypted entries cannot be read without a password.
+                            // Try to read the first byte; if it fails, the zip is encrypted.
+                            let mut buf = [0u8; 1];
+                            if entry.read(&mut buf).is_err() {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -601,7 +615,10 @@ fn try_load_discovery_cache(library_root: &Path) -> HashMap<String, u128> {
     }
 }
 
-fn try_save_discovery_cache(library_root: &Path, dir_mtimes: &HashMap<String, u128>) {
+fn try_save_discovery_cache(
+    library_root: &Path,
+    dir_mtimes: &HashMap<String, u128>,
+) -> Result<(), String> {
     let config_dir = library_root.parent().unwrap_or(library_root).join("config");
     let state_file = config_dir.join("scan-state.json");
     let mut existing: serde_json::Value = match fs::read_to_string(&state_file) {
@@ -622,20 +639,32 @@ fn try_save_discovery_cache(library_root: &Path, dir_mtimes: &HashMap<String, u1
     if let Ok(mut f) = fs::File::create(&tmp_path) {
         let _ = serde_json::to_writer_pretty(&mut f, &existing);
         let _ = f.flush();
+    } else {
+        return Err(format!(
+            "cannot create temp file {}",
+            tmp_path.display()
+        ));
     }
     for _ in 0..4 {
         match fs::rename(&tmp_path, &state_file) {
-            Ok(()) => break,
+            Ok(()) => {
+                let _ = fs::remove_file(&tmp_path);
+                return Ok(());
+            }
             Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
                 std::thread::sleep(std::time::Duration::from_millis(50));
             }
             Err(_e) => {
                 let _ = fs::remove_file(&tmp_path);
-                return;
+                return Err(format!(
+                    "cannot rename temp file to {}",
+                    state_file.display()
+                ));
             }
         }
     }
     let _ = fs::remove_file(&tmp_path);
+    Err("rename failed after 4 attempts".to_string())
 }
 
 #[cfg(test)]

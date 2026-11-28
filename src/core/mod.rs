@@ -2,6 +2,7 @@
 //!
 //! 2026-11-25: Organized into `core/` folder during Rust conversion.
 
+pub mod archive_safety;
 pub mod banner_art;
 pub mod batch_item;
 pub mod canonical_category;
@@ -10,6 +11,7 @@ pub mod catalog_utils;
 pub mod category_evidence;
 pub mod category_folder;
 pub mod clear_tool_cache;
+pub mod cli_args;
 pub mod config;
 pub mod configured_bases;
 pub mod connection_pool;
