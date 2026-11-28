@@ -342,9 +342,7 @@ impl MainWindow {
     }
 
     pub(crate) fn render_setup(&mut self, ui: &mut egui::Ui) {
-        card(ui, &self.palette, |ui| {
-            self.setup_view.ui(ui);
-        });
+        self.setup_view.ui(ui);
     }
 
     /// Render the left navigation sidebar.

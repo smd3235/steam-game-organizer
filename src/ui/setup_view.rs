@@ -1,9 +1,10 @@
 //! Setup view: initial configuration wizard for library root, extract folder, and 7z path.
-//! Redesigned with two-column layout, step progress, path status badges, real-time
+//! Full-screen two-column layout with step progress, path status badges, real-time
 //! validation, configuration preview, and save-disabled-until-valid.
 //!
-//! 2026-11-28: Complete UI overhaul — step progress, two-column layout, path status
-//! badges, real-time validation, configuration preview, save-disabled-until-valid.
+//! 2026-11-28: Complete UI overhaul — full-screen two-column layout, step progress,
+//! path status badges, real-time validation, configuration preview,
+//! save-disabled-until-valid. Uses full available viewport width/height.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -12,9 +13,9 @@ use crate::core::config::AppConfig;
 use crate::core::path_safety::safe_create_dir_all;
 use crate::ui::theme::{
     card, heading, info_card, pill, primary_button, secondary_button, section_header, separator,
-    Palette, SPACING, SPACING_LG,
+    Palette, SPACING, SPACING_LG, SPACING_XL,
 };
-use egui::{Color32, RichText, ScrollArea};
+use egui::{Color32, RichText, ScrollArea, Vec2};
 use rfd::FileDialog;
 
 #[derive(Default, Clone)]
@@ -144,42 +145,72 @@ impl SetupView {
             self.save_config();
         }
 
-        let palette = self.palette.clone();
+        let palette = &self.palette.clone();
 
-        // Two-column layout: left = inputs, right = preview + validation
-        ui.horizontal(|ui| {
-            // Left column: input form (60% width)
-            ui.vertical(|ui| {
-                ui.set_min_width(420.0);
-                self.render_input_form(ui, &palette);
-            });
+        // Get available space for full-screen layout
+        let available = ui.available_rect_before_wrap();
+        let full_width = available.width();
+        let full_height = available.height();
 
+        // Header: Title + subtitle + progress bar
+        ui.vertical(|ui| {
             ui.add_space(SPACING_LG);
-
-            // Right column: preview + validation (40% width)
-            ui.vertical(|ui| {
-                ui.set_min_width(300.0);
-                self.render_preview_panel(ui, &palette);
-            });
-        });
-
-        // Full-width bottom: status bar
-        separator(ui);
-        ui.add_space(SPACING);
-        ui.horizontal(|ui| {
-            ui.label(
-                RichText::new(&self.state.status)
-                    .small()
-                    .color(palette.text_secondary),
-            );
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 ui.label(
-                    RichText::new(format!("Progress: {:.0}%", self.state.progress_percent()))
-                        .small()
-                        .color(palette.text_secondary),
+                    RichText::new("Steam Game Organizer")
+                        .color(palette.accent)
+                        .size(32.0)
+                        .strong(),
                 );
+                ui.add_space(SPACING / 2.0);
+                ui.label(
+                    RichText::new("Setup Wizard")
+                        .color(palette.text)
+                        .size(24.0)
+                        .strong(),
+                );
+                ui.add_space(SPACING / 2.0);
+                ui.label(
+                    RichText::new("Configure your library root, extract folder, and 7-Zip path")
+                        .color(palette.text_secondary)
+                        .size(14.0),
+                );
+                ui.add_space(SPACING_LG);
+            });
+
+            // Progress bar across full width
+            ui.add_space(SPACING);
+            ui.add(
+                egui::ProgressBar::new(self.state.progress_percent() / 100.0)
+                    .text(format!("Setup progress: {:.0}%", self.state.progress_percent()))
+                    .desired_width(full_width - SPACING_XL * 2.0),
+            );
+            ui.add_space(SPACING_LG);
+        });
+
+        // Two-column layout: left = inputs (60%), right = preview + validation (40%)
+        ui.vertical(|ui| {
+            ui.add_space(SPACING);
+            ui.horizontal(|ui| {
+                // Left column: input form (60% width)
+                ui.vertical(|ui| {
+                    ui.set_min_width(full_width * 0.60 - SPACING_LG);
+                    ui.set_max_width(full_width * 0.60);
+                    self.render_input_form(ui, palette);
+                });
+
+                ui.add_space(SPACING_LG);
+
+                // Right column: preview + validation (40% width)
+                ui.vertical(|ui| {
+                    ui.set_min_width(full_width * 0.40 - SPACING_LG);
+                    ui.set_max_width(full_width * 0.40);
+                    self.render_preview_panel(ui, palette);
+                });
             });
         });
+
+        ui.add_space(SPACING_LG);
     }
 
     fn render_input_form(&mut self, ui: &mut egui::Ui, palette: &Palette) {
@@ -199,7 +230,7 @@ impl SetupView {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.state.library_root)
                         .hint_text("e.g. C:\\SteamLibrary")
-                        .desired_width(320.0),
+                        .desired_width(ui.available_width() - 120.0),
                 );
                 if secondary_button(ui, "Browse", palette, true).clicked() {
                     if let Some(folder) = FileDialog::new()
@@ -246,7 +277,7 @@ impl SetupView {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.state.extract_folder)
                         .hint_text("e.g. C:\\Extracted")
-                        .desired_width(320.0),
+                        .desired_width(ui.available_width() - 120.0),
                 );
                 if secondary_button(ui, "Browse", palette, true).clicked() {
                     if let Some(folder) = FileDialog::new()
@@ -259,7 +290,8 @@ impl SetupView {
                             &format!("Extract folder set to: {}", self.state.extract_folder),
                             "",
                         );
-                        self.state.status = format!("Extract folder: {}", self.state.extract_folder);
+                        self.state.status =
+                            format!("Extract folder: {}", self.state.extract_folder);
                         self.validate_single_field_extract_folder();
                     }
                 }
@@ -292,7 +324,7 @@ impl SetupView {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.state.seven_zip_path)
                         .hint_text("e.g. C:\\Program Files\\7-Zip\\7z.exe")
-                        .desired_width(320.0),
+                        .desired_width(ui.available_width() - 120.0),
                 );
                 if secondary_button(ui, "Browse", palette, true).clicked() {
                     if let Some(file) = FileDialog::new()
@@ -306,7 +338,8 @@ impl SetupView {
                             &format!("7-Zip path set to: {}", self.state.seven_zip_path),
                             "",
                         );
-                        self.state.status = format!("7-Zip path: {}", self.state.seven_zip_path);
+                        self.state.status =
+                            format!("7-Zip path: {}", self.state.seven_zip_path);
                         self.validate_single_field_seven_zip();
                     }
                 }
@@ -352,8 +385,10 @@ impl SetupView {
             );
             separator(ui);
 
-            // Action buttons
+            // Action buttons - full width
+            ui.add_space(SPACING);
             ui.horizontal(|ui| {
+                ui.add_space(ui.available_width() / 2.0 - 100.0);
                 if primary_button(
                     ui,
                     "Save & Finish Setup",
@@ -365,10 +400,12 @@ impl SetupView {
                     self.logger.log("SETUP", "Save & Finish Setup button clicked", "");
                     self.state.should_save = true;
                 }
+                ui.add_space(SPACING_LG);
                 if secondary_button(ui, "Skip Setup", palette, true).clicked() {
                     self.logger.log("SETUP", "Skip Setup button clicked", "");
                     self.state.status = "Setup skipped — using defaults".to_string();
                 }
+                ui.add_space(ui.available_width() / 2.0 - 100.0);
             });
         });
     }
@@ -405,7 +442,8 @@ impl SetupView {
             } else {
                 ScrollArea::vertical()
                     .id_salt("setup_validation")
-                    .max_height(150.0)
+                    .max_height(400.0)
+                    .auto_shrink(false)
                     .show(ui, |ui| {
                         for msg in &self.state.validation_messages {
                             let color = if msg.starts_with("✗") || msg.starts_with("ERROR") {
@@ -437,6 +475,9 @@ impl SetupView {
                         .strong(),
                 );
             }
+
+            // Spacer to fill remaining vertical space
+            ui.add_space(ui.available_height());
         });
     }
 
@@ -447,46 +488,48 @@ impl SetupView {
             ("3", "7-Zip Path"),
             ("4", "Advanced"),
         ];
-        ui.horizontal(|ui| {
-            for (i, (num, label)) in steps.iter().enumerate() {
-                let completed = self.state.current_step > i + 1;
-                let current = self.state.current_step == i + 1;
-                let (bg, fg, stroke) = if completed {
-                    (palette.green, palette.bg, None)
-                } else if current {
-                    (palette.accent, Color32::WHITE, None)
-                } else {
-                    (palette.panel3, palette.text_secondary, Some(palette.border))
-                };
-                ui.add(
-                    egui::Button::new(
-                        RichText::new(*num).color(fg).strong().small(),
-                    )
-                    .fill(bg)
-                    .corner_radius(crate::ui::theme::CIRCLE_RADIUS)
-                    .min_size(egui::Vec2::new(24.0, 24.0))
-                    .stroke(egui::Stroke::new(1.0, stroke.unwrap_or(palette.border))),
-                );
-                ui.add_space(SPACING / 2.0);
-                ui.label(
-                    RichText::new(*label)
-                        .color(if completed || current {
-                            palette.text
-                        } else {
-                            palette.text_secondary
-                        })
-                        .small(),
-                );
-                if i < steps.len() - 1 {
-                    ui.add_space(SPACING);
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                for (i, (num, label)) in steps.iter().enumerate() {
+                    let completed = self.state.current_step > i + 1;
+                    let current = self.state.current_step == i + 1;
+                    let (bg, fg, stroke) = if completed {
+                        (palette.green, palette.bg, None)
+                    } else if current {
+                        (palette.accent, Color32::WHITE, None)
+                    } else {
+                        (palette.panel3, palette.text_secondary, Some(palette.border))
+                    };
+                    ui.add(
+                        egui::Button::new(
+                            RichText::new(*num).color(fg).strong().small(),
+                        )
+                        .fill(bg)
+                        .corner_radius(crate::ui::theme::CIRCLE_RADIUS)
+                        .min_size(egui::Vec2::new(24.0, 24.0))
+                        .stroke(egui::Stroke::new(1.0, stroke.unwrap_or(palette.border))),
+                    );
+                    ui.add_space(SPACING / 2.0);
                     ui.label(
-                        RichText::new("›")
-                            .color(palette.text_secondary)
+                        RichText::new(*label)
+                            .color(if completed || current {
+                                palette.text
+                            } else {
+                                palette.text_secondary
+                            })
                             .small(),
                     );
-                    ui.add_space(SPACING);
+                    if i < steps.len() - 1 {
+                        ui.add_space(SPACING);
+                        ui.label(
+                            RichText::new("›")
+                                .color(palette.text_secondary)
+                                .small(),
+                        );
+                        ui.add_space(SPACING);
+                    }
                 }
-            }
+            });
         });
     }
 
@@ -518,7 +561,8 @@ impl SetupView {
             self.state.extract_folder_msg = format!("Exists: {}", self.state.extract_folder);
         } else {
             self.state.extract_folder_valid = true; // extract folder can be created
-            self.state.extract_folder_msg = format!("Will be created: {}", self.state.extract_folder);
+            self.state.extract_folder_msg =
+                format!("Will be created: {}", self.state.extract_folder);
         }
     }
 
@@ -788,8 +832,6 @@ mod tests {
     #[test]
     fn test_setup_ui_buttons_enabled() {
         // Verify SetupView initial state — all buttons start inactive
-        // We can't easily create an egui::Ui in a unit test without egui's test feature,
-        // but we verify the view struct and state are correctly initialized
         let palette = Palette::default();
         let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
             crate::core::logger::AppLogger::new(
@@ -817,8 +859,6 @@ mod tests {
     #[test]
     fn test_setup_button_clicks_set_state() {
         // Verify that button clicks set state flags
-        // This catches the "buttons do nothing" UI bug — if flags aren't set,
-        // ui() will never process them and nothing happens
         let palette = Palette::default();
         let logger: Arc<crate::core::logger::AppLogger> = Arc::new(
             crate::core::logger::AppLogger::new(

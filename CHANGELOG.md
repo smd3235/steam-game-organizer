@@ -25,9 +25,20 @@ Each entry starts with a type prefix:
 
 ### 2026-11-28 — feat: Complete Setup View UI overhaul
 
-- `src/ui/setup_view.rs`: Complete redesign of the Setup Wizard with two-column layout, step progress indicator, path status badges, real-time validation, configuration preview, and save-disabled-until-valid.
-  - **4-step progress indicator** (Library Root → Extract Folder → 7-Zip Path → Advanced) with visual step state
-  - **Two-column layout**: left column for input fields, right column for config preview + validation summary
+- `src/ui/setup_view.rs`: Complete redesign of the Setup Wizard with full-screen two-column layout, step progress indicator, path status badges, real-time validation, configuration preview, and save-disabled-until-valid.
+  - **Full-screen layout**: Uses entire viewport width/height via `ui.available_rect_before_wrap()`, eliminating dead space
+  - **4-step progress indicator** (Library Root → Extract Folder → 7-Zip Path → Advanced) with visual step state and full-width progress bar
+  - **Two-column layout**: left column for input fields (60% width), right column for config preview + validation (40% width)
+  - **Path status badges** (✓ Valid / ✗ Invalid / ○ Required / ○ Optional) next to each field
+  - **Real-time validation** on field change, not just on button click
+  - **Configuration preview card** showing all current values before saving
+  - **Save button disabled** until required fields (library root, extract folder) are valid
+  - **Pre-fill from existing config** (`AppConfig`) on view creation
+  - **Collapsible Advanced section** for Developer Mode
+  - **Action buttons centered** at bottom of form
+  - All 7 unit tests pass covering: new, validate empty, validate with paths, button clicks, browse status, progress percent
+
+### 2026-11-28 — feat: Live screenshot button — capture current UI from inside the app
   - **Path status badges** (✓ Valid / ✗ Invalid / ○ Required / ○ Optional) next to each field
   - **Real-time validation** on field change, not just on button click
   - **Configuration preview card** showing all current values before saving
